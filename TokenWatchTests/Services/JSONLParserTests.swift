@@ -198,4 +198,35 @@ struct JSONLParserTests {
 
         try? FileManager.default.removeItem(at: fileURL)
     }
+
+    @Test("同 messageId 多 chunk 去重 - 应保留携带真实 usage 的那条")
+    func dedupKeepsRecordWithRealUsage() throws {
+        // Claude Code JSONL 中,同一 message.id 会出现多条记录:
+        // streaming 过程中的中间 chunk usage 全为 0;最终一条才携带真实 usage。
+        // 之前用 Set.insert 保留首条,会丢掉真实 usage,导致今日 token 偏低。
+        // 修复后:同 messageId 应保留 token 总量最大的一条(最完整)。
+        let zeroUsageLine = """
+        {"type":"assistant","uuid":"u-chunk","sessionId":"s1","timestamp":"2026-06-14T10:00:00Z","message":{"id":"shared-msg","role":"assistant","model":"deepseek-v4-pro","content":[],"stop_reason":null,"usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":0,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        """
+        let realUsageLine = """
+        {"type":"assistant","uuid":"u-final","sessionId":"s1","timestamp":"2026-06-14T10:00:01Z","message":{"id":"shared-msg","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":1234,"cache_creation_input_tokens":0,"cache_read_input_tokens":5678,"output_tokens":234,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        """
+
+        let tmpDir = FileManager.default.temporaryDirectory
+        let fileURL = tmpDir.appendingPathComponent("multi-chunk-\(UUID().uuidString).jsonl")
+        // 故意让 (0,0,0) chunk 排在前面 — 模拟真实日志写入顺序
+        try (zeroUsageLine + "\n" + realUsageLine).write(to: fileURL, atomically: true, encoding: .utf8)
+        let info = JSONLFileInfo(url: fileURL, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil)
+
+        let entries = try parser.parseAllFiles([info], claudeDataRoot: tmpDir)
+
+        #expect(entries.count == 1)
+        #expect(entries.first?.messageId == "shared-msg")
+        // 关键:必须取到带真实 usage 的那条,而不是 (0,0,0) 的 chunk
+        #expect(entries.first?.usage.inputTokens == 1234)
+        #expect(entries.first?.usage.outputTokens == 234)
+        #expect(entries.first?.usage.cacheReadInputTokens == 5678)
+
+        try? FileManager.default.removeItem(at: fileURL)
+    }
 }

@@ -114,13 +114,27 @@ final class JSONLParser: Sendable {
 
         logger.info("解析完成：\(allEntries.count) 条记录（去重前）")
 
-        // 按 dedupKey 去重；同一 messageId 出现多次时保留首条
-        var seen = Set<String>()
-        var uniqueEntries: [ParsedUsageEntry] = []
-        uniqueEntries.reserveCapacity(allEntries.count)
-        for entry in allEntries where seen.insert(entry.dedupKey).inserted {
-            uniqueEntries.append(entry)
+        // 同一 message.id 在 JSONL 中会出现多条记录:
+        //   - streaming 过程中的中间 chunk → usage 字段全为 0
+        //   - 最终一条 → 携带真实 usage
+        //   - 跨文件镜像(subagent / resume)→ usage 完全相同的另一份
+        // 旧实现用 Set.insert 保留首条,会先撞上 (0,0,0) 的 chunk 而丢掉真实 usage,
+        // 与 ccusage 对比时今日 token 偏低。
+        // 修正:同 dedupKey 中保留 token 总量(input + output + cache_read + cache_create)
+        // 最大的那条 — 中间 chunk 总量为 0,镜像记录数值相同,均不会替换最完整那条。
+        var bestByKey: [String: ParsedUsageEntry] = [:]
+        bestByKey.reserveCapacity(allEntries.count)
+        for entry in allEntries {
+            let key = entry.dedupKey
+            if let existing = bestByKey[key] {
+                if Self.usageMagnitude(entry.usage) > Self.usageMagnitude(existing.usage) {
+                    bestByKey[key] = entry
+                }
+            } else {
+                bestByKey[key] = entry
+            }
         }
+        let uniqueEntries = Array(bestByKey.values)
 
         let duplicateCount = allEntries.count - uniqueEntries.count
         if duplicateCount > 0 {
@@ -128,5 +142,14 @@ final class JSONLParser: Sendable {
         }
 
         return uniqueEntries
+    }
+
+    /// usage 总量,用于在多条同 messageId 记录中挑「最完整」的那条
+    /// 流式 chunk 的 usage 全部为 0,真实 usage 必然 > 0,因此取最大即可
+    private static func usageMagnitude(_ usage: TokenUsage) -> Int {
+        usage.inputTokens
+            + usage.outputTokens
+            + usage.cacheReadInputTokens
+            + usage.totalCacheCreationTokens
     }
 }
