@@ -14,23 +14,34 @@ final class TokenStatsViewModel: Sendable {
     private(set) var errorMessage: String?
     private(set) var needsAuthorization = true
 
+    /// 状态变更回调,UI 监听刷新视图
+    /// MVP 阶段不引入 Combine / Observation,先用裸闭包让 ViewController 串起来
+    var onStateChange: (@MainActor () -> Void)?
+
     private let bookmarkManager = SecurityScopedBookmarkManager.shared
     private let scanner = JSONLScanner()
     private let parser = JSONLParser()
     private let aggregator = UsageAggregator()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
 
+    /// 通知 UI 状态已变更,主线程触发
+    private func notifyStateChange() {
+        onStateChange?()
+    }
+
     /// 尝试加载并计算统计数据
     /// 完整流程：Bookmark 恢复 → 扫描 JSONL → 解析 usage → 聚合统计
     func loadStats() async {
         isLoading = true
         errorMessage = nil
+        notifyStateChange()
 
         // Step 1: 检查是否有已存储的 Bookmark
         if !bookmarkManager.hasBookmark {
             needsAuthorization = true
             isLoading = false
             logger.info("未找到已存储的 Bookmark，需要用户授权")
+            notifyStateChange()
             return
         }
 
@@ -40,6 +51,7 @@ final class TokenStatsViewModel: Sendable {
             needsAuthorization = true
             isLoading = false
             logger.error("Bookmark 恢复失败")
+            notifyStateChange()
             return
         }
 
@@ -79,6 +91,7 @@ final class TokenStatsViewModel: Sendable {
         }
 
         isLoading = false
+        notifyStateChange()
     }
 
     /// 触发授权流程

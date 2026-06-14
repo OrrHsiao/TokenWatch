@@ -11,11 +11,13 @@ import Cocoa
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
-    /// ViewModel 实例，协调数据加载和统计计算
-    private let viewModel = TokenStatsViewModel()
+    /// ViewModel 实例,协调数据加载和统计计算
+    /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
+    let viewModel = TokenStatsViewModel()
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // 尝试恢复 Security-Scoped Bookmark 并加载数据
+        // ViewController 会在 viewDidLoad 注册 onStateChange,此处异步加载到完成时它已 ready
         Task {
             await viewModel.loadStats()
         }
@@ -30,4 +32,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 }
-
