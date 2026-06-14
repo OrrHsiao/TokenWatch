@@ -466,4 +466,174 @@ struct PricingEngineTests {
         #expect(pricing == nil)
         #expect(cost == 0.0)
     }
+
+    // MARK: - Speed::Fast multiplier
+    //
+    // 参考 ccusage `cost.rs::calculate_cost_from_tokens`:
+    //   let multiplier = if matches!(usage.speed, Some(Speed::Fast)) {
+    //       pricing.fast_multiplier
+    //   } else {
+    //       1.0
+    //   };
+    //   (sum_of_all_tiered_costs) * multiplier
+    //
+    // - 仅 JSONL 中 `speed == "fast"` (lowercase) 触发
+    // - multiplier 应用在所有 tiered_cost 之和上(末尾整体乘一次)
+    // - LiteLLM 上仅 Claude Opus 4.6 / 4.7 / 4.8 配置了 fast(6.0 / 6.0 / 2.0)
+    // - speed 缺失或 "standard" → multiplier = 1.0
+
+    @Test("fast - speed=fast 且模型有 fastMultiplier 时整体乘倍")
+    func fastSpeedAppliesMultiplier() {
+        // Opus 4.8 fast=2.0;1M input + 1M output → ($5 + $25) × 2.0 = $60
+        let usage = TokenUsage(
+            inputTokens: 1_000_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 1_000_000,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "fast"
+        )
+        let (cost, pricing) = engine.calculateCost(usage: usage, model: "claude-opus-4-8")
+        #expect(pricing?.fastMultiplier == 2.0)
+        #expect(abs(cost - 60.0) < 0.0001)
+    }
+
+    @Test("fast - speed=standard 时不乘 multiplier")
+    func standardSpeedDoesNotApplyMultiplier() {
+        // 同样 Opus 4.8,但 speed=standard → 仅 $30
+        let usage = TokenUsage(
+            inputTokens: 1_000_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 1_000_000,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let (cost, _) = engine.calculateCost(usage: usage, model: "claude-opus-4-8")
+        #expect(abs(cost - 30.0) < 0.0001)
+    }
+
+    @Test("fast - speed 字段缺失(空串)等同 standard")
+    func absentSpeedIsStandard() {
+        let usage = TokenUsage(
+            inputTokens: 1_000_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: ""
+        )
+        let (cost, _) = engine.calculateCost(usage: usage, model: "claude-opus-4-8")
+        // 1M × $5 = $5(无乘倍)
+        #expect(abs(cost - 5.0) < 0.0001)
+    }
+
+    @Test("fast - 未知 speed 字符串不应触发乘倍")
+    func unknownSpeedStringIsTreatedAsStandard() {
+        // 仅小写 "fast" 触发,任何其他值(包括 "Fast"/"FAST"/"turbo")退化为 standard
+        let usage = TokenUsage(
+            inputTokens: 1_000_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "Fast"
+        )
+        let (cost, _) = engine.calculateCost(usage: usage, model: "claude-opus-4-8")
+        #expect(abs(cost - 5.0) < 0.0001)
+    }
+
+    @Test("fast - 模型无 fastMultiplier(默认 1.0)时即便 speed=fast 也不变")
+    func fastSpeedOnModelWithoutMultiplierIsNoOp() {
+        // Haiku 4.5 既无 above_200k 也无 fastMultiplier → 1M 各端就是 $1 + $5 = $6
+        let usage = TokenUsage(
+            inputTokens: 1_000_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 1_000_000,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "fast"
+        )
+        let (cost, pricing) = engine.calculateCost(usage: usage, model: "claude-haiku-4-5")
+        #expect(pricing?.fastMultiplier == 1.0)
+        #expect(abs(cost - 6.0) < 0.0001)  // 无 above 也无 fast,$1 + $5 = $6
+    }
+
+    @Test("fast - 与 200k tier 的乘法顺序:整体一次性乘")
+    func fastInteractsWithTier() {
+        // 假设场景:claude-opus-4-8 input 250k, speed=fast
+        // 注:Opus 4.8 在 LiteLLM 上没有 above_200k,实际 above 价为 nil → 不会跨阈
+        // 但若有 above,则:tiered(input) × multiplier
+        // 这里换用 Sonnet 4.5(有 above)+ 手工 fastMultiplier,验证乘法顺序
+        let usage = TokenUsage(
+            inputTokens: 250_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "fast"
+        )
+        let pricing = ModelPricing(
+            modelID: "test-tiered-fast",
+            displayName: "Test",
+            inputPrice: 3.0, outputPrice: 15.0,
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50,
+            fastMultiplier: 2.5
+        )
+        let cost = engine.calculateCost(usage: usage, pricing: pricing)
+        // tiered(input 250k) = 200k×3 + 50k×6 = $0.60 + $0.30 = $0.90
+        // × 2.5 = $2.25
+        #expect(abs(cost - 2.25) < 0.0001)
+    }
+
+    @Test("fast - PricingTable 中 Opus 4.6/4.7/4.8 已带 fastMultiplier")
+    func fastPricingTableEntries() {
+        #expect(PricingTable.pricing(for: "claude-opus-4-6")?.fastMultiplier == 6.0)
+        #expect(PricingTable.pricing(for: "claude-opus-4-7")?.fastMultiplier == 6.0)
+        #expect(PricingTable.pricing(for: "claude-opus-4-8")?.fastMultiplier == 2.0)
+    }
+
+    @Test("fast - 其他模型 fastMultiplier 默认 1.0")
+    func fastDefaultIsOne() {
+        #expect(PricingTable.pricing(for: "claude-opus-4")?.fastMultiplier == 1.0)
+        #expect(PricingTable.pricing(for: "claude-opus-4-5")?.fastMultiplier == 1.0)
+        #expect(PricingTable.pricing(for: "claude-sonnet-4-5")?.fastMultiplier == 1.0)
+        #expect(PricingTable.pricing(for: "claude-haiku-4-5")?.fastMultiplier == 1.0)
+    }
+
+    @Test("fast - 带日期后缀的 Opus 4.8 也命中 fast=2.0")
+    func fastDateSuffixMatch() {
+        // claude-opus-4-8-20260101 → 前缀匹配 claude-opus-4-8 → fast=2.0
+        let pricing = PricingTable.pricing(for: "claude-opus-4-8-20260101")
+        #expect(pricing?.displayName == "Claude Opus 4.8")
+        #expect(pricing?.fastMultiplier == 2.0)
+    }
 }

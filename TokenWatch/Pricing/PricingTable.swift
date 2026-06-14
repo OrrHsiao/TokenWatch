@@ -31,6 +31,31 @@ struct PricingTable: Sendable {
             cacheReadPrice: 0.50, cacheWritePrice: 6.25
         ),
 
+        // Opus 4.6 / 4.7 / 4.8:与 4.5 同价,但带 fast_multiplier
+        // (LiteLLM `provider_specific_entry.fast`,4.6/4.7=6.0,4.8=2.0)
+        // 这是当前 PricingTable 中唯一会触发 fastMultiplier 的模型组
+        "claude-opus-4-6": ModelPricing(
+            modelID: "claude-opus-4-6",
+            displayName: "Claude Opus 4.6",
+            inputPrice: 5.0, outputPrice: 25.0,
+            cacheReadPrice: 0.50, cacheWritePrice: 6.25,
+            fastMultiplier: 6.0
+        ),
+        "claude-opus-4-7": ModelPricing(
+            modelID: "claude-opus-4-7",
+            displayName: "Claude Opus 4.7",
+            inputPrice: 5.0, outputPrice: 25.0,
+            cacheReadPrice: 0.50, cacheWritePrice: 6.25,
+            fastMultiplier: 6.0
+        ),
+        "claude-opus-4-8": ModelPricing(
+            modelID: "claude-opus-4-8",
+            displayName: "Claude Opus 4.8",
+            inputPrice: 5.0, outputPrice: 25.0,
+            cacheReadPrice: 0.50, cacheWritePrice: 6.25,
+            fastMultiplier: 2.0
+        ),
+
         // Sonnet 4 系列
         // 200k 阈值之上的 above_200k 单价（来自 LiteLLM）：
         //   input  3.0  → 6.0

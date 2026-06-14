@@ -26,6 +26,12 @@ struct ModelPricing: Sendable {
     /// 超过 200k token 部分的 cache write (5m) 单价（每百万 USD）
     let cacheWritePriceAbove200k: Double?
 
+    /// Speed::Fast 倍率(参考 ccusage `provider_specific_entry.fast`)
+    /// 仅当 JSONL `usage.speed == "fast"` 时,整体成本乘以此倍率
+    /// 默认 1.0(模型无 fast 配置 / 普通 standard 模式),不影响成本
+    /// LiteLLM 上仅 Claude Opus 4.6 / 4.7 / 4.8 配置了非 1.0 值
+    let fastMultiplier: Double
+
     init(
         modelID: String,
         displayName: String,
@@ -36,7 +42,8 @@ struct ModelPricing: Sendable {
         inputPriceAbove200k: Double? = nil,
         outputPriceAbove200k: Double? = nil,
         cacheReadPriceAbove200k: Double? = nil,
-        cacheWritePriceAbove200k: Double? = nil
+        cacheWritePriceAbove200k: Double? = nil,
+        fastMultiplier: Double = 1.0
     ) {
         self.modelID = modelID
         self.displayName = displayName
@@ -48,5 +55,6 @@ struct ModelPricing: Sendable {
         self.outputPriceAbove200k = outputPriceAbove200k
         self.cacheReadPriceAbove200k = cacheReadPriceAbove200k
         self.cacheWritePriceAbove200k = cacheWritePriceAbove200k
+        self.fastMultiplier = fastMultiplier
     }
 }

@@ -5,25 +5,28 @@ import os.log
 ///
 /// 参考 ccusage `cost.rs::calculate_cost_from_tokens` + `tiered_cost`：
 /// ```
-/// cost = tiered(inputTokens,        inputPrice,         inputPriceAbove200k)
-///      + tiered(outputTokens,       outputPrice,        outputPriceAbove200k)
-///      + tiered(cacheCreate5m,      cacheWritePrice,    cacheWritePriceAbove200k)
-///      + tiered(cacheCreate1h,      inputPrice  × 2,    inputPriceAbove200k × 2)
-///      + tiered(cacheRead,          cacheReadPrice,     cacheReadPriceAbove200k)
-/// 其中 tiered(t, base, above) =
-///     200_000 × base + (t - 200_000) × above   (above != nil 且 t > 200k)
-///     t × base                                  (其他情形)
+/// cost = ( tiered(inputTokens,        inputPrice,         inputPriceAbove200k)
+///        + tiered(outputTokens,       outputPrice,        outputPriceAbove200k)
+///        + tiered(cacheCreate5m,      cacheWritePrice,    cacheWritePriceAbove200k)
+///        + tiered(cacheCreate1h,      inputPrice  × 2,    inputPriceAbove200k × 2)
+///        + tiered(cacheRead,          cacheReadPrice,     cacheReadPriceAbove200k) )
+///      × multiplier
+/// 其中:
+///   tiered(t, base, above) = 200_000 × base + (t - 200_000) × above   (above != nil 且 t > 200k)
+///                          | t × base                                  (其他情形)
+///   multiplier = pricing.fastMultiplier   (usage.speed == "fast")
+///              | 1.0                       (其他情形)
 /// ```
 ///
 /// 关键约束：
 /// - 每类 token 的 200k 阈值独立判断（input 跨阈不会让 output 也走 above）
 /// - cache_create_1h 不读 LiteLLM 的 1h above 字段，而是 `input_above × 2.0`
+/// - fastMultiplier 在所有 tiered_cost 之和上整体乘一次,不分类应用
 /// - `cache_creation_input_tokens` 与 `cache_creation.ephemeral_5m/1h` 是
 ///   总分关系（同一信息的两种表达），通过 `TokenUsage.cacheCreate5mTokens` /
 ///   `cacheCreate1hTokens` 在数据层完成二选一，引擎只负责计费
 ///
 /// 简化前提（与 ccusage 当前实现的差异，未来按需扩展）：
-/// - 不实现 Speed::Fast 的 `fast_multiplier`
 /// - 定价表为 per-1M token USD，故公式中需 `÷ 1_000_000`
 struct PricingEngine: Sendable {
 
@@ -32,6 +35,10 @@ struct PricingEngine: Sendable {
 
     /// 1h 缓存写入价格相对 input 的乘子（来自 ccusage `CACHE_CREATE_1H_INPUT_MULTIPLIER`）
     private static let cacheCreate1hInputMultiplier: Double = 2.0
+
+    /// 触发 fastMultiplier 的 speed 字段值(参考 ccusage `Speed` 枚举的
+    /// `#[serde(rename_all = "lowercase")]`,Anthropic 协议使用小写 "fast")
+    private static let fastSpeedValue: String = "fast"
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "PricingEngine")
 
@@ -49,7 +56,7 @@ struct PricingEngine: Sendable {
 
     /// 根据已知定价计算单次 assistant 调用的成本
     /// - Parameters:
-    ///   - usage: assistant 记录的 token 用量
+    ///   - usage: assistant 记录的 token 用量(同时携带 speed 字段决定是否走 fast 倍率)
     ///   - pricing: 对应的模型定价
     /// - Returns: USD 成本
     func calculateCost(usage: TokenUsage, pricing: ModelPricing) -> Double {
@@ -82,7 +89,12 @@ struct PricingEngine: Sendable {
             above: pricing.cacheReadPriceAbove200k
         )
 
-        return inputCost + outputCost + cache5mCost + cache1hCost + cacheReadCost
+        let subtotal = inputCost + outputCost + cache5mCost + cache1hCost + cacheReadCost
+
+        // Speed::Fast 整体乘倍 — 必须放在所有 tiered_cost 之和上一次性应用,
+        // 与 ccusage `cost.rs` 末尾 `* multiplier` 的语义对齐
+        let multiplier = (usage.speed == Self.fastSpeedValue) ? pricing.fastMultiplier : 1.0
+        return subtotal * multiplier
     }
 
     /// 为模型查找定价并计算成本
