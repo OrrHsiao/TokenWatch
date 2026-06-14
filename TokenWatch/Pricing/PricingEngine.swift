@@ -2,16 +2,28 @@ import Foundation
 import os.log
 
 /// 定价计算引擎
-/// 完全参考 ccusage 的成本计算公式：
-///   cost = inputTokens * inputPrice / 1e6
-///        + outputTokens * outputPrice / 1e6
-///        + cacheCreationInputTokens * cacheWritePrice / 1e6
-///        + cacheReadInputTokens * cacheReadPrice / 1e6
 ///
-/// 注意：cache_creation 的 ephemeral_5m 和 ephemeral_1h
-/// 在 ccusage 中使用不同价格计算（1h 为 inputPrice * 2），
-/// 但实际数据中这两个字段始终为 0，因此暂不单独计算。
+/// 参考 ccusage `cost.rs::calculate_cost_from_tokens`：
+/// ```
+/// cost = inputTokens          × inputPrice           / 1e6
+///      + outputTokens         × outputPrice          / 1e6
+///      + cacheCreate5mTokens  × cacheWritePrice      / 1e6     // 5m → write 价
+///      + cacheCreate1hTokens  × inputPrice × 2       / 1e6     // 1h → input × 2
+///      + cacheReadTokens      × cacheReadPrice       / 1e6
+/// ```
+///
+/// `cache_creation_input_tokens` 与 `ephemeral_5m/1h_input_tokens` 是
+/// 总分关系（同一信息的两种表达），通过 `TokenUsage.cacheCreate5mTokens` /
+/// `cacheCreate1hTokens` 在数据层完成二选一，引擎只负责计费。
+///
+/// 简化前提（与 ccusage 当前实现的差异，未来按需扩展）：
+/// - 不实现 200k tier 阶梯定价（input/output/cache 超过 200k token 后单价不同）
+/// - 不实现 Speed::Fast 的 `fast_multiplier`
+/// - 定价表为 per-1M token USD，故公式中需 `÷ 1_000_000`
 struct PricingEngine: Sendable {
+
+    /// 1h 缓存写入价格相对 input 的乘子（来自 ccusage `CACHE_CREATE_1H_INPUT_MULTIPLIER`）
+    private static let cacheCreate1hInputMultiplier: Double = 2.0
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "PricingEngine")
 
@@ -23,10 +35,12 @@ struct PricingEngine: Sendable {
     func calculateCost(usage: TokenUsage, pricing: ModelPricing) -> Double {
         let inputCost = Double(usage.inputTokens) * pricing.inputPrice / 1_000_000.0
         let outputCost = Double(usage.outputTokens) * pricing.outputPrice / 1_000_000.0
-        let cacheWriteCost = Double(usage.cacheCreationInputTokens) * pricing.cacheWritePrice / 1_000_000.0
+        let cache5mCost = Double(usage.cacheCreate5mTokens) * pricing.cacheWritePrice / 1_000_000.0
+        let cache1hUnitPrice = pricing.inputPrice * Self.cacheCreate1hInputMultiplier
+        let cache1hCost = Double(usage.cacheCreate1hTokens) * cache1hUnitPrice / 1_000_000.0
         let cacheReadCost = Double(usage.cacheReadInputTokens) * pricing.cacheReadPrice / 1_000_000.0
 
-        return inputCost + outputCost + cacheWriteCost + cacheReadCost
+        return inputCost + outputCost + cache5mCost + cache1hCost + cacheReadCost
     }
 
     /// 为模型查找定价并计算成本

@@ -2,7 +2,11 @@ import Foundation
 import os.log
 
 /// 逐行解析 JSONL 文件，提取 assistant 记录中的 usage 数据
-/// 参考 ccusage 的解析逻辑 + TokenTracker 的复合键去重策略
+///
+/// 去重策略：参考 ccusage / TokenTracker 当前实现（TokenTracker rollout.js
+/// `claudeMessageDedupKey`），使用 `message.id`（必填）+ `requestId`（可选）
+/// 作为 dedup key。Anthropic 协议保证 `message.id` 全局唯一，`requestId`
+/// 缺失（DeepSeek/Kimi/Mimo 等兼容端点不返回 `request-id` header）时不应短路。
 final class JSONLParser: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "JSONLParser")
@@ -11,12 +15,13 @@ final class JSONLParser: Sendable {
     /// - Parameters:
     ///   - fileInfo: 文件信息
     ///   - claudeDataRoot: ~/.claude 目录 URL（确保 Security-Scoped 访问有效）
-    /// - Returns: 解析后的用量条目列表（已去重）
+    /// - Returns: 解析后的用量条目列表（未去重，由 `parseAllFiles` 统一处理）
     nonisolated func parseJSONLFile(_ fileInfo: JSONLFileInfo, claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
         let content = try String(contentsOf: fileInfo.url, encoding: .utf8)
         let lines = content.split(separator: "\n", omittingEmptySubsequences: true)
 
         var entries: [ParsedUsageEntry] = []
+        var skippedNoMessageId = 0
         let decoder = JSONDecoder()
 
         for line in lines {
@@ -24,14 +29,25 @@ final class JSONLParser: Sendable {
 
             guard let record = try? decoder.decode(ClaudeRecord.self, from: data),
                   record.hasUsageData,
-                  let usage = record.message?.usage,
-                  let model = record.message?.model
+                  let message = record.message,
+                  let usage = message.usage,
+                  let model = message.model
             else {
+                continue
+            }
+
+            // message.id 是 dedup 主键，缺失则无法可靠去重，直接丢弃
+            // 真实 Claude Code 数据该字段必定存在；缺失通常意味着上游异常或非标准格式
+            let messageId = message.id
+            guard !messageId.isEmpty else {
+                skippedNoMessageId += 1
                 continue
             }
 
             entries.append(ParsedUsageEntry(
                 recordUUID: record.uuid,
+                messageId: messageId,
+                requestId: record.requestId,
                 sessionID: record.sessionId,
                 timestamp: record.timestamp,
                 model: model,
@@ -42,13 +58,13 @@ final class JSONLParser: Sendable {
             ))
         }
 
+        if skippedNoMessageId > 0 {
+            logger.warning("文件 \(fileInfo.url.lastPathComponent) 跳过 \(skippedNoMessageId) 条无 message.id 的记录")
+        }
         return entries
     }
 
-    /// 批量解析所有 JSONL 文件并去重
-    /// 去重策略参考 TokenTracker：
-    ///   使用复合键 (sessionID + timestamp + model + inputTokens + outputTokens)
-    ///   避免因 DeepSeek 等模型缺少 reqId 导致的 1.6-3.7x 多计
+    /// 批量解析所有 JSONL 文件并按 `messageId[:requestId]` 去重
     /// - Parameters:
     ///   - files: 文件信息列表
     ///   - claudeDataRoot: ~/.claude 目录 URL
@@ -63,8 +79,13 @@ final class JSONLParser: Sendable {
 
         logger.info("解析完成：\(allEntries.count) 条记录（去重前）")
 
-        // 使用 Set 按复合键去重
-        let uniqueEntries = Array(Set(allEntries))
+        // 按 dedupKey 去重；同一 messageId 出现多次时保留首条
+        var seen = Set<String>()
+        var uniqueEntries: [ParsedUsageEntry] = []
+        uniqueEntries.reserveCapacity(allEntries.count)
+        for entry in allEntries where seen.insert(entry.dedupKey).inserted {
+            uniqueEntries.append(entry)
+        }
 
         let duplicateCount = allEntries.count - uniqueEntries.count
         if duplicateCount > 0 {

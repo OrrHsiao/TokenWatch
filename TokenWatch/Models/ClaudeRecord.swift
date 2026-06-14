@@ -19,6 +19,9 @@ struct ClaudeRecord: Decodable, Sendable {
     let agentId: String?
     let slug: String?
     let permissionMode: String?
+    /// HTTP request-id，作为去重键的可选拼接部分
+    /// 对 DeepSeek/Kimi 等 Anthropic 兼容端点可能为 nil
+    let requestId: String?
 
     enum CodingKeys: String, CodingKey {
         case type, uuid, sessionId, timestamp
@@ -27,6 +30,7 @@ struct ClaudeRecord: Decodable, Sendable {
         case message, subtype
         case agentId, slug
         case permissionMode
+        case requestId
     }
 
     /// 自定义解码器：处理 ISO 8601 时间戳、可选字段
@@ -54,6 +58,7 @@ struct ClaudeRecord: Decodable, Sendable {
         agentId = try container.decodeIfPresent(String.self, forKey: .agentId)
         slug = try container.decodeIfPresent(String.self, forKey: .slug)
         permissionMode = try container.decodeIfPresent(String.self, forKey: .permissionMode)
+        requestId = try container.decodeIfPresent(String.self, forKey: .requestId)
     }
 
     /// 判断该记录是否为 assistant 类型且包含 usage 数据

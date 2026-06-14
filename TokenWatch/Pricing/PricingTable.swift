@@ -103,10 +103,57 @@ struct PricingTable: Sendable {
     /// 将非标准名称映射到标准化 key
     static let aliases: [String: String] = [:]
 
-    /// 查找定价，支持多级匹配策略
-    /// 1. 精确匹配
-    /// 2. 别名匹配
-    /// 3. 前缀模糊匹配（用于带日期后缀的模型名，如 "claude-opus-4-20250514"）
+    /// 候选 key 按长度倒序的预排序数组（长 key 优先匹配）
+    /// 在模块加载时构造一次，避免每次查找都重排
+    private static let prefixCandidates: [(key: String, pricing: ModelPricing)] = {
+        prices.sorted { lhs, rhs in
+            if lhs.key.count != rhs.key.count {
+                return lhs.key.count > rhs.key.count
+            }
+            return lhs.key > rhs.key
+        }.map { ($0.key, $0.value) }
+    }()
+
+    /// 判断 modelID 在 candidate 之后紧跟的后缀是否表示新版本号
+    /// 用于阻止 "claude-sonnet-4" 错误命中 "claude-sonnet-4-5-..."
+    ///
+    /// 规则（参考 ccusage `suffix_starts_with_numeric_model_version`）：
+    /// - candidate 以数字结尾，且
+    /// - 后缀以 `-` 或 `.` 开始，紧跟若干位数字
+    /// - 例外：8 位数字（YYYYMMDD 日期后缀）后接边界字符则视为日期，允许匹配
+    private static func suffixStartsWithNumericVersion(candidate: String, suffix: String) -> Bool {
+        guard let lastByte = candidate.utf8.last, isAsciiDigit(lastByte) else { return false }
+        guard let firstByte = suffix.utf8.first, firstByte == 0x2D /* - */ || firstByte == 0x2E /* . */
+        else { return false }
+
+        let rest = suffix.dropFirst()
+        let digitCount = rest.utf8.prefix(while: isAsciiDigit).count
+        guard digitCount > 0 else { return false }
+
+        // 8 位数字 + 边界（结尾或非字母数字）→ 视为日期后缀，允许命中
+        let MODEL_DATE_SUFFIX_DIGITS = 8
+        if digitCount == MODEL_DATE_SUFFIX_DIGITS {
+            let afterDigits = rest.utf8.dropFirst(digitCount).first
+            if let after = afterDigits {
+                if !isAsciiAlphanumeric(after) { return false }   // 是日期，允许
+            } else {
+                return false                                       // 完整以 8 位数字结尾，是日期
+            }
+        }
+        return true
+    }
+
+    private static func isAsciiDigit(_ byte: UInt8) -> Bool {
+        byte >= 0x30 && byte <= 0x39
+    }
+
+    private static func isAsciiAlphanumeric(_ byte: UInt8) -> Bool {
+        isAsciiDigit(byte)
+            || (byte >= 0x41 && byte <= 0x5A)  // A-Z
+            || (byte >= 0x61 && byte <= 0x7A)  // a-z
+    }
+
+    /// 查找定价，匹配优先级：精确 → 别名 → 前缀（按 candidate key 长度倒序 + 版本号守卫）
     /// - Parameter modelID: 从 JSONL 中读取的原始模型名称
     /// - Returns: 匹配的定价条目，未找到返回 nil
     static func pricing(for modelID: String) -> ModelPricing? {
@@ -122,12 +169,18 @@ struct PricingTable: Sendable {
             return pricing
         }
 
-        // 3. 前缀模糊匹配
-        // 用于匹配 "claude-opus-4-20250514" -> "claude-opus-4"
-        for (key, pricing) in prices {
-            if normalized.hasPrefix(key) {
-                return pricing
+        // 3. 前缀匹配（长 key 优先 + 版本号守卫）
+        // 例：modelID = "claude-sonnet-4-5-20250514"
+        //  - candidate "claude-sonnet-4-5" → suffix "-20250514"，8 位日期，命中 ✓
+        //  - candidate "claude-sonnet-4"   → suffix "-5-20250514"，"-5" 是新版本号，跳过 ✗
+        for (key, pricing) in prefixCandidates {
+            guard normalized.hasPrefix(key) else { continue }
+            let suffix = String(normalized.dropFirst(key.count))
+            if suffix.isEmpty { return pricing }
+            if suffixStartsWithNumericVersion(candidate: key, suffix: suffix) {
+                continue
             }
+            return pricing
         }
 
         return nil

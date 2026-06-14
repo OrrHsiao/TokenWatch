@@ -3,6 +3,9 @@ import os.log
 
 /// 为 UI 准备统计数据的 ViewModel
 /// 协调 Bookmark → 扫描 → 解析 → 聚合 全流程
+///
+/// 主线程仅负责：状态读写、Bookmark 生命周期、UI 通知
+/// 重 IO 与 JSON 解析在后台 actor 上执行，避免卡 UI
 @MainActor
 final class TokenStatsViewModel: Sendable {
 
@@ -42,23 +45,36 @@ final class TokenStatsViewModel: Sendable {
 
         defer { bookmarkManager.stopAccessing() }
 
-        do {
-            // Step 3: 扫描 JSONL 文件
-            let files = try scanner.scanAllJSONLFiles(in: claudeDir)
-            logger.info("扫描到 \(files.count) 个 JSONL 文件")
+        // Step 3-5: 重 IO + 解析 + 聚合 → 后台执行
+        // scanner / parser / aggregator 均为 Sendable + nonisolated 方法，可安全跨 actor
+        let scanner = self.scanner
+        let parser = self.parser
+        let aggregator = self.aggregator
+        let logger = self.logger
 
-            // Step 4: 解析 JSONL（含去重）
-            let entries = try parser.parseAllFiles(files, claudeDataRoot: claudeDir)
-            logger.info("解析得到 \(entries.count) 条用量记录")
+        let result: Result<AggregatedStats, Error> = await Task.detached(priority: .userInitiated) {
+            do {
+                let files = try scanner.scanAllJSONLFiles(in: claudeDir)
+                logger.info("扫描到 \(files.count) 个 JSONL 文件")
 
-            // Step 5: 聚合统计
-            stats = aggregator.aggregate(entries)
-            needsAuthorization = false
-            errorMessage = nil
-            logger.info("统计聚合完成")
+                let entries = try parser.parseAllFiles(files, claudeDataRoot: claudeDir)
+                logger.info("解析得到 \(entries.count) 条用量记录")
 
-        } catch {
-            errorMessage = "数据加载失败: \(error.localizedDescription)"
+                let stats = aggregator.aggregate(entries)
+                logger.info("统计聚合完成")
+                return .success(stats)
+            } catch {
+                return .failure(error)
+            }
+        }.value
+
+        switch result {
+        case .success(let stats):
+            self.stats = stats
+            self.needsAuthorization = false
+            self.errorMessage = nil
+        case .failure(let error):
+            self.errorMessage = "数据加载失败: \(error.localizedDescription)"
             logger.error("加载失败: \(error.localizedDescription)")
         }
 

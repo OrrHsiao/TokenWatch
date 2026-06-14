@@ -28,19 +28,23 @@ struct TokenUsage: Decodable, Sendable {
     }
 
     /// 自定义解码：iterations 在真实数据中始终为空数组 []
+    /// 周边元数据缺失（service_tier / inference_geo / speed 等）时降级为空字符串，
+    /// 不阻断核心 token 字段的解析；core 字段（input/output_tokens 等）缺失才会失败。
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         inputTokens = try container.decode(Int.self, forKey: .inputTokens)
-        cacheCreationInputTokens = try container.decode(Int.self, forKey: .cacheCreationInputTokens)
-        cacheReadInputTokens = try container.decode(Int.self, forKey: .cacheReadInputTokens)
+        cacheCreationInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheCreationInputTokens) ?? 0
+        cacheReadInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheReadInputTokens) ?? 0
         outputTokens = try container.decode(Int.self, forKey: .outputTokens)
-        serverToolUse = try container.decode(ServerToolUse.self, forKey: .serverToolUse)
-        serviceTier = try container.decode(String.self, forKey: .serviceTier)
-        cacheCreation = try container.decode(CacheCreation.self, forKey: .cacheCreation)
-        inferenceGeo = try container.decode(String.self, forKey: .inferenceGeo)
+        serverToolUse = try container.decodeIfPresent(ServerToolUse.self, forKey: .serverToolUse)
+            ?? ServerToolUse(webSearchRequests: 0, webFetchRequests: 0)
+        serviceTier = try container.decodeIfPresent(String.self, forKey: .serviceTier) ?? ""
+        cacheCreation = try container.decodeIfPresent(CacheCreation.self, forKey: .cacheCreation)
+            ?? CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0)
+        inferenceGeo = try container.decodeIfPresent(String.self, forKey: .inferenceGeo) ?? ""
         // iterations 始终为空数组，跳过实际解码避免类型不匹配
         iterations = []
-        speed = try container.decode(String.self, forKey: .speed)
+        speed = try container.decodeIfPresent(String.self, forKey: .speed) ?? ""
     }
 
     /// 便捷初始化（用于测试）
@@ -89,5 +93,34 @@ struct CacheCreation: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case ephemeral1hInputTokens = "ephemeral_1h_input_tokens"
         case ephemeral5mInputTokens = "ephemeral_5m_input_tokens"
+    }
+}
+
+// MARK: - Cache 派生属性
+//
+// `cache_creation_input_tokens` 与 `cache_creation.ephemeral_5m/1h` 是
+// 同一信息的两种表达（总分关系，非并列），不能相加，否则会 double-count。
+//
+// 参考 ccusage `cost.rs::calculate_cost_from_tokens`：
+// 当 `cache_creation` breakdown 存在时使用细分；否则把扁平字段当作 5m。
+// 1h 缓存写入按 `inputPrice × 2` 计费，5m 才用 `cacheWritePrice`。
+
+extension TokenUsage {
+    /// 5 分钟缓存写入 token 数（按 `cacheWritePrice` 计费）
+    var cacheCreate5mTokens: Int {
+        if cacheCreation.ephemeral5mInputTokens > 0 || cacheCreation.ephemeral1hInputTokens > 0 {
+            return cacheCreation.ephemeral5mInputTokens
+        }
+        return cacheCreationInputTokens
+    }
+
+    /// 1 小时缓存写入 token 数（按 `inputPrice × 2` 计费）
+    var cacheCreate1hTokens: Int {
+        cacheCreation.ephemeral1hInputTokens
+    }
+
+    /// cache 写入 token 总量（用于展示／聚合，不会重复计入扁平字段）
+    var totalCacheCreationTokens: Int {
+        cacheCreate5mTokens + cacheCreate1hTokens
     }
 }

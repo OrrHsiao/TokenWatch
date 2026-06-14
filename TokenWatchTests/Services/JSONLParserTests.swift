@@ -3,7 +3,7 @@ import Testing
 @testable import TokenWatch
 
 /// JSONL 解析器测试
-/// 验证 JSONL 解析和去重逻辑
+/// 验证 JSONL 解析和 messageId[:requestId] 去重逻辑
 struct JSONLParserTests {
 
     let parser = JSONLParser()
@@ -13,7 +13,7 @@ struct JSONLParserTests {
     @Test("解析包含 usage 的 assistant 记录")
     func parseAssistantWithUsage() throws {
         let jsonl = """
-        {"type":"assistant","uuid":"u1","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","message":{"id":"m1","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"Hello"}],"stop_reason":"end_turn","usage":{"input_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":200,"output_tokens":50,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        {"type":"assistant","uuid":"u1","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","requestId":"req-1","message":{"id":"m1","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"Hello"}],"stop_reason":"end_turn","usage":{"input_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":200,"output_tokens":50,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
         """
 
         let tmpDir = FileManager.default.temporaryDirectory
@@ -35,6 +35,9 @@ struct JSONLParserTests {
         #expect(entries[0].usage.inputTokens == 100)
         #expect(entries[0].usage.outputTokens == 50)
         #expect(entries[0].sessionID == "s1")
+        #expect(entries[0].messageId == "m1")
+        #expect(entries[0].requestId == "req-1")
+        #expect(entries[0].dedupKey == "m1:req-1")
 
         try? FileManager.default.removeItem(at: fileURL)
     }
@@ -64,6 +67,9 @@ struct JSONLParserTests {
         // 只有 assistant 记录被解析
         #expect(entries.count == 1)
         #expect(entries[0].usage.inputTokens == 50)
+        #expect(entries[0].messageId == "m3")
+        #expect(entries[0].requestId == nil)
+        #expect(entries[0].dedupKey == "m3")
 
         try? FileManager.default.removeItem(at: fileURL)
     }
@@ -96,7 +102,7 @@ struct JSONLParserTests {
 
     // MARK: - 去重
 
-    @Test("Set 去重 - 重复记录只保留一条")
+    @Test("Set 去重 - 相同 messageId 只保留一条")
     func dedupWithSet() {
         let usage = TokenUsage(
             inputTokens: 100,
@@ -111,27 +117,24 @@ struct JSONLParserTests {
             speed: "standard"
         )
 
-        let date = Date()
         let entry1 = ParsedUsageEntry(
-            recordUUID: "uuid-1", sessionID: "s1",
-            timestamp: date, model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil,
-            usage: usage, isSubagent: false
+            recordUUID: "uuid-1", messageId: "msg-A", requestId: "req-1",
+            sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
         )
         let entry2 = ParsedUsageEntry(
-            recordUUID: "uuid-2", sessionID: "s1",
-            timestamp: date, model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil,
-            usage: usage, isSubagent: false
+            recordUUID: "uuid-2", messageId: "msg-A", requestId: "req-1",
+            sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
         )
 
         let unique = Array(Set([entry1, entry2]))
         #expect(unique.count == 1)
     }
 
-    @Test("Set 不去重不同模型")
-    func noDedupDifferentModels() {
-        let usage1 = TokenUsage(
+    @Test("Set 不去重不同 messageId")
+    func noDedupDifferentMessageIds() {
+        let usage = TokenUsage(
             inputTokens: 100, cacheCreationInputTokens: 0, cacheReadInputTokens: 0,
             outputTokens: 50,
             serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
@@ -139,23 +142,60 @@ struct JSONLParserTests {
             cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
             inferenceGeo: "", iterations: [], speed: "standard"
         )
-        let usage2 = usage1
 
-        let date = Date()
         let entry1 = ParsedUsageEntry(
-            recordUUID: "u1", sessionID: "s1",
-            timestamp: date, model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil,
-            usage: usage1, isSubagent: false
+            recordUUID: "u1", messageId: "msg-A", requestId: nil,
+            sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
         )
         let entry2 = ParsedUsageEntry(
-            recordUUID: "u2", sessionID: "s1",
-            timestamp: date, model: "deepseek-v4-flash",  // 不同模型
-            cwd: "/test", agentId: nil,
-            usage: usage2, isSubagent: false
+            recordUUID: "u2", messageId: "msg-B", requestId: nil,
+            sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
         )
 
         let unique = Array(Set([entry1, entry2]))
         #expect(unique.count == 2)
+    }
+
+    @Test("跨文件去重 - 同 messageId 在多个 JSONL 中只计一次")
+    func dedupAcrossFiles() throws {
+        // 模拟同一 message 因 sub-agent / resume 被写入两个 JSONL 的场景
+        let line = """
+        {"type":"assistant","uuid":"u1","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","message":{"id":"shared-msg","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":50,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        """
+        let tmpDir = FileManager.default.temporaryDirectory
+        let f1 = tmpDir.appendingPathComponent("dup-a.jsonl")
+        let f2 = tmpDir.appendingPathComponent("dup-b.jsonl")
+        try line.write(to: f1, atomically: true, encoding: .utf8)
+        try line.write(to: f2, atomically: true, encoding: .utf8)
+
+        let infos = [
+            JSONLFileInfo(url: f1, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil),
+            JSONLFileInfo(url: f2, sessionID: "s1", projectPath: "/p", isSubagent: true,  agentId: "agent-1"),
+        ]
+        let entries = try parser.parseAllFiles(infos, claudeDataRoot: tmpDir)
+        #expect(entries.count == 1)
+        #expect(entries[0].messageId == "shared-msg")
+
+        try? FileManager.default.removeItem(at: f1)
+        try? FileManager.default.removeItem(at: f2)
+    }
+
+    @Test("跳过缺失 message.id 的记录（无法可靠去重）")
+    func skipRecordsWithoutMessageId() throws {
+        // assistant 记录有 usage 但 message.id 为空字符串 → 跳过
+        let jsonl = """
+        {"type":"assistant","uuid":"u9","sessionId":"s1","timestamp":"2026-06-13T12:00:00Z","message":{"id":"","role":"assistant","model":"deepseek-v4-pro","usage":{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":1,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        """
+        let tmpDir = FileManager.default.temporaryDirectory
+        let fileURL = tmpDir.appendingPathComponent("no-msg-id.jsonl")
+        try jsonl.write(to: fileURL, atomically: true, encoding: .utf8)
+        let info = JSONLFileInfo(url: fileURL, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil)
+
+        let entries = try parser.parseJSONLFile(info, claudeDataRoot: tmpDir)
+        #expect(entries.isEmpty)
+
+        try? FileManager.default.removeItem(at: fileURL)
     }
 }

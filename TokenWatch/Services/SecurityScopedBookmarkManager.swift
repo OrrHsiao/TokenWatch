@@ -33,7 +33,16 @@ final class SecurityScopedBookmarkManager: Sendable {
             panel.allowsMultipleSelection = false
             panel.message = "请选择 ~/.claude 目录以授权 TokenWatch 读取用量数据"
             panel.prompt = "授权访问"
-            panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+            panel.showsHiddenFiles = true                       // 默认显示隐藏目录
+            panel.treatsFilePackagesAsDirectories = true
+            // 默认定位到 ~/.claude（若不存在则回退至 home），减少用户操作步骤
+            let claudeDir = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".claude", isDirectory: true)
+            if FileManager.default.fileExists(atPath: claudeDir.path) {
+                panel.directoryURL = claudeDir
+            } else {
+                panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+            }
 
             panel.begin { [weak self] response in
                 guard response == .OK, let url = panel.url else {
@@ -49,7 +58,10 @@ final class SecurityScopedBookmarkManager: Sendable {
     // MARK: - Bookmark 恢复
 
     /// 从 UserDefaults 恢复 Bookmark 并开始安全访问
-    /// 如果 Bookmark 过期（isStale），尝试用现有 URL 重建
+    ///
+    /// stale 处理：Apple 文档说明，stale bookmark 解析得到的 URL 仍可临时使用，
+    /// 但应尽快用该 URL 重建 bookmark；若重建失败（例如目录已被删除/移动），
+    /// 则清空持久化数据并要求重新授权，而不是无声继续以失效凭据访问。
     /// - Returns: 成功恢复访问的目录 URL，失败返回 nil
     func restoreBookmarkAndAccess() -> URL? {
         guard !isAccessing else { return cachedURL }
@@ -65,18 +77,26 @@ final class SecurityScopedBookmarkManager: Sendable {
             relativeTo: nil,
             bookmarkDataIsStale: &isStale
         ) else {
+            // bookmark 完全无法解析（数据损坏或目录失效），清理并要求重新授权
+            UserDefaults.standard.removeObject(forKey: bookmarkKey)
+            return nil
+        }
+
+        guard url.startAccessingSecurityScopedResource() else {
+            // 即便 URL 解出来,沙盒也可能拒绝访问 → 清理 bookmark 走重新授权
+            UserDefaults.standard.removeObject(forKey: bookmarkKey)
             return nil
         }
 
         if isStale {
-            // Bookmark 过期，用现有 URL 重建
-            _ = url.startAccessingSecurityScopedResource()
-            url.stopAccessingSecurityScopedResource()
-            createAndSaveBookmark(for: url)
-        }
-
-        guard url.startAccessingSecurityScopedResource() else {
-            return nil
+            // 在已 startAccessing 的状态下用当前 URL 重建 bookmark；失败不影响本次访问
+            if let fresh = try? url.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) {
+                UserDefaults.standard.set(fresh, forKey: bookmarkKey)
+            }
         }
 
         isAccessing = true

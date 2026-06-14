@@ -55,10 +55,9 @@ final class UsageAggregator: Sendable {
                 mInput += entry.usage.inputTokens
                 mOutput += entry.usage.outputTokens
                 mCacheRead += entry.usage.cacheReadInputTokens
-                // cacheCreationInputTokens + ephemeral 分解
-                mCacheCreation += entry.usage.cacheCreationInputTokens
-                    + entry.usage.cacheCreation.ephemeral5mInputTokens
-                    + entry.usage.cacheCreation.ephemeral1hInputTokens
+                // cache_creation_input_tokens 与 ephemeral_5m/1h 是总分关系
+                // 由 TokenUsage.totalCacheCreationTokens 统一处理，避免 double-count
+                mCacheCreation += entry.usage.totalCacheCreationTokens
 
                 let (cost, _) = pricingEngine.calculateCost(
                     usage: entry.usage,

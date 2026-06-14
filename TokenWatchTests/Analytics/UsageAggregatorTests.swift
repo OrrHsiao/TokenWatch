@@ -169,8 +169,12 @@ struct UsageAggregatorTests {
         cacheCreation: Int = 0,
         cwd: String = "/test"
     ) -> ParsedUsageEntry {
-        ParsedUsageEntry(
-            recordUUID: UUID().uuidString,
+        // 每条记录使用全新 UUID 作为 messageId，确保聚合测试中不会被 dedup 合并
+        let id = UUID().uuidString
+        return ParsedUsageEntry(
+            recordUUID: id,
+            messageId: id,
+            requestId: nil,
             sessionID: sessionID,
             timestamp: date,
             model: model,
