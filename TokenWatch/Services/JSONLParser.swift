@@ -16,7 +16,7 @@ final class JSONLParser: Sendable {
     ///   - fileInfo: 文件信息
     ///   - claudeDataRoot: ~/.claude 目录 URL（确保 Security-Scoped 访问有效）
     /// - Returns: 解析后的用量条目列表（未去重，由 `parseAllFiles` 统一处理）
-    nonisolated func parseJSONLFile(_ fileInfo: JSONLFileInfo, claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
+    func parseJSONLFile(_ fileInfo: JSONLFileInfo, claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
         // Claude Code 单个 session 文件可能达到数百 MB，使用 String(contentsOf:)
         // 全量读入会带来明显的内存峰值与 OOM 风险；改为 FileHandle 64KB 分块流式
         // 读取，按 '\n' 切分成行后逐行 JSON 解码，峰值内存仅与单行长度相关。
@@ -104,7 +104,7 @@ final class JSONLParser: Sendable {
     ///   - files: 文件信息列表
     ///   - claudeDataRoot: ~/.claude 目录 URL
     /// - Returns: 去重后的用量条目列表
-    nonisolated func parseAllFiles(_ files: [JSONLFileInfo], claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
+    func parseAllFiles(_ files: [JSONLFileInfo], claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
         var allEntries: [ParsedUsageEntry] = []
 
         for fileInfo in files {

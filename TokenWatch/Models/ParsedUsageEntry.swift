@@ -29,11 +29,11 @@ struct ParsedUsageEntry: Sendable, Hashable {
         return messageId
     }
 
-    nonisolated func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(dedupKey)
     }
 
-    nonisolated static func == (lhs: ParsedUsageEntry, rhs: ParsedUsageEntry) -> Bool {
+    static func == (lhs: ParsedUsageEntry, rhs: ParsedUsageEntry) -> Bool {
         lhs.dedupKey == rhs.dedupKey
     }
 }

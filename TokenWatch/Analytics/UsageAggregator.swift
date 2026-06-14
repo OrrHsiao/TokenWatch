@@ -12,7 +12,7 @@ final class UsageAggregator: Sendable {
     /// 主入口：聚合所有条目
     /// - Parameter entries: 解析后的用量条目列表
     /// - Returns: 多维度聚合统计结果
-    nonisolated func aggregate(_ entries: [ParsedUsageEntry]) -> AggregatedStats {
+    func aggregate(_ entries: [ParsedUsageEntry]) -> AggregatedStats {
         guard !entries.isEmpty else {
             logger.warning("无可用数据，返回空统计")
             return .zero

@@ -47,7 +47,7 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platfo
 - **Bundle ID**: `com.xiaoao.TokenWatch`
 - **Storyboard**: `Base.lproj/Main.storyboard`
 - **Sandbox**: App sandbox enabled with readonly user-selected file access
-- **Concurrency**: `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — all code is `@MainActor` by default unless explicitly opted out
+- **Concurrency**: 默认 actor isolation 为 nonisolated（Swift 6 默认），UI 相关入口（`AppDelegate`、`ViewController`、`TokenStatsViewModel`、`SecurityScopedBookmarkManager`）显式标注 `@MainActor`；后端数据流（`JSONLScanner` / `JSONLParser` / `UsageAggregator` / `PricingTable`）声明为 `Sendable`，方法默认 nonisolated 即可跨 actor 调用
 - **App groups**: Registered (`REGISTER_APP_GROUPS = YES`)
 
 ### Source Layout

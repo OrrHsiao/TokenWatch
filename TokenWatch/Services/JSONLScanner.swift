@@ -19,7 +19,7 @@ final class JSONLScanner: Sendable {
     /// 扫描 claudeDataRoot 目录下的所有 JSONL 文件
     /// - Parameter claudeDataRoot: Security-Scoped 访问下的 ~/.claude 目录 URL
     /// - Returns: 所有 JSONL 文件信息列表
-    nonisolated func scanAllJSONLFiles(in claudeDataRoot: URL) throws -> [JSONLFileInfo] {
+    func scanAllJSONLFiles(in claudeDataRoot: URL) throws -> [JSONLFileInfo] {
         let projectsDir = claudeDataRoot.appendingPathComponent("projects")
         var results: [JSONLFileInfo] = []
 
@@ -96,7 +96,7 @@ final class JSONLScanner: Sendable {
     /// 这里**采用经验性假设**：原始路径中的字面 `-` 被编码为 `--`（双连字符转义），
     /// 即解码时 `--` 还原为字面 `-`，单 `-` 还原为 `/`。
     /// 若日后官方公布了不同规则（例如使用其他转义字符或不转义），需要回过头来调整这里。
-    nonisolated func decodeProjectPath(_ encoded: String) -> String {
+    func decodeProjectPath(_ encoded: String) -> String {
         guard encoded.hasPrefix("-") else { return encoded }
 
         // 跳过开头的 `-`(对应原始路径起始的 `/`),逐字符扫描剩余部分

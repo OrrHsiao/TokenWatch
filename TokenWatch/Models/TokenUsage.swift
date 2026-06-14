@@ -30,7 +30,7 @@ struct TokenUsage: Decodable, Sendable {
     /// 自定义解码：iterations 在真实数据中始终为空数组 []
     /// 周边元数据缺失（service_tier / inference_geo / speed 等）时降级为空字符串，
     /// 不阻断核心 token 字段的解析；core 字段（input/output_tokens 等）缺失才会失败。
-    nonisolated init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         inputTokens = try container.decode(Int.self, forKey: .inputTokens)
         cacheCreationInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheCreationInputTokens) ?? 0

@@ -34,7 +34,7 @@ struct ClaudeRecord: Decodable, Sendable {
     }
 
     /// 自定义解码器：处理 ISO 8601 时间戳、可选字段
-    nonisolated init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         type = try container.decode(String.self, forKey: .type)
         uuid = try container.decode(String.self, forKey: .uuid)
@@ -62,7 +62,7 @@ struct ClaudeRecord: Decodable, Sendable {
     }
 
     /// 判断该记录是否为 assistant 类型且包含 usage 数据
-    nonisolated var hasUsageData: Bool {
+    var hasUsageData: Bool {
         type == "assistant" && message?.usage != nil && message?.model != nil
     }
 }
