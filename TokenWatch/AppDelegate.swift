@@ -24,8 +24,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
-        // 停止 Security-Scoped 访问，释放资源
-        SecurityScopedBookmarkManager.shared.stopAccessing()
+        // 停止所有 provider 的 Security-Scoped 访问，释放资源
+        SecurityScopedBookmarkManager.shared.stopAccessingAll()
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
