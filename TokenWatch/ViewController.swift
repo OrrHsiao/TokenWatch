@@ -67,7 +67,7 @@ class ViewController: NSViewController {
     // MARK: - 绑定
 
     private func bindViewModel() {
-        viewModel?.onStateChange = { [weak self] in
+        viewModel?.onStateChange = { [weak self] _ in
             self?.render()
         }
     }
@@ -76,40 +76,36 @@ class ViewController: NSViewController {
     /// 状态优先级:loading > needsAuthorization > error > stats
     @MainActor
     private func render() {
-        guard let vm = viewModel else {
+        guard let vm = viewModel,
+              let state = vm.states[.claude] else {
             statusLabel.stringValue = "ViewModel 未就绪"
             actionButton.isHidden = true
             return
         }
 
-        if vm.isLoading {
+        if state.isLoading {
             statusLabel.stringValue = "正在加载用量数据…"
             actionButton.isHidden = true
             return
         }
-
-        if vm.needsAuthorization {
+        if state.needsAuthorization {
             statusLabel.stringValue = "TokenWatch 需要读取 ~/.claude 目录\n以统计 Token 用量"
             actionButton.title = "授权访问 ~/.claude"
             actionButton.isHidden = false
             return
         }
-
-        if let error = vm.errorMessage {
+        if let error = state.errorMessage {
             statusLabel.stringValue = error
             actionButton.title = "重试"
             actionButton.isHidden = false
             return
         }
-
-        if let stats = vm.stats {
+        if let stats = state.stats {
             statusLabel.stringValue = formatStatsText(stats)
             actionButton.title = "刷新"
             actionButton.isHidden = false
             return
         }
-
-        // 兜底:理论不应到达(loadStats 后必然走入上面某分支)
         statusLabel.stringValue = "暂无数据"
         actionButton.title = "刷新"
         actionButton.isHidden = false
@@ -118,13 +114,13 @@ class ViewController: NSViewController {
     // MARK: - 交互
 
     @objc private func actionButtonClicked() {
-        guard let vm = viewModel else { return }
+        guard let vm = viewModel, let state = vm.states[.claude] else { return }
         Task { @MainActor in
             // 未授权 → 走授权流程(内含 loadStats);其余状态 → 直接重新加载
-            if vm.needsAuthorization {
-                await vm.requestAuthorization()
+            if state.needsAuthorization {
+                await vm.requestAuthorization(for: .claude)
             } else {
-                await vm.loadStats()
+                await vm.loadStats(for: .claude)
             }
         }
     }
