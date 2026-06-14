@@ -159,6 +159,77 @@ struct PricingTable: Sendable {
             inputPrice: 1.4, outputPrice: 4.4,
             cacheReadPrice: 0.26, cacheWritePrice: 0
         ),
+
+        // MARK: - OpenAI GPT-5 系列(供 Codex provider 使用)
+        //
+        // 价位参考 ccusage `rust/crates/ccusage/src/pricing.rs::put_builtin_pricing`。
+        // GPT-5 family 没有 200k tier above 单价,也没有 fast multiplier。
+        // cache_write 与 input 同价(ccusage 表中显式写入),Codex 实际不会产生
+        // cache write tokens(无 5m/1h ephemeral 概念),但保持字段对齐以防万一。
+        //
+        // Codex 的 reasoning_output_tokens 已包含在 output_tokens 中,
+        // CodexRolloutParser 仅记录 outputTokens,此处定价直接对 outputTokens 计费即可。
+
+        "gpt-5": ModelPricing(
+            modelID: "gpt-5",
+            displayName: "GPT-5",
+            inputPrice: 1.25, outputPrice: 10.0,
+            cacheReadPrice: 0.125, cacheWritePrice: 1.25
+        ),
+        "gpt-5.1": ModelPricing(
+            modelID: "gpt-5.1",
+            displayName: "GPT-5.1",
+            inputPrice: 1.25, outputPrice: 10.0,
+            cacheReadPrice: 0.125, cacheWritePrice: 1.25
+        ),
+        "gpt-5.1-codex": ModelPricing(
+            modelID: "gpt-5.1-codex",
+            displayName: "GPT-5.1 Codex",
+            inputPrice: 1.25, outputPrice: 10.0,
+            cacheReadPrice: 0.125, cacheWritePrice: 1.25
+        ),
+        "gpt-5.2": ModelPricing(
+            modelID: "gpt-5.2",
+            displayName: "GPT-5.2",
+            inputPrice: 1.75, outputPrice: 14.0,
+            cacheReadPrice: 0.175, cacheWritePrice: 1.75
+        ),
+        "gpt-5.2-codex": ModelPricing(
+            modelID: "gpt-5.2-codex",
+            displayName: "GPT-5.2 Codex",
+            inputPrice: 1.75, outputPrice: 14.0,
+            cacheReadPrice: 0.175, cacheWritePrice: 1.75
+        ),
+        "gpt-5.3-codex": ModelPricing(
+            modelID: "gpt-5.3-codex",
+            displayName: "GPT-5.3 Codex",
+            inputPrice: 1.75, outputPrice: 14.0,
+            cacheReadPrice: 0.175, cacheWritePrice: 1.75
+        ),
+        "gpt-5.4": ModelPricing(
+            modelID: "gpt-5.4",
+            displayName: "GPT-5.4",
+            inputPrice: 2.5, outputPrice: 15.0,
+            cacheReadPrice: 0.25, cacheWritePrice: 2.5
+        ),
+        "gpt-5.4-mini": ModelPricing(
+            modelID: "gpt-5.4-mini",
+            displayName: "GPT-5.4 Mini",
+            inputPrice: 0.75, outputPrice: 4.5,
+            cacheReadPrice: 0.075, cacheWritePrice: 0.75
+        ),
+        "gpt-5.4-nano": ModelPricing(
+            modelID: "gpt-5.4-nano",
+            displayName: "GPT-5.4 Nano",
+            inputPrice: 0.20, outputPrice: 1.25,
+            cacheReadPrice: 0.020, cacheWritePrice: 0.20
+        ),
+        "gpt-5.5": ModelPricing(
+            modelID: "gpt-5.5",
+            displayName: "GPT-5.5",
+            inputPrice: 5.0, outputPrice: 30.0,
+            cacheReadPrice: 0.5, cacheWritePrice: 5.0
+        ),
     ]
 
     // 注：曾有 `static let aliases: [String: String]` 用于非标准名称 → 标准 key 的映射,
