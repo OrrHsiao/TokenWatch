@@ -85,9 +85,43 @@ final class JSONLScanner: Sendable {
 
     /// 将编码后的项目路径还原
     /// "-Users-orrhsiao-Desktop-Code-TokenWatch" -> "/Users/orrhsiao/Desktop/Code/TokenWatch"
-    private func decodeProjectPath(_ encoded: String) -> String {
+    /// "-Users-name-my--cool--app"               -> "/Users/name/my-cool-app"
+    ///
+    /// 设计说明：
+    /// Claude Code 把项目绝对路径编码为 `~/.claude/projects/<encoded>/` 的目录名时，
+    /// 会把路径分隔符 `/` 替换为 `-`。但项目目录名本身可能含有 `-`（例如 `my-cool-app`），
+    /// 若简单地把所有 `-` 还原为 `/`，会错误展开成 `/my/cool/app`。
+    ///
+    /// 截至实现时，未找到 Claude Code 官方关于该编码的公开文档；
+    /// 这里**采用经验性假设**：原始路径中的字面 `-` 被编码为 `--`（双连字符转义），
+    /// 即解码时 `--` 还原为字面 `-`，单 `-` 还原为 `/`。
+    /// 若日后官方公布了不同规则（例如使用其他转义字符或不转义），需要回过头来调整这里。
+    nonisolated func decodeProjectPath(_ encoded: String) -> String {
         guard encoded.hasPrefix("-") else { return encoded }
-        return "/" + String(encoded.dropFirst()).replacingOccurrences(of: "-", with: "/")
+
+        // 跳过开头的 `-`(对应原始路径起始的 `/`),逐字符扫描剩余部分
+        var result = "/"
+        let body = encoded.dropFirst()
+        var index = body.startIndex
+        while index < body.endIndex {
+            let ch = body[index]
+            if ch == "-" {
+                let next = body.index(after: index)
+                if next < body.endIndex, body[next] == "-" {
+                    // `--` 是字面 `-` 的转义,消耗两个字符
+                    result.append("-")
+                    index = body.index(after: next)
+                } else {
+                    // 单 `-` 是路径分隔符
+                    result.append("/")
+                    index = next
+                }
+            } else {
+                result.append(ch)
+                index = body.index(after: index)
+            }
+        }
+        return result
     }
 
     /// 从 subagent 文件路径提取 agent ID
