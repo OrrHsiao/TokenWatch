@@ -636,4 +636,33 @@ struct PricingEngineTests {
         #expect(pricing?.displayName == "Claude Opus 4.8")
         #expect(pricing?.fastMultiplier == 2.0)
     }
+
+    // MARK: - LiteLLM 兜底
+    //
+    // PricingTable 仅维护 ~12 条手写「短名」,对 Bedrock / Vertex / Azure 等
+    // 带 provider 前缀的别名命中不到 → 由 LiteLLMPriceCatalog 兜底(嵌入 LiteLLM 全表)。
+    // 这里只做存在性 + 价格量级的回归检查,具体单价以 LiteLLM 上游为准。
+
+    @Test("LiteLLM 兜底 - Bedrock anthropic.* 别名能命中")
+    func liteLLMBedrockFallback() {
+        // 手写表里没有这个 key,只能由 LiteLLM 兜底
+        let pricing = PricingTable.pricing(for: "anthropic.claude-opus-4-5-20251101-v1:0")
+        #expect(pricing != nil)
+        #expect(pricing?.inputPrice == 5.0)
+        #expect(pricing?.outputPrice == 25.0)
+    }
+
+    @Test("LiteLLM 兜底 - 手写表优先于 LiteLLM(displayName 保留)")
+    func liteLLMHandwrittenWins() {
+        // 同名 key 同时存在于手写表和 LiteLLM 时,手写表赢 → displayName 是「Claude Opus 4.5」而非裸 modelID
+        let pricing = PricingTable.pricing(for: "claude-opus-4-5")
+        #expect(pricing?.displayName == "Claude Opus 4.5")
+    }
+
+    @Test("LiteLLM 兜底 - 仍然完全无法识别的模型返回 nil")
+    func liteLLMStillReturnsNilForUnknown() {
+        // 既不在手写表也不在 LiteLLM 上,最终返回 nil → 上层 logger.warning + cost=0
+        let pricing = PricingTable.pricing(for: "this-model-definitely-does-not-exist-anywhere-xyzzy")
+        #expect(pricing == nil)
+    }
 }

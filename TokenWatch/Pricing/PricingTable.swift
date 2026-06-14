@@ -165,7 +165,9 @@ struct PricingTable: Sendable {
     /// - candidate 以数字结尾，且
     /// - 后缀以 `-` 或 `.` 开始，紧跟若干位数字
     /// - 例外：8 位数字（YYYYMMDD 日期后缀）后接边界字符则视为日期，允许匹配
-    private static func suffixStartsWithNumericVersion(candidate: String, suffix: String) -> Bool {
+    ///
+    /// `internal`: LiteLLMPriceCatalog 复用同一规则,确保兜底表查找语义一致
+    static func suffixStartsWithNumericVersion(candidate: String, suffix: String) -> Bool {
         guard let lastByte = candidate.utf8.last, isAsciiDigit(lastByte) else { return false }
         guard let firstByte = suffix.utf8.first, firstByte == 0x2D /* - */ || firstByte == 0x2E /* . */
         else { return false }
@@ -197,18 +199,23 @@ struct PricingTable: Sendable {
             || (byte >= 0x61 && byte <= 0x7A)  // a-z
     }
 
-    /// 查找定价，匹配优先级：精确 → 前缀（按 candidate key 长度倒序 + 版本号守卫）
+    /// 查找定价，匹配优先级：手写表精确 → 手写表前缀（按 candidate key 长度倒序 + 版本号守卫）
+    ///                    → LiteLLM 全表精确 → LiteLLM 全表前缀
+    ///
+    /// 手写表优先于 LiteLLM:手写表的 displayName / 200k tier / fastMultiplier 元数据更准确
+    /// 且语义稳定;LiteLLM 全表用于兜底未知 modelID(如带 provider 前缀的 Bedrock / Vertex 别名)。
+    ///
     /// - Parameter modelID: 从 JSONL 中读取的原始模型名称
     /// - Returns: 匹配的定价条目，未找到返回 nil
     static func pricing(for modelID: String) -> ModelPricing? {
         let normalized = modelID.lowercased()
 
-        // 1. 精确匹配
+        // 1. 手写表精确匹配
         if let pricing = prices[normalized] {
             return pricing
         }
 
-        // 2. 前缀匹配（长 key 优先 + 版本号守卫）
+        // 2. 手写表前缀匹配（长 key 优先 + 版本号守卫）
         // 例：modelID = "claude-sonnet-4-5-20250514"
         //  - candidate "claude-sonnet-4-5" → suffix "-20250514"，8 位日期，命中 ✓
         //  - candidate "claude-sonnet-4"   → suffix "-5-20250514"，"-5" 是新版本号，跳过 ✗
@@ -222,6 +229,8 @@ struct PricingTable: Sendable {
             return pricing
         }
 
-        return nil
+        // 3. LiteLLM 全表兜底
+        // 覆盖手写表外的 2000+ 条目(Bedrock anthropic.* / Vertex / Azure / DeepSeek 等)
+        return LiteLLMPriceCatalog.shared.pricing(forNormalized: normalized)
     }
 }
