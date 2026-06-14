@@ -17,23 +17,33 @@ final class JSONLParser: Sendable {
     ///   - claudeDataRoot: ~/.claude 目录 URL（确保 Security-Scoped 访问有效）
     /// - Returns: 解析后的用量条目列表（未去重，由 `parseAllFiles` 统一处理）
     nonisolated func parseJSONLFile(_ fileInfo: JSONLFileInfo, claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
-        let content = try String(contentsOf: fileInfo.url, encoding: .utf8)
-        let lines = content.split(separator: "\n", omittingEmptySubsequences: true)
+        // Claude Code 单个 session 文件可能达到数百 MB，使用 String(contentsOf:)
+        // 全量读入会带来明显的内存峰值与 OOM 风险；改为 FileHandle 64KB 分块流式
+        // 读取，按 '\n' 切分成行后逐行 JSON 解码，峰值内存仅与单行长度相关。
+        let handle = try FileHandle(forReadingFrom: fileInfo.url)
+        defer { try? handle.close() }
 
         var entries: [ParsedUsageEntry] = []
         var skippedNoMessageId = 0
         let decoder = JSONDecoder()
+        let newline: UInt8 = 0x0A
 
-        for line in lines {
-            guard let data = String(line).data(using: .utf8) else { continue }
+        // 跨块残段缓冲：每次读完一块后，最后一段未遇到 '\n' 的字节会拼接到下一块
+        // 开头继续累积，确保跨 chunk 的长行能被完整还原。
+        var buffer = Data()
+        let chunkSize = 64 * 1024
 
-            guard let record = try? decoder.decode(ClaudeRecord.self, from: data),
+        // 闭包：解析单行 Data 并按需 append 到 entries（空行直接跳过）
+        let processLine: (Data) -> Void = { lineData in
+            guard !lineData.isEmpty else { return }
+
+            guard let record = try? decoder.decode(ClaudeRecord.self, from: lineData),
                   record.hasUsageData,
                   let message = record.message,
                   let usage = message.usage,
                   let model = message.model
             else {
-                continue
+                return
             }
 
             // message.id 是 dedup 主键，缺失则无法可靠去重，直接丢弃
@@ -41,7 +51,7 @@ final class JSONLParser: Sendable {
             let messageId = message.id
             guard !messageId.isEmpty else {
                 skippedNoMessageId += 1
-                continue
+                return
             }
 
             entries.append(ParsedUsageEntry(
@@ -56,6 +66,31 @@ final class JSONLParser: Sendable {
                 usage: usage,
                 isSubagent: fileInfo.isSubagent
             ))
+        }
+
+        // 流式读取：每次最多读 chunkSize 字节，遇 EOF 时 read 返回空 Data
+        while true {
+            let chunk = try handle.read(upToCount: chunkSize) ?? Data()
+            if chunk.isEmpty { break }
+            buffer.append(chunk)
+
+            // 在累积缓冲中按 '\n' 反复切分；剩余未遇到换行的尾段保留到下一轮
+            var searchStart = buffer.startIndex
+            while let nlIndex = buffer[searchStart..<buffer.endIndex].firstIndex(of: newline) {
+                let lineData = buffer[searchStart..<nlIndex]
+                processLine(Data(lineData))
+                searchStart = buffer.index(after: nlIndex)
+            }
+
+            // 丢弃已处理部分，仅保留最后一段未完成的行，避免缓冲区无限增长
+            if searchStart > buffer.startIndex {
+                buffer.removeSubrange(buffer.startIndex..<searchStart)
+            }
+        }
+
+        // 处理文件末尾未以 '\n' 结尾的最后一行残段
+        if !buffer.isEmpty {
+            processLine(buffer)
         }
 
         if skippedNoMessageId > 0 {
