@@ -163,11 +163,32 @@ struct PricingEngineTests {
 
     @Test("精确匹配模型定价")
     func exactModelMatch() {
+        // 价位参考 TokenTracker `pricing/curated-overrides.json`(DeepSeek 官方 API 价)
         let pricing = PricingTable.pricing(for: "deepseek-v4-pro")
         #expect(pricing != nil)
         #expect(pricing?.displayName == "DeepSeek V4 Pro")
-        #expect(pricing?.inputPrice == 3.0)
-        #expect(pricing?.outputPrice == 15.0)
+        #expect(pricing?.inputPrice == 0.435)
+        #expect(pricing?.outputPrice == 0.87)
+        #expect(pricing?.cacheReadPrice == 0.003625)
+    }
+
+    @Test("精确匹配 - glm-5.1 (TokenTracker / ccusage 价位)")
+    func exactGLM51Match() {
+        // 价位与 TokenTracker `curated-overrides.json` 及 ccusage 主表一致
+        let pricing = PricingTable.pricing(for: "glm-5.1")
+        #expect(pricing != nil)
+        #expect(pricing?.inputPrice == 1.4)
+        #expect(pricing?.outputPrice == 4.4)
+        #expect(pricing?.cacheReadPrice == 0.26)
+    }
+
+    @Test("精确匹配 - deepseek-v4-flash (TokenTracker 价位)")
+    func exactDeepseekV4FlashMatch() {
+        let pricing = PricingTable.pricing(for: "deepseek-v4-flash")
+        #expect(pricing != nil)
+        #expect(pricing?.inputPrice == 0.14)
+        #expect(pricing?.outputPrice == 0.28)
+        #expect(pricing?.cacheReadPrice == 0.0028)
     }
 
     @Test("前缀模糊匹配 - 带日期后缀")

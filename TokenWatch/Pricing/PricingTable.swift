@@ -128,18 +128,36 @@ struct PricingTable: Sendable {
         ),
 
         // MARK: - DeepSeek 系列
+        //
+        // 价位参考 TokenTracker `pricing/curated-overrides.json`(DeepSeek 官方 API 价位):
+        // https://api-docs.deepseek.com/quick_start/pricing
+        // 与 ccusage 内置表不一致:ccusage 通过 models.dev 模糊匹配,会落到第三方代理价位
+        // (1.74/3.48/0.145 等),取决于运行时哈希顺序;TokenTracker curated 价位锁定为
+        // 官方价,数据来源更稳定。
 
         "deepseek-v4-pro": ModelPricing(
             modelID: "deepseek-v4-pro",
             displayName: "DeepSeek V4 Pro",
-            inputPrice: 3.0, outputPrice: 15.0,
-            cacheReadPrice: 0.30, cacheWritePrice: 3.75
+            inputPrice: 0.435, outputPrice: 0.87,
+            cacheReadPrice: 0.003625, cacheWritePrice: 0.435
         ),
         "deepseek-v4-flash": ModelPricing(
             modelID: "deepseek-v4-flash",
             displayName: "DeepSeek V4 Flash",
-            inputPrice: 1.0, outputPrice: 5.0,
-            cacheReadPrice: 0.10, cacheWritePrice: 1.25
+            inputPrice: 0.14, outputPrice: 0.28,
+            cacheReadPrice: 0.0028, cacheWritePrice: 0.14
+        ),
+
+        // MARK: - GLM(智谱)系列
+        //
+        // 价位参考 TokenTracker `curated-overrides.json` 与 ccusage Rust 主表
+        // (`pricing.rs::put_builtin_pricing` 中 glm-5.1 = 1.4 / 4.4 / 0.26),两侧一致。
+
+        "glm-5.1": ModelPricing(
+            modelID: "glm-5.1",
+            displayName: "GLM 5.1",
+            inputPrice: 1.4, outputPrice: 4.4,
+            cacheReadPrice: 0.26, cacheWritePrice: 0
         ),
     ]
 
