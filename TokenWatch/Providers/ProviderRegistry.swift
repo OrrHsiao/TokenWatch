@@ -5,8 +5,8 @@ import Foundation
 enum ProviderRegistry {
     /// 顺序即 UI Tab 顺序
     static let allProviders: [any UsageProvider] = [
-        ClaudeProvider()
-        // CodexProvider() — Task 7 加入
+        ClaudeProvider(),
+        CodexProvider()
     ]
 
     /// 按 id 查找已注册的 provider 实例
