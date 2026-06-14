@@ -228,6 +228,225 @@ struct PricingEngineTests {
         #expect(abs(cost - 6.0) < 0.001)  // $1 + $5 = $6
     }
 
+    // MARK: - 200k tier 阶梯定价
+    //
+    // 参考 ccusage `cost.rs::tiered_cost`：
+    //   if let above, tokens > 200_000:
+    //       cost = 200_000 × base + (tokens - 200_000) × above
+    //   else:
+    //       cost = tokens × base
+    // 每个 token 类别（input / output / cache_read / cache_create_5m）独立判断阈值。
+    // cache_create_1h 不读 LiteLLM 的 1h above 字段，而是 input_above × 2.0。
+    // `above` 为 nil 时退化为单价（Opus / Haiku / Fable / 3.7 Sonnet 等无 tier 模型）。
+
+    @Test("tiered - input 跨 200k 拆段计费 (claude-sonnet-4-5)")
+    func tieredInputAboveThreshold() {
+        // input 250k → 200k × $3 + 50k × $6 = $0.60 + $0.30 = $0.90
+        let usage = TokenUsage(
+            inputTokens: 250_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let pricing = ModelPricing(
+            modelID: "claude-sonnet-4-5",
+            displayName: "Claude Sonnet 4.5",
+            inputPrice: 3.0, outputPrice: 15.0,
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
+        )
+        let cost = PricingEngine().calculateCost(usage: usage, pricing: pricing)
+        #expect(abs(cost - 0.90) < 0.0001)
+    }
+
+    @Test("tiered - 恰好 200k 不进入 above 价")
+    func tieredAtExactThreshold() {
+        // input 200_000 → 全部按 base：200k × $3 = $0.60
+        let usage = TokenUsage(
+            inputTokens: 200_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let pricing = ModelPricing(
+            modelID: "claude-sonnet-4-5",
+            displayName: "Claude Sonnet 4.5",
+            inputPrice: 3.0, outputPrice: 15.0,
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
+        )
+        let cost = PricingEngine().calculateCost(usage: usage, pricing: pricing)
+        #expect(abs(cost - 0.60) < 0.0001)
+    }
+
+    @Test("tiered - 每类独立判断阈值 (output 跨, input 不跨)")
+    func tieredCategoriesAreIndependent() {
+        // input 100k (不跨) + output 300k (跨)
+        // input:  100k × $3   = $0.30
+        // output: 200k × $15 + 100k × $22.5 = $3.00 + $2.25 = $5.25
+        // total: $5.55
+        let usage = TokenUsage(
+            inputTokens: 100_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 300_000,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let pricing = ModelPricing(
+            modelID: "claude-sonnet-4-5",
+            displayName: "Claude Sonnet 4.5",
+            inputPrice: 3.0, outputPrice: 15.0,
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
+        )
+        let cost = PricingEngine().calculateCost(usage: usage, pricing: pricing)
+        #expect(abs(cost - 5.55) < 0.0001)
+    }
+
+    @Test("tiered - cache_read 与 cache_create_5m 也跨 200k")
+    func tieredCacheCategories() {
+        // cache_read 250k → 200k × $0.30 + 50k × $0.60 = $0.06 + $0.03 = $0.09
+        // cache_create_5m 250k → 200k × $3.75 + 50k × $7.50 = $0.75 + $0.375 = $1.125
+        // total: $1.215
+        let usage = TokenUsage(
+            inputTokens: 0,
+            cacheCreationInputTokens: 250_000,           // 无 ephemeral 细分 → 视为 5m
+            cacheReadInputTokens: 250_000,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let pricing = ModelPricing(
+            modelID: "claude-sonnet-4-5",
+            displayName: "Claude Sonnet 4.5",
+            inputPrice: 3.0, outputPrice: 15.0,
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
+        )
+        let cost = PricingEngine().calculateCost(usage: usage, pricing: pricing)
+        #expect(abs(cost - 1.215) < 0.0001)
+    }
+
+    @Test("tiered - cache_create_1h above = input_above × 2")
+    func tieredCache1hUsesInputAboveTimesTwo() {
+        // 1h cache 250k：base = $3 × 2 = $6，above = $6 × 2 = $12
+        // 200k × $6 + 50k × $12 = $1.20 + $0.60 = $1.80
+        let usage = TokenUsage(
+            inputTokens: 0,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 250_000, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let pricing = ModelPricing(
+            modelID: "claude-sonnet-4-5",
+            displayName: "Claude Sonnet 4.5",
+            inputPrice: 3.0, outputPrice: 15.0,
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
+        )
+        let cost = PricingEngine().calculateCost(usage: usage, pricing: pricing)
+        #expect(abs(cost - 1.80) < 0.0001)
+    }
+
+    @Test("tiered - above 价为 nil 时按 base 单价 (Opus 不分级)")
+    func tieredFallsBackToBaseWhenAboveNil() {
+        // Opus 没有 above_200k，input 1M 全部按 $15 → $15
+        let usage = TokenUsage(
+            inputTokens: 1_000_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let pricing = ModelPricing(
+            modelID: "claude-opus-4",
+            displayName: "Claude Opus 4",
+            inputPrice: 15.0, outputPrice: 75.0,
+            cacheReadPrice: 1.50, cacheWritePrice: 18.75
+        )
+        let cost = PricingEngine().calculateCost(usage: usage, pricing: pricing)
+        #expect(abs(cost - 15.0) < 0.0001)
+    }
+
+    @Test("tiered - PricingTable 中 sonnet-4-5 已带 above_200k")
+    func tieredSonnet45HasAbovePrices() {
+        let pricing = PricingTable.pricing(for: "claude-sonnet-4-5")
+        #expect(pricing?.inputPriceAbove200k == 6.0)
+        #expect(pricing?.outputPriceAbove200k == 22.5)
+        #expect(pricing?.cacheReadPriceAbove200k == 0.60)
+        #expect(pricing?.cacheWritePriceAbove200k == 7.50)
+    }
+
+    @Test("tiered - PricingTable 中 sonnet-4 已带 above_200k")
+    func tieredSonnet4HasAbovePrices() {
+        let pricing = PricingTable.pricing(for: "claude-sonnet-4")
+        #expect(pricing?.inputPriceAbove200k == 6.0)
+        #expect(pricing?.outputPriceAbove200k == 22.5)
+    }
+
+    @Test("tiered - 3.5 Sonnet 的 output above 是 ×2 (非 ×1.5)")
+    func tieredSonnet35OutputAboveIsDouble() {
+        // LiteLLM 上 claude-3-5-sonnet 的 output above_200k = 3e-05 = $30/1M
+        let pricing = PricingTable.pricing(for: "claude-3.5-sonnet")
+        #expect(pricing?.outputPriceAbove200k == 30.0)
+    }
+
+    @Test("tiered - Opus / Haiku / Fable / 3.7 Sonnet 没有 above 价")
+    func tieredNonSonnet4FamilyHasNoAbove() {
+        #expect(PricingTable.pricing(for: "claude-opus-4")?.inputPriceAbove200k == nil)
+        #expect(PricingTable.pricing(for: "claude-opus-4-5")?.inputPriceAbove200k == nil)
+        #expect(PricingTable.pricing(for: "claude-haiku-4-5")?.inputPriceAbove200k == nil)
+        #expect(PricingTable.pricing(for: "claude-fable-5")?.inputPriceAbove200k == nil)
+        #expect(PricingTable.pricing(for: "claude-3.7-sonnet")?.inputPriceAbove200k == nil)
+    }
+
     @Test("未知模型成本为 0")
     func unknownModelCostIsZero() {
         let usage = TokenUsage(

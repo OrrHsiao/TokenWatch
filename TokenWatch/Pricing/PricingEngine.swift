@@ -3,29 +3,49 @@ import os.log
 
 /// 定价计算引擎
 ///
-/// 参考 ccusage `cost.rs::calculate_cost_from_tokens`：
+/// 参考 ccusage `cost.rs::calculate_cost_from_tokens` + `tiered_cost`：
 /// ```
-/// cost = inputTokens          × inputPrice           / 1e6
-///      + outputTokens         × outputPrice          / 1e6
-///      + cacheCreate5mTokens  × cacheWritePrice      / 1e6     // 5m → write 价
-///      + cacheCreate1hTokens  × inputPrice × 2       / 1e6     // 1h → input × 2
-///      + cacheReadTokens      × cacheReadPrice       / 1e6
+/// cost = tiered(inputTokens,        inputPrice,         inputPriceAbove200k)
+///      + tiered(outputTokens,       outputPrice,        outputPriceAbove200k)
+///      + tiered(cacheCreate5m,      cacheWritePrice,    cacheWritePriceAbove200k)
+///      + tiered(cacheCreate1h,      inputPrice  × 2,    inputPriceAbove200k × 2)
+///      + tiered(cacheRead,          cacheReadPrice,     cacheReadPriceAbove200k)
+/// 其中 tiered(t, base, above) =
+///     200_000 × base + (t - 200_000) × above   (above != nil 且 t > 200k)
+///     t × base                                  (其他情形)
 /// ```
 ///
-/// `cache_creation_input_tokens` 与 `ephemeral_5m/1h_input_tokens` 是
-/// 总分关系（同一信息的两种表达），通过 `TokenUsage.cacheCreate5mTokens` /
-/// `cacheCreate1hTokens` 在数据层完成二选一，引擎只负责计费。
+/// 关键约束：
+/// - 每类 token 的 200k 阈值独立判断（input 跨阈不会让 output 也走 above）
+/// - cache_create_1h 不读 LiteLLM 的 1h above 字段，而是 `input_above × 2.0`
+/// - `cache_creation_input_tokens` 与 `cache_creation.ephemeral_5m/1h` 是
+///   总分关系（同一信息的两种表达），通过 `TokenUsage.cacheCreate5mTokens` /
+///   `cacheCreate1hTokens` 在数据层完成二选一，引擎只负责计费
 ///
 /// 简化前提（与 ccusage 当前实现的差异，未来按需扩展）：
-/// - 不实现 200k tier 阶梯定价（input/output/cache 超过 200k token 后单价不同）
 /// - 不实现 Speed::Fast 的 `fast_multiplier`
 /// - 定价表为 per-1M token USD，故公式中需 `÷ 1_000_000`
 struct PricingEngine: Sendable {
+
+    /// 200k tier 阈值（来自 ccusage `cost.rs::tiered_cost::THRESHOLD`）
+    private static let tierThreshold: Int = 200_000
 
     /// 1h 缓存写入价格相对 input 的乘子（来自 ccusage `CACHE_CREATE_1H_INPUT_MULTIPLIER`）
     private static let cacheCreate1hInputMultiplier: Double = 2.0
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "PricingEngine")
+
+    /// 阶梯计费：超过 200k 阈值的部分按 above 单价，否则全部按 base 单价
+    /// 单价均为「每百万 token USD」，函数内部完成 ÷ 1e6
+    private static func tieredCost(tokens: Int, base: Double, above: Double?) -> Double {
+        guard tokens > 0 else { return 0.0 }
+        if let above, tokens > tierThreshold {
+            let baseCost = Double(tierThreshold) * base / 1_000_000.0
+            let aboveCost = Double(tokens - tierThreshold) * above / 1_000_000.0
+            return baseCost + aboveCost
+        }
+        return Double(tokens) * base / 1_000_000.0
+    }
 
     /// 根据已知定价计算单次 assistant 调用的成本
     /// - Parameters:
@@ -33,12 +53,34 @@ struct PricingEngine: Sendable {
     ///   - pricing: 对应的模型定价
     /// - Returns: USD 成本
     func calculateCost(usage: TokenUsage, pricing: ModelPricing) -> Double {
-        let inputCost = Double(usage.inputTokens) * pricing.inputPrice / 1_000_000.0
-        let outputCost = Double(usage.outputTokens) * pricing.outputPrice / 1_000_000.0
-        let cache5mCost = Double(usage.cacheCreate5mTokens) * pricing.cacheWritePrice / 1_000_000.0
-        let cache1hUnitPrice = pricing.inputPrice * Self.cacheCreate1hInputMultiplier
-        let cache1hCost = Double(usage.cacheCreate1hTokens) * cache1hUnitPrice / 1_000_000.0
-        let cacheReadCost = Double(usage.cacheReadInputTokens) * pricing.cacheReadPrice / 1_000_000.0
+        let inputCost = Self.tieredCost(
+            tokens: usage.inputTokens,
+            base: pricing.inputPrice,
+            above: pricing.inputPriceAbove200k
+        )
+        let outputCost = Self.tieredCost(
+            tokens: usage.outputTokens,
+            base: pricing.outputPrice,
+            above: pricing.outputPriceAbove200k
+        )
+        let cache5mCost = Self.tieredCost(
+            tokens: usage.cacheCreate5mTokens,
+            base: pricing.cacheWritePrice,
+            above: pricing.cacheWritePriceAbove200k
+        )
+        // 1h 缓存：base = inputPrice × 2，above = inputPriceAbove200k × 2（无独立字段）
+        let cache1hBase = pricing.inputPrice * Self.cacheCreate1hInputMultiplier
+        let cache1hAbove = pricing.inputPriceAbove200k.map { $0 * Self.cacheCreate1hInputMultiplier }
+        let cache1hCost = Self.tieredCost(
+            tokens: usage.cacheCreate1hTokens,
+            base: cache1hBase,
+            above: cache1hAbove
+        )
+        let cacheReadCost = Self.tieredCost(
+            tokens: usage.cacheReadInputTokens,
+            base: pricing.cacheReadPrice,
+            above: pricing.cacheReadPriceAbove200k
+        )
 
         return inputCost + outputCost + cache5mCost + cache1hCost + cacheReadCost
     }

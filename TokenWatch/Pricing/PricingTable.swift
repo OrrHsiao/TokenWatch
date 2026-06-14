@@ -32,17 +32,30 @@ struct PricingTable: Sendable {
         ),
 
         // Sonnet 4 系列
+        // 200k 阈值之上的 above_200k 单价（来自 LiteLLM）：
+        //   input  3.0  → 6.0
+        //   output 15.0 → 22.5  （×1.5，注意区别于 3.5 Sonnet 的 ×2）
+        //   cacheRead 0.30 → 0.60
+        //   cacheWrite 3.75 → 7.50
         "claude-sonnet-4": ModelPricing(
             modelID: "claude-sonnet-4",
             displayName: "Claude Sonnet 4",
             inputPrice: 3.0, outputPrice: 15.0,
-            cacheReadPrice: 0.30, cacheWritePrice: 3.75
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
         ),
         "claude-sonnet-4-5": ModelPricing(
             modelID: "claude-sonnet-4-5",
             displayName: "Claude Sonnet 4.5",
             inputPrice: 3.0, outputPrice: 15.0,
-            cacheReadPrice: 0.30, cacheWritePrice: 3.75
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 22.5,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
         ),
 
         // Haiku 4.5
@@ -62,6 +75,8 @@ struct PricingTable: Sendable {
         ),
 
         // Claude 3.5 系列
+        // 仅 3.5 Sonnet 在 LiteLLM 上配置了 above_200k；output above 是 ×2（30.0），
+        // 区别于 4 系的 ×1.5（22.5）。3.5 Haiku 没有 above 价。
         "claude-3.5-haiku": ModelPricing(
             modelID: "claude-3.5-haiku",
             displayName: "Claude 3.5 Haiku",
@@ -72,7 +87,11 @@ struct PricingTable: Sendable {
             modelID: "claude-3.5-sonnet",
             displayName: "Claude 3.5 Sonnet",
             inputPrice: 3.0, outputPrice: 15.0,
-            cacheReadPrice: 0.30, cacheWritePrice: 3.75
+            cacheReadPrice: 0.30, cacheWritePrice: 3.75,
+            inputPriceAbove200k: 6.0,
+            outputPriceAbove200k: 30.0,
+            cacheReadPriceAbove200k: 0.60,
+            cacheWritePriceAbove200k: 7.50
         ),
 
         // Claude 3.7 系列
