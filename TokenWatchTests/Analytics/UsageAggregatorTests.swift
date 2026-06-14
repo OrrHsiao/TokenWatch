@@ -192,7 +192,8 @@ struct UsageAggregatorTests {
                 iterations: [],
                 speed: "standard"
             ),
-            isSubagent: false
+            isSubagent: false,
+            provider: .claude
         )
     }
 

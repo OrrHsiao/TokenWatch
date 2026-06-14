@@ -64,7 +64,8 @@ final class ClaudeJSONLParser: Sendable {
                 cwd: record.cwd,
                 agentId: fileInfo.agentId,
                 usage: usage,
-                isSubagent: fileInfo.isSubagent
+                isSubagent: fileInfo.isSubagent,
+                provider: .claude
             ))
         }
 
