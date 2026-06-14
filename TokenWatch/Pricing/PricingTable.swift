@@ -143,9 +143,9 @@ struct PricingTable: Sendable {
         ),
     ]
 
-    /// 模型名称别名映射
-    /// 将非标准名称映射到标准化 key
-    static let aliases: [String: String] = [:]
+    // 注：曾有 `static let aliases: [String: String]` 用于非标准名称 → 标准 key 的映射,
+    // 长期为空且无任何引用,作为死代码移除。如未来需为模型加同义名,
+    // 可在此处恢复 dict + 在 pricing(for:) 中精确匹配后、前缀匹配前先查 aliases。
 
     /// 候选 key 按长度倒序的预排序数组（长 key 优先匹配）
     /// 在模块加载时构造一次，避免每次查找都重排
@@ -197,7 +197,7 @@ struct PricingTable: Sendable {
             || (byte >= 0x61 && byte <= 0x7A)  // a-z
     }
 
-    /// 查找定价，匹配优先级：精确 → 别名 → 前缀（按 candidate key 长度倒序 + 版本号守卫）
+    /// 查找定价，匹配优先级：精确 → 前缀（按 candidate key 长度倒序 + 版本号守卫）
     /// - Parameter modelID: 从 JSONL 中读取的原始模型名称
     /// - Returns: 匹配的定价条目，未找到返回 nil
     static func pricing(for modelID: String) -> ModelPricing? {
@@ -208,12 +208,7 @@ struct PricingTable: Sendable {
             return pricing
         }
 
-        // 2. 别名匹配
-        if let canonical = aliases[normalized], let pricing = prices[canonical] {
-            return pricing
-        }
-
-        // 3. 前缀匹配（长 key 优先 + 版本号守卫）
+        // 2. 前缀匹配（长 key 优先 + 版本号守卫）
         // 例：modelID = "claude-sonnet-4-5-20250514"
         //  - candidate "claude-sonnet-4-5" → suffix "-20250514"，8 位日期，命中 ✓
         //  - candidate "claude-sonnet-4"   → suffix "-5-20250514"，"-5" 是新版本号，跳过 ✗
