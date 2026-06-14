@@ -38,7 +38,9 @@ class ViewController: NSViewController {
 
     private func setupSubviews() {
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.alignment = .center
+        // stats 渲染为多行块状文本(本日 / 累计),左对齐更整齐;
+        // 加载/授权/错误等单行/短文本由文本本身居中性质决定视觉效果。
+        statusLabel.alignment = .left
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.maximumNumberOfLines = 0
         statusLabel.font = .systemFont(ofSize: 13)
@@ -101,13 +103,7 @@ class ViewController: NSViewController {
         }
 
         if let stats = vm.stats {
-            // 简单总览;完整 UI 在 Phase 7 实现
-            let total = stats.overall
-            statusLabel.stringValue = """
-            已加载 \(total.entryCount) 条记录
-            总成本: $\(String(format: "%.4f", total.cost))
-            模型数: \(stats.byModel.count)  会话数: \(stats.bySession.count)
-            """
+            statusLabel.stringValue = formatStatsText(stats)
             actionButton.title = "刷新"
             actionButton.isHidden = false
             return
@@ -131,6 +127,50 @@ class ViewController: NSViewController {
                 await vm.loadStats()
             }
         }
+    }
+
+    // MARK: - 文案构造
+
+    /// 拼装「本日 + 累计」两段式概览文本
+    /// 设计原因:聚合层已生成 byDay 切片(key 与 UsageAggregator.dayKey 同源),
+    /// UI 层只取今日 summary 即可;若今日无记录,以 .zero 兜底,避免界面空块。
+    /// 注:byDay 不含 sessionID 维度,「本日会话数」无法在不新增聚合切片的情况下准确计算,
+    /// 因此本日块暂只展示记录数;会话数仅在累计块出现。
+    private func formatStatsText(_ stats: AggregatedStats) -> String {
+        let todayKey = Self.todayKey()
+        let today = stats.byDay[todayKey] ?? .zero
+        let overall = stats.overall
+
+        return """
+        ── 本日 (\(todayKey)) ──
+        总 Token: \(Self.formatInt(today.totalTokens))
+          ├ Input:  \(Self.formatInt(today.inputTokens))
+          ├ Output: \(Self.formatInt(today.outputTokens))
+          └ Cache:  \(Self.formatInt(today.cacheReadTokens + today.cacheCreationTokens))
+        成本: $\(String(format: "%.4f", today.cost))
+        记录: \(today.entryCount)
+
+        ── 累计 ──
+        总 Token: \(Self.formatInt(overall.totalTokens))
+        成本: $\(String(format: "%.4f", overall.cost))
+        记录: \(overall.entryCount)  会话: \(stats.bySession.count)
+        """
+    }
+
+    /// 生成今日 key,格式 "yyyy-MM-dd"
+    /// 与 UsageAggregator.dayKey 保持完全一致的算法 / 时区,保证能正确命中 byDay
+    private static func todayKey() -> String {
+        let calendar = Calendar.current
+        let comps = calendar.dateComponents([.year, .month, .day], from: Date())
+        guard let y = comps.year, let m = comps.month, let d = comps.day else {
+            return "unknown"
+        }
+        return String(format: "%04d-%02d-%02d", y, m, d)
+    }
+
+    /// 千位分隔符格式化整数(本地化)
+    private static func formatInt(_ value: Int) -> String {
+        NumberFormatter.localizedString(from: NSNumber(value: value), number: .decimal)
     }
 
     override var representedObject: Any? {
