@@ -226,7 +226,7 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platfo
 
 ## 已知限制
 
-以下问题已识别但尚未处理，按"是否影响成本正确性 / 何时该做"分组。
+以下问题已识别但尚未处理。
 
 ### 计费准确性差异（与 ccusage 对账时可能出现偏差）
 
@@ -234,19 +234,11 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platfo
 |---|---|---|---|
 | 3 | **PricingTable 仅 12 条手写条目**：ccusage `pricing.rs::find` 还会回退查 `models_dev_pricing()` + 内嵌镜像作为 LiteLLM 兜底；TokenWatch 没这层。 | 用 Bedrock / Vertex / 第三方 provider 别名时模型查不到 → 成本计 $0。 | 决定是否在编译时嵌入 LiteLLM 全表（要权衡 App 体积 vs 定价覆盖度）。 |
 
-### 可维护性 / 性能
-
-| # | 项 | 位置 | 何时处理 |
-|---|---|---|---|
-| 4 | **JSONLParser 一次性 `String(contentsOf:)` 读入**：长 session 单文件可达数百 MB，目前会全量进内存。建议改 `FileHandle` 流式读取。 | `Services/JSONLParser.swift` | 真实数据 >50MB 出现性能问题时。 |
-| 5 | **`JSONLScanner.decodeProjectPath` 还原规则太粗**：把所有 `-` 替换为 `/`，项目名本身含 `-`（如 `my-cool-app`）会被错误展开成 `/my/cool/app`。需查 Claude Code 真实编码规则（疑似 `--` 转义）。 | `Services/JSONLScanner.swift` | UI 展示项目维度时看到错误目录名时。 |
-| 6 | **`UsageAggregator` 每条 entry 新建 `DateFormatter`**：分组时反复分配，数据量大时有开销。可静态缓存或改 `Calendar.dateComponents` 拼字符串。 | `Analytics/UsageAggregator.swift` | profile 显示成为热点时。 |
-| 7 | **`PricingTable.aliases` 是空 dict 但仍参与查找**：当前为死代码。 | `Pricing/PricingTable.swift` | 添加首个别名时。 |
-
 ### UI / 集成
 
 | # | 项 | 何时处理 |
 |---|---|---|
 | 8 | **首次启动没有触发授权的 UI 入口**：`AppDelegate.applicationDidFinishLaunching` 调用 `loadStats` 后会把 `needsAuthorization` 置 `true`，但目前没有视图监听此状态弹出 `NSOpenPanel`。 | 与 Phase 7 UI 一起做。 |
-| 9 | **CLAUDE.md 与 pbxproj 不一致**：`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` 已从 build settings 中移除，但 CLAUDE.md 仍写「all code is `@MainActor` by default」，代码里也散布着冗余的 `nonisolated` 标注。 | 确认 actor isolation 方向后顺手改。 |
+
+> 已修复：#4（JSONLParser FileHandle 流式读取）/ #5（decodeProjectPath `--` 双连字符转义）/ #6（UsageAggregator 用 Calendar 替代 DateFormatter）/ #7（移除空 aliases 死代码）/ #9（清理冗余 nonisolated 与对齐 CLAUDE.md）。
 
