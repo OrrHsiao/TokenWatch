@@ -2,7 +2,7 @@ import Foundation
 import os.log
 
 /// JSONL 文件信息
-struct JSONLFileInfo: Sendable {
+struct ClaudeJSONLFileInfo: Sendable {
     let url: URL
     let sessionID: String         // 从文件名提取的 session UUID
     let projectPath: String       // 解码后的项目绝对路径
@@ -12,16 +12,16 @@ struct JSONLFileInfo: Sendable {
 
 /// 扫描 ~/.claude/projects/ 目录，找到所有 JSONL 文件
 /// 区分主会话文件和 subagent 文件，解析项目路径
-final class JSONLScanner: Sendable {
+final class ClaudeJSONLScanner: Sendable {
 
-    private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "JSONLScanner")
+    private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLScanner")
 
     /// 扫描 claudeDataRoot 目录下的所有 JSONL 文件
     /// - Parameter claudeDataRoot: Security-Scoped 访问下的 ~/.claude 目录 URL
     /// - Returns: 所有 JSONL 文件信息列表
-    func scanAllJSONLFiles(in claudeDataRoot: URL) throws -> [JSONLFileInfo] {
+    func scanAllJSONLFiles(in claudeDataRoot: URL) throws -> [ClaudeJSONLFileInfo] {
         let projectsDir = claudeDataRoot.appendingPathComponent("projects")
-        var results: [JSONLFileInfo] = []
+        var results: [ClaudeJSONLFileInfo] = []
 
         // 检查 projects 目录是否存在
         guard FileManager.default.fileExists(atPath: projectsDir.path) else {
@@ -46,7 +46,7 @@ final class JSONLScanner: Sendable {
             let projectPath = extractProjectPath(from: fileURL, projectsDir: projectsDir)
             let agentId = isSubagent ? extractAgentId(from: fileURL) : nil
 
-            results.append(JSONLFileInfo(
+            results.append(ClaudeJSONLFileInfo(
                 url: fileURL,
                 sessionID: sessionID,
                 projectPath: projectPath,

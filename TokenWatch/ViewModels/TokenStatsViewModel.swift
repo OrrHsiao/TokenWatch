@@ -19,8 +19,8 @@ final class TokenStatsViewModel: Sendable {
     var onStateChange: (@MainActor () -> Void)?
 
     private let bookmarkManager = SecurityScopedBookmarkManager.shared
-    private let scanner = JSONLScanner()
-    private let parser = JSONLParser()
+    private let scanner = ClaudeJSONLScanner()
+    private let parser = ClaudeJSONLParser()
     private let aggregator = UsageAggregator()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
 

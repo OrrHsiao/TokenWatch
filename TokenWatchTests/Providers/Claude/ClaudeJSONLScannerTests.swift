@@ -2,12 +2,12 @@ import Foundation
 import Testing
 @testable import TokenWatch
 
-/// JSONLScanner 测试
+/// ClaudeJSONLScanner 测试
 /// 重点覆盖 `decodeProjectPath` 对编码后项目目录名的还原逻辑,
 /// 包含含有字面 `-` 的项目名(经验性 `--` 转义假设)。
-struct JSONLScannerTests {
+struct ClaudeJSONLScannerTests {
 
-    let scanner = JSONLScanner()
+    let scanner = ClaudeJSONLScanner()
 
     // MARK: - decodeProjectPath
 
