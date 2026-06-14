@@ -25,11 +25,15 @@ final class UsageAggregator: Sendable {
 
         logger.info("开始聚合：\(entries.count) 条记录，\(uniqueFiles.count) 个数据源")
 
+        // 性能优化：分组前预先复用一份 Calendar 实例
+        // 避免每条 entry 在 keySelector 内重复访问 Calendar.current 的 thread-local 拷贝
+        let calendar = Calendar.current
+
         return AggregatedStats(
             overall: aggregateEntries(entries),
-            byDay: groupAndAggregate(entries) { dateKey(from: $0.timestamp, format: "yyyy-MM-dd") },
-            byWeek: groupAndAggregate(entries) { weekKey(from: $0.timestamp) },
-            byMonth: groupAndAggregate(entries) { dateKey(from: $0.timestamp, format: "yyyy-MM") },
+            byDay: groupAndAggregate(entries) { dayKey(from: $0.timestamp, calendar: calendar) },
+            byWeek: groupAndAggregate(entries) { weekKey(from: $0.timestamp, calendar: calendar) },
+            byMonth: groupAndAggregate(entries) { monthKey(from: $0.timestamp, calendar: calendar) },
             bySession: groupAndAggregate(entries) { $0.sessionID },
             byModel: groupAndAggregate(entries) { $0.model },
             byProject: groupAndAggregate(entries) { $0.cwd ?? "unknown" },
@@ -107,19 +111,32 @@ final class UsageAggregator: Sendable {
 
     // MARK: - Date Helpers
 
-    /// 生成日期 key
-    private func dateKey(from date: Date?, format: String) -> String {
+    /// 生成日 key，格式: "yyyy-MM-dd"（与原 DateFormatter 行为一致）
+    /// 设计原因：原实现在每条 entry 上 `new DateFormatter()` 有显著的分配/初始化开销。
+    /// 改用 Calendar.dateComponents + String(format:) 拼接，零并发隐患（DateFormatter 非线程安全），
+    /// 且 Calendar 默认使用当前 TimeZone（与原 `formatter.timeZone = TimeZone.current` 等价）。
+    private func dayKey(from date: Date?, calendar: Calendar) -> String {
         guard let date = date else { return "unknown" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = format
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year, let month = components.month, let day = components.day else {
+            return "unknown"
+        }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    /// 生成月 key，格式: "yyyy-MM"（与原 DateFormatter 行为一致）
+    private func monthKey(from date: Date?, calendar: Calendar) -> String {
+        guard let date = date else { return "unknown" }
+        let components = calendar.dateComponents([.year, .month], from: date)
+        guard let year = components.year, let month = components.month else {
+            return "unknown"
+        }
+        return String(format: "%04d-%02d", year, month)
     }
 
     /// 生成 ISO 8601 周 key，格式: "2026-W24"
-    private func weekKey(from date: Date?) -> String {
+    private func weekKey(from date: Date?, calendar: Calendar) -> String {
         guard let date = date else { return "unknown" }
-        let calendar = Calendar.current
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
         guard let year = components.yearForWeekOfYear, let week = components.weekOfYear else {
             return "unknown"
