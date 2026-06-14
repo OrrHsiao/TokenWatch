@@ -73,7 +73,9 @@ TokenWatch/
 │   ├── JSONLScanner.swift                 # 扫描 projects/ 下所有 .jsonl
 │   └── JSONLParser.swift                  # 逐行解析 + 去重
 ├── Pricing/
-│   ├── PricingTable.swift                 # 内置定价表（Claude + DeepSeek 系列）
+│   ├── PricingTable.swift                 # 内置定价表(Claude + DeepSeek 系列,带 displayName / fast / 200k tier 元数据)
+│   ├── LiteLLMPriceCatalog.swift          # LiteLLM 全表兜底(2000+ 模型,从 litellm_prices.json 加载)
+│   ├── litellm_prices.json                # 编译时嵌入的 LiteLLM 定价快照(约 140KB)
 │   └── PricingEngine.swift                # 成本计算引擎
 ├── Analytics/
 │   └── UsageAggregator.swift              # 多维度聚合
@@ -226,19 +228,8 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platfo
 
 ## 已知限制
 
-以下问题已识别但尚未处理。
-
-### 计费准确性差异（与 ccusage 对账时可能出现偏差）
-
-| # | 项 | 影响 | 何时处理 |
-|---|---|---|---|
-| 3 | **PricingTable 仅 12 条手写条目**：ccusage `pricing.rs::find` 还会回退查 `models_dev_pricing()` + 内嵌镜像作为 LiteLLM 兜底；TokenWatch 没这层。 | 用 Bedrock / Vertex / 第三方 provider 别名时模型查不到 → 成本计 $0。 | 决定是否在编译时嵌入 LiteLLM 全表（要权衡 App 体积 vs 定价覆盖度）。 |
-
-### UI / 集成
-
-| # | 项 | 何时处理 |
-|---|---|---|
-| 8 | **首次启动没有触发授权的 UI 入口**：`AppDelegate.applicationDidFinishLaunching` 调用 `loadStats` 后会把 `needsAuthorization` 置 `true`，但目前没有视图监听此状态弹出 `NSOpenPanel`。 | 与 Phase 7 UI 一起做。 |
-
-> 已修复：#4（JSONLParser FileHandle 流式读取）/ #5（decodeProjectPath `--` 双连字符转义）/ #6（UsageAggregator 用 Calendar 替代 DateFormatter）/ #7（移除空 aliases 死代码）/ #9（清理冗余 nonisolated 与对齐 CLAUDE.md）。
+> 已修复:
+> - **#3 PricingTable LiteLLM 兜底** — 嵌入 LiteLLM `model_prices_and_context_window.json`(约 140KB,2000+ 模型)作为手写表的查找兜底,Bedrock / Vertex / Azure 等 provider 别名不再计 $0
+> - **#8 首次启动授权 UI 入口** — `ViewController` 监听 `TokenStatsViewModel.onStateChange`,无 Bookmark 时显示「授权访问 ~/.claude」按钮触发 `NSOpenPanel`
+> - #4 JSONLParser FileHandle 流式读取 / #5 decodeProjectPath `--` 双连字符转义 / #6 UsageAggregator 用 Calendar 替代 DateFormatter / #7 移除空 aliases 死代码 / #9 清理冗余 nonisolated 与对齐 CLAUDE.md
 
