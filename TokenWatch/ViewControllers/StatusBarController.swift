@@ -2,6 +2,25 @@ import AppKit
 import Foundation
 import os.log
 
+/// 垂直居中绘制文字的 NSTextFieldCell
+///
+/// macOS 的 NSTextFieldCell 默认从 frame 顶部开始绘制文字,
+/// 导致在固定高度 label 中文字视觉偏上;
+/// 重写 drawingRect(forBounds:) 让绘制区域在 frame 内垂直居中。
+private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        let actualRect = super.drawingRect(forBounds: rect)
+        let preferredSize = cellSize(forBounds: rect)
+        let yOffset = max(0, (actualRect.height - preferredSize.height) / 2.0)
+        return NSRect(
+            x: actualRect.origin.x,
+            y: actualRect.origin.y + yOffset,
+            width: actualRect.width,
+            height: preferredSize.height
+        )
+    }
+}
+
 /// macOS 状态栏控制器
 ///
 /// 长驻一个图标 + 文本(今日所有 provider 累加 token 数),
@@ -21,6 +40,21 @@ final class StatusBarController {
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
+
+    /// 自定义状态栏内容视图所用的 label
+    /// 使用 VerticallyCenteredTextFieldCell 使文字在 frame 内垂直居中,
+    /// 解决 macOS 默认从顶部绘制文字导致视觉偏上的问题
+    private let primaryLabel: NSTextField = {
+        let field = NSTextField(labelWithString: "")
+        field.cell = VerticallyCenteredTextFieldCell()
+        return field
+    }()
+
+    private let secondaryLabel: NSTextField = {
+        let field = NSTextField(labelWithString: "Tokens")
+        field.cell = VerticallyCenteredTextFieldCell()
+        return field
+    }()
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -62,9 +96,87 @@ final class StatusBarController {
 
     private func configureButton() {
         guard let button = statusItem.button else { return }
-        button.image = NSImage(named: Self.iconAssetName)
-        button.imagePosition = .imageLeading
+        // 关掉 button 自带的 image / title 渲染,统一用自定义布局
+        button.image = nil
         button.title = ""
+
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: Self.iconAssetName)
+        // 状态栏图标做成 template 由系统按主题自动反色
+        iconView.image?.isTemplate = true
+        iconView.imageScaling = .scaleProportionallyDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 18),
+            iconView.heightAnchor.constraint(equalToConstant: 18),
+        ])
+
+        configureLabel(primaryLabel, font: .boldSystemFont(ofSize: 10))
+        configureLabel(secondaryLabel, font: .systemFont(ofSize: 6))
+        applyAttributed(primaryLabel, text: "", font: .boldSystemFont(ofSize: 10))
+        applyAttributed(secondaryLabel, text: "Tokens", font: .systemFont(ofSize: 6))
+
+        // 布局规则:
+        //   primaryLabel  顶边 = 图标顶边,高度 = 图标的 3/5
+        //   secondaryLabel 底边 = 图标底边,高度 = 图标的 2/5
+        let textContainer = NSView()
+        textContainer.translatesAutoresizingMaskIntoConstraints = false
+        textContainer.addSubview(primaryLabel)
+        textContainer.addSubview(secondaryLabel)
+
+        let rootStack = NSStackView(views: [iconView, textContainer])
+        rootStack.orientation = .horizontal
+        rootStack.alignment = .centerY
+        rootStack.spacing = 4
+        rootStack.translatesAutoresizingMaskIntoConstraints = false
+
+        button.addSubview(rootStack)
+        NSLayoutConstraint.activate([
+            // rootStack 填满 button,驱动 button 宽度自适应
+            rootStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
+            rootStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
+            rootStack.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+
+            // textContainer 内部:两个 label 宽度撑满容器
+            primaryLabel.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor),
+            primaryLabel.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor),
+            secondaryLabel.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor),
+            secondaryLabel.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor),
+
+            // primaryLabel: 顶边 = 图标顶边,高度 = 图标 3/5
+            primaryLabel.topAnchor.constraint(equalTo: iconView.topAnchor),
+            primaryLabel.heightAnchor.constraint(equalTo: iconView.heightAnchor, multiplier: 3.0 / 5.0),
+
+            // secondaryLabel: 底边 = 图标底边,高度 = 图标 2/5
+            secondaryLabel.bottomAnchor.constraint(equalTo: iconView.bottomAnchor),
+            secondaryLabel.heightAnchor.constraint(equalTo: iconView.heightAnchor, multiplier: 2.0 / 5.0),
+
+            // textContainer 上下边由 label 撑开
+            textContainer.topAnchor.constraint(equalTo: primaryLabel.topAnchor),
+            textContainer.bottomAnchor.constraint(equalTo: secondaryLabel.bottomAnchor),
+        ])
+    }
+
+    /// label 的通用样式(颜色 / 居中 / 不换行)
+    private func configureLabel(_ label: NSTextField, font: NSFont) {
+        label.font = font
+        label.alignment = .center
+        label.textColor = .labelColor
+        label.wantsLayer = true
+        label.lineBreakMode = .byClipping
+        label.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    /// 设置 label 的内容,不强制行高,让 label 按 font 自然 intrinsicContentSize 撑高
+    /// 配合 VerticallyCenteredTextFieldCell 使文字垂直居中于 frame
+    private func applyAttributed(_ label: NSTextField, text: String, font: NSFont) {
+        label.attributedStringValue = NSAttributedString(
+            string: text,
+            attributes: [
+                .font: font,
+                .foregroundColor: NSColor.labelColor,
+            ]
+        )
     }
 
     private func installMenu() {
@@ -137,8 +249,9 @@ final class StatusBarController {
 
     private func renderTitle() {
         let todayKey = Self.todayKey()
-        let title = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
-        statusItem.button?.title = title
+        let primary = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
+        // 重渲染只刷数字那行,Tokens 行在 configureButton 时一次性设过
+        applyAttributed(primaryLabel, text: primary, font: .boldSystemFont(ofSize: 10))
         lastRenderedDayKey = todayKey
     }
 
