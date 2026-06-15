@@ -17,7 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // 尝试恢复所有 provider 的 Security-Scoped Bookmark 并并发加载数据
-        // ViewController 会在 viewDidLoad 注册 onStateChange,此处异步加载到完成时它已 ready
+        // ViewController 会在 viewDidLoad 注册 observer,此处异步加载到完成时它已 ready
         Task {
             await viewModel.loadAllStats()
         }

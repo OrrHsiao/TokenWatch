@@ -19,8 +19,13 @@ final class TokenStatsViewModel: Sendable {
     /// 当前所有 provider 的状态(只读)
     private(set) var states: [ProviderID: ProviderState] = [:]
 
-    /// 状态变更回调,UI 层据此刷新指定 Tab
-    var onStateChange: (@MainActor (ProviderID) -> Void)?
+    /// observer 注册凭证;移除 observer 时使用
+    struct ObservationToken: Hashable, Sendable {
+        let id: UUID
+    }
+
+    /// 已注册的 observer。key 为 token,value 为 main-actor 隔离的回调
+    private var observers: [ObservationToken: @MainActor (ProviderID) -> Void] = [:]
 
     private let bookmarkManager = SecurityScopedBookmarkManager.shared
     private let aggregator = UsageAggregator()
@@ -32,9 +37,28 @@ final class TokenStatsViewModel: Sendable {
         }
     }
 
-    /// 通知 UI 指定 provider 状态已变更
+    /// 注册状态变更监听
+    /// - Parameter handler: 任一 provider 状态变化时被调用
+    /// - Returns: 凭证,后续可用于 removeObserver
+    @discardableResult
+    func observe(_ handler: @escaping @MainActor (ProviderID) -> Void) -> ObservationToken {
+        let token = ObservationToken(id: UUID())
+        observers[token] = handler
+        return token
+    }
+
+    /// 取消之前 observe 注册的回调
+    func removeObserver(_ token: ObservationToken) {
+        observers.removeValue(forKey: token)
+    }
+
+    /// 通知所有 observer 指定 provider 状态变更
     private func notifyStateChange(_ id: ProviderID) {
-        onStateChange?(id)
+        // 拷贝快照后再遍历:handler 内部若同步 observe/removeObserver,
+        // 直接迭代 dict 会触发 UB。同步通知 + 异步使用模式下,这是廉价且必要的防御
+        for handler in Array(observers.values) {
+            handler(id)
+        }
     }
 
     /// 启动时并发触发所有 provider 的 loadStats

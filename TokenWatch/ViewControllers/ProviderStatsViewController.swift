@@ -67,7 +67,7 @@ final class ProviderStatsViewController: NSViewController {
     // MARK: - 绑定
 
     private func bindViewModel() {
-        // 顶层 ViewController 已绑过 onStateChange,这里订阅同一个回调
+        // 顶层 ViewController 已绑过 ViewModel 的 observer,这里订阅同一个 Notification
         // 设计:让 ViewController 把回调多路复用到所有 Tab,各 Tab 只关心自己 provider id
         NotificationCenter.default.addObserver(
             self,
