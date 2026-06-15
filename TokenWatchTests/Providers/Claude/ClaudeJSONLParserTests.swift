@@ -4,9 +4,9 @@ import Testing
 
 /// JSONL 解析器测试
 /// 验证 JSONL 解析和 messageId[:requestId] 去重逻辑
-struct JSONLParserTests {
+struct ClaudeJSONLParserTests {
 
-    let parser = JSONLParser()
+    let parser = ClaudeJSONLParser()
 
     // MARK: - 解析
 
@@ -20,7 +20,7 @@ struct JSONLParserTests {
         let fileURL = tmpDir.appendingPathComponent("test.jsonl")
         try jsonl.write(to: fileURL, atomically: true, encoding: .utf8)
 
-        let fileInfo = JSONLFileInfo(
+        let fileInfo = ClaudeJSONLFileInfo(
             url: fileURL,
             sessionID: "s1",
             projectPath: "/test",
@@ -54,7 +54,7 @@ struct JSONLParserTests {
         let fileURL = tmpDir.appendingPathComponent("test2.jsonl")
         try jsonl.write(to: fileURL, atomically: true, encoding: .utf8)
 
-        let fileInfo = JSONLFileInfo(
+        let fileInfo = ClaudeJSONLFileInfo(
             url: fileURL,
             sessionID: "s1",
             projectPath: "/test",
@@ -84,7 +84,7 @@ struct JSONLParserTests {
         let fileURL = tmpDir.appendingPathComponent("test3.jsonl")
         try jsonl.write(to: fileURL, atomically: true, encoding: .utf8)
 
-        let fileInfo = JSONLFileInfo(
+        let fileInfo = ClaudeJSONLFileInfo(
             url: fileURL,
             sessionID: "s1",
             projectPath: "/test",
@@ -120,12 +120,14 @@ struct JSONLParserTests {
         let entry1 = ParsedUsageEntry(
             recordUUID: "uuid-1", messageId: "msg-A", requestId: "req-1",
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
+            provider: .claude
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "uuid-2", messageId: "msg-A", requestId: "req-1",
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
+            provider: .claude
         )
 
         let unique = Array(Set([entry1, entry2]))
@@ -146,12 +148,14 @@ struct JSONLParserTests {
         let entry1 = ParsedUsageEntry(
             recordUUID: "u1", messageId: "msg-A", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
+            provider: .claude
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "u2", messageId: "msg-B", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
-            cwd: "/test", agentId: nil, usage: usage, isSubagent: false
+            cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
+            provider: .claude
         )
 
         let unique = Array(Set([entry1, entry2]))
@@ -171,8 +175,8 @@ struct JSONLParserTests {
         try line.write(to: f2, atomically: true, encoding: .utf8)
 
         let infos = [
-            JSONLFileInfo(url: f1, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil),
-            JSONLFileInfo(url: f2, sessionID: "s1", projectPath: "/p", isSubagent: true,  agentId: "agent-1"),
+            ClaudeJSONLFileInfo(url: f1, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil),
+            ClaudeJSONLFileInfo(url: f2, sessionID: "s1", projectPath: "/p", isSubagent: true,  agentId: "agent-1"),
         ]
         let entries = try parser.parseAllFiles(infos, claudeDataRoot: tmpDir)
         #expect(entries.count == 1)
@@ -191,7 +195,7 @@ struct JSONLParserTests {
         let tmpDir = FileManager.default.temporaryDirectory
         let fileURL = tmpDir.appendingPathComponent("no-msg-id.jsonl")
         try jsonl.write(to: fileURL, atomically: true, encoding: .utf8)
-        let info = JSONLFileInfo(url: fileURL, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil)
+        let info = ClaudeJSONLFileInfo(url: fileURL, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil)
 
         let entries = try parser.parseJSONLFile(info, claudeDataRoot: tmpDir)
         #expect(entries.isEmpty)
@@ -216,7 +220,7 @@ struct JSONLParserTests {
         let fileURL = tmpDir.appendingPathComponent("multi-chunk-\(UUID().uuidString).jsonl")
         // 故意让 (0,0,0) chunk 排在前面 — 模拟真实日志写入顺序
         try (zeroUsageLine + "\n" + realUsageLine).write(to: fileURL, atomically: true, encoding: .utf8)
-        let info = JSONLFileInfo(url: fileURL, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil)
+        let info = ClaudeJSONLFileInfo(url: fileURL, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil)
 
         let entries = try parser.parseAllFiles([info], claudeDataRoot: tmpDir)
 

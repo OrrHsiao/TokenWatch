@@ -686,4 +686,13 @@ struct PricingEngineTests {
         let pricing = PricingTable.pricing(for: "this-model-definitely-does-not-exist-anywhere-xyzzy")
         #expect(pricing == nil)
     }
+
+    @Test("GPT-5 系列命中并计费 — Codex Provider 用")
+    func gpt5Pricing() {
+        #expect(PricingTable.pricing(for: "gpt-5")?.inputPrice == 1.25)
+        #expect(PricingTable.pricing(for: "gpt-5.5")?.outputPrice == 30.0)
+        #expect(PricingTable.pricing(for: "gpt-5.4-mini")?.cacheReadPrice == 0.075)
+        // 前缀匹配:实际 Codex 不会拼日期后缀,但确保行为不破坏
+        #expect(PricingTable.pricing(for: "gpt-5") != nil)
+    }
 }

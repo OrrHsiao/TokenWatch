@@ -7,16 +7,16 @@ import os.log
 /// `claudeMessageDedupKey`），使用 `message.id`（必填）+ `requestId`（可选）
 /// 作为 dedup key。Anthropic 协议保证 `message.id` 全局唯一，`requestId`
 /// 缺失（DeepSeek/Kimi/Mimo 等兼容端点不返回 `request-id` header）时不应短路。
-final class JSONLParser: Sendable {
+final class ClaudeJSONLParser: Sendable {
 
-    private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "JSONLParser")
+    private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLParser")
 
     /// 解析单个 JSONL 文件，提取所有包含 usage 的 assistant 记录
     /// - Parameters:
     ///   - fileInfo: 文件信息
     ///   - claudeDataRoot: ~/.claude 目录 URL（确保 Security-Scoped 访问有效）
     /// - Returns: 解析后的用量条目列表（未去重，由 `parseAllFiles` 统一处理）
-    func parseJSONLFile(_ fileInfo: JSONLFileInfo, claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
+    func parseJSONLFile(_ fileInfo: ClaudeJSONLFileInfo, claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
         // Claude Code 单个 session 文件可能达到数百 MB，使用 String(contentsOf:)
         // 全量读入会带来明显的内存峰值与 OOM 风险；改为 FileHandle 64KB 分块流式
         // 读取，按 '\n' 切分成行后逐行 JSON 解码，峰值内存仅与单行长度相关。
@@ -64,7 +64,8 @@ final class JSONLParser: Sendable {
                 cwd: record.cwd,
                 agentId: fileInfo.agentId,
                 usage: usage,
-                isSubagent: fileInfo.isSubagent
+                isSubagent: fileInfo.isSubagent,
+                provider: .claude
             ))
         }
 
@@ -104,7 +105,7 @@ final class JSONLParser: Sendable {
     ///   - files: 文件信息列表
     ///   - claudeDataRoot: ~/.claude 目录 URL
     /// - Returns: 去重后的用量条目列表
-    func parseAllFiles(_ files: [JSONLFileInfo], claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
+    func parseAllFiles(_ files: [ClaudeJSONLFileInfo], claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
         var allEntries: [ParsedUsageEntry] = []
 
         for fileInfo in files {

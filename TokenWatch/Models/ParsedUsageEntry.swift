@@ -19,9 +19,15 @@ struct ParsedUsageEntry: Sendable, Hashable {
     let agentId: String?
     let usage: TokenUsage
     let isSubagent: Bool
+    /// 数据源标识（用于将来跨 provider 合并视图区分来源）
+    let provider: ProviderID
 
-    /// 去重键：`messageId` 或 `messageId:requestId`
-    /// 两种格式可共存于同一 Set（messageId 不含冒号，无碰撞风险）
+    /// 去重键
+    /// - Claude:`messageId`(默认)或 `messageId:requestId`(`requestId` 存在时拼接)
+    /// - Codex:`<sessionId>:<ISO8601 timestamp>`(无 message.id,Parser 合成)
+    /// 两种格式可能都含冒号,但 dedup 在各 provider 自己的 `parseAllFiles` 内独立完成,
+    /// 不跨 provider 共享 Set,因此即便字面碰撞也无影响。
+    /// 若未来引入跨 provider 合并视图,需在 key 上加 provider 前缀以彻底隔离。
     var dedupKey: String {
         if let reqId = requestId, !reqId.isEmpty {
             return "\(messageId):\(reqId)"
