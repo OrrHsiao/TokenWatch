@@ -31,8 +31,12 @@ enum OpenCodeScannerError: Error, CustomStringConvertible {
 /// 直读 ~/.local/share/opencode/opencode.db
 ///
 /// 设计原因:
-/// - 用 `file:<path>?immutable=1` URI 模式只读打开 → 不会创建/修改 WAL/SHM 文件,
-///   与 App Sandbox readonly 完全兼容,且避开锁竞争(opencode 进程在跑也能读)
+/// - 用 `file:<path>?mode=ro` URI 模式只读打开。**不能用 `immutable=1`**:
+///   immutable 会让 SQLite 完全忽略 `-wal`/`-shm`,只读主 db 的旧 checkpoint;
+///   但 opencode 是常驻进程,新写入的 message 全在 WAL 里(WAL 通常远大于主 db),
+///   导致 TokenWatch 只能看到 opencode 启动那一刻的 stale 快照,统计永远落后。
+/// - `mode=ro` 同样不写主 db;opencode 在跑时 `-shm` 一定已存在,SQLite 以只读
+///   mmap 方式接入即可,与 App Sandbox(目录级 readonly user-selected files)兼容。
 /// - 仅查 message+session 必要字段,JSON blob 留给 Parser 解码,职责清晰
 final class OpenCodeSQLiteScanner: Sendable {
 
@@ -61,7 +65,8 @@ final class OpenCodeSQLiteScanner: Sendable {
         }
 
         var db: OpaquePointer?
-        let uri = "file:\(dbURL.path)?immutable=1"
+        // mode=ro 而非 immutable=1:见类型注释,后者会跳过 WAL 导致漏读 opencode 在跑时的新数据
+        let uri = "file:\(dbURL.path)?mode=ro"
         let openFlags: Int32 = SQLITE_OPEN_READONLY | SQLITE_OPEN_URI
 
         let openCode = sqlite3_open_v2(uri, &db, openFlags, nil)
