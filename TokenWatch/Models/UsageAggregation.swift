@@ -27,6 +27,7 @@ struct UsageSummary: Sendable {
 /// 参考 ccusage 的 daily/weekly/monthly/session 报告结构
 struct AggregatedStats: Sendable {
     let overall: UsageSummary
+    let byHour: [String: UsageSummary]      // key: "2026-06-13T14"
     let byDay: [String: UsageSummary]       // key: "2026-06-13"
     let byWeek: [String: UsageSummary]      // key: "2026-W24"
     let byMonth: [String: UsageSummary]     // key: "2026-06"
@@ -39,7 +40,7 @@ struct AggregatedStats: Sendable {
     static var zero: AggregatedStats {
         AggregatedStats(
             overall: .zero,
-            byDay: [:], byWeek: [:], byMonth: [:],
+            byHour: [:], byDay: [:], byWeek: [:], byMonth: [:],
             bySession: [:], byModel: [:], byProject: [:],
             dataSourceCount: 0
         )

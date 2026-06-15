@@ -176,6 +176,84 @@ struct UsageAggregatorTests {
         #expect(stats.byProject["/project-b"]?.inputTokens == 300)
     }
 
+    // MARK: - 按小时聚合
+
+    @Test("按小时聚合 key 使用 yyyy-MM-ddTHH 格式")
+    func hourlyAggregationKeyFormat() {
+        // 同一日(2026-06-13)的两条记录,小时不同 → 应进入两个不同的 byHour 桶
+        let entries = [
+            makeEntry(sessionID: "s1",
+                      date: dateTime(2026, 6, 13, 9, 30),
+                      model: "m1", input: 100, output: 50),
+            makeEntry(sessionID: "s1",
+                      date: dateTime(2026, 6, 13, 14, 5),
+                      model: "m1", input: 200, output: 100),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+
+        #expect(stats.byHour.count == 2)
+        #expect(stats.byHour["2026-06-13T09"]?.inputTokens == 100)
+        #expect(stats.byHour["2026-06-13T14"]?.inputTokens == 200)
+    }
+
+    @Test("byHour 同日各桶之和等于 byDay 该日总桶")
+    func hourSumEqualsDay() {
+        // 同日 3 条记录落入 3 个不同小时,断言: byDay[day] = sum(byHour where prefix == day)
+        let entries = [
+            makeEntry(sessionID: "s1",
+                      date: dateTime(2026, 6, 13, 0, 15),
+                      model: "m1", input: 100, output: 50, cacheRead: 10, cacheCreation: 5),
+            makeEntry(sessionID: "s1",
+                      date: dateTime(2026, 6, 13, 12, 0),
+                      model: "m1", input: 200, output: 100, cacheRead: 20, cacheCreation: 10),
+            makeEntry(sessionID: "s2",
+                      date: dateTime(2026, 6, 13, 23, 59),
+                      model: "m2", input: 300, output: 150, cacheRead: 30, cacheCreation: 15),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+
+        let dayKey = "2026-06-13"
+        let day = stats.byDay[dayKey]
+        #expect(day != nil, "byDay 应该有 \(dayKey) 桶")
+
+        let hourBuckets = stats.byHour.filter { $0.key.hasPrefix("\(dayKey)T") }
+        #expect(hourBuckets.count == 3, "三条记录应落入三个独立小时桶")
+
+        let sumInput = hourBuckets.values.reduce(0) { $0 + $1.inputTokens }
+        let sumOutput = hourBuckets.values.reduce(0) { $0 + $1.outputTokens }
+        let sumCacheRead = hourBuckets.values.reduce(0) { $0 + $1.cacheReadTokens }
+        let sumCacheCreation = hourBuckets.values.reduce(0) { $0 + $1.cacheCreationTokens }
+        let sumTotal = hourBuckets.values.reduce(0) { $0 + $1.totalTokens }
+        let sumEntryCount = hourBuckets.values.reduce(0) { $0 + $1.entryCount }
+
+        #expect(sumInput == day?.inputTokens)
+        #expect(sumOutput == day?.outputTokens)
+        #expect(sumCacheRead == day?.cacheReadTokens)
+        #expect(sumCacheCreation == day?.cacheCreationTokens)
+        #expect(sumTotal == day?.totalTokens)
+        #expect(sumEntryCount == day?.entryCount)
+    }
+
+    @Test("timestamp 为 nil 的条目落入 byHour['unknown'] 桶,不丢数据")
+    func hourlyAggregationHandlesMissingTimestamp() {
+        // 一条带 timestamp 的正常记录 + 一条 timestamp 为 nil 的记录
+        // 后者必须落入 "unknown" 桶,与 dayKey/monthKey 行为一致
+        let entries = [
+            makeEntry(sessionID: "s1",
+                      date: dateTime(2026, 6, 13, 10, 0),
+                      model: "m1", input: 100, output: 50),
+            makeEntryWithoutTimestamp(sessionID: "s2",
+                                      model: "m1", input: 999, output: 0),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+
+        #expect(stats.byHour["2026-06-13T10"]?.inputTokens == 100)
+        #expect(stats.byHour["unknown"]?.inputTokens == 999)
+    }
+
     // MARK: - 模型细分
 
     @Test("modelBreakdown 包含模型细分")
@@ -232,8 +310,51 @@ struct UsageAggregatorTests {
         )
     }
 
+    /// 构造 timestamp 为 nil 的条目,用于验证聚合器对缺失时间戳的兜底
+    private func makeEntryWithoutTimestamp(
+        sessionID: String,
+        model: String,
+        input: Int,
+        output: Int,
+        cwd: String = "/test"
+    ) -> ParsedUsageEntry {
+        let id = UUID().uuidString
+        return ParsedUsageEntry(
+            recordUUID: id,
+            messageId: id,
+            requestId: nil,
+            sessionID: sessionID,
+            timestamp: nil,
+            model: model,
+            cwd: cwd,
+            agentId: nil,
+            usage: TokenUsage(
+                inputTokens: input,
+                cacheCreationInputTokens: 0,
+                cacheReadInputTokens: 0,
+                outputTokens: output,
+                serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+                serviceTier: "standard",
+                cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+                inferenceGeo: "",
+                iterations: [],
+                speed: "standard"
+            ),
+            isSubagent: false,
+            provider: .claude
+        )
+    }
+
     private func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
         let components = DateComponents(year: year, month: month, day: day)
+        return Calendar.current.date(from: components)!
+    }
+
+    /// 构造带具体小时/分钟的 Date,用于小时聚合测试
+    private func dateTime(_ year: Int, _ month: Int, _ day: Int,
+                          _ hour: Int, _ minute: Int) -> Date {
+        let components = DateComponents(year: year, month: month, day: day,
+                                        hour: hour, minute: minute)
         return Calendar.current.date(from: components)!
     }
 }
