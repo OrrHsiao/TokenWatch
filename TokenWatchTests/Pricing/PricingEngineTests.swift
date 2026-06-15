@@ -229,6 +229,29 @@ struct PricingEngineTests {
         #expect(pricing == nil)
     }
 
+    @Test("provider 前缀剥离 - opencode huoshan-zijie/glm-5.1 应命中 glm-5.1")
+    func providerPrefixStrippingGLM() {
+        // 回归:opencode 把上游 providerID 拼到 modelID 前(huoshan-zijie/GLM-5.1),
+        // 整串既没精确命中也没前缀命中,需要剥掉 "{provider}/" 后用裸 modelID 再查一次,
+        // 否则会落到 cost=0 的 fallback,与 ccusage 行为不一致
+        let pricing = PricingTable.pricing(for: "huoshan-zijie/GLM-5.1")
+        #expect(pricing != nil)
+        #expect(pricing?.inputPrice == 1.4)
+        #expect(pricing?.outputPrice == 4.4)
+    }
+
+    @Test("provider 前缀剥离 - 任意未知 provider 前缀都应回退到裸 modelID")
+    func providerPrefixStrippingArbitrary() {
+        let pricing = PricingTable.pricing(for: "siliconflow/glm-5.1")
+        #expect(pricing?.inputPrice == 1.4)
+    }
+
+    @Test("provider 前缀剥离 - 裸 modelID 也未知时仍返回 nil")
+    func providerPrefixStrippingStillNil() {
+        let pricing = PricingTable.pricing(for: "anyprovider/totally-unknown-model")
+        #expect(pricing == nil)
+    }
+
     @Test("模型查找 + 成本计算")
     func modelLookupAndCostCalculation() {
         let usage = TokenUsage(

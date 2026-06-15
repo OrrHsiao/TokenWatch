@@ -290,9 +290,15 @@ struct PricingTable: Sendable {
 
     /// 查找定价，匹配优先级：手写表精确 → 手写表前缀（按 candidate key 长度倒序 + 版本号守卫）
     ///                    → LiteLLM 全表精确 → LiteLLM 全表前缀
+    ///                    → 截掉 "{provider}/" 前缀,递归查一次裸 modelID
     ///
     /// 手写表优先于 LiteLLM:手写表的 displayName / 200k tier / fastMultiplier 元数据更准确
     /// 且语义稳定;LiteLLM 全表用于兜底未知 modelID(如带 provider 前缀的 Bedrock / Vertex 别名)。
+    ///
+    /// "{provider}/{model}" 前缀剥离用于 opencode 之类把 providerID 拼到 modelID 前的源:
+    /// 如 "huoshan-zijie/glm-5.1" 整串 miss 后,以 "glm-5.1" 再查一次。
+    /// LiteLLM 全表里有些 key 本身就含 `/`(如 `bedrock/anthropic.claude-3-5-sonnet`),
+    /// 这些会在前面的精确/前缀阶段优先命中,不会被错误剥离。
     ///
     /// - Parameter modelID: 从 JSONL 中读取的原始模型名称
     /// - Returns: 匹配的定价条目，未找到返回 nil
@@ -320,6 +326,19 @@ struct PricingTable: Sendable {
 
         // 3. LiteLLM 全表兜底
         // 覆盖手写表外的 2000+ 条目(Bedrock anthropic.* / Vertex / Azure / DeepSeek 等)
-        return LiteLLMPriceCatalog.shared.pricing(forNormalized: normalized)
+        if let pricing = LiteLLMPriceCatalog.shared.pricing(forNormalized: normalized) {
+            return pricing
+        }
+
+        // 4. 剥离 "{provider}/" 前缀重试 — 处理 opencode 等把上游 provider 拼到 modelID 前的源
+        // 与 ccusage 行为对齐:同一 base 模型走不同代理时,统一回退到官方价位
+        if let slashIdx = normalized.firstIndex(of: "/") {
+            let bareModel = String(normalized[normalized.index(after: slashIdx)...])
+            if !bareModel.isEmpty && bareModel != normalized {
+                return pricing(for: bareModel)
+            }
+        }
+
+        return nil
     }
 }
