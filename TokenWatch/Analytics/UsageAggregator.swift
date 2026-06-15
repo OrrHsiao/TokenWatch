@@ -41,6 +41,7 @@ final class UsageAggregator: Sendable {
 
         return AggregatedStats(
             overall: aggregateEntries(entries),
+            byHour: groupAndAggregate(entries) { hourKey(from: $0.timestamp, calendar: calendar) },
             byDay: groupAndAggregate(entries) { dayKey(from: $0.timestamp, calendar: calendar) },
             byWeek: groupAndAggregate(entries) { weekKey(from: $0.timestamp, calendar: isoCalendar) },
             byMonth: groupAndAggregate(entries) { monthKey(from: $0.timestamp, calendar: calendar) },
@@ -154,5 +155,21 @@ final class UsageAggregator: Sendable {
             return "unknown"
         }
         return String(format: "%d-W%02d", year, week)
+    }
+
+    /// 生成小时 key,格式: "yyyy-MM-ddTHH"(如 "2026-06-13T14")
+    /// 设计原因:与 dayKey 共用同一份本地 Calendar,保证 byHour 的所有 key 都能与
+    /// byDay 的 key 通过 prefix("yyyy-MM-dd") 完全匹配,UI 取数零歧义。
+    /// 与 ISO 8601 datetime 同款分隔符 'T',字符串字典序即时间序。
+    private func hourKey(from date: Date?, calendar: Calendar) -> String {
+        guard let date = date else { return "unknown" }
+        let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day,
+              let hour = components.hour else {
+            return "unknown"
+        }
+        return String(format: "%04d-%02d-%02dT%02d", year, month, day, hour)
     }
 }
