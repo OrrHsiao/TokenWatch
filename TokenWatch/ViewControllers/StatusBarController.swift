@@ -33,7 +33,6 @@ private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
 final class StatusBarController {
 
     private static let refreshInterval: TimeInterval = 30
-    private static let iconAssetName = "StatusBarIcon"
 
     private let viewModel: TokenStatsViewModel
     private let statusItem: NSStatusItem
@@ -101,7 +100,10 @@ final class StatusBarController {
         button.title = ""
 
         let iconView = NSImageView()
-        iconView.image = NSImage(named: Self.iconAssetName)
+        iconView.image = NSImage(
+            systemSymbolName: "gauge.with.dots.needle.bottom.50percent",
+            accessibilityDescription: "TokenWatch"
+        )
         // 状态栏图标做成 template 由系统按主题自动反色
         iconView.image?.isTemplate = true
         iconView.imageScaling = .scaleProportionallyDown
