@@ -29,10 +29,20 @@ final class UsageAggregator: Sendable {
         // 避免每条 entry 在 keySelector 内重复访问 Calendar.current 的 thread-local 拷贝
         let calendar = Calendar.current
 
+        // 周聚合必须用 ISO 8601 周(周一起点 + minimumDaysInFirstWeek=4)
+        // 设计原因:Calendar.current 在 zh_CN 等 locale 下 firstWeekday=1(周日)且
+        // minimumDaysInFirstWeek=5,会与 ccusage / Rust chrono 输出的周编号偏移 1,
+        // 同时把 (周一) 错误划入上一周(周日起点),导致与 ccusage weekly 对账时数字漂移。
+        // 改用专用 ISO 日历仅作 week 分组,day/month 仍沿用本地 Calendar。
+        var isoCalendar = Calendar(identifier: .iso8601)
+        isoCalendar.timeZone = calendar.timeZone
+        isoCalendar.firstWeekday = 2
+        isoCalendar.minimumDaysInFirstWeek = 4
+
         return AggregatedStats(
             overall: aggregateEntries(entries),
             byDay: groupAndAggregate(entries) { dayKey(from: $0.timestamp, calendar: calendar) },
-            byWeek: groupAndAggregate(entries) { weekKey(from: $0.timestamp, calendar: calendar) },
+            byWeek: groupAndAggregate(entries) { weekKey(from: $0.timestamp, calendar: isoCalendar) },
             byMonth: groupAndAggregate(entries) { monthKey(from: $0.timestamp, calendar: calendar) },
             bySession: groupAndAggregate(entries) { $0.sessionID },
             byModel: groupAndAggregate(entries) { $0.model },
@@ -135,6 +145,8 @@ final class UsageAggregator: Sendable {
     }
 
     /// 生成 ISO 8601 周 key，格式: "2026-W24"
+    /// 调用方需传入 ISO 8601 日历(`firstWeekday=2`, `minimumDaysInFirstWeek=4`),
+    /// 否则 yearForWeekOfYear/weekOfYear 会按 locale 的本地周规则输出,与 ccusage 不一致
     private func weekKey(from date: Date?, calendar: Calendar) -> String {
         guard let date = date else { return "unknown" }
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)

@@ -111,6 +111,41 @@ struct UsageAggregatorTests {
         #expect(stats.byWeek.count == 2)
     }
 
+    @Test("周聚合使用 ISO 8601 规则(周一起点),与 ccusage 对齐")
+    func weeklyAggregationFollowsISO8601() {
+        // 2026-05-03 是周日 → ISO W18 末日
+        // 2026-05-04 是周一 → ISO W19 首日
+        // 若 app 误用 zh_CN 周(周日起点),两者会被错误归入同一周,
+        // 与 ccusage codex weekly 对账时金额漂移
+        let entries = [
+            makeEntry(sessionID: "s1", date: date(2026, 5, 3),
+                      model: "gpt-5.5", input: 100, output: 10),
+            makeEntry(sessionID: "s2", date: date(2026, 5, 4),
+                      model: "gpt-5.5", input: 200, output: 20),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+
+        #expect(stats.byWeek.count == 2, "周日(05-03)与周一(05-04)必须落在不同 ISO 周")
+        #expect(stats.byWeek["2026-W18"]?.inputTokens == 100)
+        #expect(stats.byWeek["2026-W19"]?.inputTokens == 200)
+    }
+
+    @Test("周编号遵循 ISO 8601(2026-04-07 周二归 W15)")
+    func weeklyKeyMatchesISOWeekNumber() {
+        // ISO 8601: 2026-04-07 是 W15 周二
+        // zh_CN  : 同日是 W14 周三(firstWeekday=1, minDays=5 → 整年偏移 1)
+        let entries = [
+            makeEntry(sessionID: "s1", date: date(2026, 4, 7),
+                      model: "gpt-5.4", input: 100, output: 10),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+
+        #expect(stats.byWeek["2026-W15"]?.inputTokens == 100)
+        #expect(stats.byWeek["2026-W14"] == nil)
+    }
+
     @Test("按会话聚合")
     func sessionAggregation() {
         let entries = [
