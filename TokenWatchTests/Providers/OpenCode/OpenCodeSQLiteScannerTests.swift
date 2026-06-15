@@ -33,7 +33,8 @@ struct OpenCodeSQLiteScannerTests {
                         ])
 
         let rows = try scanner.scanAll(in: dir)
-        #expect(rows.count == 2)
+        // 用 #require 守护下标访问:#expect 失败不会终止执行,直接 rows[0] 会触发数组越界 trap 把测试进程打挂
+        try #require(rows.count == 2, "应过滤出 2 条 assistant 行,实际: \(rows.count) → \(rows.map(\.id))")
         // ORDER BY time_created
         #expect(rows[0].id == "msg_1")
         #expect(rows[0].sessionID == "ses_a")
