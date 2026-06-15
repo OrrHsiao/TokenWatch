@@ -121,13 +121,15 @@ struct ClaudeJSONLParserTests {
             recordUUID: "uuid-1", messageId: "msg-A", requestId: "req-1",
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "uuid-2", messageId: "msg-A", requestId: "req-1",
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
 
         let unique = Array(Set([entry1, entry2]))
@@ -149,13 +151,15 @@ struct ClaudeJSONLParserTests {
             recordUUID: "u1", messageId: "msg-A", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "u2", messageId: "msg-B", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
 
         let unique = Array(Set([entry1, entry2]))

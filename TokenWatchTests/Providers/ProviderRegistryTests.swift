@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TokenWatch
 
@@ -19,5 +20,25 @@ struct ProviderRegistryTests {
     func lookupById() {
         let claude = ProviderRegistry.provider(for: .claude)
         #expect(claude?.id == .claude)
+    }
+
+    @Test("allProviders 含 .opencode")
+    func containsOpenCode() {
+        let ids = ProviderRegistry.allProviders.map(\.id)
+        #expect(ids.contains(.opencode))
+    }
+
+    @Test("opencode provider 默认目录指向 ~/.local/share/opencode")
+    func openCodeDefaultDirectory() {
+        let provider = ProviderRegistry.provider(for: .opencode)
+        let expected = NSString("~/.local/share/opencode").expandingTildeInPath
+        #expect(provider?.defaultDirectoryPath == expected)
+    }
+
+    @Test("hasReasoningDimension:仅 opencode=true,Claude/Codex=false")
+    func reasoningDimensionFlags() {
+        #expect(ProviderRegistry.provider(for: .claude)?.hasReasoningDimension == false)
+        #expect(ProviderRegistry.provider(for: .codex)?.hasReasoningDimension == false)
+        #expect(ProviderRegistry.provider(for: .opencode)?.hasReasoningDimension == true)
     }
 }

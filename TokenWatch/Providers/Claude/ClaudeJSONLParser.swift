@@ -65,7 +65,9 @@ final class ClaudeJSONLParser: Sendable {
                 agentId: fileInfo.agentId,
                 usage: usage,
                 isSubagent: fileInfo.isSubagent,
-                provider: .claude
+                provider: .claude,
+                upstreamProviderID: nil,
+                upstreamCost: nil
             ))
         }
 

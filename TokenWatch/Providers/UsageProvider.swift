@@ -19,6 +19,9 @@ protocol UsageProvider: Sendable {
     /// 该 provider 是否产出 cache write tokens（决定 UI 是否展示该行）
     /// Claude=true，Codex=false
     var hasCacheWriteDimension: Bool { get }
+    /// 该 provider 是否暴露 reasoning token 维度(决定 UI 是否展示该行)
+    /// Claude=false(无该字段)、Codex=false(reasoning 已并入 output)、opencode=true
+    var hasReasoningDimension: Bool { get }
 
     /// 扫描+解析，产出统一条目
     /// - Parameter rootURL: 已通过 Security-Scoped Bookmark 取得访问权限的根目录

@@ -10,6 +10,8 @@ struct CodexProvider: UsageProvider {
     let openPanelMessage = "请选择 ~/.codex 目录以授权 TokenWatch 读取 Codex 用量数据"
     /// Codex 不暴露 cache write 概念，UI 该 Tab 不展示该行
     let hasCacheWriteDimension = false
+    /// Codex 的 reasoning 已并入 output_tokens,不单列维度
+    let hasReasoningDimension = false
 
     private let scanner = CodexRolloutScanner()
     private let parser = CodexRolloutParser()

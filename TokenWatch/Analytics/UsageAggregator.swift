@@ -57,6 +57,7 @@ final class UsageAggregator: Sendable {
     /// 聚合一组条目为 UsageSummary，内含按模型细分
     private func aggregateEntries(_ entries: [ParsedUsageEntry]) -> UsageSummary {
         var totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheCreation = 0
+        var totalReasoning = 0
         var totalCost = 0.0
         var modelBreakdown: [String: UsageSummary] = [:]
 
@@ -64,6 +65,7 @@ final class UsageAggregator: Sendable {
 
         for (model, modelEntries) in byModel {
             var mInput = 0, mOutput = 0, mCacheRead = 0, mCacheCreation = 0
+            var mReasoning = 0
             var mCost = 0.0
 
             for entry in modelEntries {
@@ -73,18 +75,26 @@ final class UsageAggregator: Sendable {
                 // cache_creation_input_tokens 与 ephemeral_5m/1h 是总分关系
                 // 由 TokenUsage.totalCacheCreationTokens 统一处理，避免 double-count
                 mCacheCreation += entry.usage.totalCacheCreationTokens
+                mReasoning += entry.usage.reasoningTokens
 
-                let (cost, _) = pricingEngine.calculateCost(
+                // Cost fallback:PricingEngine 查不到模型(常见于 opencode 上游小众模型)
+                // 时退回到数据源自带 cost(opencode 的 message.data.cost)
+                let (engineCost, pricing) = pricingEngine.calculateCost(
                     usage: entry.usage,
                     model: entry.model
                 )
-                mCost += cost
+                if pricing == nil, let upstream = entry.upstreamCost, upstream > 0 {
+                    mCost += upstream
+                } else {
+                    mCost += engineCost
+                }
             }
 
             totalInput += mInput
             totalOutput += mOutput
             totalCacheRead += mCacheRead
             totalCacheCreation += mCacheCreation
+            totalReasoning += mReasoning
             totalCost += mCost
 
             modelBreakdown[model] = UsageSummary(
@@ -92,7 +102,8 @@ final class UsageAggregator: Sendable {
                 outputTokens: mOutput,
                 cacheReadTokens: mCacheRead,
                 cacheCreationTokens: mCacheCreation,
-                totalTokens: mInput + mOutput + mCacheRead + mCacheCreation,
+                reasoningTokens: mReasoning,
+                totalTokens: mInput + mOutput + mCacheRead + mCacheCreation + mReasoning,
                 cost: mCost,
                 entryCount: modelEntries.count,
                 modelBreakdown: [:]
@@ -104,7 +115,8 @@ final class UsageAggregator: Sendable {
             outputTokens: totalOutput,
             cacheReadTokens: totalCacheRead,
             cacheCreationTokens: totalCacheCreation,
-            totalTokens: totalInput + totalOutput + totalCacheRead + totalCacheCreation,
+            reasoningTokens: totalReasoning,
+            totalTokens: totalInput + totalOutput + totalCacheRead + totalCacheCreation + totalReasoning,
             cost: totalCost,
             entryCount: entries.count,
             modelBreakdown: modelBreakdown

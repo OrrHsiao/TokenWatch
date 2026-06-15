@@ -7,6 +7,7 @@ struct TokenUsage: Decodable, Sendable {
     let cacheCreationInputTokens: Int
     let cacheReadInputTokens: Int
     let outputTokens: Int
+    let reasoningTokens: Int
     let serverToolUse: ServerToolUse
     let serviceTier: String
     let cacheCreation: CacheCreation
@@ -19,6 +20,7 @@ struct TokenUsage: Decodable, Sendable {
         case cacheCreationInputTokens = "cache_creation_input_tokens"
         case cacheReadInputTokens = "cache_read_input_tokens"
         case outputTokens = "output_tokens"
+        case reasoningTokens = "reasoning_tokens"
         case serverToolUse = "server_tool_use"
         case serviceTier = "service_tier"
         case cacheCreation = "cache_creation"
@@ -36,6 +38,7 @@ struct TokenUsage: Decodable, Sendable {
         cacheCreationInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheCreationInputTokens) ?? 0
         cacheReadInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheReadInputTokens) ?? 0
         outputTokens = try container.decode(Int.self, forKey: .outputTokens)
+        reasoningTokens = try container.decodeIfPresent(Int.self, forKey: .reasoningTokens) ?? 0
         serverToolUse = try container.decodeIfPresent(ServerToolUse.self, forKey: .serverToolUse)
             ?? ServerToolUse(webSearchRequests: 0, webFetchRequests: 0)
         serviceTier = try container.decodeIfPresent(String.self, forKey: .serviceTier) ?? ""
@@ -53,6 +56,7 @@ struct TokenUsage: Decodable, Sendable {
         cacheCreationInputTokens: Int,
         cacheReadInputTokens: Int,
         outputTokens: Int,
+        reasoningTokens: Int = 0,
         serverToolUse: ServerToolUse,
         serviceTier: String,
         cacheCreation: CacheCreation,
@@ -64,6 +68,7 @@ struct TokenUsage: Decodable, Sendable {
         self.cacheCreationInputTokens = cacheCreationInputTokens
         self.cacheReadInputTokens = cacheReadInputTokens
         self.outputTokens = outputTokens
+        self.reasoningTokens = reasoningTokens
         self.serverToolUse = serverToolUse
         self.serviceTier = serviceTier
         self.cacheCreation = cacheCreation
