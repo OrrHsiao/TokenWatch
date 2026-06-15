@@ -38,8 +38,9 @@ final class TokenStatsViewModel: Sendable {
     }
 
     /// 启动时并发触发所有 provider 的 loadStats
-    /// 设计原因:Swift 6 region-based isolation checker 在 `withTaskGroup` + `@MainActor` 闭包上有 bug,
-    /// 故改用裸 Task 并发触发,各 task 共享主 actor 串行,但 IO/解析重活在 detached task 内执行
+    /// 设计原因:Swift 6 region-based isolation checker 在 `withTaskGroup` 闭包中
+    /// 显式标 `@MainActor [weak self]` 时会崩(编译器内部错误);
+    /// 改为 `await self.loadStats(...)` 让 main actor 自动 hop,行为等价且 self 由 AppDelegate 持有不会循环引用。
     func loadAllStats() async {
         await withTaskGroup(of: Void.self) { group in
             for provider in ProviderRegistry.allProviders {
