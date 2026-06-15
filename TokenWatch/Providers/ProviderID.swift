@@ -5,4 +5,5 @@ import Foundation
 enum ProviderID: String, Sendable, CaseIterable, Hashable, Codable {
     case claude
     case codex
+    case opencode
 }

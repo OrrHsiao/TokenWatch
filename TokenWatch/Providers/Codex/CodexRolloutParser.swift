@@ -107,7 +107,9 @@ final class CodexRolloutParser: Sendable {
                     agentId: nil,
                     usage: usage,
                     isSubagent: false,
-                    provider: .codex
+                    provider: .codex,
+                    upstreamProviderID: nil,
+                    upstreamCost: nil
                 ))
 
             case .unknown:

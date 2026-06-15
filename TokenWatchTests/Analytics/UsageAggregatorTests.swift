@@ -270,6 +270,83 @@ struct UsageAggregatorTests {
         #expect(stats.overall.modelBreakdown["deepseek-v4-flash"]?.inputTokens == 100)
     }
 
+    // MARK: - Reasoning 聚合
+
+    @Test("reasoningTokens 参与 byModel/byDay/overall 求和与 totalTokens")
+    func reasoningAggregation() {
+        let entries = [
+            makeEntry(sessionID: "s1", date: date(2026, 6, 13), model: "gpt-5",
+                      input: 100, output: 50, reasoning: 200),
+            makeEntry(sessionID: "s1", date: date(2026, 6, 13), model: "gpt-5",
+                      input: 200, output: 100, reasoning: 400),
+            makeEntry(sessionID: "s2", date: date(2026, 6, 14), model: "gpt-5-mini",
+                      input: 50, output: 20, reasoning: 30),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+
+        #expect(stats.overall.reasoningTokens == 630)
+        // totalTokens 包含 reasoning:300+150+30 input/output + 0 cache + 630 reasoning = 1110
+        #expect(stats.overall.totalTokens
+                == stats.overall.inputTokens + stats.overall.outputTokens
+                 + stats.overall.cacheReadTokens + stats.overall.cacheCreationTokens
+                 + stats.overall.reasoningTokens)
+
+        #expect(stats.byModel["gpt-5"]?.reasoningTokens == 600)
+        #expect(stats.byModel["gpt-5-mini"]?.reasoningTokens == 30)
+        #expect(stats.byDay["2026-06-13"]?.reasoningTokens == 600)
+        #expect(stats.byDay["2026-06-14"]?.reasoningTokens == 30)
+    }
+
+    @Test("reasoning=0 时不影响既有维度求和(向后兼容)")
+    func reasoningZeroIsNoOp() {
+        let entries = [
+            makeEntry(sessionID: "s1", date: date(2026, 6, 13), model: "claude-sonnet-4-5",
+                      input: 100, output: 50, reasoning: 0),
+        ]
+        let stats = aggregator.aggregate(entries)
+        #expect(stats.overall.reasoningTokens == 0)
+        #expect(stats.overall.totalTokens == 150)  // 100 + 50,不被 reasoning 污染
+    }
+
+    // MARK: - Cost Fallback
+
+    @Test("PricingEngine miss 且 upstreamCost > 0 → 走 fallback")
+    func upstreamCostFallback() {
+        // "private-unknown-model" 必定不在 PricingTable 中
+        let entries = [
+            makeEntry(sessionID: "s1", date: date(2026, 6, 13),
+                      model: "private-unknown-model", input: 1000, output: 500,
+                      upstreamCost: 0.123),
+        ]
+        let stats = aggregator.aggregate(entries)
+        #expect(stats.overall.cost == 0.123)
+    }
+
+    @Test("PricingEngine miss 且 upstreamCost 缺失 → cost 为 0")
+    func upstreamCostFallbackMissing() {
+        let entries = [
+            makeEntry(sessionID: "s1", date: date(2026, 6, 13),
+                      model: "private-unknown-model", input: 1000, output: 500),
+        ]
+        let stats = aggregator.aggregate(entries)
+        #expect(stats.overall.cost == 0.0)
+    }
+
+    @Test("upstreamCost 不污染 PricingEngine 命中的模型 cost")
+    func upstreamCostDoesNotPolluteEngineCost() {
+        // claude-sonnet-4-5 必在 PricingTable 中,即便传了 upstreamCost 也应忽略
+        let claudeEntries = [
+            makeEntry(sessionID: "s1", date: date(2026, 6, 13),
+                      model: "claude-sonnet-4-5", input: 1000, output: 500,
+                      upstreamCost: 999.99),
+        ]
+        let claudeStats = aggregator.aggregate(claudeEntries)
+        #expect(claudeStats.overall.cost > 0.0)
+        #expect(claudeStats.overall.cost < 100.0,
+                "命中 PricingEngine 应使用引擎计算的小额 cost,而非 upstream 999.99")
+    }
+
     // MARK: - Helpers
 
     private func makeEntry(
@@ -280,9 +357,11 @@ struct UsageAggregatorTests {
         output: Int,
         cacheRead: Int = 0,
         cacheCreation: Int = 0,
-        cwd: String = "/test"
+        reasoning: Int = 0,
+        cwd: String = "/test",
+        upstreamProviderID: String? = nil,
+        upstreamCost: Double? = nil
     ) -> ParsedUsageEntry {
-        // 每条记录使用全新 UUID 作为 messageId，确保聚合测试中不会被 dedup 合并
         let id = UUID().uuidString
         return ParsedUsageEntry(
             recordUUID: id,
@@ -298,6 +377,7 @@ struct UsageAggregatorTests {
                 cacheCreationInputTokens: cacheCreation,
                 cacheReadInputTokens: cacheRead,
                 outputTokens: output,
+                reasoningTokens: reasoning,
                 serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
                 serviceTier: "standard",
                 cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
@@ -306,7 +386,9 @@ struct UsageAggregatorTests {
                 speed: "standard"
             ),
             isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: upstreamProviderID,
+            upstreamCost: upstreamCost
         )
     }
 
@@ -341,7 +423,9 @@ struct UsageAggregatorTests {
                 speed: "standard"
             ),
             isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil,
+            upstreamCost: nil
         )
     }
 

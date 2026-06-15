@@ -21,6 +21,10 @@ struct ParsedUsageEntry: Sendable, Hashable {
     let isSubagent: Bool
     /// 数据源标识（用于将来跨 provider 合并视图区分来源）
     let provider: ProviderID
+    /// opencode 的上游 provider 标识(如 "anthropic" / "huoshan-zijie");Claude/Codex 填 nil
+    let upstreamProviderID: String?
+    /// 数据源自带的单条 cost(USD);PricingEngine 查不到模型时作为 fallback;Claude/Codex 填 nil
+    let upstreamCost: Double?
 
     /// 去重键
     /// - Claude:`messageId`(默认)或 `messageId:requestId`(`requestId` 存在时拼接)

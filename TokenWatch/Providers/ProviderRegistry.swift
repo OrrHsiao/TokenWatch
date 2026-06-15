@@ -6,7 +6,8 @@ enum ProviderRegistry {
     /// 顺序即 UI Tab 顺序
     static let allProviders: [any UsageProvider] = [
         ClaudeProvider(),
-        CodexProvider()
+        CodexProvider(),
+        OpenCodeProvider()
     ]
 
     /// 按 id 查找已注册的 provider 实例

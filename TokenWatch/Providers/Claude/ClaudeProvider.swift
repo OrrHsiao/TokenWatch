@@ -10,6 +10,7 @@ struct ClaudeProvider: UsageProvider {
     let defaultDirectoryPath = NSString("~/.claude").expandingTildeInPath
     let openPanelMessage = "请选择 ~/.claude 目录以授权 TokenWatch 读取 Claude Code 用量数据"
     let hasCacheWriteDimension = true
+    let hasReasoningDimension = false
 
     private let scanner = ClaudeJSONLScanner()
     private let parser = ClaudeJSONLParser()

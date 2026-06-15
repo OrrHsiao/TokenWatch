@@ -95,6 +95,33 @@ struct TokenUsageDecodingTests {
         #expect(usage.cacheCreation.ephemeral1hInputTokens == 0)
     }
 
+    @Test("解析含 reasoning_tokens 字段(opencode/GPT-5 系列)")
+    func decodeWithReasoningTokens() throws {
+        let json = """
+        {
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "reasoning_tokens": 250
+        }
+        """
+        let usage = try JSONDecoder().decode(TokenUsage.self, from: json.data(using: .utf8)!)
+        #expect(usage.inputTokens == 100)
+        #expect(usage.outputTokens == 50)
+        #expect(usage.reasoningTokens == 250)
+    }
+
+    @Test("缺失 reasoning_tokens 默认 0(向后兼容 Claude/Codex)")
+    func reasoningTokensDefaultsToZero() throws {
+        let json = """
+        {
+            "input_tokens": 10,
+            "output_tokens": 5
+        }
+        """
+        let usage = try JSONDecoder().decode(TokenUsage.self, from: json.data(using: .utf8)!)
+        #expect(usage.reasoningTokens == 0)
+    }
+
     // MARK: - cache_creation 派生属性
 
     @Test("有 ephemeral 细分时优先使用细分（避免双计扁平字段）")
@@ -227,13 +254,15 @@ struct TokenUsageDecodingTests {
             recordUUID: "uuid-1", messageId: "msg-A", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage1, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "uuid-2", messageId: "msg-A", requestId: nil,
             sessionID: "s2", timestamp: Date(), model: "deepseek-v4-flash",
             cwd: "/other", agentId: nil, usage: usage2, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
 
         #expect(entry1 == entry2)
@@ -248,13 +277,15 @@ struct TokenUsageDecodingTests {
             recordUUID: "uuid-1", messageId: "msg-A", requestId: nil,
             sessionID: "s1", timestamp: now, model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "uuid-2", messageId: "msg-B", requestId: nil,
             sessionID: "s1", timestamp: now, model: "deepseek-v4-pro",
             cwd: "/test", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         #expect(entry1 != entry2)
     }
@@ -268,13 +299,15 @@ struct TokenUsageDecodingTests {
             recordUUID: "u1", messageId: "msg-X", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/p", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         let entry2 = ParsedUsageEntry(
             recordUUID: "u2", messageId: "msg-X", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "deepseek-v4-pro",
             cwd: "/p", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         #expect(entry1 == entry2)
     }
@@ -286,13 +319,15 @@ struct TokenUsageDecodingTests {
             recordUUID: "u1", messageId: "msg-Y", requestId: "req-1",
             sessionID: "s1", timestamp: Date(), model: "claude-sonnet-4-5",
             cwd: "/p", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         let withoutReq = ParsedUsageEntry(
             recordUUID: "u2", messageId: "msg-Y", requestId: nil,
             sessionID: "s1", timestamp: Date(), model: "claude-sonnet-4-5",
             cwd: "/p", agentId: nil, usage: usage, isSubagent: false,
-            provider: .claude
+            provider: .claude,
+            upstreamProviderID: nil, upstreamCost: nil
         )
         // msg-Y 与 msg-Y:req-1 是不同键 → 不应去重
         #expect(withReq != withoutReq)

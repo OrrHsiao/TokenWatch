@@ -7,6 +7,7 @@ struct UsageSummary: Sendable {
     let outputTokens: Int
     let cacheReadTokens: Int
     let cacheCreationTokens: Int
+    let reasoningTokens: Int
     let totalTokens: Int
     let cost: Double             // USD
     let entryCount: Int          // 包含的 assistant 记录数
@@ -17,6 +18,7 @@ struct UsageSummary: Sendable {
         UsageSummary(
             inputTokens: 0, outputTokens: 0,
             cacheReadTokens: 0, cacheCreationTokens: 0,
+            reasoningTokens: 0,
             totalTokens: 0, cost: 0, entryCount: 0,
             modelBreakdown: [:]
         )
