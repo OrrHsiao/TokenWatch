@@ -5,7 +5,7 @@ import os.log
 /// macOS 状态栏控制器
 ///
 /// 长驻一个图标 + 文本(今日所有 provider 累加 token 数),
-/// 定时(30s)拉刷新,点击弹下拉菜单(打开主窗口 / 立即刷新 / 退出)。
+/// 定时(30s)拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 退出)。
 ///
 /// 设计原则:
 /// - 不直接读 JSONL / 不做聚合,完全复用 TokenStatsViewModel.states.byDay
@@ -17,6 +17,8 @@ final class StatusBarController {
 
     private let viewModel: TokenStatsViewModel
     private let statusItem: NSStatusItem
+    private let popover = NSPopover()
+    private let statusMenu = NSMenu()
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
@@ -41,6 +43,7 @@ final class StatusBarController {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         configureButton()
+        configurePopover()
         installMenu()
         subscribeToViewModel()
         startRefreshTimer()
@@ -80,6 +83,9 @@ final class StatusBarController {
         // 关掉 button 自带的 image / title 渲染,统一用自定义布局
         button.image = nil
         button.title = ""
+        button.target = self
+        button.action = #selector(handleStatusItemClick)
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         // 图标内容由 renderTitle() 根据当日 token 量动态切换,这里只设公共属性。
         // 状态栏图标做成 template 由系统按主题自动反色
@@ -109,6 +115,17 @@ final class StatusBarController {
             rootStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
             rootStack.centerYAnchor.constraint(equalTo: button.centerYAnchor),
         ])
+    }
+
+    private func configurePopover() {
+        let contentSize = NSSize(width: 280, height: 180)
+        let contentViewController = NSViewController()
+        contentViewController.view = EmptyStatusPopoverView(frame: NSRect(origin: .zero, size: contentSize))
+        contentViewController.preferredContentSize = contentSize
+
+        popover.behavior = .transient
+        popover.contentSize = contentSize
+        popover.contentViewController = contentViewController
     }
 
     /// 拼装两行富文本:数字加粗,"Tokens" 字号小一号
@@ -144,15 +161,13 @@ final class StatusBarController {
     }
 
     private func installMenu() {
-        let menu = NSMenu()
-
         let openItem = NSMenuItem(
             title: "打开 TokenWatch",
             action: #selector(openMainWindow),
             keyEquivalent: "0"
         )
         openItem.target = self
-        menu.addItem(openItem)
+        statusMenu.addItem(openItem)
 
         let refreshItem = NSMenuItem(
             title: "立即刷新",
@@ -160,9 +175,9 @@ final class StatusBarController {
             keyEquivalent: "r"
         )
         refreshItem.target = self
-        menu.addItem(refreshItem)
+        statusMenu.addItem(refreshItem)
 
-        menu.addItem(NSMenuItem.separator())
+        statusMenu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(
             title: "退出 TokenWatch",
@@ -170,9 +185,7 @@ final class StatusBarController {
             keyEquivalent: "q"
         )
         quitItem.target = self
-        menu.addItem(quitItem)
-
-        statusItem.menu = menu
+        statusMenu.addItem(quitItem)
     }
 
     private func subscribeToViewModel() {
@@ -286,6 +299,38 @@ final class StatusBarController {
 
     // MARK: - Actions
 
+    @objc private func handleStatusItemClick() {
+        guard let event = NSApp.currentEvent else {
+            togglePopover()
+            return
+        }
+
+        switch StatusBarClickAction.resolve(
+            eventType: event.type,
+            modifierFlags: event.modifierFlags
+        ) {
+        case .togglePopover:
+            togglePopover()
+        case .showMenu:
+            showStatusMenu()
+        }
+    }
+
+    private func togglePopover() {
+        guard let button = statusItem.button else { return }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+    }
+
+    private func showStatusMenu() {
+        guard let button = statusItem.button else { return }
+        popover.performClose(nil)
+        statusMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+    }
+
     @objc private func openMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
         // 主窗口在 storyboard 中已设 releasedWhenClosed="NO",
@@ -305,5 +350,44 @@ final class StatusBarController {
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
+    }
+}
+
+/// 状态栏按钮点击后的交互意图。
+///
+/// 抽成纯 helper,避免单元测试依赖真实 `NSStatusItem` 或鼠标事件对象。
+enum StatusBarClickAction {
+    case togglePopover
+    case showMenu
+
+    static func resolve(
+        eventType: NSEvent.EventType,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> StatusBarClickAction {
+        if eventType == .rightMouseUp || modifierFlags.contains(.control) {
+            return .showMenu
+        }
+        return .togglePopover
+    }
+}
+
+/// 空状态栏 popover 根视图。
+///
+/// 使用系统窗口背景色,让浅色和暗黑模式都由 AppKit 自动适配。
+final class EmptyStatusPopoverView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("EmptyStatusPopoverView 不支持 storyboard 初始化")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     }
 }
