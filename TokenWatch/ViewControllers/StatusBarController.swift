@@ -20,6 +20,7 @@ final class StatusBarController {
     private let popover = NSPopover()
     private let statusMenu = NSMenu()
     private var observerToken: TokenStatsViewModel.ObservationToken?
+    private var popoverCloseObserver: NSObjectProtocol?
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
 
@@ -60,6 +61,9 @@ final class StatusBarController {
         MainActor.assumeIsolated {
             refreshTimer?.invalidate()
             loadingAnimationTimer?.invalidate()
+            if let token = popoverCloseObserver {
+                NotificationCenter.default.removeObserver(token)
+            }
         }
     }
 
@@ -73,6 +77,11 @@ final class StatusBarController {
             viewModel.removeObserver(token)
             observerToken = nil
         }
+        if let token = popoverCloseObserver {
+            NotificationCenter.default.removeObserver(token)
+            popoverCloseObserver = nil
+        }
+        popover.performClose(nil)
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 
@@ -126,6 +135,15 @@ final class StatusBarController {
         popover.behavior = .transient
         popover.contentSize = contentSize
         popover.contentViewController = contentViewController
+        popoverCloseObserver = NotificationCenter.default.addObserver(
+            forName: NSPopover.didCloseNotification,
+            object: popover,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.setStatusButtonHighlighted(popoverIsShown: false)
+            }
+        }
     }
 
     /// 拼装两行富文本:数字加粗,"Tokens" 字号小一号
@@ -320,15 +338,22 @@ final class StatusBarController {
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
+            setStatusButtonHighlighted(popoverIsShown: false)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            setStatusButtonHighlighted(popoverIsShown: true)
         }
     }
 
     private func showStatusMenu() {
         guard let button = statusItem.button else { return }
         popover.performClose(nil)
+        setStatusButtonHighlighted(popoverIsShown: false)
         statusMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+    }
+
+    private func setStatusButtonHighlighted(popoverIsShown: Bool) {
+        statusItem.button?.highlight(StatusBarButtonHighlight.isHighlighted(popoverIsShown: popoverIsShown))
     }
 
     @objc private func openMainWindow() {
@@ -368,6 +393,15 @@ enum StatusBarClickAction {
             return .showMenu
         }
         return .togglePopover
+    }
+}
+
+/// 状态栏按钮高亮规则。
+///
+/// Popover 不是 `statusItem.menu` 的系统菜单路径,需要显式让按钮保持菜单栏选中背景。
+enum StatusBarButtonHighlight {
+    static func isHighlighted(popoverIsShown: Bool) -> Bool {
+        popoverIsShown
     }
 }
 

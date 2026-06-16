@@ -27,4 +27,14 @@ struct StatusBarControllerTests {
             modifierFlags: [.control]
         ) == .showMenu)
     }
+
+    /// popover 显示期间应让状态栏按钮保持系统高亮背景。
+    @Test func popoverShownHighlightsStatusButton() {
+        #expect(StatusBarButtonHighlight.isHighlighted(popoverIsShown: true))
+    }
+
+    /// popover 关闭后应清掉状态栏按钮高亮背景。
+    @Test func popoverClosedClearsStatusButtonHighlight() {
+        #expect(!StatusBarButtonHighlight.isHighlighted(popoverIsShown: false))
+    }
 }
