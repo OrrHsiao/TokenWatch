@@ -2,25 +2,6 @@ import AppKit
 import Foundation
 import os.log
 
-/// 垂直居中绘制文字的 NSTextFieldCell
-///
-/// macOS 的 NSTextFieldCell 默认从 frame 顶部开始绘制文字,
-/// 导致在固定高度 label 中文字视觉偏上;
-/// 重写 drawingRect(forBounds:) 让绘制区域在 frame 内垂直居中。
-private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
-    override func drawingRect(forBounds rect: NSRect) -> NSRect {
-        let actualRect = super.drawingRect(forBounds: rect)
-        let preferredSize = cellSize(forBounds: rect)
-        let yOffset = max(0, (actualRect.height - preferredSize.height) / 2.0)
-        return NSRect(
-            x: actualRect.origin.x,
-            y: actualRect.origin.y + yOffset,
-            width: actualRect.width,
-            height: preferredSize.height
-        )
-    }
-}
-
 /// macOS 状态栏控制器
 ///
 /// 长驻一个图标 + 文本(今日所有 provider 累加 token 数),
@@ -40,20 +21,9 @@ final class StatusBarController {
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
 
-    /// 自定义状态栏内容视图所用的 label
-    /// 使用 VerticallyCenteredTextFieldCell 使文字在 frame 内垂直居中,
-    /// 解决 macOS 默认从顶部绘制文字导致视觉偏上的问题
-    private let primaryLabel: NSTextField = {
-        let field = NSTextField(labelWithString: "")
-        field.cell = VerticallyCenteredTextFieldCell()
-        return field
-    }()
-
-    private let secondaryLabel: NSTextField = {
-        let field = NSTextField(labelWithString: "Tokens")
-        field.cell = VerticallyCenteredTextFieldCell()
-        return field
-    }()
+    /// 单 label 双行展示:富文本第一行=数字(Bold 10pt),第二行="Tokens"(6pt)
+    /// 用 paragraphStyle 控制行高,避免行间距过大撑高整体
+    private let titleLabel = NSTextField(labelWithString: "")
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -100,85 +70,71 @@ final class StatusBarController {
         button.title = ""
 
         let iconView = NSImageView()
+        // SF Symbol 默认渲染较小,用 symbolConfiguration 指定 pointSize=18 使图标与之前自定义图片等大
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
         iconView.image = NSImage(
             systemSymbolName: "gauge.with.dots.needle.bottom.50percent",
             accessibilityDescription: "TokenWatch"
-        )
+        )?.withSymbolConfiguration(symbolConfig)
         // 状态栏图标做成 template 由系统按主题自动反色
         iconView.image?.isTemplate = true
         iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 18),
-            iconView.heightAnchor.constraint(equalToConstant: 18),
+            iconView.widthAnchor.constraint(equalToConstant: 20),
+            iconView.heightAnchor.constraint(equalToConstant: 20),
         ])
 
-        configureLabel(primaryLabel, font: .boldSystemFont(ofSize: 10))
-        configureLabel(secondaryLabel, font: .systemFont(ofSize: 6))
-        applyAttributed(primaryLabel, text: "", font: .boldSystemFont(ofSize: 10))
-        applyAttributed(secondaryLabel, text: "Tokens", font: .systemFont(ofSize: 6))
+        titleLabel.alignment = .center
+        titleLabel.lineBreakMode = .byClipping
+        titleLabel.maximumNumberOfLines = 2
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // 布局规则:
-        //   primaryLabel  顶边 = 图标顶边,高度 = 图标的 3/5
-        //   secondaryLabel 底边 = 图标底边,高度 = 图标的 2/5
-        let textContainer = NSView()
-        textContainer.translatesAutoresizingMaskIntoConstraints = false
-        textContainer.addSubview(primaryLabel)
-        textContainer.addSubview(secondaryLabel)
-
-        let rootStack = NSStackView(views: [iconView, textContainer])
+        let rootStack = NSStackView(views: [iconView, titleLabel])
         rootStack.orientation = .horizontal
+        // 整体垂直居中,让图标中线和两行文字的整体中线对齐
         rootStack.alignment = .centerY
         rootStack.spacing = 4
         rootStack.translatesAutoresizingMaskIntoConstraints = false
 
         button.addSubview(rootStack)
         NSLayoutConstraint.activate([
-            // rootStack 填满 button,驱动 button 宽度自适应
             rootStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
             rootStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
             rootStack.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-
-            // textContainer 内部:两个 label 宽度撑满容器
-            primaryLabel.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor),
-            primaryLabel.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor),
-            secondaryLabel.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor),
-            secondaryLabel.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor),
-
-            // primaryLabel: 顶边 = 图标顶边,高度 = 图标 3/5
-            primaryLabel.topAnchor.constraint(equalTo: iconView.topAnchor),
-            primaryLabel.heightAnchor.constraint(equalTo: iconView.heightAnchor, multiplier: 3.0 / 5.0),
-
-            // secondaryLabel: 底边 = 图标底边,高度 = 图标 2/5
-            secondaryLabel.bottomAnchor.constraint(equalTo: iconView.bottomAnchor),
-            secondaryLabel.heightAnchor.constraint(equalTo: iconView.heightAnchor, multiplier: 2.0 / 5.0),
-
-            // textContainer 上下边由 label 撑开
-            textContainer.topAnchor.constraint(equalTo: primaryLabel.topAnchor),
-            textContainer.bottomAnchor.constraint(equalTo: secondaryLabel.bottomAnchor),
         ])
     }
 
-    /// label 的通用样式(颜色 / 居中 / 不换行)
-    private func configureLabel(_ label: NSTextField, font: NSFont) {
-        label.font = font
-        label.alignment = .center
-        label.textColor = .labelColor
-        label.wantsLayer = true
-        label.lineBreakMode = .byClipping
-        label.translatesAutoresizingMaskIntoConstraints = false
-    }
+    /// 拼装两行富文本:数字加粗,"Tokens" 字号小一号
+    /// 两行 paragraphStyle 设置 maximumLineHeight 把行高压紧,使两行总高接近图标高度(18pt)
+    private func makeAttributedTitle(primary: String) -> NSAttributedString {
+        let primaryParagraph = NSMutableParagraphStyle()
+        primaryParagraph.alignment = .center
+        primaryParagraph.maximumLineHeight = 10
+        primaryParagraph.minimumLineHeight = 10
 
-    /// 设置 label 的内容,不强制行高,让 label 按 font 自然 intrinsicContentSize 撑高
-    /// 配合 VerticallyCenteredTextFieldCell 使文字垂直居中于 frame
-    private func applyAttributed(_ label: NSTextField, text: String, font: NSFont) {
-        label.attributedStringValue = NSAttributedString(
-            string: text,
+        let secondaryParagraph = NSMutableParagraphStyle()
+        secondaryParagraph.alignment = .center
+        secondaryParagraph.maximumLineHeight = 8
+        secondaryParagraph.minimumLineHeight = 8
+
+        let result = NSMutableAttributedString(
+            string: primary,
             attributes: [
-                .font: font,
+                .font: NSFont.boldSystemFont(ofSize: 9),
                 .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: primaryParagraph,
             ]
         )
+        result.append(NSAttributedString(
+            string: "\nTokens",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 7),
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: secondaryParagraph,
+            ]
+        ))
+        return result
     }
 
     private func installMenu() {
@@ -252,8 +208,7 @@ final class StatusBarController {
     private func renderTitle() {
         let todayKey = Self.todayKey()
         let primary = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
-        // 重渲染只刷数字那行,Tokens 行在 configureButton 时一次性设过
-        applyAttributed(primaryLabel, text: primary, font: .boldSystemFont(ofSize: 10))
+        titleLabel.attributedStringValue = makeAttributedTitle(primary: primary)
         lastRenderedDayKey = todayKey
     }
 
