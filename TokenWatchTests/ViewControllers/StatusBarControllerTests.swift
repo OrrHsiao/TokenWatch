@@ -37,4 +37,14 @@ struct StatusBarControllerTests {
     @Test func popoverClosedClearsStatusButtonHighlight() {
         #expect(!StatusBarButtonHighlight.isHighlighted(popoverIsShown: false))
     }
+
+    /// 打开 popover 后的高亮要延迟到 mouseUp 跟踪结束后应用,避免被 AppKit 复原。
+    @Test func popoverShownDefersStatusButtonHighlight() {
+        #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: true) == .afterCurrentEvent)
+    }
+
+    /// 关闭 popover 时可以立即清掉高亮,避免留下残影。
+    @Test func popoverClosedClearsStatusButtonHighlightImmediately() {
+        #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: false) == .immediate)
+    }
 }

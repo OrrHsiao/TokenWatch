@@ -353,7 +353,22 @@ final class StatusBarController {
     }
 
     private func setStatusButtonHighlighted(popoverIsShown: Bool) {
-        statusItem.button?.highlight(StatusBarButtonHighlight.isHighlighted(popoverIsShown: popoverIsShown))
+        let isHighlighted = StatusBarButtonHighlight.isHighlighted(popoverIsShown: popoverIsShown)
+        switch StatusBarButtonHighlight.applicationTiming(popoverIsShown: popoverIsShown) {
+        case .immediate:
+            applyStatusButtonHighlight(isHighlighted)
+        case .afterCurrentEvent:
+            Task { @MainActor [weak self] in
+                guard let self, self.popover.isShown == popoverIsShown else { return }
+                self.applyStatusButtonHighlight(isHighlighted)
+            }
+        }
+    }
+
+    private func applyStatusButtonHighlight(_ isHighlighted: Bool) {
+        guard let button = statusItem.button else { return }
+        button.highlight(isHighlighted)
+        button.needsDisplay = true
     }
 
     @objc private func openMainWindow() {
@@ -400,8 +415,17 @@ enum StatusBarClickAction {
 ///
 /// Popover 不是 `statusItem.menu` 的系统菜单路径,需要显式让按钮保持菜单栏选中背景。
 enum StatusBarButtonHighlight {
+    enum ApplicationTiming: Equatable {
+        case immediate
+        case afterCurrentEvent
+    }
+
     static func isHighlighted(popoverIsShown: Bool) -> Bool {
         popoverIsShown
+    }
+
+    static func applicationTiming(popoverIsShown: Bool) -> ApplicationTiming {
+        popoverIsShown ? .afterCurrentEvent : .immediate
     }
 }
 
