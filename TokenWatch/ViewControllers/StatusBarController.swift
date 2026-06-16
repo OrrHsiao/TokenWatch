@@ -30,6 +30,9 @@ final class StatusBarController {
     /// SF Symbol 配置统一管理,保证替换图标后 pointSize/weight 不丢失
     private let iconSymbolConfig = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
     private var lastRenderedSymbolName: String?
+    private var loadingAnimationTimer: Timer?
+    private var loadingAnimationFrameIndex = 0
+    private static let loadingAnimationInterval: TimeInterval = 0.18
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -53,6 +56,7 @@ final class StatusBarController {
         // deinit 走 main actor 调度路径,这里同步执行不会重入。
         MainActor.assumeIsolated {
             refreshTimer?.invalidate()
+            loadingAnimationTimer?.invalidate()
         }
     }
 
@@ -60,6 +64,8 @@ final class StatusBarController {
     func stop() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+        loadingAnimationTimer?.invalidate()
+        loadingAnimationTimer = nil
         if let token = observerToken {
             viewModel.removeObserver(token)
             observerToken = nil
@@ -175,6 +181,7 @@ final class StatusBarController {
             // 等所有 provider 都不再 loading 才重绘,避免 loadAllStats 并发跑时
             // 状态栏数字在中间态多次跳变(800k → 1.2M → 1.25M)。
             // 单 provider 完成时其它仍 isLoading,这里挡掉;最后一个完成时 allSatisfy 才通过。
+            self.syncLoadingAnimationState()
             guard self.viewModel.states.values.allSatisfy({ !$0.isLoading }) else { return }
             self.renderTitle()
         }
@@ -205,6 +212,53 @@ final class StatusBarController {
 
     // MARK: - Render
 
+    private func syncLoadingAnimationState() {
+        if viewModel.states.values.contains(where: { $0.isLoading }) {
+            startLoadingAnimation()
+        } else {
+            stopLoadingAnimation()
+        }
+    }
+
+    private func startLoadingAnimation() {
+        guard loadingAnimationTimer == nil else { return }
+        loadingAnimationFrameIndex = 0
+        renderLoadingAnimationFrame()
+
+        let timer = Timer(timeInterval: Self.loadingAnimationInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.advanceLoadingAnimationFrame()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        loadingAnimationTimer = timer
+    }
+
+    private func stopLoadingAnimation() {
+        loadingAnimationTimer?.invalidate()
+        loadingAnimationTimer = nil
+        loadingAnimationFrameIndex = 0
+    }
+
+    private func advanceLoadingAnimationFrame() {
+        loadingAnimationFrameIndex = StatusBarLoadingAnimation.nextFrameIndex(after: loadingAnimationFrameIndex)
+        renderLoadingAnimationFrame()
+    }
+
+    private func renderLoadingAnimationFrame() {
+        let symbolName = StatusBarLoadingAnimation.symbolNames[loadingAnimationFrameIndex]
+        setIcon(symbolName: symbolName)
+    }
+
+    private func setIcon(symbolName: String) {
+        iconView.image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: "TokenWatch"
+        )?.withSymbolConfiguration(iconSymbolConfig)
+        iconView.image?.isTemplate = true
+        lastRenderedSymbolName = symbolName
+    }
+
     private func renderTitle() {
         let todayKey = Self.todayKey()
         let primary = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
@@ -215,12 +269,7 @@ final class StatusBarController {
         let symbolName = StatusBarTitleBuilder.symbolName(forTotalTokens: total)
         // 仅在档位变化时换图,减少 NSImageView.image set 引发的状态栏重新布局
         if symbolName != lastRenderedSymbolName {
-            iconView.image = NSImage(
-                systemSymbolName: symbolName,
-                accessibilityDescription: "TokenWatch"
-            )?.withSymbolConfiguration(iconSymbolConfig)
-            iconView.image?.isTemplate = true
-            lastRenderedSymbolName = symbolName
+            setIcon(symbolName: symbolName)
         }
 
         lastRenderedDayKey = todayKey

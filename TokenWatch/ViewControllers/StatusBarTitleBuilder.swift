@@ -74,3 +74,20 @@ enum StatusBarTitleBuilder {
         }
     }
 }
+
+/// 状态栏刷新加载动画帧定义
+///
+/// 保持为纯 helper,让帧顺序和循环规则可单测;AppKit timer 只负责按索引取图。
+enum StatusBarLoadingAnimation {
+    static let symbolNames = [
+        "gauge.with.dots.needle.0percent",
+        "gauge.with.dots.needle.33percent",
+        "gauge.with.dots.needle.50percent",
+        "gauge.with.dots.needle.67percent",
+        "gauge.with.dots.needle.100percent",
+    ]
+
+    static func nextFrameIndex(after index: Int) -> Int {
+        (index + 1) % symbolNames.count
+    }
+}

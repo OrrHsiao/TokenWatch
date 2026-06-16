@@ -111,6 +111,24 @@ struct StatusBarTitleBuilderTests {
         #expect(StatusBarTitleBuilder.totalTokens(states: states, todayKey: today) == 3_500_000)
     }
 
+    /// 刷新加载动画使用同一组仪表盘 SF Symbol,按 0 → 100 的方向播放
+    @Test func loadingAnimationSymbolNamesUseGaugeNeedleFrames() {
+        #expect(StatusBarLoadingAnimation.symbolNames == [
+            "gauge.with.dots.needle.0percent",
+            "gauge.with.dots.needle.33percent",
+            "gauge.with.dots.needle.50percent",
+            "gauge.with.dots.needle.67percent",
+            "gauge.with.dots.needle.100percent",
+        ])
+    }
+
+    /// 动画帧索引到末尾后回到第一帧,便于 timer 循环播放
+    @Test func loadingAnimationNextFrameIndexWrapsToStart() {
+        #expect(StatusBarLoadingAnimation.nextFrameIndex(after: 0) == 1)
+        #expect(StatusBarLoadingAnimation.nextFrameIndex(after: 3) == 4)
+        #expect(StatusBarLoadingAnimation.nextFrameIndex(after: 4) == 0)
+    }
+
     // MARK: - Helpers
 
     private func makeSummary(
