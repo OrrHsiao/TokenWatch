@@ -78,8 +78,11 @@ struct StatusBarTitleBuilderTests {
 
     /// 状态栏图标分档:覆盖每档下边界(含 0)和最后一档的「超出」场景
     @Test func symbolNameTiers() {
-        // 0 ~ 3.3M-1 → 33percent(0percent 档故意不用,起步即 33%)
-        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 0) == "gauge.with.dots.needle.33percent")
+        // 0 ~ 0.1M-1 → 0percent(还没真正开始用)
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 0) == "gauge.with.dots.needle.0percent")
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 99_999) == "gauge.with.dots.needle.0percent")
+        // 0.1M ~ 3.3M-1 → 33percent
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 100_000) == "gauge.with.dots.needle.33percent")
         #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 3_299_999) == "gauge.with.dots.needle.33percent")
         // 3.3M ~ 5M-1 → 50percent
         #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 3_300_000) == "gauge.with.dots.needle.50percent")

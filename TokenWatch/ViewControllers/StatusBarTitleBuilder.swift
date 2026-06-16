@@ -59,13 +59,14 @@ enum StatusBarTitleBuilder {
 
     /// 根据当日 token 总数选择状态栏图标
     ///
-    /// 使用 SF Symbol `gauge.with.dots.needle.*percent` 系列分 4 档,区间左闭右开。
-    /// 注意:0percent 档故意不用 —— 即使今天还没用 token 也展示 33percent,
-    /// 让指针起步位置更醒目;6.7M 以上统一打满 100percent。
+    /// 使用 SF Symbol `gauge.with.dots.needle.*percent` 系列分 5 档,区间左闭右开。
+    /// 0~0.1M 归为 0percent —— 一天还没真正开始用,跳到 33% 会误导;
+    /// 0.1M 起进入 33percent,后续按 3.3M / 5M / 6.7M 升档,≥6.7M 打满。
     /// - Parameter total: 当日 token 累加值
     /// - Returns: SF Symbol 名,直接传给 `NSImage(systemSymbolName:)`
     static func symbolName(forTotalTokens total: Int) -> String {
         switch total {
+        case ..<100_000: return "gauge.with.dots.needle.0percent"
         case ..<3_300_000: return "gauge.with.dots.needle.33percent"
         case ..<5_000_000: return "gauge.with.dots.needle.50percent"
         case ..<6_700_000: return "gauge.with.dots.needle.67percent"
