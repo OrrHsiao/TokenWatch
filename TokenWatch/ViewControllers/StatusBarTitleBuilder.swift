@@ -32,9 +32,22 @@ enum StatusBarTitleBuilder {
         if anyLoading && allEmpty { return "…" }
 
         // 3. 累加每个 provider 今日的 token
-        // 显式不加 reasoningTokens:Codex 的 reasoning 已计入 output(README 已说明),
-        // 累加它会双计;与 ProviderStatsViewController 的展示口径保持一致。
-        let total = states.values.reduce(0) { acc, state in
+        return CompactNumberFormatter.format(totalTokens(states: states, todayKey: todayKey))
+    }
+
+    /// 跨 provider 累加 byDay[todayKey] 的 token 总数(纯累加,不考虑 loading/未授权)
+    ///
+    /// 显式不加 reasoningTokens:Codex 的 reasoning 已计入 output(README 已说明),
+    /// 累加它会双计;与 ProviderStatsViewController 的展示口径保持一致。
+    /// - Parameters:
+    ///   - states: ViewModel 当前所有 provider 的状态快照
+    ///   - todayKey: 今日的 byDay key,格式 "yyyy-MM-dd"
+    /// - Returns: 当日跨 provider 的 token 累加值;若任一 provider 缺失今日 bucket 视作 0
+    static func totalTokens(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        todayKey: String
+    ) -> Int {
+        states.values.reduce(0) { acc, state in
             guard let summary = state.stats?.byDay[todayKey] else { return acc }
             return acc
                 + summary.inputTokens
@@ -42,7 +55,21 @@ enum StatusBarTitleBuilder {
                 + summary.cacheReadTokens
                 + summary.cacheCreationTokens
         }
+    }
 
-        return CompactNumberFormatter.format(total)
+    /// 根据当日 token 总数选择状态栏图标
+    ///
+    /// 使用 SF Symbol `gauge.with.dots.needle.*percent` 系列分 4 档,区间左闭右开。
+    /// 注意:0percent 档故意不用 —— 即使今天还没用 token 也展示 33percent,
+    /// 让指针起步位置更醒目;6.7M 以上统一打满 100percent。
+    /// - Parameter total: 当日 token 累加值
+    /// - Returns: SF Symbol 名,直接传给 `NSImage(systemSymbolName:)`
+    static func symbolName(forTotalTokens total: Int) -> String {
+        switch total {
+        case ..<3_300_000: return "gauge.with.dots.needle.33percent"
+        case ..<5_000_000: return "gauge.with.dots.needle.50percent"
+        case ..<6_700_000: return "gauge.with.dots.needle.67percent"
+        default: return "gauge.with.dots.needle.100percent"
+        }
     }
 }

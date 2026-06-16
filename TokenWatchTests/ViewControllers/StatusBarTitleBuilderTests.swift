@@ -76,6 +76,38 @@ struct StatusBarTitleBuilderTests {
         #expect(StatusBarTitleBuilder.build(states: states, todayKey: today) == "10.0k")
     }
 
+    /// 状态栏图标分档:覆盖每档下边界(含 0)和最后一档的「超出」场景
+    @Test func symbolNameTiers() {
+        // 0 ~ 3.3M-1 → 33percent(0percent 档故意不用,起步即 33%)
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 0) == "gauge.with.dots.needle.33percent")
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 3_299_999) == "gauge.with.dots.needle.33percent")
+        // 3.3M ~ 5M-1 → 50percent
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 3_300_000) == "gauge.with.dots.needle.50percent")
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 4_999_999) == "gauge.with.dots.needle.50percent")
+        // 5M ~ 6.7M-1 → 67percent
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 5_000_000) == "gauge.with.dots.needle.67percent")
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 6_699_999) == "gauge.with.dots.needle.67percent")
+        // ≥6.7M → 100percent(包含远超 6.7M 的情况)
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 6_700_000) == "gauge.with.dots.needle.100percent")
+        #expect(StatusBarTitleBuilder.symbolName(forTotalTokens: 100_000_000) == "gauge.with.dots.needle.100percent")
+    }
+
+    /// totalTokens 与 build 共用同一累加口径,这里直接对 totalTokens 抽样验证一次
+    @Test func totalTokensSumsAcrossProvidersIgnoringMissingDays() {
+        let claudeStats = makeStats(byDay: [
+            today: makeSummary(input: 1_000_000, output: 2_000_000),
+            "2026-06-14": makeSummary(input: 999, output: 0),
+        ])
+        let codexStats = makeStats(byDay: [today: makeSummary(input: 0, output: 0, cacheRead: 500_000)])
+        let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            .opencode: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true),
+        ]
+        // 1M+2M+0.5M = 3.5M(昨天的不计入)
+        #expect(StatusBarTitleBuilder.totalTokens(states: states, todayKey: today) == 3_500_000)
+    }
+
     // MARK: - Helpers
 
     private func makeSummary(

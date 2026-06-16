@@ -25,6 +25,12 @@ final class StatusBarController {
     /// 用 paragraphStyle 控制行高,避免行间距过大撑高整体
     private let titleLabel = NSTextField(labelWithString: "")
 
+    /// 状态栏左侧仪表盘图标,按当日 token 总量分档替换 SF Symbol;持有引用以便 renderTitle 时更新
+    private let iconView = NSImageView()
+    /// SF Symbol 配置统一管理,保证替换图标后 pointSize/weight 不丢失
+    private let iconSymbolConfig = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
+    private var lastRenderedSymbolName: String?
+
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
     init(viewModel: TokenStatsViewModel) {
@@ -69,13 +75,7 @@ final class StatusBarController {
         button.image = nil
         button.title = ""
 
-        let iconView = NSImageView()
-        // SF Symbol 默认渲染较小,用 symbolConfiguration 指定 pointSize=18 使图标与之前自定义图片等大
-        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
-        iconView.image = NSImage(
-            systemSymbolName: "gauge.with.dots.needle.bottom.50percent",
-            accessibilityDescription: "TokenWatch"
-        )?.withSymbolConfiguration(symbolConfig)
+        // 图标内容由 renderTitle() 根据当日 token 量动态切换,这里只设公共属性。
         // 状态栏图标做成 template 由系统按主题自动反色
         iconView.image?.isTemplate = true
         iconView.imageScaling = .scaleProportionallyDown
@@ -209,6 +209,20 @@ final class StatusBarController {
         let todayKey = Self.todayKey()
         let primary = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
         titleLabel.attributedStringValue = makeAttributedTitle(primary: primary)
+
+        // 图标分档:用与文本相同的累加口径,避免文字和图标显示出处不一致
+        let total = StatusBarTitleBuilder.totalTokens(states: viewModel.states, todayKey: todayKey)
+        let symbolName = StatusBarTitleBuilder.symbolName(forTotalTokens: total)
+        // 仅在档位变化时换图,减少 NSImageView.image set 引发的状态栏重新布局
+        if symbolName != lastRenderedSymbolName {
+            iconView.image = NSImage(
+                systemSymbolName: symbolName,
+                accessibilityDescription: "TokenWatch"
+            )?.withSymbolConfiguration(iconSymbolConfig)
+            iconView.image?.isTemplate = true
+            lastRenderedSymbolName = symbolName
+        }
+
         lastRenderedDayKey = todayKey
     }
 
