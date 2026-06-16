@@ -1,5 +1,12 @@
 import Foundation
 
+/// Provider 统一授权配置。方案 2:所有数据源共享一次用户目录授权。
+enum ProviderAuthorization {
+    static let homeBookmarkKey = "HomeDirectoryBookmark"
+    static let homeDirectoryPath = FileManager.default.homeDirectoryForCurrentUser.path
+    static let homeAccessMessage = "TokenWatch 想访问用户目录"
+}
+
 /// 抽象的数据源 provider
 /// 职责：扫描自己的目录、解析自己的 JSONL 格式、产出统一的 ParsedUsageEntry
 /// 不关心 Bookmark / 聚合 / 定价 — 这些在共享层完成
@@ -24,6 +31,6 @@ protocol UsageProvider: Sendable {
     var hasReasoningDimension: Bool { get }
 
     /// 扫描+解析，产出统一条目
-    /// - Parameter rootURL: 已通过 Security-Scoped Bookmark 取得访问权限的根目录
+    /// - Parameter rootURL: 已通过 Security-Scoped Bookmark 取得访问权限的用户目录
     func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry]
 }

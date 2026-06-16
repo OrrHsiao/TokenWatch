@@ -100,8 +100,8 @@ final class ProviderStatsViewController: NSViewController {
             return
         }
         if state.needsAuthorization {
-            statusLabel.stringValue = "TokenWatch 需要读取 \(provider.defaultDirectoryPath) 目录\n以统计 \(provider.displayName) Token 用量"
-            actionButton.title = "授权访问 \(provider.defaultDirectoryPath)"
+            statusLabel.stringValue = Self.authorizationStatusText(for: provider)
+            actionButton.title = Self.authorizationButtonTitle
             actionButton.isHidden = false
             return
         }
@@ -138,6 +138,14 @@ final class ProviderStatsViewController: NSViewController {
     }
 
     // MARK: - 文案构造
+
+    /// 未授权状态的说明文案。所有 provider 统一申请用户目录,避免展示内部数据子目录。
+    static func authorizationStatusText(for provider: any UsageProvider) -> String {
+        "\(ProviderAuthorization.homeAccessMessage)\n以统计 \(provider.displayName) Token 用量"
+    }
+
+    /// 未授权状态的按钮文案。
+    static let authorizationButtonTitle = "授权访问用户目录"
 
     /// 拼装「本日 + 累计」概览。Codex provider 的 cache 行替换为 Cached Input
     private func formatStatsText(_ stats: AggregatedStats) -> String {

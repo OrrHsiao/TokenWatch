@@ -42,4 +42,18 @@ struct TokenStatsViewModelObserverTests {
         let t2 = vm.observe { _ in }
         #expect(t1 != t2)
     }
+
+    /// 用户目录授权是共享的:任一 provider 授权成功后,同 key 的其它 provider 也应退出未授权态
+    @Test func sharedBookmarkAuthorizationUpdatesAllProviders() {
+        let vm = TokenStatsViewModel()
+        var received: [ProviderID] = []
+        _ = vm.observe { id in received.append(id) }
+
+        vm.markProvidersAuthorized(sharingBookmarkWith: ClaudeProvider())
+
+        #expect(ProviderRegistry.allProviders.allSatisfy {
+            vm.states[$0.id]?.needsAuthorization == false
+        })
+        #expect(Set(received) == Set(ProviderRegistry.allProviders.map(\.id)))
+    }
 }

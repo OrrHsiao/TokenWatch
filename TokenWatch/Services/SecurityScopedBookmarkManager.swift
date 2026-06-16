@@ -1,21 +1,54 @@
 import Foundation
 import AppKit
 
+/// 记录当前进程内 security-scoped URL 的逻辑访问次数。
+/// 同一个 bookmark key 可能被多个 provider 并发复用,只有成对释放到 0 时才真正 stopAccessing。
+struct SecurityScopedAccessSessions: Sendable {
+    private struct Session: Sendable {
+        let url: URL
+        var referenceCount: Int
+    }
+
+    private var sessions: [String: Session] = [:]
+
+    mutating func retainExisting(forKey key: String) -> URL? {
+        guard var session = sessions[key] else { return nil }
+        session.referenceCount += 1
+        sessions[key] = session
+        return session.url
+    }
+
+    mutating func insert(_ url: URL, forKey key: String) {
+        sessions[key] = Session(url: url, referenceCount: 1)
+    }
+
+    mutating func release(forKey key: String) -> URL? {
+        guard var session = sessions[key] else { return nil }
+        guard session.referenceCount <= 1 else {
+            session.referenceCount -= 1
+            sessions[key] = session
+            return nil
+        }
+        sessions[key] = nil
+        return session.url
+    }
+
+    mutating func removeAll() -> [URL] {
+        let urls = sessions.values.map(\.url)
+        sessions.removeAll()
+        return urls
+    }
+}
+
 /// 管理多个 Security-Scoped Bookmark 的创建、存储和恢复
-/// 每个 provider 使用自己的 bookmarkKey,数据互相独立
-///
-/// 历史 key `ClaudeDirectoryBookmark` 由 ClaudeProvider 复用,迁移用户无需重新授权
+/// provider 可以共享同一个 bookmarkKey,因此同一 URL 的访问会做引用计数
 @MainActor
 final class SecurityScopedBookmarkManager: Sendable {
 
     static let shared = SecurityScopedBookmarkManager()
 
-    /// 每个 key 对应的会话状态(已恢复的 URL + 是否处于 startAccessing)
-    private struct Session {
-        var url: URL
-        var isAccessing: Bool
-    }
-    private var sessions: [String: Session] = [:]
+    /// 每个 key 对应的会话状态(已恢复的 URL + 当前逻辑访问次数)
+    private var sessions = SecurityScopedAccessSessions()
 
     // MARK: - 查询
 
@@ -64,9 +97,9 @@ final class SecurityScopedBookmarkManager: Sendable {
     /// 从 UserDefaults 恢复指定 key 的 Bookmark 并 startAccessing
     /// stale 处理:解析得到的 URL 仍可临时使用,startAccessing 后立即用其重建 bookmark
     func restoreBookmarkAndAccess(forKey key: String) -> URL? {
-        // 已经在访问中 → 直接返回缓存 URL
-        if let session = sessions[key], session.isAccessing {
-            return session.url
+        // 已经在访问中 → 增加逻辑引用,避免共享 key 的并发读取被提前 stop
+        if let url = sessions.retainExisting(forKey: key) {
+            return url
         }
 
         guard let bookmarkData = UserDefaults.standard.data(forKey: key) else {
@@ -99,21 +132,20 @@ final class SecurityScopedBookmarkManager: Sendable {
             }
         }
 
-        sessions[key] = Session(url: url, isAccessing: true)
+        sessions.insert(url, forKey: key)
         return url
     }
 
     /// 停止指定 key 的安全访问
     func stopAccessing(forKey key: String) {
-        guard let session = sessions[key], session.isAccessing else { return }
-        session.url.stopAccessingSecurityScopedResource()
-        sessions[key] = nil
+        guard let url = sessions.release(forKey: key) else { return }
+        url.stopAccessingSecurityScopedResource()
     }
 
     /// 停止所有 key 的安全访问(applicationWillTerminate 用)
     func stopAccessingAll() {
-        for key in Array(sessions.keys) {
-            stopAccessing(forKey: key)
+        for url in sessions.removeAll() {
+            url.stopAccessingSecurityScopedResource()
         }
     }
 

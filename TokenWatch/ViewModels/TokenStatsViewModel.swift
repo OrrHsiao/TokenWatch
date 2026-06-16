@@ -95,7 +95,7 @@ final class TokenStatsViewModel: Sendable {
 
         // Step 2: 恢复 Bookmark
         guard let rootURL = bookmarkManager.restoreBookmarkAndAccess(forKey: provider.bookmarkKey) else {
-            states[id]?.errorMessage = "无法访问 \(provider.defaultDirectoryPath),请重新授权"
+            states[id]?.errorMessage = "无法访问用户目录,请重新授权"
             states[id]?.needsAuthorization = true
             states[id]?.isLoading = false
             logger.error("\(provider.displayName) Bookmark 恢复失败")
@@ -134,13 +134,23 @@ final class TokenStatsViewModel: Sendable {
         notifyStateChange(id)
     }
 
+    /// 将所有共享同一 bookmark key 的 provider 标记为已授权并通知 UI。
+    /// 用户目录授权是跨 provider 共享的,所以在任一 Tab 授权成功后其它 Tab 不应继续显示授权按钮。
+    func markProvidersAuthorized(sharingBookmarkWith provider: any UsageProvider) {
+        for candidate in ProviderRegistry.allProviders where candidate.bookmarkKey == provider.bookmarkKey {
+            states[candidate.id]?.needsAuthorization = false
+            states[candidate.id]?.errorMessage = nil
+            notifyStateChange(candidate.id)
+        }
+    }
+
     /// 触发指定 provider 的授权流程
     func requestAuthorization(for id: ProviderID) async {
         guard let provider = ProviderRegistry.provider(for: id) else { return }
         if let _ = await bookmarkManager.promptUserToSelectDirectory(forProvider: provider) {
-            states[id]?.needsAuthorization = false
+            markProvidersAuthorized(sharingBookmarkWith: provider)
             logger.info("\(provider.displayName) 用户授权成功")
-            await loadStats(for: id)
+            await loadAllStats()
         } else {
             logger.info("\(provider.displayName) 用户取消授权")
         }

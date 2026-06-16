@@ -5,9 +5,9 @@ import Foundation
 struct CodexProvider: UsageProvider {
     let id: ProviderID = .codex
     let displayName = "Codex"
-    let bookmarkKey = "CodexDirectoryBookmark"
-    let defaultDirectoryPath = NSString("~/.codex").expandingTildeInPath
-    let openPanelMessage = "请选择 ~/.codex 目录以授权 TokenWatch 读取 Codex 用量数据"
+    let bookmarkKey = ProviderAuthorization.homeBookmarkKey
+    let defaultDirectoryPath = ProviderAuthorization.homeDirectoryPath
+    let openPanelMessage = ProviderAuthorization.homeAccessMessage
     /// Codex 不暴露 cache write 概念，UI 该 Tab 不展示该行
     let hasCacheWriteDimension = false
     /// Codex 的 reasoning 已并入 output_tokens,不单列维度
@@ -17,10 +17,11 @@ struct CodexProvider: UsageProvider {
     private let parser = CodexRolloutParser()
 
     /// 扫描 Codex 目录下所有 rollout JSONL 文件并解析为统一条目
-    /// - Parameter rootURL: 已授权的 ~/.codex 目录
+    /// - Parameter rootURL: 已授权的用户目录
     /// - Returns: 去重后的 ParsedUsageEntry 列表
     func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
-        let files = try scanner.scanAll(in: rootURL)
+        let codexRoot = rootURL.appendingPathComponent(".codex", isDirectory: true)
+        let files = try scanner.scanAll(in: codexRoot)
         return try parser.parseAllFiles(files)
     }
 }

@@ -190,6 +190,33 @@ struct ClaudeJSONLParserTests {
         try? FileManager.default.removeItem(at: f2)
     }
 
+    @Test("批量解析跳过单个失败文件")
+    func parseAllFilesSkipsFailedFile() throws {
+        let line = """
+        {"type":"assistant","uuid":"u1","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","message":{"id":"ok-msg","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":50,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        """
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeJSONLParserTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        let validFile = tmpDir.appendingPathComponent("valid.jsonl")
+        try line.write(to: validFile, atomically: true, encoding: .utf8)
+
+        let missingSubagentFile = tmpDir
+            .appendingPathComponent("subagents", isDirectory: true)
+            .appendingPathComponent("agent-no-access.jsonl")
+        let infos = [
+            ClaudeJSONLFileInfo(url: validFile, sessionID: "s1", projectPath: "/p", isSubagent: false, agentId: nil),
+            ClaudeJSONLFileInfo(url: missingSubagentFile, sessionID: "agent-no-access", projectPath: "/p", isSubagent: true, agentId: "no-access"),
+        ]
+
+        let entries = try parser.parseAllFiles(infos, claudeDataRoot: tmpDir)
+
+        #expect(entries.count == 1)
+        #expect(entries.first?.messageId == "ok-msg")
+    }
+
     @Test("跳过缺失 message.id 的记录（无法可靠去重）")
     func skipRecordsWithoutMessageId() throws {
         // assistant 记录有 usage 但 message.id 为空字符串 → 跳过

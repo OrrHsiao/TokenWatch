@@ -111,8 +111,12 @@ final class ClaudeJSONLParser: Sendable {
         var allEntries: [ParsedUsageEntry] = []
 
         for fileInfo in files {
-            let entries = try parseJSONLFile(fileInfo, claudeDataRoot: claudeDataRoot)
-            allEntries.append(contentsOf: entries)
+            do {
+                let entries = try parseJSONLFile(fileInfo, claudeDataRoot: claudeDataRoot)
+                allEntries.append(contentsOf: entries)
+            } catch {
+                logger.warning("Claude 文件解析失败: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)")
+            }
         }
 
         logger.info("解析完成：\(allEntries.count) 条记录（去重前）")
