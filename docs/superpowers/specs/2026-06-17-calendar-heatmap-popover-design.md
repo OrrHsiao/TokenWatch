@@ -107,19 +107,19 @@ AppKit 层新增:
 
 ## 5. 布局与视觉
 
-Popover 建议尺寸从当前 `280 x 180` 调整到约 `300 x 260`,容纳标题、星期行和 7 列网格。
+Popover 建议尺寸从当前 `280 x 180` 调整到约 `260 x 230`,容纳标题、星期行和 GitHub profile contribution graph 风格的 7 列小方格网格。
 
 视觉层级:
 
 1. 顶部:月份标题,例如 `2026 年 6 月`。
 2. 顶部副信息:本月总 token,使用 `CompactNumberFormatter` 缩写。
 3. 星期标题:按 `Calendar.current.firstWeekday` 生成,与本地日历一致。
-4. 日期格子:固定正方形,7 列,间距 4px 左右。
+4. 日期格子:18px 固定正方形,7 列,3px 间距,居中展示;格子本身不显示日期数字,日期和 token 数保留在 tooltip。
 
 颜色:
 
-- 0 token:系统 separator / control background 的弱色。
-- 1~4 档:绿色递进,暗黑模式用 `NSColor` 动态色适配。
+- 0 token:GitHub contribution graph 风格灰色。
+- 1~4 档:GitHub contribution graph 风格绿色递进,暗黑模式使用对应深色调色盘。
 - 未来日期:通过 builder 的 `now` 参数判断;弱化显示,强度固定为 0,tooltip 仍显示日期和 0 tokens。
 
 强度分档:

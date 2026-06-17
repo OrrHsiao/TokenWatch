@@ -14,8 +14,8 @@ struct CalendarHeatmapCollectionViewItemTests {
         #expect(style.isHidden)
     }
 
-    @Test("day style 显示日期和 token tooltip")
-    func dayStyleShowsDayNumberAndTooltip() {
+    @Test("day style 隐藏日期数字并保留 token tooltip")
+    func dayStyleHidesDayNumberAndKeepsTooltip() {
         let day = CalendarHeatmapDay(
             id: "2026-06-10",
             date: Date(timeIntervalSince1970: 0),
@@ -29,7 +29,7 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
-        #expect(style.title == "10")
+        #expect(style.title == "")
         #expect(style.toolTip == "2026-06-10 · 12,345 tokens")
         #expect(!style.isHidden)
         #expect(style.alpha == 1.0)
@@ -70,6 +70,39 @@ struct CalendarHeatmapCollectionViewItemTests {
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
         #expect(style.toolTip == "2026-06-15 · 1,234,567 tokens")
+    }
+
+    @MainActor
+    @Test("cell 使用 GitHub 风格小方块")
+    func cellUsesGitHubStyleSquareTile() {
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+
+        #expect(item.view.frame.size == NSSize(width: 18, height: 18))
+        #expect(item.view.layer?.cornerRadius == 3)
+    }
+
+    @MainActor
+    @Test("最高强度使用 GitHub 绿色")
+    func maxIntensityUsesGitHubGreen() {
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+        item.view.appearance = NSAppearance(named: .aqua)
+
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 12_345,
+            intensity: 4,
+            isToday: false,
+            isFuture: false
+        )
+
+        item.configure(with: .day(day))
+
+        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.129, 0.431, 0.224, 1.0])
     }
 
     @MainActor
@@ -123,5 +156,12 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         #expect(configuredComponents != nil)
         #expect(refreshedComponents == configuredComponents)
+    }
+}
+
+private extension CGColor {
+    var roundedRGBAComponents: [CGFloat]? {
+        guard let components else { return nil }
+        return components.map { ($0 * 1_000).rounded() / 1_000 }
     }
 }

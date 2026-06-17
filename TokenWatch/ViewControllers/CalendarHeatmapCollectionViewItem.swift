@@ -21,7 +21,7 @@ struct CalendarHeatmapCellStyle: Equatable {
             )
         case .day(let day):
             return CalendarHeatmapCellStyle(
-                title: "\(day.dayNumber)",
+                title: "",
                 toolTip: "\(day.dateKey) · \(formatTokens(day.totalTokens)) tokens",
                 isHidden: false,
                 alpha: day.isFuture ? 0.45 : 1.0,
@@ -42,13 +42,15 @@ struct CalendarHeatmapCellStyle: Equatable {
 /// 日历热力图单个 collection item。
 final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("CalendarHeatmapCollectionViewItem")
+    static let tileSize = NSSize(width: 18, height: 18)
+    static let cornerRadius: CGFloat = 3
 
     private let dayLabel = NSTextField(labelWithString: "")
 
     override func loadView() {
-        let cellView = CalendarHeatmapCellView(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
+        let cellView = CalendarHeatmapCellView(frame: NSRect(origin: .zero, size: Self.tileSize))
         cellView.wantsLayer = true
-        cellView.layer?.cornerRadius = 5
+        cellView.layer?.cornerRadius = Self.cornerRadius
         cellView.layer?.masksToBounds = true
         view = cellView
 
@@ -56,6 +58,7 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
         dayLabel.alignment = .center
         dayLabel.font = .systemFont(ofSize: 11, weight: .medium)
         dayLabel.textColor = .labelColor
+        dayLabel.isHidden = true
 
         view.addSubview(dayLabel)
         NSLayoutConstraint.activate([
@@ -70,22 +73,7 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
         view.toolTip = style.toolTip
         view.isHidden = style.isHidden
         view.alphaValue = style.alpha
-        cellView.heatmapBackgroundColor = backgroundColor(forIntensity: style.intensity)
-    }
-
-    private func backgroundColor(forIntensity intensity: Int) -> NSColor {
-        switch intensity {
-        case 1:
-            return NSColor.systemGreen.withAlphaComponent(0.28)
-        case 2:
-            return NSColor.systemGreen.withAlphaComponent(0.46)
-        case 3:
-            return NSColor.systemGreen.withAlphaComponent(0.68)
-        case 4:
-            return NSColor.systemGreen.withAlphaComponent(0.92)
-        default:
-            return NSColor.separatorColor.withAlphaComponent(0.35)
-        }
+        cellView.heatmapBackgroundColor = CalendarHeatmapGitHubPalette.color(forIntensity: style.intensity)
     }
 
     private var cellView: CalendarHeatmapCellView {
@@ -112,5 +100,35 @@ private final class CalendarHeatmapCellView: NSView {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = heatmapBackgroundColor.cgColor
         }
+    }
+}
+
+private enum CalendarHeatmapGitHubPalette {
+    private static let lightColors = [
+        color(red: 235, green: 237, blue: 240),
+        color(red: 155, green: 233, blue: 168),
+        color(red: 64, green: 196, blue: 99),
+        color(red: 48, green: 161, blue: 78),
+        color(red: 33, green: 110, blue: 57),
+    ]
+
+    private static let darkColors = [
+        color(red: 22, green: 27, blue: 34),
+        color(red: 14, green: 68, blue: 41),
+        color(red: 0, green: 109, blue: 50),
+        color(red: 38, green: 166, blue: 65),
+        color(red: 57, green: 211, blue: 83),
+    ]
+
+    static func color(forIntensity intensity: Int) -> NSColor {
+        let clampedIntensity = min(max(intensity, 0), 4)
+        return NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return (isDark ? darkColors : lightColors)[clampedIntensity]
+        }
+    }
+
+    private static func color(red: CGFloat, green: CGFloat, blue: CGFloat) -> NSColor {
+        NSColor(calibratedRed: red / 255, green: green / 255, blue: blue / 255, alpha: 1)
     }
 }

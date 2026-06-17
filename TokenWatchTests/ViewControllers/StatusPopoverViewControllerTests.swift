@@ -43,6 +43,20 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionView?.frame.height == StatusPopoverViewController.debugExpectedCollectionHeight)
     }
 
+    @Test("collection view 使用 GitHub 风格小方格布局")
+    func collectionViewUsesGitHubStyleGridLayout() throws {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+
+        let collectionView = try #require(controller.debugCollectionView)
+        let layout = try #require(collectionView.collectionViewLayout as? NSCollectionViewFlowLayout)
+
+        #expect(layout.itemSize == NSSize(width: 18, height: 18))
+        #expect(layout.minimumInteritemSpacing == 3)
+        #expect(layout.minimumLineSpacing == 3)
+    }
+
     @Test("collection view 底部保留弹窗边距")
     func collectionViewBottomStaysInsidePopoverBounds() {
         let controller = makeController()

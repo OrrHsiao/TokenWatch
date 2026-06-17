@@ -4,9 +4,17 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 300, height: 300)
+    nonisolated static let contentSize = NSSize(width: 260, height: 230)
     private static let outerMargin: CGFloat = 14
-    private static let collectionHeight: CGFloat = 188
+    private static let tileSpacing: CGFloat = 3
+    private static let gridColumnCount = 7
+    private static let gridRowCount = 6
+    private static let collectionHeight =
+        CalendarHeatmapCollectionViewItem.tileSize.height * CGFloat(gridRowCount)
+        + tileSpacing * CGFloat(gridRowCount - 1)
+    private static let collectionWidth =
+        CalendarHeatmapCollectionViewItem.tileSize.width * CGFloat(gridColumnCount)
+        + tileSpacing * CGFloat(gridColumnCount - 1)
 
     private let viewModel: TokenStatsViewModel
     private let nowProvider: () -> Date
@@ -84,13 +92,13 @@ final class StatusPopoverViewController: NSViewController {
 
         weekdayStack.orientation = .horizontal
         weekdayStack.distribution = .fillEqually
-        weekdayStack.spacing = 4
+        weekdayStack.spacing = Self.tileSpacing
         weekdayStack.translatesAutoresizingMaskIntoConstraints = false
 
         let layout = NSCollectionViewFlowLayout()
-        layout.minimumInteritemSpacing = 4
-        layout.minimumLineSpacing = 4
-        layout.itemSize = NSSize(width: 34, height: 28)
+        layout.minimumInteritemSpacing = Self.tileSpacing
+        layout.minimumLineSpacing = Self.tileSpacing
+        layout.itemSize = CalendarHeatmapCollectionViewItem.tileSize
         layout.sectionInset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
         collectionView.collectionViewLayout = layout
@@ -113,13 +121,13 @@ final class StatusPopoverViewController: NSViewController {
             headerStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -14),
 
             weekdayStack.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 14),
-            weekdayStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
-            weekdayStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            weekdayStack.heightAnchor.constraint(equalToConstant: 18),
+            weekdayStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            weekdayStack.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
+            weekdayStack.heightAnchor.constraint(equalToConstant: 16),
 
             collectionView.topAnchor.constraint(equalTo: weekdayStack.bottomAnchor, constant: 6),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
+            collectionView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            collectionView.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
             collectionView.heightAnchor.constraint(equalToConstant: Self.collectionHeight),
             collectionView.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -14),
         ])
@@ -157,7 +165,7 @@ final class StatusPopoverViewController: NSViewController {
         for symbol in symbols {
             let label = NSTextField(labelWithString: symbol)
             label.alignment = .center
-            label.font = .systemFont(ofSize: 10, weight: .medium)
+            label.font = .systemFont(ofSize: 9, weight: .medium)
             label.textColor = .secondaryLabelColor
             weekdayStack.addArrangedSubview(label)
         }
