@@ -47,4 +47,9 @@ struct StatusBarControllerTests {
     @Test func popoverClosedClearsStatusButtonHighlightImmediately() {
         #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: false) == .immediate)
     }
+
+    /// 热力图 popover 尺寸要能容纳标题、星期行和 7 列日历网格。
+    @Test func heatmapPopoverContentSizeFitsCalendarGrid() {
+        #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 300, height: 300))
+    }
 }

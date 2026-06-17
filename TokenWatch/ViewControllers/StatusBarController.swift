@@ -127,13 +127,11 @@ final class StatusBarController {
     }
 
     private func configurePopover() {
-        let contentSize = NSSize(width: 280, height: 180)
-        let contentViewController = NSViewController()
-        contentViewController.view = EmptyStatusPopoverView(frame: NSRect(origin: .zero, size: contentSize))
-        contentViewController.preferredContentSize = contentSize
+        let contentViewController = StatusPopoverViewController(viewModel: viewModel)
+        contentViewController.preferredContentSize = StatusBarPopoverLayout.contentSize
 
         popover.behavior = .transient
-        popover.contentSize = contentSize
+        popover.contentSize = StatusBarPopoverLayout.contentSize
         popover.contentViewController = contentViewController
         popoverCloseObserver = NotificationCenter.default.addObserver(
             forName: NSPopover.didCloseNotification,
@@ -393,6 +391,11 @@ final class StatusBarController {
     }
 }
 
+/// 状态栏 popover 固定布局参数。
+enum StatusBarPopoverLayout {
+    static let contentSize = NSSize(width: 300, height: 300)
+}
+
 /// 状态栏按钮点击后的交互意图。
 ///
 /// 抽成纯 helper,避免单元测试依赖真实 `NSStatusItem` 或鼠标事件对象。
@@ -426,26 +429,5 @@ enum StatusBarButtonHighlight {
 
     static func applicationTiming(popoverIsShown: Bool) -> ApplicationTiming {
         popoverIsShown ? .afterCurrentEvent : .immediate
-    }
-}
-
-/// 空状态栏 popover 根视图。
-///
-/// 使用系统窗口背景色,让浅色和暗黑模式都由 AppKit 自动适配。
-final class EmptyStatusPopoverView: NSView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("EmptyStatusPopoverView 不支持 storyboard 初始化")
-    }
-
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     }
 }
