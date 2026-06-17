@@ -31,7 +31,11 @@ struct CalendarHeatmapCellStyle: Equatable {
     }
 
     private static func formatTokens(_ value: Int) -> String {
-        NumberFormatter.localizedString(from: NSNumber(value: value), number: .decimal)
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }
 
