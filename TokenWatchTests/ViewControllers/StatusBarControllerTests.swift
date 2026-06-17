@@ -28,6 +28,11 @@ struct StatusBarControllerTests {
         ) == .showMenu)
     }
 
+    /// 状态栏菜单应走系统状态栏项 presenter,避免普通 view 坐标弹窗覆盖图标。
+    @Test func statusMenuUsesStatusItemPresenter() {
+        #expect(StatusBarMenuPresentation.presenter() == .statusItemMenu(selectorName: "popUpStatusItemMenu:"))
+    }
+
     /// popover 显示期间应让状态栏按钮保持系统高亮背景。
     @Test func popoverShownHighlightsStatusButton() {
         #expect(StatusBarButtonHighlight.isHighlighted(popoverIsShown: true))
@@ -47,4 +52,5 @@ struct StatusBarControllerTests {
     @Test func popoverClosedClearsStatusButtonHighlightImmediately() {
         #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: false) == .immediate)
     }
+
 }

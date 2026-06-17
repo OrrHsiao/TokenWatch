@@ -346,10 +346,14 @@ final class StatusBarController {
     }
 
     private func showStatusMenu() {
-        guard let button = statusItem.button else { return }
         popover.performClose(nil)
         setStatusButtonHighlighted(popoverIsShown: false)
-        statusMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+        switch StatusBarMenuPresentation.presenter() {
+        case .statusItemMenu(let selectorName):
+            // 左键需要自定义 popover,所以不能常驻设置 statusItem.menu;
+            // 右键这里直接走 NSStatusItem 的菜单 presenter,由 AppKit 负责状态栏定位。
+            _ = statusItem.perform(NSSelectorFromString(selectorName), with: statusMenu)
+        }
     }
 
     private func setStatusButtonHighlighted(popoverIsShown: Bool) {
@@ -426,6 +430,17 @@ enum StatusBarButtonHighlight {
 
     static func applicationTiming(popoverIsShown: Bool) -> ApplicationTiming {
         popoverIsShown ? .afterCurrentEvent : .immediate
+    }
+}
+
+/// 状态栏右键菜单展示方式。
+///
+/// 右键菜单必须使用状态栏项的菜单 presenter,普通 view 坐标弹窗会覆盖状态栏图标。
+enum StatusBarMenuPresentation: Equatable {
+    case statusItemMenu(selectorName: String)
+
+    static func presenter() -> StatusBarMenuPresentation {
+        .statusItemMenu(selectorName: "popUpStatusItemMenu:")
     }
 }
 
