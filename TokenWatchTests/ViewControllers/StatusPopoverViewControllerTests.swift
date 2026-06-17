@@ -34,6 +34,16 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionView?.frame.height == StatusPopoverViewController.debugExpectedCollectionHeight)
     }
 
+    @Test("collection view 底部保留弹窗边距")
+    func collectionViewBottomStaysInsidePopoverBounds() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        controller.view.layoutSubtreeIfNeeded()
+
+        #expect(controller.debugCollectionViewBottomFitsInRootBounds)
+    }
+
     @Test("data source 返回快照数量")
     func dataSourceReturnsSnapshotCount() throws {
         let controller = makeController()

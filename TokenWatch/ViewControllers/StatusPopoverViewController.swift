@@ -4,6 +4,8 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
+    private static let contentSize = NSSize(width: 300, height: 300)
+    private static let outerMargin: CGFloat = 14
     private static let collectionHeight: CGFloat = 188
 
     private let viewModel: TokenStatsViewModel
@@ -23,6 +25,10 @@ final class StatusPopoverViewController: NSViewController {
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
     static var debugExpectedCollectionHeight: CGFloat { collectionHeight }
+    var debugCollectionViewBottomFitsInRootBounds: Bool {
+        collectionView.frame.minY >= Self.outerMargin
+            && collectionView.frame.maxY <= view.bounds.maxY - Self.outerMargin
+    }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
 
     init(
@@ -34,7 +40,7 @@ final class StatusPopoverViewController: NSViewController {
         self.nowProvider = nowProvider
         self.calendar = calendar
         super.init(nibName: nil, bundle: nil)
-        preferredContentSize = NSSize(width: 300, height: 260)
+        preferredContentSize = Self.contentSize
     }
 
     @available(*, unavailable)
@@ -43,7 +49,7 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(origin: .zero, size: preferredContentSize))
+        view = NSView(frame: NSRect(origin: .zero, size: Self.contentSize))
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         setupSubviews()
