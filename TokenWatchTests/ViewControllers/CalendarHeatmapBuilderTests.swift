@@ -48,6 +48,38 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.dayCells.first?.dateKey == "2026-06-01")
     }
 
+    @Test("快照、cell、day 支持等值比较和稳定 identity")
+    func exposesStableIdentityAndEquatableModels() {
+        let calendar = utcCalendar(firstWeekday: 1)
+        let snapshot = CalendarHeatmapBuilder.build(
+            states: [:],
+            month: date(2026, 6, 17, calendar: calendar),
+            now: date(2026, 6, 17, calendar: calendar),
+            calendar: calendar
+        )
+
+        assertSendableEquatable(snapshot)
+
+        let firstCell = snapshot.cells.first
+        if case .placeholder(let id)? = firstCell {
+            #expect(id == "2026-06-placeholder-0")
+            #expect(firstCell?.id == id)
+            assertIdentifiable(firstCell)
+        } else {
+            Issue.record("首个 cell 应为 placeholder")
+        }
+
+        let firstDay = snapshot.day("2026-06-01")
+        #expect(firstDay?.id == "2026-06-01")
+        #expect(firstDay?.dayNumber == 1)
+        if let firstDay {
+            assertSendableEquatable(firstDay)
+            assertIdentifiable(firstDay)
+            assertSendableEquatable(CalendarHeatmapCell.day(firstDay))
+            assertIdentifiable(CalendarHeatmapCell.day(firstDay))
+        }
+    }
+
     @Test("跨 provider 合并 byDay token")
     func sumsDailyTokensAcrossProviders() {
         let calendar = utcCalendar(firstWeekday: 2)
@@ -140,7 +172,7 @@ struct CalendarHeatmapBuilderTests {
             byDay: [
                 "2026-06-01": makeSummary(total: 0),
                 "2026-06-02": makeSummary(total: 1),
-                "2026-06-03": makeSummary(total: 25),
+                "2026-06-03": makeSummary(total: 26),
                 "2026-06-04": makeSummary(total: 50),
                 "2026-06-05": makeSummary(total: 100),
             ],
@@ -157,7 +189,7 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.maxDailyTokens == 100)
         #expect(snapshot.day("2026-06-01")?.intensity == 0)
         #expect(snapshot.day("2026-06-02")?.intensity == 1)
-        #expect(snapshot.day("2026-06-03")?.intensity == 1)
+        #expect(snapshot.day("2026-06-03")?.intensity == 2)
         #expect(snapshot.day("2026-06-04")?.intensity == 2)
         #expect(snapshot.day("2026-06-05")?.intensity == 4)
     }
@@ -236,4 +268,12 @@ private extension CalendarHeatmapSnapshot {
     func day(_ key: String) -> CalendarHeatmapDay? {
         dayCells.first { $0.dateKey == key }
     }
+}
+
+private func assertSendableEquatable<T: Sendable & Equatable>(_ value: T) {
+    #expect(value == value)
+}
+
+private func assertIdentifiable<T: Identifiable>(_ value: T?) {
+    _ = value?.id
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 /// 日历热力图的完整数据快照,供 UI 直接渲染。
-struct CalendarHeatmapSnapshot: Sendable {
+struct CalendarHeatmapSnapshot: Sendable, Equatable {
     let monthKey: String
     let monthTitle: String
     let weekdaySymbols: [String]
@@ -11,16 +11,26 @@ struct CalendarHeatmapSnapshot: Sendable {
 }
 
 /// 日历热力图网格单元。
-enum CalendarHeatmapCell: Sendable {
-    case placeholder
+enum CalendarHeatmapCell: Sendable, Equatable, Identifiable {
+    case placeholder(id: String)
     case day(CalendarHeatmapDay)
+
+    var id: String {
+        switch self {
+        case .placeholder(let id):
+            id
+        case .day(let day):
+            day.id
+        }
+    }
 }
 
 /// 单日热力图数据。
-struct CalendarHeatmapDay: Sendable {
+struct CalendarHeatmapDay: Sendable, Equatable, Identifiable {
+    let id: String
     let date: Date
     let dateKey: String
-    let day: Int
+    let dayNumber: Int
     let totalTokens: Int
     let intensity: Int
     let isToday: Bool
@@ -77,16 +87,20 @@ enum CalendarHeatmapBuilder {
         }
         let maxDailyTokens = effectiveTotals.max() ?? 0
 
-        var cells = Array(repeating: CalendarHeatmapCell.placeholder, count: leadingPlaceholderCount(for: monthStart, calendar: calendar))
+        let placeholderCount = leadingPlaceholderCount(for: monthStart, calendar: calendar)
+        var cells = (0..<placeholderCount).map { index in
+            CalendarHeatmapCell.placeholder(id: "\(monthKey)-placeholder-\(index)")
+        }
         for date in dayDates {
             let key = dateKey(for: date, calendar: calendar)
-            let day = calendar.component(.day, from: date)
+            let dayNumber = calendar.component(.day, from: date)
             let isFuture = calendar.startOfDay(for: date) > today
             let totalTokens = isFuture ? 0 : dayTotals[key, default: 0]
             let heatmapDay = CalendarHeatmapDay(
+                id: key,
                 date: date,
                 dateKey: key,
-                day: day,
+                dayNumber: dayNumber,
                 totalTokens: totalTokens,
                 intensity: intensity(for: totalTokens, maxDailyTokens: maxDailyTokens),
                 isToday: calendar.isDate(date, inSameDayAs: today),
@@ -133,7 +147,7 @@ enum CalendarHeatmapBuilder {
 
     private static func intensity(for totalTokens: Int, maxDailyTokens: Int) -> Int {
         guard totalTokens > 0, maxDailyTokens > 0 else { return 0 }
-        let scaled = Int((Double(totalTokens) / Double(maxDailyTokens) * 4).rounded(.down))
+        let scaled = Int(ceil(Double(totalTokens) / Double(maxDailyTokens) * 4.0))
         return max(1, min(4, scaled))
     }
 }
