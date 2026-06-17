@@ -4,7 +4,7 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    private static let contentSize = NSSize(width: 300, height: 300)
+    nonisolated static let contentSize = NSSize(width: 300, height: 300)
     private static let outerMargin: CGFloat = 14
     private static let collectionHeight: CGFloat = 188
 
@@ -49,9 +49,7 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(origin: .zero, size: Self.contentSize))
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        view = StatusPopoverRootView(frame: NSRect(origin: .zero, size: Self.contentSize))
         setupSubviews()
     }
 
@@ -172,6 +170,29 @@ final class StatusPopoverViewController: NSViewController {
         }
 
         return cells[item]
+    }
+}
+
+/// 跟随系统外观刷新 popover 背景色。
+final class StatusPopoverRootView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        updateBackgroundColor()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("StatusPopoverRootView 不支持 storyboard 初始化")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateBackgroundColor()
+    }
+
+    private func updateBackgroundColor() {
+        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     }
 }
 

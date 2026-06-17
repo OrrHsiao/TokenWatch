@@ -52,4 +52,9 @@ struct StatusBarControllerTests {
     @Test func heatmapPopoverContentSizeFitsCalendarGrid() {
         #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 300, height: 300))
     }
+
+    /// 状态栏布局尺寸应复用 popover 内容控制器尺寸,避免两处常量漂移。
+    @Test func statusBarPopoverLayoutMatchesContentControllerSize() {
+        #expect(StatusBarPopoverLayout.contentSize == StatusPopoverViewController.contentSize)
+    }
 }

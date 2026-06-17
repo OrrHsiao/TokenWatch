@@ -393,7 +393,7 @@ final class StatusBarController {
 
 /// 状态栏 popover 固定布局参数。
 enum StatusBarPopoverLayout {
-    static let contentSize = NSSize(width: 300, height: 300)
+    static var contentSize: NSSize { StatusPopoverViewController.contentSize }
 }
 
 /// 状态栏按钮点击后的交互意图。

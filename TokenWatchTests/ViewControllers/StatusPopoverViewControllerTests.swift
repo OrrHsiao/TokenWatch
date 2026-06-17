@@ -23,6 +23,15 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionItemCount == 30)
     }
 
+    @Test("根视图使用动态窗口背景")
+    func rootViewUsesDynamicWindowBackground() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.view is StatusPopoverRootView)
+    }
+
     @Test("collection view 使用固定 6 行网格高度")
     func collectionViewUsesFixedGridHeight() {
         let controller = makeController()
