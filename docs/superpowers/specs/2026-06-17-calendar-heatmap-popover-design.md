@@ -52,7 +52,7 @@ let byMonth: [String: UsageSummary] // key: "2026-06"
 - 缺失日期补 0。
 - `needsAuthorization`、加载失败或没有 stats 的 provider 在合并时视作 0。
 
-`totalTokens` 口径沿用现有 `UsageSummary.totalTokens`,包含 input、output、cache read、cache creation 和 reasoning,与状态栏数字口径保持一致。
+热力图的 `totalTokens` 口径沿用现有 `UsageSummary.totalTokens`,包含 input、output、cache read、cache creation 和 reasoning。状态栏标题继续沿用自身现有数字口径,两者不在本次改动中合并。
 
 ## 4. 组件结构
 

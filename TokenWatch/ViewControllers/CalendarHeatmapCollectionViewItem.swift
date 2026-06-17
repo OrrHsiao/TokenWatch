@@ -46,10 +46,11 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
     private let dayLabel = NSTextField(labelWithString: "")
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
-        view.wantsLayer = true
-        view.layer?.cornerRadius = 5
-        view.layer?.masksToBounds = true
+        let cellView = CalendarHeatmapCellView(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
+        cellView.wantsLayer = true
+        cellView.layer?.cornerRadius = 5
+        cellView.layer?.masksToBounds = true
+        view = cellView
 
         dayLabel.translatesAutoresizingMaskIntoConstraints = false
         dayLabel.alignment = .center
@@ -69,7 +70,7 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
         view.toolTip = style.toolTip
         view.isHidden = style.isHidden
         view.alphaValue = style.alpha
-        view.layer?.backgroundColor = backgroundColor(forIntensity: style.intensity).cgColor
+        cellView.heatmapBackgroundColor = backgroundColor(forIntensity: style.intensity)
     }
 
     private func backgroundColor(forIntensity intensity: Int) -> NSColor {
@@ -84,6 +85,32 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
             return NSColor.systemGreen.withAlphaComponent(0.92)
         default:
             return NSColor.separatorColor.withAlphaComponent(0.35)
+        }
+    }
+
+    private var cellView: CalendarHeatmapCellView {
+        guard let cellView = view as? CalendarHeatmapCellView else {
+            preconditionFailure("CalendarHeatmapCollectionViewItem.view must be CalendarHeatmapCellView")
+        }
+        return cellView
+    }
+}
+
+private final class CalendarHeatmapCellView: NSView {
+    var heatmapBackgroundColor: NSColor = .clear {
+        didSet {
+            applyHeatmapBackgroundColor()
+        }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyHeatmapBackgroundColor()
+    }
+
+    private func applyHeatmapBackgroundColor() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = heatmapBackgroundColor.cgColor
         }
     }
 }

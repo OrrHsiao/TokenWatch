@@ -96,4 +96,32 @@ struct CalendarHeatmapCollectionViewItemTests {
         #expect(item.view.toolTip == "2026-06-10 · 12,345 tokens")
         #expect(item.view.alphaValue == 1.0)
     }
+
+    @MainActor
+    @Test("外观变化时重新应用背景色")
+    func appearanceChangeReappliesBackgroundColor() {
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 12_345,
+            intensity: 4,
+            isToday: false,
+            isFuture: false
+        )
+
+        item.configure(with: .day(day))
+        let configuredComponents = item.view.layer?.backgroundColor?.components
+
+        item.view.layer?.backgroundColor = nil
+        item.view.viewDidChangeEffectiveAppearance()
+        let refreshedComponents = item.view.layer?.backgroundColor?.components
+
+        #expect(configuredComponents != nil)
+        #expect(refreshedComponents == configuredComponents)
+    }
 }
