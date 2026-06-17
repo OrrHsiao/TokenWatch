@@ -4,6 +4,8 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
+    private static let collectionHeight: CGFloat = 188
+
     private let viewModel: TokenStatsViewModel
     private let nowProvider: () -> Date
     private let calendar: Calendar
@@ -19,6 +21,9 @@ final class StatusPopoverViewController: NSViewController {
     var debugCollectionView: NSCollectionView? { collectionView }
     var debugWeekdayLabelCount: Int { weekdayStack.arrangedSubviews.count }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
+    var debugCollectionHeight: CGFloat { Self.collectionHeight }
+    static var debugExpectedCollectionHeight: CGFloat { collectionHeight }
+    func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
 
     init(
         viewModel: TokenStatsViewModel,
@@ -111,6 +116,7 @@ final class StatusPopoverViewController: NSViewController {
             collectionView.topAnchor.constraint(equalTo: weekdayStack.bottomAnchor, constant: 6),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
+            collectionView.heightAnchor.constraint(equalToConstant: Self.collectionHeight),
             collectionView.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -14),
         ])
     }
@@ -152,6 +158,15 @@ final class StatusPopoverViewController: NSViewController {
             weekdayStack.addArrangedSubview(label)
         }
     }
+
+    private func cell(at item: Int) -> CalendarHeatmapCell? {
+        guard let cells = snapshot?.cells,
+              cells.indices.contains(item) else {
+            return nil
+        }
+
+        return cells[item]
+    }
 }
 
 extension StatusPopoverViewController: NSCollectionViewDataSource {
@@ -171,7 +186,7 @@ extension StatusPopoverViewController: NSCollectionViewDataSource {
             for: indexPath
         )
         guard let heatmapItem = item as? CalendarHeatmapCollectionViewItem,
-              let cell = snapshot?.cells[indexPath.item] else {
+              let cell = cell(at: indexPath.item) else {
             return item
         }
 

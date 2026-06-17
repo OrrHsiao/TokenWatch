@@ -23,6 +23,45 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionItemCount == 30)
     }
 
+    @Test("collection view 使用固定 6 行网格高度")
+    func collectionViewUsesFixedGridHeight() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        controller.view.layoutSubtreeIfNeeded()
+
+        #expect(controller.debugCollectionHeight == StatusPopoverViewController.debugExpectedCollectionHeight)
+        #expect(controller.debugCollectionView?.frame.height == StatusPopoverViewController.debugExpectedCollectionHeight)
+    }
+
+    @Test("data source 返回快照数量")
+    func dataSourceReturnsSnapshotCount() throws {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+
+        let collectionView = try #require(controller.debugCollectionView)
+        #expect(controller.collectionView(collectionView, numberOfItemsInSection: 0) == 30)
+    }
+
+    @Test("cell 访问对越界索引做保护")
+    func cellAccessChecksItemBounds() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugHasCell(at: 0))
+        #expect(!controller.debugHasCell(at: 999))
+    }
+
+    private func makeController() -> StatusPopoverViewController {
+        StatusPopoverViewController(
+            viewModel: TokenStatsViewModel(),
+            nowProvider: { fixedDate() },
+            calendar: fixedCalendar()
+        )
+    }
+
     private func fixedCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
