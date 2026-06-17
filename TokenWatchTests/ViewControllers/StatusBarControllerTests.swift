@@ -53,4 +53,28 @@ struct StatusBarControllerTests {
         #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: false) == .immediate)
     }
 
+    /// Popover 显示后点击背景应关闭视图。
+    @Test func popoverBackgroundClickDismissesPopover() {
+        #expect(StatusPopoverOutsideClick.resolve(
+            isPopoverShown: true,
+            eventTarget: .background
+        ) == .closePopover)
+    }
+
+    /// 点击状态栏按钮时交给按钮 action 处理,避免背景监听先关闭再被 action 重新打开。
+    @Test func popoverStatusButtonClickKeepsPopoverForButtonAction() {
+        #expect(StatusPopoverOutsideClick.resolve(
+            isPopoverShown: true,
+            eventTarget: .statusButton
+        ) == .keepPopover)
+    }
+
+    /// 点击 popover 内部时不应被背景逻辑关闭,为后续内容交互预留空间。
+    @Test func popoverContentClickKeepsPopover() {
+        #expect(StatusPopoverOutsideClick.resolve(
+            isPopoverShown: true,
+            eventTarget: .popover
+        ) == .keepPopover)
+    }
+
 }
