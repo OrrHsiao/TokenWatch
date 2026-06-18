@@ -5,8 +5,8 @@ import Testing
 @Suite("CalendarHeatmapBuilder")
 struct CalendarHeatmapBuilderTests {
 
-    @Test("生成当前月 day cell 并补齐首周 placeholder")
-    func buildsCurrentMonthCellsWithLeadingPlaceholders() {
+    @Test("生成最近五个月 day cell 并按首尾周补齐 placeholder")
+    func buildsRecentFiveMonthCellsWithWeekPlaceholders() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         calendar.firstWeekday = 2 // Monday
@@ -18,13 +18,13 @@ struct CalendarHeatmapBuilderTests {
             calendar: calendar
         )
 
-        #expect(snapshot.monthKey == "2026-06")
-        #expect(snapshot.monthTitle == "2026 年 6 月")
+        #expect(snapshot.monthKey == "2026-01-17...2026-06-17")
+        #expect(snapshot.monthTitle == "最近 5 个月")
         #expect(snapshot.weekdaySymbols == ["一", "二", "三", "四", "五", "六", "日"])
-        #expect(snapshot.cells.count == 30)
-        #expect(snapshot.dayCells.count == 30)
-        #expect(snapshot.dayCells.first?.dateKey == "2026-06-01")
-        #expect(snapshot.dayCells.last?.dateKey == "2026-06-30")
+        #expect(snapshot.cells.count == 161)
+        #expect(snapshot.dayCells.count == 152)
+        #expect(snapshot.dayCells.first?.dateKey == "2026-01-17")
+        #expect(snapshot.dayCells.last?.dateKey == "2026-06-17")
     }
 
     @Test("按 firstWeekday 生成首周 placeholder")
@@ -44,8 +44,8 @@ struct CalendarHeatmapBuilderTests {
             if case .placeholder = cell { return true }
             return false
         }
-        #expect(placeholders.count == 1)
-        #expect(snapshot.dayCells.first?.dateKey == "2026-06-01")
+        #expect(placeholders.count == 6)
+        #expect(snapshot.dayCells.first?.dateKey == "2026-01-17")
     }
 
     @Test("快照、cell、day 支持等值比较和稳定 identity")
@@ -62,16 +62,16 @@ struct CalendarHeatmapBuilderTests {
 
         let firstCell = snapshot.cells.first
         if case .placeholder(let id)? = firstCell {
-            #expect(id == "2026-06-placeholder-0")
+            #expect(id == "2026-01-17...2026-06-17-placeholder-0")
             #expect(firstCell?.id == id)
             assertIdentifiable(firstCell)
         } else {
             Issue.record("首个 cell 应为 placeholder")
         }
 
-        let firstDay = snapshot.day("2026-06-01")
-        #expect(firstDay?.id == "2026-06-01")
-        #expect(firstDay?.dayNumber == 1)
+        let firstDay = snapshot.day("2026-01-17")
+        #expect(firstDay?.id == "2026-01-17")
+        #expect(firstDay?.dayNumber == 17)
         if let firstDay {
             assertSendableEquatable(firstDay)
             assertIdentifiable(firstDay)
@@ -125,34 +125,20 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.day("2026-06-05")?.totalTokens == 300)
     }
 
-    @Test("优先使用 byMonth 作为月总量")
-    func usesByMonthForMonthTotalWhenPresent() {
-        let calendar = utcCalendar(firstWeekday: 2)
-        let stats = makeStats(
-            byDay: ["2026-06-01": makeSummary(total: 10)],
-            byMonth: ["2026-06": makeSummary(total: 999)]
-        )
-
-        let snapshot = CalendarHeatmapBuilder.build(
-            states: [.claude: .init(stats: stats, isLoading: false, errorMessage: nil, needsAuthorization: false)],
-            month: date(2026, 6, 17, calendar: calendar),
-            now: date(2026, 6, 17, calendar: calendar),
-            calendar: calendar
-        )
-
-        #expect(snapshot.monthTotalTokens == 999)
-    }
-
-    @Test("byMonth 缺失时用本月 byDay fallback")
-    func fallsBackToCurrentMonthDaySumWhenMonthBucketMissing() {
+    @Test("总量只累加最近五个月窗口内 byDay")
+    func rangeTotalUsesOnlyDayBucketsInsideRecentFiveMonths() {
         let calendar = utcCalendar(firstWeekday: 2)
         let stats = makeStats(
             byDay: [
-                "2026-06-01": makeSummary(total: 10),
-                "2026-06-02": makeSummary(total: 20),
-                "2026-05-31": makeSummary(total: 999),
+                "2026-01-16": makeSummary(total: 1_000),
+                "2026-01-17": makeSummary(total: 10),
+                "2026-06-17": makeSummary(total: 20),
+                "2026-06-18": makeSummary(total: 2_000),
             ],
-            byMonth: [:]
+            byMonth: [
+                "2026-01": makeSummary(total: 1_010),
+                "2026-06": makeSummary(total: 2_020),
+            ]
         )
 
         let snapshot = CalendarHeatmapBuilder.build(
@@ -163,6 +149,40 @@ struct CalendarHeatmapBuilderTests {
         )
 
         #expect(snapshot.monthTotalTokens == 30)
+        #expect(snapshot.day("2026-01-16") == nil)
+        #expect(snapshot.day("2026-06-18") == nil)
+    }
+
+    @Test("窗口总量跨月份累加 byDay")
+    func rangeTotalSumsDayBucketsAcrossMonths() {
+        let calendar = utcCalendar(firstWeekday: 2)
+        let stats = makeStats(
+            byDay: [
+                "2026-01-17": makeSummary(total: 10),
+                "2026-02-02": makeSummary(total: 20),
+                "2026-03-17": makeSummary(total: 30),
+                "2026-04-02": makeSummary(total: 40),
+                "2026-05-31": makeSummary(total: 50),
+                "2026-06-17": makeSummary(total: 60),
+            ],
+            byMonth: [
+                "2026-01": makeSummary(total: 10),
+                "2026-02": makeSummary(total: 20),
+                "2026-03": makeSummary(total: 30),
+                "2026-04": makeSummary(total: 40),
+                "2026-05": makeSummary(total: 50),
+                "2026-06": makeSummary(total: 60),
+            ]
+        )
+
+        let snapshot = CalendarHeatmapBuilder.build(
+            states: [.claude: .init(stats: stats, isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            month: date(2026, 6, 17, calendar: calendar),
+            now: date(2026, 6, 17, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.monthTotalTokens == 210)
     }
 
     @Test("token 强度映射到 0...4")
@@ -194,11 +214,11 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.day("2026-06-05")?.intensity == 4)
     }
 
-    @Test("未来日期弱化并视作 0")
-    func futureDaysAreZeroIntensity() {
+    @Test("不生成今天之后的未来日期")
+    func futureDaysAreNotGenerated() {
         let calendar = utcCalendar(firstWeekday: 2)
         let stats = makeStats(
-            byDay: ["2026-06-20": makeSummary(total: 1_000)],
+            byDay: ["2026-06-18": makeSummary(total: 1_000)],
             byMonth: ["2026-06": makeSummary(total: 1_000)]
         )
 
@@ -209,9 +229,8 @@ struct CalendarHeatmapBuilderTests {
             calendar: calendar
         )
 
-        #expect(snapshot.day("2026-06-20")?.isFuture == true)
-        #expect(snapshot.day("2026-06-20")?.totalTokens == 0)
-        #expect(snapshot.day("2026-06-20")?.intensity == 0)
+        #expect(snapshot.day("2026-06-18") == nil)
+        #expect(!snapshot.dayCells.contains { $0.isFuture })
     }
 
     private func utcCalendar(firstWeekday: Int) -> Calendar {

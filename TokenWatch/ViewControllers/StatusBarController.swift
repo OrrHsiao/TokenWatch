@@ -346,6 +346,7 @@ final class StatusBarController {
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             installPopoverDismissMonitors()
+            activatePopoverAfterShowing()
             setStatusButtonHighlighted(popoverIsShown: true)
         }
     }
@@ -379,6 +380,26 @@ final class StatusBarController {
         guard let button = statusItem.button else { return }
         button.highlight(isHighlighted)
         button.needsDisplay = true
+    }
+
+    private func activatePopoverAfterShowing() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let contentView = self.popover.contentViewController?.view
+            let popoverWindow = contentView?.window
+
+            for action in StatusPopoverActivation.actions(isPopoverShown: self.popover.isShown) {
+                switch action {
+                case .activateApplication:
+                    NSApp.activate(ignoringOtherApps: true)
+                case .makePopoverWindowKey:
+                    popoverWindow?.makeKey()
+                case .makeContentFirstResponder:
+                    guard let contentView else { continue }
+                    _ = popoverWindow?.makeFirstResponder(contentView)
+                }
+            }
+        }
     }
 
     private func installPopoverDismissMonitors() {
@@ -474,6 +495,26 @@ enum StatusBarPopoverLayout {
     static var contentSize: NSSize { StatusPopoverViewController.contentSize }
 }
 
+/// 状态栏 popover 展开后的激活动作。
+///
+/// 状态栏点击不会稳定激活应用;展开后需要显式让 popover window 接入响应链。
+enum StatusPopoverActivation {
+    enum Action: Equatable {
+        case activateApplication
+        case makePopoverWindowKey
+        case makeContentFirstResponder
+    }
+
+    static func actions(isPopoverShown: Bool) -> [Action] {
+        guard isPopoverShown else { return [] }
+        return [
+            .activateApplication,
+            .makePopoverWindowKey,
+            .makeContentFirstResponder,
+        ]
+    }
+}
+
 /// 状态栏 popover 外部点击处理策略。
 ///
 /// 只让真实背景点击关闭 popover;状态栏按钮点击保留给按钮 action 处理,避免关闭后又被重新打开。
@@ -548,6 +589,10 @@ enum StatusBarMenuPresentation: Equatable {
 ///
 /// 使用系统窗口背景色,让浅色和暗黑模式都由 AppKit 自动适配。
 final class EmptyStatusPopoverView: NSView {
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true

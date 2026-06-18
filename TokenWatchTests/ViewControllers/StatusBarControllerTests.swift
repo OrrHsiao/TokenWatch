@@ -53,9 +53,9 @@ struct StatusBarControllerTests {
         #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: false) == .immediate)
     }
 
-    /// 热力图 popover 尺寸要能容纳标题、星期行和 7 列日历网格。
+    /// 热力图 popover 尺寸要能容纳标题和近五个月网格。
     @Test func heatmapPopoverContentSizeFitsCalendarGrid() {
-        #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 260, height: 230))
+        #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 370, height: 180))
     }
 
     /// 状态栏布局尺寸应复用 popover 内容控制器尺寸,避免两处常量漂移。
@@ -85,6 +85,24 @@ struct StatusBarControllerTests {
             isPopoverShown: true,
             eventTarget: .popover
         ) == .keepPopover)
+    }
+
+    /// Popover 显示后应激活应用、让窗口成为 key,并把内容视图设为 first responder。
+    @Test func popoverShownRequestsFirstResponderActivation() {
+        #expect(StatusPopoverActivation.actions(isPopoverShown: true) == [
+            .activateApplication,
+            .makePopoverWindowKey,
+            .makeContentFirstResponder,
+        ])
+    }
+
+    /// 空 popover 根视图也需要能成为 first responder,否则 makeFirstResponder 会失败。
+    @Test func emptyPopoverViewAcceptsFirstResponder() async {
+        await MainActor.run {
+            let view = EmptyStatusPopoverView(frame: .zero)
+
+            #expect(view.acceptsFirstResponder)
+        }
     }
 
 }

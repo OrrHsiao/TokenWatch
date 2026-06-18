@@ -37,64 +37,71 @@ struct CalendarHeatmapDay: Sendable, Equatable, Identifiable {
     let isFuture: Bool
 }
 
-/// 将多 provider 统计数据构建为月视图日历热力图快照。
+/// 将多 provider 统计数据构建为最近五个月日历热力图快照。
 enum CalendarHeatmapBuilder {
-    /// 构建指定月份的热力图快照。
+    /// 构建以指定日期为终点的最近五个月热力图快照。
     /// - Parameters:
     ///   - states: 各 provider 的统计状态;未授权或无统计数据的 provider 会被忽略。
-    ///   - month: 需要展示的月份内任意日期。
-    ///   - now: 当前时间,用于判断今天与未来日期。
+    ///   - month: 窗口终点所在日期;保留旧参数名以兼容现有调用点。
+    ///   - now: 当前时间,用于防止生成未来日期。
     ///   - calendar: 调用方指定的日历配置,包含时区与 firstWeekday。
-    /// - Returns: 可直接渲染的月历热力图快照。
+    /// - Returns: 可直接渲染的近五个月热力图快照。
     static func build(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         month: Date,
         now: Date,
         calendar: Calendar
     ) -> CalendarHeatmapSnapshot {
-        let monthStart = startOfMonth(for: month, calendar: calendar)
-        let monthComponents = calendar.dateComponents([.year, .month], from: monthStart)
-        let year = monthComponents.year ?? 0
-        let monthNumber = monthComponents.month ?? 0
-        let monthKey = String(format: "%04d-%02d", year, monthNumber)
-        let dayRange = calendar.range(of: .day, in: .month, for: monthStart) ?? 1..<1
         let today = calendar.startOfDay(for: now)
+        let requestedEnd = calendar.startOfDay(for: month)
+        let rangeEnd = min(requestedEnd, today)
+        let rangeStart = calendar.startOfDay(
+            for: calendar.date(byAdding: .month, value: -5, to: rangeEnd) ?? rangeEnd
+        )
+        let rangeStartKey = dateKey(for: rangeStart, calendar: calendar)
+        let rangeEndKey = dateKey(for: rangeEnd, calendar: calendar)
+        let rangeKey = "\(rangeStartKey)...\(rangeEndKey)"
 
         var dayTotals: [String: Int] = [:]
-        var monthTotalTokens = 0
         for state in states.values {
             guard let stats = state.stats else { continue }
 
-            if let monthSummary = stats.byMonth[monthKey] {
-                monthTotalTokens += monthSummary.totalTokens
-            } else {
-                monthTotalTokens += stats.byDay
-                    .filter { $0.key.hasPrefix("\(monthKey)-") }
-                    .reduce(0) { $0 + $1.value.totalTokens }
-            }
-
-            for (dateKey, summary) in stats.byDay where dateKey.hasPrefix("\(monthKey)-") {
+            for (dateKey, summary) in stats.byDay
+            where dateKey >= rangeStartKey && dateKey <= rangeEndKey {
                 dayTotals[dateKey, default: 0] += summary.totalTokens
             }
         }
 
-        let dayDates = dayRange.compactMap { day in
-            calendar.date(byAdding: .day, value: day - 1, to: monthStart)
-        }
+        let dayDates = dates(from: rangeStart, through: rangeEnd, calendar: calendar)
         let effectiveTotals = dayDates.map { date in
             let key = dateKey(for: date, calendar: calendar)
-            return calendar.startOfDay(for: date) > today ? 0 : dayTotals[key, default: 0]
+            return dayTotals[key, default: 0]
         }
+        let monthTotalTokens = effectiveTotals.reduce(0, +)
         let maxDailyTokens = effectiveTotals.max() ?? 0
 
-        let placeholderCount = leadingPlaceholderCount(for: monthStart, calendar: calendar)
-        var cells = (0..<placeholderCount).map { index in
-            CalendarHeatmapCell.placeholder(id: "\(monthKey)-placeholder-\(index)")
-        }
-        for date in dayDates {
+        let alignedStart = calendar.date(
+            byAdding: .day,
+            value: -leadingPlaceholderCount(for: rangeStart, calendar: calendar),
+            to: rangeStart
+        ) ?? rangeStart
+        let alignedEnd = calendar.date(
+            byAdding: .day,
+            value: trailingPlaceholderCount(for: rangeEnd, calendar: calendar),
+            to: rangeEnd
+        ) ?? rangeEnd
+
+        var placeholderIndex = 0
+        let cells = dates(from: alignedStart, through: alignedEnd, calendar: calendar).map { date in
+            guard date >= rangeStart && date <= rangeEnd else {
+                let cell = CalendarHeatmapCell.placeholder(id: "\(rangeKey)-placeholder-\(placeholderIndex)")
+                placeholderIndex += 1
+                return cell
+            }
+
             let key = dateKey(for: date, calendar: calendar)
             let dayNumber = calendar.component(.day, from: date)
-            let isFuture = calendar.startOfDay(for: date) > today
+            let isFuture = date > today
             let totalTokens = isFuture ? 0 : dayTotals[key, default: 0]
             let heatmapDay = CalendarHeatmapDay(
                 id: key,
@@ -106,22 +113,17 @@ enum CalendarHeatmapBuilder {
                 isToday: calendar.isDate(date, inSameDayAs: today),
                 isFuture: isFuture
             )
-            cells.append(.day(heatmapDay))
+            return .day(heatmapDay)
         }
 
         return CalendarHeatmapSnapshot(
-            monthKey: monthKey,
-            monthTitle: "\(year) 年 \(monthNumber) 月",
+            monthKey: rangeKey,
+            monthTitle: "最近 5 个月",
             weekdaySymbols: weekdaySymbols(firstWeekday: calendar.firstWeekday),
             cells: cells,
             monthTotalTokens: monthTotalTokens,
             maxDailyTokens: maxDailyTokens
         )
-    }
-
-    private static func startOfMonth(for date: Date, calendar: Calendar) -> Date {
-        let components = calendar.dateComponents([.year, .month], from: date)
-        return calendar.date(from: components) ?? calendar.startOfDay(for: date)
     }
 
     private static func dateKey(for date: Date, calendar: Calendar) -> String {
@@ -137,6 +139,27 @@ enum CalendarHeatmapBuilder {
     private static func leadingPlaceholderCount(for monthStart: Date, calendar: Calendar) -> Int {
         let weekday = calendar.component(.weekday, from: monthStart)
         return (weekday - calendar.firstWeekday + 7) % 7
+    }
+
+    private static func trailingPlaceholderCount(for rangeEnd: Date, calendar: Calendar) -> Int {
+        let weekdayIndex = leadingPlaceholderCount(for: rangeEnd, calendar: calendar)
+        return 6 - weekdayIndex
+    }
+
+    private static func dates(from startDate: Date, through endDate: Date, calendar: Calendar) -> [Date] {
+        var dates: [Date] = []
+        var current = startDate
+
+        while current <= endDate {
+            dates.append(current)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: current),
+                  next > current else {
+                break
+            }
+            current = next
+        }
+
+        return dates
     }
 
     private static func weekdaySymbols(firstWeekday: Int) -> [String] {

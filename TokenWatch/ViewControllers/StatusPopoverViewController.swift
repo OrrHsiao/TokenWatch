@@ -1,14 +1,14 @@
 import AppKit
 
-/// 状态栏 popover 内容控制器,展示本月跨 provider token 日历热力图。
+/// 状态栏 popover 内容控制器,展示近五个月跨 provider token 日历热力图。
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 260, height: 230)
+    nonisolated static let contentSize = NSSize(width: 370, height: 180)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
-    private static let gridColumnCount = 7
-    private static let gridRowCount = 6
+    private static let gridColumnCount = 23
+    private static let gridRowCount = 7
     private static let collectionHeight =
         CalendarHeatmapCollectionViewItem.tileSize.height * CGFloat(gridRowCount)
         + tileSpacing * CGFloat(gridRowCount - 1)
@@ -24,18 +24,18 @@ final class StatusPopoverViewController: NSViewController {
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "")
-    private let weekdayStack = NSStackView()
     private let collectionView = NSCollectionView()
 
     var debugMonthTitle: String { titleLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
-    var debugWeekdayLabelCount: Int { weekdayStack.arrangedSubviews.count }
+    var debugWeekdayLabelCount: Int { 0 }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
     static var debugExpectedCollectionHeight: CGFloat { collectionHeight }
     var debugCollectionViewBottomFitsInRootBounds: Bool {
-        collectionView.frame.minY >= Self.outerMargin
-            && collectionView.frame.maxY <= view.bounds.maxY - Self.outerMargin
+        let frameInRoot = collectionView.convert(collectionView.bounds, to: view)
+        return frameInRoot.minY >= Self.outerMargin
+            && frameInRoot.maxY <= view.bounds.maxY - Self.outerMargin
     }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
 
@@ -90,12 +90,8 @@ final class StatusPopoverViewController: NSViewController {
         headerStack.spacing = 2
         headerStack.translatesAutoresizingMaskIntoConstraints = false
 
-        weekdayStack.orientation = .horizontal
-        weekdayStack.distribution = .fillEqually
-        weekdayStack.spacing = Self.tileSpacing
-        weekdayStack.translatesAutoresizingMaskIntoConstraints = false
-
         let layout = NSCollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
         layout.minimumInteritemSpacing = Self.tileSpacing
         layout.minimumLineSpacing = Self.tileSpacing
         layout.itemSize = CalendarHeatmapCollectionViewItem.tileSize
@@ -112,7 +108,6 @@ final class StatusPopoverViewController: NSViewController {
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(headerStack)
-        view.addSubview(weekdayStack)
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
@@ -120,12 +115,7 @@ final class StatusPopoverViewController: NSViewController {
             headerStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
             headerStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -14),
 
-            weekdayStack.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 14),
-            weekdayStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            weekdayStack.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
-            weekdayStack.heightAnchor.constraint(equalToConstant: 16),
-
-            collectionView.topAnchor.constraint(equalTo: weekdayStack.bottomAnchor, constant: 6),
+            collectionView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 14),
             collectionView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             collectionView.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
             collectionView.heightAnchor.constraint(equalToConstant: Self.collectionHeight),
@@ -144,31 +134,8 @@ final class StatusPopoverViewController: NSViewController {
         self.snapshot = snapshot
 
         titleLabel.stringValue = snapshot.monthTitle
-        totalLabel.stringValue = "本月 \(CompactNumberFormatter.format(snapshot.monthTotalTokens)) tokens"
-        renderWeekdayLabels(snapshot.weekdaySymbols)
+        totalLabel.stringValue = "近五月 \(CompactNumberFormatter.format(snapshot.monthTotalTokens)) tokens"
         collectionView.reloadData()
-    }
-
-    private func renderWeekdayLabels(_ symbols: [String]) {
-        if weekdayStack.arrangedSubviews.count == symbols.count {
-            for (view, symbol) in zip(weekdayStack.arrangedSubviews, symbols) {
-                (view as? NSTextField)?.stringValue = symbol
-            }
-            return
-        }
-
-        weekdayStack.arrangedSubviews.forEach { view in
-            weekdayStack.removeArrangedSubview(view)
-            view.removeFromSuperview()
-        }
-
-        for symbol in symbols {
-            let label = NSTextField(labelWithString: symbol)
-            label.alignment = .center
-            label.font = .systemFont(ofSize: 9, weight: .medium)
-            label.textColor = .secondaryLabelColor
-            weekdayStack.addArrangedSubview(label)
-        }
     }
 
     private func cell(at item: Int) -> CalendarHeatmapCell? {

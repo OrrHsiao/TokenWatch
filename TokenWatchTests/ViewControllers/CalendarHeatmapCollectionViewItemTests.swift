@@ -78,8 +78,8 @@ struct CalendarHeatmapCollectionViewItemTests {
         let item = CalendarHeatmapCollectionViewItem()
         item.loadView()
 
-        #expect(item.view.frame.size == NSSize(width: 18, height: 18))
-        #expect(item.view.layer?.cornerRadius == 3)
+        #expect(item.view.frame.size == NSSize(width: 12, height: 12))
+        #expect(item.view.layer?.cornerRadius == 2)
     }
 
     @MainActor
@@ -103,6 +103,29 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.configure(with: .day(day))
 
         #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.129, 0.431, 0.224, 1.0])
+    }
+
+    @MainActor
+    @Test("暗色模式 0 token 方块使用更亮的中性色")
+    func zeroTokenUsesLighterNeutralInDarkMode() {
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+        item.view.appearance = NSAppearance(named: .darkAqua)
+
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 0,
+            intensity: 0,
+            isToday: false,
+            isFuture: false
+        )
+
+        item.configure(with: .day(day))
+
+        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.098, 0.118, 0.145, 1.0])
     }
 
     @MainActor

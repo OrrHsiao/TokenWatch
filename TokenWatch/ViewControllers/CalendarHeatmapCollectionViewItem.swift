@@ -42,8 +42,8 @@ struct CalendarHeatmapCellStyle: Equatable {
 /// 日历热力图单个 collection item。
 final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("CalendarHeatmapCollectionViewItem")
-    static let tileSize = NSSize(width: 18, height: 18)
-    static let cornerRadius: CGFloat = 3
+    static let tileSize = NSSize(width: 12, height: 12)
+    static let cornerRadius: CGFloat = 2
 
     private let dayLabel = NSTextField(labelWithString: "")
 
@@ -113,7 +113,7 @@ private enum CalendarHeatmapGitHubPalette {
     ]
 
     private static let darkColors = [
-        color(red: 22, green: 27, blue: 34),
+        color(red: 25, green: 30, blue: 37),
         color(red: 14, green: 68, blue: 41),
         color(red: 0, green: 109, blue: 50),
         color(red: 38, green: 166, blue: 65),
