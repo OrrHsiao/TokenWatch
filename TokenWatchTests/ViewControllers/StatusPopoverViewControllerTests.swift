@@ -23,9 +23,20 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugSummaryCards.allSatisfy { $0.hasBackgroundColor })
         #expect(controller.debugSummaryCards.allSatisfy { !$0.hasBorder })
         #expect(controller.debugSummaryCards.allSatisfy { $0.cornerRadius == 8 })
+        #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
+        #expect(controller.debugTodayDescriptionAlignment == .left)
+        #expect(controller.debugTodayDescriptionLabelCenteredInRoot)
+        #expect(controller.debugTodayDescriptionLabelSitsAboveSummary)
         #expect(controller.debugCollectionView != nil)
         #expect(controller.debugWeekdayLabelCount == 0)
         #expect(controller.debugCollectionItemCount == 154)
+    }
+
+    @Test("本日 token 文案按消耗分档")
+    func todayDescriptionTextReflectsUsageTier() {
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 0) == "本日还没有消耗 token 哦～")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 100_000) == "本日 token 消耗正在加速～")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 6_700_000) == "本日 token 消耗爆表～")
     }
 
     @Test("根视图使用动态窗口背景")

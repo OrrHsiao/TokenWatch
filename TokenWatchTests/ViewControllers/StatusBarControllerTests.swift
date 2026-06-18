@@ -55,7 +55,7 @@ struct StatusBarControllerTests {
 
     /// 热力图 popover 尺寸要能容纳摘要方块和 22 列网格。
     @Test func heatmapPopoverContentSizeFitsCalendarGrid() {
-        #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 370, height: 210))
+        #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 370, height: 236))
     }
 
     /// 状态栏布局尺寸应复用 popover 内容控制器尺寸,避免两处常量漂移。

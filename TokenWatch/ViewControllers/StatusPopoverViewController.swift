@@ -4,9 +4,11 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 370, height: 210)
+    nonisolated static let contentSize = NSSize(width: 370, height: 236)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
+    private static let todayDescriptionHeight: CGFloat = 18
+    private static let todayDescriptionToSummarySpacing: CGFloat = 8
     private static let summaryCardHeight: CGFloat = 50
     private static let gridColumnCount = 22
     private static let gridRowCount = 7
@@ -26,6 +28,7 @@ final class StatusPopoverViewController: NSViewController {
 
     private let summaryStack = NSStackView()
     private var summaryCards: [SummaryMetricCardView] = []
+    private let todayDescriptionLabel = NSTextField(labelWithString: "")
     private let hoverLabel = NSTextField(labelWithString: "")
     private let collectionView = NSCollectionView()
 
@@ -50,12 +53,32 @@ final class StatusPopoverViewController: NSViewController {
             )
         }
     }
+    var debugTodayDescriptionText: String { todayDescriptionLabel.stringValue }
+    var debugTodayDescriptionAlignment: NSTextAlignment { todayDescriptionLabel.alignment }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
     var debugWeekdayLabelCount: Int { 0 }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
     static var debugExpectedCollectionHeight: CGFloat { collectionHeight }
+    var debugTodayDescriptionLabelCenteredInRoot: Bool {
+        hasConstraint(
+            firstItem: todayDescriptionLabel,
+            firstAttribute: .centerX,
+            secondItem: view,
+            secondAttribute: .centerX,
+            constant: 0
+        )
+    }
+    var debugTodayDescriptionLabelSitsAboveSummary: Bool {
+        hasConstraint(
+            firstItem: summaryStack,
+            firstAttribute: .top,
+            secondItem: todayDescriptionLabel,
+            secondAttribute: .bottom,
+            constant: Self.todayDescriptionToSummarySpacing
+        )
+    }
     var debugHoverLabelTrailingAlignsWithCollectionView: Bool {
         hasConstraint(
             firstItem: hoverLabel,
@@ -163,6 +186,12 @@ final class StatusPopoverViewController: NSViewController {
         summaryStack.translatesAutoresizingMaskIntoConstraints = false
         setupSummaryCards()
 
+        todayDescriptionLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        todayDescriptionLabel.textColor = .labelColor
+        todayDescriptionLabel.alignment = .left
+        todayDescriptionLabel.lineBreakMode = .byTruncatingTail
+        todayDescriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+
         hoverLabel.font = .systemFont(ofSize: 12, weight: .medium)
         hoverLabel.textColor = .secondaryLabelColor
         hoverLabel.alignment = .right
@@ -186,12 +215,21 @@ final class StatusPopoverViewController: NSViewController {
         )
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
+        view.addSubview(todayDescriptionLabel)
         view.addSubview(summaryStack)
         view.addSubview(hoverLabel)
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
-            summaryStack.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
+            todayDescriptionLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
+            todayDescriptionLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            todayDescriptionLabel.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
+            todayDescriptionLabel.heightAnchor.constraint(equalToConstant: Self.todayDescriptionHeight),
+
+            summaryStack.topAnchor.constraint(
+                equalTo: todayDescriptionLabel.bottomAnchor,
+                constant: Self.todayDescriptionToSummarySpacing
+            ),
             summaryStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             summaryStack.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
             summaryStack.heightAnchor.constraint(equalToConstant: Self.summaryCardHeight),
@@ -232,6 +270,7 @@ final class StatusPopoverViewController: NSViewController {
         self.snapshot = snapshot
 
         applySummary(snapshot.summary)
+        applyTodayDescription(todayTokens: snapshot.summary.todayTokens)
         applyHoverText()
         collectionView.reloadData()
     }
@@ -254,6 +293,10 @@ final class StatusPopoverViewController: NSViewController {
         }
     }
 
+    private func applyTodayDescription(todayTokens: Int) {
+        todayDescriptionLabel.stringValue = StatusPopoverDailyTokenDescription.text(forTodayTokens: todayTokens)
+    }
+
     private func applyHoverText() {
         hoverLabel.stringValue = hoverText ?? ""
     }
@@ -265,6 +308,29 @@ final class StatusPopoverViewController: NSViewController {
         }
 
         return cells[item]
+    }
+}
+
+/// 状态栏弹窗顶部的本日 token 消耗文案。
+enum StatusPopoverDailyTokenDescription {
+    /// 按状态栏图标相同阈值生成一句轻量描述。
+    /// - Parameter total: 本日跨 provider token 总量,负数会按 0 处理。
+    /// - Returns: 可直接展示在 popover 顶部的中文文案。
+    static func text(forTodayTokens total: Int) -> String {
+        switch max(0, total) {
+        case 0:
+            return "本日还没有消耗 token 哦～"
+        case ..<100_000:
+            return "本日 token 消耗很克制～"
+        case ..<3_300_000:
+            return "本日 token 消耗正在加速～"
+        case ..<5_000_000:
+            return "本日 token 消耗有点上头～"
+        case ..<6_700_000:
+            return "本日 token 消耗火力全开～"
+        default:
+            return "本日 token 消耗爆表～"
+        }
     }
 }
 
