@@ -1,12 +1,13 @@
 import AppKit
 
-/// 状态栏 popover 内容控制器,展示近 22 周跨 provider token 日历热力图。
+/// 状态栏 popover 内容控制器,展示摘要统计与近 22 周跨 provider token 日历热力图。
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 370, height: 180)
+    nonisolated static let contentSize = NSSize(width: 370, height: 210)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
+    private static let summaryCardHeight: CGFloat = 50
     private static let gridColumnCount = 22
     private static let gridRowCount = 7
     private static let collectionHeight =
@@ -21,16 +22,34 @@ final class StatusPopoverViewController: NSViewController {
     private let calendar: Calendar
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var snapshot: CalendarHeatmapSnapshot?
-    private var rangeTotalText = ""
     private var hoverText: String?
 
-    private let titleLabel = NSTextField(labelWithString: "")
-    private let totalLabel = NSTextField(labelWithString: "")
+    private let summaryStack = NSStackView()
+    private var summaryCards: [SummaryMetricCardView] = []
     private let hoverLabel = NSTextField(labelWithString: "")
     private let collectionView = NSCollectionView()
 
-    var debugMonthTitle: String { titleLabel.stringValue }
-    var debugTotalText: String { totalLabel.stringValue }
+    struct DebugSummaryCard: Equatable {
+        let title: String
+        let value: String
+        let styleName: String
+        let hasBackgroundColor: Bool
+        let hasBorder: Bool
+        let cornerRadius: CGFloat
+    }
+
+    var debugSummaryCards: [DebugSummaryCard] {
+        summaryCards.map {
+            DebugSummaryCard(
+                title: $0.debugTitle,
+                value: $0.debugValue,
+                styleName: $0.debugStyleName,
+                hasBackgroundColor: $0.debugHasBackgroundColor,
+                hasBorder: $0.debugHasBorder,
+                cornerRadius: $0.debugCornerRadius
+            )
+        }
+    }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
     var debugWeekdayLabelCount: Int { 0 }
@@ -137,23 +156,18 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     private func setupSubviews() {
-        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
-        titleLabel.textColor = .labelColor
-
-        totalLabel.font = .systemFont(ofSize: 12)
-        totalLabel.textColor = .secondaryLabelColor
+        summaryStack.orientation = .horizontal
+        summaryStack.alignment = .centerY
+        summaryStack.distribution = .fillEqually
+        summaryStack.spacing = 7
+        summaryStack.translatesAutoresizingMaskIntoConstraints = false
+        setupSummaryCards()
 
         hoverLabel.font = .systemFont(ofSize: 12, weight: .medium)
         hoverLabel.textColor = .secondaryLabelColor
         hoverLabel.alignment = .right
         hoverLabel.lineBreakMode = .byTruncatingMiddle
         hoverLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        let headerStack = NSStackView(views: [titleLabel, totalLabel])
-        headerStack.orientation = .vertical
-        headerStack.alignment = .leading
-        headerStack.spacing = 2
-        headerStack.translatesAutoresizingMaskIntoConstraints = false
 
         let layout = NSCollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -172,25 +186,39 @@ final class StatusPopoverViewController: NSViewController {
         )
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(headerStack)
+        view.addSubview(summaryStack)
         view.addSubview(hoverLabel)
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
-            headerStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 14),
-            headerStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
-            headerStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -14),
+            summaryStack.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
+            summaryStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            summaryStack.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
+            summaryStack.heightAnchor.constraint(equalToConstant: Self.summaryCardHeight),
 
             hoverLabel.leadingAnchor.constraint(equalTo: collectionView.leadingAnchor),
             hoverLabel.trailingAnchor.constraint(equalTo: collectionView.trailingAnchor),
             hoverLabel.bottomAnchor.constraint(equalTo: collectionView.topAnchor, constant: -1),
 
-            collectionView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 14),
+            collectionView.topAnchor.constraint(equalTo: summaryStack.bottomAnchor, constant: 21),
             collectionView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             collectionView.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
             collectionView.heightAnchor.constraint(equalToConstant: Self.collectionHeight),
-            collectionView.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -14),
+            collectionView.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -Self.outerMargin),
         ])
+    }
+
+    private func setupSummaryCards() {
+        let cards = [
+            SummaryMetricCardView(title: "本月", style: .neutral),
+            SummaryMetricCardView(title: "本周", style: .neutral),
+            SummaryMetricCardView(title: "今日", style: .neutral),
+            SummaryMetricCardView(title: "日均", style: .neutral),
+        ]
+        summaryCards = cards
+        for card in cards {
+            summaryStack.addArrangedSubview(card)
+        }
     }
 
     private func render() {
@@ -203,9 +231,7 @@ final class StatusPopoverViewController: NSViewController {
         )
         self.snapshot = snapshot
 
-        titleLabel.stringValue = snapshot.monthTitle
-        rangeTotalText = "近22周 \(CompactNumberFormatter.format(snapshot.monthTotalTokens)) tokens"
-        applyTotalText()
+        applySummary(snapshot.summary)
         applyHoverText()
         collectionView.reloadData()
     }
@@ -215,8 +241,17 @@ final class StatusPopoverViewController: NSViewController {
         applyHoverText()
     }
 
-    private func applyTotalText() {
-        totalLabel.stringValue = rangeTotalText
+    private func applySummary(_ summary: CalendarHeatmapSummary) {
+        let values = [
+            summary.monthTokens,
+            summary.weekTokens,
+            summary.todayTokens,
+            summary.averageDailyTokens,
+        ].map(CompactNumberFormatter.format)
+
+        for (card, value) in zip(summaryCards, values) {
+            card.configure(value: value)
+        }
     }
 
     private func applyHoverText() {
@@ -230,6 +265,102 @@ final class StatusPopoverViewController: NSViewController {
         }
 
         return cells[item]
+    }
+}
+
+private struct SummaryMetricCardStyle {
+    let name: String
+    let backgroundColor: NSColor
+    let cornerRadius: CGFloat
+
+    static let neutral = SummaryMetricCardStyle(
+        name: "neutral",
+        backgroundColor: dynamicColor(
+            light: color(red: 252, green: 252, blue: 252),
+            dark: color(red: 33, green: 34, blue: 37)
+        ),
+        cornerRadius: 8
+    )
+
+    private static func dynamicColor(light: NSColor, dark: NSColor) -> NSColor {
+        NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        }
+    }
+
+    private static func color(red: CGFloat, green: CGFloat, blue: CGFloat) -> NSColor {
+        NSColor(calibratedRed: red / 255, green: green / 255, blue: blue / 255, alpha: 1)
+    }
+}
+
+private final class SummaryMetricCardView: NSView {
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let valueLabel = NSTextField(labelWithString: "")
+    private let style: SummaryMetricCardStyle
+
+    var debugTitle: String { titleLabel.stringValue }
+    var debugValue: String { valueLabel.stringValue }
+    var debugStyleName: String { style.name }
+    var debugHasBackgroundColor: Bool { layer?.backgroundColor != nil }
+    var debugHasBorder: Bool { (layer?.borderWidth ?? 0) > 0 && layer?.borderColor != nil }
+    var debugCornerRadius: CGFloat { layer?.cornerRadius ?? 0 }
+
+    init(title: String, style: SummaryMetricCardStyle) {
+        self.style = style
+        super.init(frame: .zero)
+
+        wantsLayer = true
+        translatesAutoresizingMaskIntoConstraints = false
+
+        titleLabel.stringValue = title
+        titleLabel.alignment = .center
+        titleLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        titleLabel.textColor = .secondaryLabelColor
+        titleLabel.lineBreakMode = .byTruncatingTail
+
+        valueLabel.alignment = .center
+        valueLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        valueLabel.textColor = .labelColor
+        valueLabel.lineBreakMode = .byTruncatingTail
+
+        let contentStack = NSStackView(views: [titleLabel, valueLabel])
+        contentStack.orientation = .vertical
+        contentStack.alignment = .centerX
+        contentStack.spacing = 3
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            contentStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+
+        updateCardColors()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("SummaryMetricCardView 不支持 storyboard 初始化")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateCardColors()
+    }
+
+    func configure(value: String) {
+        valueLabel.stringValue = value
+        toolTip = "\(titleLabel.stringValue) \(value) tokens"
+    }
+
+    private func updateCardColors() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.cornerRadius = style.cornerRadius
+            layer?.backgroundColor = style.backgroundColor.cgColor
+            layer?.borderColor = nil
+            layer?.borderWidth = 0
+        }
     }
 }
 

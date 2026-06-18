@@ -116,6 +116,45 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.monthTotalTokens == 125)
     }
 
+    @Test("摘要统计本月本周今日和本月至今日日均 token")
+    func summaryTotalsUseCurrentCalendarPeriods() {
+        let calendar = utcCalendar(firstWeekday: 2)
+        let claudeStats = makeStats(
+            byDay: [
+                "2026-05-31": makeSummary(total: 99_999),
+                "2026-06-01": makeSummary(total: 100),
+                "2026-06-10": makeSummary(total: 300),
+                "2026-06-15": makeSummary(total: 1_000),
+                "2026-06-16": makeSummary(total: 2_000),
+                "2026-06-17": makeSummary(total: 4_000),
+                "2026-06-18": makeSummary(total: 8_000),
+            ],
+            byMonth: [:]
+        )
+        let codexStats = makeStats(
+            byDay: [
+                "2026-06-15": makeSummary(total: 50),
+                "2026-06-17": makeSummary(total: 500),
+            ],
+            byMonth: [:]
+        )
+
+        let snapshot = CalendarHeatmapBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            ],
+            month: date(2026, 6, 17, calendar: calendar),
+            now: date(2026, 6, 17, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.summary.monthTokens == 7_950)
+        #expect(snapshot.summary.weekTokens == 7_550)
+        #expect(snapshot.summary.todayTokens == 4_500)
+        #expect(snapshot.summary.averageDailyTokens == 467)
+    }
+
     @Test("缺失日期补 0")
     func missingDayBucketsAreZero() {
         let calendar = utcCalendar(firstWeekday: 2)

@@ -6,7 +6,7 @@ import Testing
 @Suite("StatusPopoverViewController")
 struct StatusPopoverViewControllerTests {
 
-    @Test("加载后创建二十二列热力图 collection view")
+    @Test("加载后创建摘要方块和二十二列热力图 collection view")
     func loadViewCreatesTwentyTwoColumnCollectionView() {
         let viewModel = TokenStatsViewModel()
         let controller = StatusPopoverViewController(
@@ -17,7 +17,12 @@ struct StatusPopoverViewControllerTests {
 
         controller.loadViewIfNeeded()
 
-        #expect(controller.debugMonthTitle == "最近 22 周")
+        #expect(controller.debugSummaryCards.map(\.title) == ["本月", "本周", "今日", "日均"])
+        #expect(controller.debugSummaryCards.map(\.value) == ["0", "0", "0", "0"])
+        #expect(controller.debugSummaryCards.map(\.styleName) == ["neutral", "neutral", "neutral", "neutral"])
+        #expect(controller.debugSummaryCards.allSatisfy { $0.hasBackgroundColor })
+        #expect(controller.debugSummaryCards.allSatisfy { !$0.hasBorder })
+        #expect(controller.debugSummaryCards.allSatisfy { $0.cornerRadius == 8 })
         #expect(controller.debugCollectionView != nil)
         #expect(controller.debugWeekdayLabelCount == 0)
         #expect(controller.debugCollectionItemCount == 154)
@@ -93,22 +98,22 @@ struct StatusPopoverViewControllerTests {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
-        let defaultText = controller.debugTotalText
+        let defaultSummaryCards = controller.debugSummaryCards
         controller.view.layoutSubtreeIfNeeded()
         controller.debugUpdateHoverText("2026-06-10 · 12,345 tokens")
         controller.view.layoutSubtreeIfNeeded()
 
-        #expect(controller.debugTotalText == defaultText)
+        #expect(controller.debugSummaryCards == defaultSummaryCards)
         #expect(controller.debugHoverText == "2026-06-10 · 12,345 tokens")
         #expect(controller.debugHoverLabelTrailingAlignsWithCollectionView)
         #expect(controller.debugHoverLabelLeadingAlignsWithCollectionView)
         #expect(controller.debugHoverLabelSitsJustAboveCollectionView)
-        #expect(try label(named: "hoverLabel", in: controller).textColor == label(named: "totalLabel", in: controller).textColor)
+        #expect(try label(named: "hoverLabel", in: controller).textColor == .secondaryLabelColor)
 
         controller.debugUpdateHoverText(nil)
         controller.view.layoutSubtreeIfNeeded()
 
-        #expect(controller.debugTotalText == defaultText)
+        #expect(controller.debugSummaryCards == defaultSummaryCards)
         #expect(controller.debugHoverText == "")
     }
 

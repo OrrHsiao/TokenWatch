@@ -6,8 +6,17 @@ struct CalendarHeatmapSnapshot: Sendable, Equatable {
     let monthTitle: String
     let weekdaySymbols: [String]
     let cells: [CalendarHeatmapCell]
+    let summary: CalendarHeatmapSummary
     let monthTotalTokens: Int
     let maxDailyTokens: Int
+}
+
+/// 热力图上方摘要统计。
+struct CalendarHeatmapSummary: Sendable, Equatable {
+    let monthTokens: Int
+    let weekTokens: Int
+    let todayTokens: Int
+    let averageDailyTokens: Int
 }
 
 /// 日历热力图网格单元。
@@ -120,6 +129,7 @@ enum CalendarHeatmapBuilder {
             monthTitle: "最近 22 周",
             weekdaySymbols: weekdaySymbols(firstWeekday: calendar.firstWeekday),
             cells: cells,
+            summary: summary(states: states, now: now, calendar: calendar),
             monthTotalTokens: monthTotalTokens,
             maxDailyTokens: maxDailyTokens
         )
@@ -143,6 +153,64 @@ enum CalendarHeatmapBuilder {
     private static func trailingPlaceholderCount(for rangeEnd: Date, calendar: Calendar) -> Int {
         let weekdayIndex = leadingPlaceholderCount(for: rangeEnd, calendar: calendar)
         return 6 - weekdayIndex
+    }
+
+    private static func summary(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        now: Date,
+        calendar: Calendar
+    ) -> CalendarHeatmapSummary {
+        let today = calendar.startOfDay(for: now)
+        let todayKey = dateKey(for: today, calendar: calendar)
+        let monthStart = calendar.dateInterval(of: .month, for: today)?.start ?? today
+        let weekStart = calendar.date(
+            byAdding: .day,
+            value: -leadingPlaceholderCount(for: today, calendar: calendar),
+            to: today
+        ) ?? today
+
+        let monthTokens = totalTokens(
+            states: states,
+            from: dateKey(for: monthStart, calendar: calendar),
+            through: todayKey
+        )
+        let weekTokens = totalTokens(
+            states: states,
+            from: dateKey(for: weekStart, calendar: calendar),
+            through: todayKey
+        )
+        let todayTokens = totalTokens(states: states, on: todayKey)
+        let elapsedDays = max(1, (calendar.dateComponents([.day], from: monthStart, to: today).day ?? 0) + 1)
+
+        return CalendarHeatmapSummary(
+            monthTokens: monthTokens,
+            weekTokens: weekTokens,
+            todayTokens: todayTokens,
+            averageDailyTokens: monthTokens / elapsedDays
+        )
+    }
+
+    private static func totalTokens(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        from startKey: String,
+        through endKey: String
+    ) -> Int {
+        states.values.reduce(0) { total, state in
+            guard let stats = state.stats else { return total }
+            return total + stats.byDay.reduce(0) { partial, entry in
+                guard entry.key >= startKey, entry.key <= endKey else { return partial }
+                return partial + entry.value.totalTokens
+            }
+        }
+    }
+
+    private static func totalTokens(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        on dateKey: String
+    ) -> Int {
+        states.values.reduce(0) { total, state in
+            total + (state.stats?.byDay[dateKey]?.totalTokens ?? 0)
+        }
     }
 
     private static func dates(from startDate: Date, through endDate: Date, calendar: Calendar) -> [Date] {
