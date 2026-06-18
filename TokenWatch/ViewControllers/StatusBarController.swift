@@ -21,6 +21,8 @@ final class StatusBarController {
     private let statusMenu = NSMenu()
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var popoverCloseObserver: NSObjectProtocol?
+    private var popoverLocalEventMonitor: Any?
+    private var popoverGlobalEventMonitor: Any?
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
 
@@ -64,6 +66,7 @@ final class StatusBarController {
             if let token = popoverCloseObserver {
                 NotificationCenter.default.removeObserver(token)
             }
+            removePopoverDismissMonitors()
         }
     }
 
@@ -81,6 +84,7 @@ final class StatusBarController {
             NotificationCenter.default.removeObserver(token)
             popoverCloseObserver = nil
         }
+        removePopoverDismissMonitors()
         popover.performClose(nil)
         NSStatusBar.system.removeStatusItem(statusItem)
     }
@@ -139,6 +143,7 @@ final class StatusBarController {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                self?.removePopoverDismissMonitors()
                 self?.setStatusButtonHighlighted(popoverIsShown: false)
             }
         }
@@ -336,18 +341,25 @@ final class StatusBarController {
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
+            removePopoverDismissMonitors()
             setStatusButtonHighlighted(popoverIsShown: false)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            installPopoverDismissMonitors()
             setStatusButtonHighlighted(popoverIsShown: true)
         }
     }
 
     private func showStatusMenu() {
-        guard let button = statusItem.button else { return }
         popover.performClose(nil)
+        removePopoverDismissMonitors()
         setStatusButtonHighlighted(popoverIsShown: false)
-        statusMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+        switch StatusBarMenuPresentation.presenter() {
+        case .statusItemMenu(let selectorName):
+            // 左键需要自定义 popover,所以不能常驻设置 statusItem.menu;
+            // 右键这里直接走 NSStatusItem 的菜单 presenter,由 AppKit 负责状态栏定位。
+            _ = statusItem.perform(NSSelectorFromString(selectorName), with: statusMenu)
+        }
     }
 
     private func setStatusButtonHighlighted(popoverIsShown: Bool) {
@@ -367,6 +379,72 @@ final class StatusBarController {
         guard let button = statusItem.button else { return }
         button.highlight(isHighlighted)
         button.needsDisplay = true
+    }
+
+    private func installPopoverDismissMonitors() {
+        guard popoverLocalEventMonitor == nil, popoverGlobalEventMonitor == nil else { return }
+
+        let mouseDownEvents: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        popoverLocalEventMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseDownEvents) { [weak self] event in
+            MainActor.assumeIsolated {
+                self?.handleLocalPopoverMouseDown(event)
+            }
+            return event
+        }
+        popoverGlobalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseDownEvents) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.dismissPopoverForBackgroundClick()
+            }
+        }
+    }
+
+    private func removePopoverDismissMonitors() {
+        if let monitor = popoverLocalEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverLocalEventMonitor = nil
+        }
+        if let monitor = popoverGlobalEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverGlobalEventMonitor = nil
+        }
+    }
+
+    private func handleLocalPopoverMouseDown(_ event: NSEvent) {
+        let eventTarget = popoverEventTarget(for: event)
+        switch StatusPopoverOutsideClick.resolve(isPopoverShown: popover.isShown, eventTarget: eventTarget) {
+        case .closePopover:
+            dismissPopoverForBackgroundClick()
+        case .keepPopover:
+            break
+        }
+    }
+
+    private func dismissPopoverForBackgroundClick() {
+        guard popover.isShown else {
+            removePopoverDismissMonitors()
+            return
+        }
+        popover.performClose(nil)
+        removePopoverDismissMonitors()
+        setStatusButtonHighlighted(popoverIsShown: false)
+    }
+
+    private func popoverEventTarget(for event: NSEvent) -> StatusPopoverOutsideClick.EventTarget {
+        if let button = statusItem.button, eventHitsView(event, view: button) {
+            return .statusButton
+        }
+        if let contentView = popover.contentViewController?.view, eventHitsView(event, view: contentView) {
+            return .popover
+        }
+        return .background
+    }
+
+    private func eventHitsView(_ event: NSEvent, view: NSView) -> Bool {
+        guard let eventWindow = event.window, let viewWindow = view.window, eventWindow === viewWindow else {
+            return false
+        }
+        let pointInView = view.convert(event.locationInWindow, from: nil)
+        return view.bounds.contains(pointInView)
     }
 
     @objc private func openMainWindow() {
@@ -394,6 +472,29 @@ final class StatusBarController {
 /// 状态栏 popover 固定布局参数。
 enum StatusBarPopoverLayout {
     static var contentSize: NSSize { StatusPopoverViewController.contentSize }
+}
+
+/// 状态栏 popover 外部点击处理策略。
+///
+/// 只让真实背景点击关闭 popover;状态栏按钮点击保留给按钮 action 处理,避免关闭后又被重新打开。
+enum StatusPopoverOutsideClick {
+    enum EventTarget {
+        case background
+        case statusButton
+        case popover
+    }
+
+    enum Action: Equatable {
+        case closePopover
+        case keepPopover
+    }
+
+    static func resolve(isPopoverShown: Bool, eventTarget: EventTarget) -> Action {
+        guard isPopoverShown, eventTarget == .background else {
+            return .keepPopover
+        }
+        return .closePopover
+    }
 }
 
 /// 状态栏按钮点击后的交互意图。
@@ -429,5 +530,37 @@ enum StatusBarButtonHighlight {
 
     static func applicationTiming(popoverIsShown: Bool) -> ApplicationTiming {
         popoverIsShown ? .afterCurrentEvent : .immediate
+    }
+}
+
+/// 状态栏右键菜单展示方式。
+///
+/// 右键菜单必须使用状态栏项的菜单 presenter,普通 view 坐标弹窗会覆盖状态栏图标。
+enum StatusBarMenuPresentation: Equatable {
+    case statusItemMenu(selectorName: String)
+
+    static func presenter() -> StatusBarMenuPresentation {
+        .statusItemMenu(selectorName: "popUpStatusItemMenu:")
+    }
+}
+
+/// 空状态栏 popover 根视图。
+///
+/// 使用系统窗口背景色,让浅色和暗黑模式都由 AppKit 自动适配。
+final class EmptyStatusPopoverView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("EmptyStatusPopoverView 不支持 storyboard 初始化")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     }
 }
