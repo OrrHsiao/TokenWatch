@@ -46,12 +46,19 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
     static let cornerRadius: CGFloat = 2
 
     private let dayLabel = NSTextField(labelWithString: "")
+    var onHoverTextChange: ((String?) -> Void)? {
+        didSet {
+            guard isViewLoaded else { return }
+            cellView.onHoverTextChange = onHoverTextChange
+        }
+    }
 
     override func loadView() {
         let cellView = CalendarHeatmapCellView(frame: NSRect(origin: .zero, size: Self.tileSize))
         cellView.wantsLayer = true
         cellView.layer?.cornerRadius = Self.cornerRadius
         cellView.layer?.masksToBounds = true
+        cellView.onHoverTextChange = onHoverTextChange
         view = cellView
 
         dayLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -74,6 +81,10 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
         view.isHidden = style.isHidden
         view.alphaValue = style.alpha
         cellView.heatmapBackgroundColor = CalendarHeatmapGitHubPalette.color(forIntensity: style.intensity)
+        cellView.hoverText = style.toolTip
+        if style.toolTip == nil {
+            onHoverTextChange?(nil)
+        }
     }
 
     private var cellView: CalendarHeatmapCellView {
@@ -81,6 +92,14 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
             preconditionFailure("CalendarHeatmapCollectionViewItem.view must be CalendarHeatmapCellView")
         }
         return cellView
+    }
+
+    func debugSimulateMouseEntered() {
+        cellView.debugSimulateMouseEntered()
+    }
+
+    func debugSimulateMouseExited() {
+        cellView.debugSimulateMouseExited()
     }
 }
 
@@ -90,16 +109,64 @@ private final class CalendarHeatmapCellView: NSView {
             applyHeatmapBackgroundColor()
         }
     }
+    var hoverText: String? {
+        didSet {
+            updateTrackingAreas()
+        }
+    }
+    var onHoverTextChange: ((String?) -> Void)?
+    private var hoverTrackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+            self.hoverTrackingArea = nil
+        }
+
+        guard hoverText != nil, !isHidden else { return }
+
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        hoverTrackingArea = trackingArea
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        emitHoverText()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onHoverTextChange?(nil)
+    }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         applyHeatmapBackgroundColor()
     }
 
+    func debugSimulateMouseEntered() {
+        emitHoverText()
+    }
+
+    func debugSimulateMouseExited() {
+        onHoverTextChange?(nil)
+    }
+
     private func applyHeatmapBackgroundColor() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = heatmapBackgroundColor.cgColor
         }
+    }
+
+    private func emitHoverText() {
+        guard let hoverText, !isHidden else { return }
+        onHoverTextChange?(hoverText)
     }
 }
 

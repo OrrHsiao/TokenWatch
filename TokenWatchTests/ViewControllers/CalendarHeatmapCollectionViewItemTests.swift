@@ -154,6 +154,36 @@ struct CalendarHeatmapCollectionViewItemTests {
     }
 
     @MainActor
+    @Test("鼠标划过 day cell 时立即回传 token 文案")
+    func hoveringDayCellEmitsTokenTextImmediately() {
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 12_345,
+            intensity: 3,
+            isToday: false,
+            isFuture: false
+        )
+        var hoverTexts: [String?] = []
+        item.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        item.configure(with: .day(day))
+        item.debugSimulateMouseEntered()
+        item.debugSimulateMouseExited()
+
+        #expect(hoverTexts.count == 2)
+        #expect(hoverTexts[0] == "2026-06-10 · 12,345 tokens")
+        #expect(hoverTexts[1] == nil)
+    }
+
+    @MainActor
     @Test("外观变化时重新应用背景色")
     func appearanceChangeReappliesBackgroundColor() {
         let item = CalendarHeatmapCollectionViewItem()

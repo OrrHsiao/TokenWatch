@@ -37,15 +37,18 @@ struct CalendarHeatmapDay: Sendable, Equatable, Identifiable {
     let isFuture: Bool
 }
 
-/// 将多 provider 统计数据构建为最近五个月日历热力图快照。
+/// 将多 provider 统计数据构建为固定周列日历热力图快照。
 enum CalendarHeatmapBuilder {
-    /// 构建以指定日期为终点的最近五个月热力图快照。
+    private static let columnCount = 22
+    private static let rowCount = 7
+
+    /// 构建以指定日期所在周为终点的 22 列热力图快照。
     /// - Parameters:
     ///   - states: 各 provider 的统计状态;未授权或无统计数据的 provider 会被忽略。
     ///   - month: 窗口终点所在日期;保留旧参数名以兼容现有调用点。
     ///   - now: 当前时间,用于防止生成未来日期。
     ///   - calendar: 调用方指定的日历配置,包含时区与 firstWeekday。
-    /// - Returns: 可直接渲染的近五个月热力图快照。
+    /// - Returns: 可直接渲染的近 22 周热力图快照。
     static func build(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         month: Date,
@@ -55,9 +58,16 @@ enum CalendarHeatmapBuilder {
         let today = calendar.startOfDay(for: now)
         let requestedEnd = calendar.startOfDay(for: month)
         let rangeEnd = min(requestedEnd, today)
-        let rangeStart = calendar.startOfDay(
-            for: calendar.date(byAdding: .month, value: -5, to: rangeEnd) ?? rangeEnd
-        )
+        let alignedEnd = calendar.date(
+            byAdding: .day,
+            value: trailingPlaceholderCount(for: rangeEnd, calendar: calendar),
+            to: rangeEnd
+        ) ?? rangeEnd
+        let rangeStart = calendar.date(
+            byAdding: .day,
+            value: -(columnCount * rowCount - 1),
+            to: alignedEnd
+        ) ?? rangeEnd
         let rangeStartKey = dateKey(for: rangeStart, calendar: calendar)
         let rangeEndKey = dateKey(for: rangeEnd, calendar: calendar)
         let rangeKey = "\(rangeStartKey)...\(rangeEndKey)"
@@ -80,19 +90,8 @@ enum CalendarHeatmapBuilder {
         let monthTotalTokens = effectiveTotals.reduce(0, +)
         let maxDailyTokens = effectiveTotals.max() ?? 0
 
-        let alignedStart = calendar.date(
-            byAdding: .day,
-            value: -leadingPlaceholderCount(for: rangeStart, calendar: calendar),
-            to: rangeStart
-        ) ?? rangeStart
-        let alignedEnd = calendar.date(
-            byAdding: .day,
-            value: trailingPlaceholderCount(for: rangeEnd, calendar: calendar),
-            to: rangeEnd
-        ) ?? rangeEnd
-
         var placeholderIndex = 0
-        let cells = dates(from: alignedStart, through: alignedEnd, calendar: calendar).map { date in
+        let cells = dates(from: rangeStart, through: alignedEnd, calendar: calendar).map { date in
             guard date >= rangeStart && date <= rangeEnd else {
                 let cell = CalendarHeatmapCell.placeholder(id: "\(rangeKey)-placeholder-\(placeholderIndex)")
                 placeholderIndex += 1
@@ -118,7 +117,7 @@ enum CalendarHeatmapBuilder {
 
         return CalendarHeatmapSnapshot(
             monthKey: rangeKey,
-            monthTitle: "最近 5 个月",
+            monthTitle: "最近 22 周",
             weekdaySymbols: weekdaySymbols(firstWeekday: calendar.firstWeekday),
             cells: cells,
             monthTotalTokens: monthTotalTokens,

@@ -1,13 +1,13 @@
 import AppKit
 
-/// 状态栏 popover 内容控制器,展示近五个月跨 provider token 日历热力图。
+/// 状态栏 popover 内容控制器,展示近 22 周跨 provider token 日历热力图。
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
     nonisolated static let contentSize = NSSize(width: 370, height: 180)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
-    private static let gridColumnCount = 23
+    private static let gridColumnCount = 22
     private static let gridRowCount = 7
     private static let collectionHeight =
         CalendarHeatmapCollectionViewItem.tileSize.height * CGFloat(gridRowCount)
@@ -21,23 +21,82 @@ final class StatusPopoverViewController: NSViewController {
     private let calendar: Calendar
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var snapshot: CalendarHeatmapSnapshot?
+    private var rangeTotalText = ""
+    private var hoverText: String?
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "")
+    private let hoverLabel = NSTextField(labelWithString: "")
     private let collectionView = NSCollectionView()
 
     var debugMonthTitle: String { titleLabel.stringValue }
+    var debugTotalText: String { totalLabel.stringValue }
+    var debugHoverText: String { hoverLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
     var debugWeekdayLabelCount: Int { 0 }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
     static var debugExpectedCollectionHeight: CGFloat { collectionHeight }
+    var debugHoverLabelTrailingAlignsWithCollectionView: Bool {
+        hasConstraint(
+            firstItem: hoverLabel,
+            firstAttribute: .trailing,
+            secondItem: collectionView,
+            secondAttribute: .trailing,
+            constant: 0
+        )
+    }
+    var debugHoverLabelLeadingAlignsWithCollectionView: Bool {
+        hasConstraint(
+            firstItem: hoverLabel,
+            firstAttribute: .leading,
+            secondItem: collectionView,
+            secondAttribute: .leading,
+            constant: 0
+        )
+    }
+    var debugHoverLabelSitsJustAboveCollectionView: Bool {
+        hasConstraint(
+            firstItem: hoverLabel,
+            firstAttribute: .bottom,
+            secondItem: collectionView,
+            secondAttribute: .top,
+            constant: -1
+        )
+    }
     var debugCollectionViewBottomFitsInRootBounds: Bool {
         let frameInRoot = collectionView.convert(collectionView.bounds, to: view)
         return frameInRoot.minY >= Self.outerMargin
             && frameInRoot.maxY <= view.bounds.maxY - Self.outerMargin
     }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
+    func debugUpdateHoverText(_ text: String?) { updateHoverText(text) }
+
+    private func isConstraintItem(_ item: Any?, identicalTo target: NSView) -> Bool {
+        guard let item = item as AnyObject? else { return false }
+        return item === target
+    }
+
+    private func hasConstraint(
+        firstItem: NSView,
+        firstAttribute: NSLayoutConstraint.Attribute,
+        secondItem: NSView,
+        secondAttribute: NSLayoutConstraint.Attribute,
+        constant: CGFloat
+    ) -> Bool {
+        view.constraints.contains { constraint in
+            guard constraint.isActive,
+                  constraint.firstAttribute == firstAttribute,
+                  constraint.secondAttribute == secondAttribute,
+                  constraint.multiplier == 1,
+                  constraint.constant == constant else {
+                return false
+            }
+
+            return isConstraintItem(constraint.firstItem, identicalTo: firstItem)
+                && isConstraintItem(constraint.secondItem, identicalTo: secondItem)
+        }
+    }
 
     init(
         viewModel: TokenStatsViewModel,
@@ -84,6 +143,12 @@ final class StatusPopoverViewController: NSViewController {
         totalLabel.font = .systemFont(ofSize: 12)
         totalLabel.textColor = .secondaryLabelColor
 
+        hoverLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        hoverLabel.textColor = .secondaryLabelColor
+        hoverLabel.alignment = .right
+        hoverLabel.lineBreakMode = .byTruncatingMiddle
+        hoverLabel.translatesAutoresizingMaskIntoConstraints = false
+
         let headerStack = NSStackView(views: [titleLabel, totalLabel])
         headerStack.orientation = .vertical
         headerStack.alignment = .leading
@@ -108,12 +173,17 @@ final class StatusPopoverViewController: NSViewController {
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(headerStack)
+        view.addSubview(hoverLabel)
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
             headerStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 14),
             headerStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
             headerStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -14),
+
+            hoverLabel.leadingAnchor.constraint(equalTo: collectionView.leadingAnchor),
+            hoverLabel.trailingAnchor.constraint(equalTo: collectionView.trailingAnchor),
+            hoverLabel.bottomAnchor.constraint(equalTo: collectionView.topAnchor, constant: -1),
 
             collectionView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 14),
             collectionView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -134,8 +204,23 @@ final class StatusPopoverViewController: NSViewController {
         self.snapshot = snapshot
 
         titleLabel.stringValue = snapshot.monthTitle
-        totalLabel.stringValue = "近五月 \(CompactNumberFormatter.format(snapshot.monthTotalTokens)) tokens"
+        rangeTotalText = "近22周 \(CompactNumberFormatter.format(snapshot.monthTotalTokens)) tokens"
+        applyTotalText()
+        applyHoverText()
         collectionView.reloadData()
+    }
+
+    private func updateHoverText(_ text: String?) {
+        hoverText = text
+        applyHoverText()
+    }
+
+    private func applyTotalText() {
+        totalLabel.stringValue = rangeTotalText
+    }
+
+    private func applyHoverText() {
+        hoverLabel.stringValue = hoverText ?? ""
     }
 
     private func cell(at item: Int) -> CalendarHeatmapCell? {
@@ -192,6 +277,9 @@ extension StatusPopoverViewController: NSCollectionViewDataSource {
             return item
         }
 
+        heatmapItem.onHoverTextChange = { [weak self] text in
+            self?.updateHoverText(text)
+        }
         heatmapItem.configure(with: cell)
         return heatmapItem
     }
