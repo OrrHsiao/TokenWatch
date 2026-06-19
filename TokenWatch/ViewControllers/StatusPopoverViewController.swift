@@ -7,8 +7,12 @@ final class StatusPopoverViewController: NSViewController {
     nonisolated static let contentSize = NSSize(width: 370, height: 236)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
-    private static let todayDescriptionHeight: CGFloat = 18
+    private static let todayDescriptionHeight: CGFloat = 20
     private static let todayDescriptionToSummarySpacing: CGFloat = 8
+    private static let todayRefreshButtonSize: CGFloat = 20
+    private static let todayRefreshButtonSpacing: CGFloat = 6
+    private static let todayRefreshButtonDefaultSymbolName = "arrow.clockwise"
+    private static let todayRefreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
     private static let summaryCardHeight: CGFloat = 50
     private static let gridColumnCount = 22
     private static let gridRowCount = 7
@@ -25,10 +29,13 @@ final class StatusPopoverViewController: NSViewController {
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var snapshot: CalendarHeatmapSnapshot?
     private var hoverText: String?
+    private var currentTodayRefreshButtonSymbolName: String?
 
     private let summaryStack = NSStackView()
     private var summaryCards: [SummaryMetricCardView] = []
+    private let todayDescriptionRow = NSView()
     private let todayDescriptionLabel = NSTextField(labelWithString: "")
+    private let todayRefreshButton = StatusPopoverRefreshButton()
     private let hoverLabel = NSTextField(labelWithString: "")
     private let collectionView = NSCollectionView()
 
@@ -55,15 +62,29 @@ final class StatusPopoverViewController: NSViewController {
     }
     var debugTodayDescriptionText: String { todayDescriptionLabel.stringValue }
     var debugTodayDescriptionAlignment: NSTextAlignment { todayDescriptionLabel.alignment }
+    var debugRefreshButtonTitle: String { todayRefreshButton.title }
+    var debugRefreshButtonSymbolName: String? {
+        todayRefreshButton.image == nil ? nil : currentTodayRefreshButtonSymbolName
+    }
+    var debugRefreshButtonUsesImageOnly: Bool {
+        todayRefreshButton.imagePosition == .imageOnly
+    }
+    var debugRefreshButtonToolTip: String? { todayRefreshButton.toolTip }
+    var debugRefreshButtonActionName: String? {
+        todayRefreshButton.action.map(NSStringFromSelector)
+    }
+    var debugRefreshButtonCornerRadius: CGFloat { todayRefreshButton.debugCornerRadius }
+    var debugRefreshButtonHasBackground: Bool { todayRefreshButton.debugHasBackground }
+    var debugRefreshButtonIsEnabled: Bool { todayRefreshButton.isEnabled }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
     var debugWeekdayLabelCount: Int { 0 }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
     static var debugExpectedCollectionHeight: CGFloat { collectionHeight }
-    var debugTodayDescriptionLabelCenteredInRoot: Bool {
+    var debugTodayDescriptionRowCenteredInRoot: Bool {
         hasConstraint(
-            firstItem: todayDescriptionLabel,
+            firstItem: todayDescriptionRow,
             firstAttribute: .centerX,
             secondItem: view,
             secondAttribute: .centerX,
@@ -74,9 +95,27 @@ final class StatusPopoverViewController: NSViewController {
         hasConstraint(
             firstItem: summaryStack,
             firstAttribute: .top,
-            secondItem: todayDescriptionLabel,
+            secondItem: todayDescriptionRow,
             secondAttribute: .bottom,
             constant: Self.todayDescriptionToSummarySpacing
+        )
+    }
+    var debugRefreshButtonSitsRightOfDescriptionLabel: Bool {
+        hasConstraint(
+            firstItem: todayRefreshButton,
+            firstAttribute: .leading,
+            secondItem: todayDescriptionLabel,
+            secondAttribute: .trailing,
+            constant: Self.todayRefreshButtonSpacing
+        )
+    }
+    var debugRefreshButtonTrailingAlignsWithDescriptionRow: Bool {
+        hasConstraint(
+            firstItem: todayRefreshButton,
+            firstAttribute: .trailing,
+            secondItem: todayDescriptionRow,
+            secondAttribute: .trailing,
+            constant: 0
         )
     }
     var debugHoverLabelTrailingAlignsWithCollectionView: Bool {
@@ -113,10 +152,20 @@ final class StatusPopoverViewController: NSViewController {
     }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
     func debugUpdateHoverText(_ text: String?) { updateHoverText(text) }
+    func debugSetRefreshButtonHovering(_ isHovering: Bool) {
+        todayRefreshButton.debugSetHovering(isHovering)
+    }
+    func debugSetRefreshButtonLoading(_ isLoading: Bool) {
+        setRefreshButtonLoading(isLoading)
+    }
 
     private func isConstraintItem(_ item: Any?, identicalTo target: NSView) -> Bool {
         guard let item = item as AnyObject? else { return false }
         return item === target
+    }
+
+    private func allConstraints(in root: NSView) -> [NSLayoutConstraint] {
+        root.constraints + root.subviews.flatMap(allConstraints)
     }
 
     private func hasConstraint(
@@ -126,7 +175,7 @@ final class StatusPopoverViewController: NSViewController {
         secondAttribute: NSLayoutConstraint.Attribute,
         constant: CGFloat
     ) -> Bool {
-        view.constraints.contains { constraint in
+        allConstraints(in: view).contains { constraint in
             guard constraint.isActive,
                   constraint.firstAttribute == firstAttribute,
                   constraint.secondAttribute == secondAttribute,
@@ -186,11 +235,16 @@ final class StatusPopoverViewController: NSViewController {
         summaryStack.translatesAutoresizingMaskIntoConstraints = false
         setupSummaryCards()
 
+        todayDescriptionRow.translatesAutoresizingMaskIntoConstraints = false
+
         todayDescriptionLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         todayDescriptionLabel.textColor = .labelColor
         todayDescriptionLabel.alignment = .left
         todayDescriptionLabel.lineBreakMode = .byTruncatingTail
+        todayDescriptionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         todayDescriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        configureTodayRefreshButton()
 
         hoverLabel.font = .systemFont(ofSize: 12, weight: .medium)
         hoverLabel.textColor = .secondaryLabelColor
@@ -215,19 +269,34 @@ final class StatusPopoverViewController: NSViewController {
         )
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(todayDescriptionLabel)
+        todayDescriptionRow.addSubview(todayDescriptionLabel)
+        todayDescriptionRow.addSubview(todayRefreshButton)
+        view.addSubview(todayDescriptionRow)
         view.addSubview(summaryStack)
         view.addSubview(hoverLabel)
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
-            todayDescriptionLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
-            todayDescriptionLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            todayDescriptionLabel.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
-            todayDescriptionLabel.heightAnchor.constraint(equalToConstant: Self.todayDescriptionHeight),
+            todayDescriptionRow.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
+            todayDescriptionRow.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            todayDescriptionRow.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
+            todayDescriptionRow.heightAnchor.constraint(equalToConstant: Self.todayDescriptionHeight),
+
+            todayDescriptionLabel.leadingAnchor.constraint(equalTo: todayDescriptionRow.leadingAnchor),
+            todayDescriptionLabel.topAnchor.constraint(equalTo: todayDescriptionRow.topAnchor),
+            todayDescriptionLabel.bottomAnchor.constraint(equalTo: todayDescriptionRow.bottomAnchor),
+
+            todayRefreshButton.leadingAnchor.constraint(
+                equalTo: todayDescriptionLabel.trailingAnchor,
+                constant: Self.todayRefreshButtonSpacing
+            ),
+            todayRefreshButton.trailingAnchor.constraint(equalTo: todayDescriptionRow.trailingAnchor),
+            todayRefreshButton.centerYAnchor.constraint(equalTo: todayDescriptionRow.centerYAnchor),
+            todayRefreshButton.widthAnchor.constraint(equalToConstant: Self.todayRefreshButtonSize),
+            todayRefreshButton.heightAnchor.constraint(equalToConstant: Self.todayRefreshButtonSize),
 
             summaryStack.topAnchor.constraint(
-                equalTo: todayDescriptionLabel.bottomAnchor,
+                equalTo: todayDescriptionRow.bottomAnchor,
                 constant: Self.todayDescriptionToSummarySpacing
             ),
             summaryStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -259,6 +328,59 @@ final class StatusPopoverViewController: NSViewController {
         }
     }
 
+    private func configureTodayRefreshButton() {
+        todayRefreshButton.title = ""
+        todayRefreshButton.imagePosition = .imageOnly
+        todayRefreshButton.imageScaling = .scaleProportionallyDown
+        todayRefreshButton.isBordered = false
+        todayRefreshButton.bezelStyle = .smallSquare
+        todayRefreshButton.contentTintColor = .secondaryLabelColor
+        todayRefreshButton.toolTip = "立即刷新"
+        todayRefreshButton.target = self
+        todayRefreshButton.action = #selector(refreshTodayStats(_:))
+        todayRefreshButton.setButtonType(.momentaryChange)
+        todayRefreshButton.setContentHuggingPriority(.required, for: .horizontal)
+        todayRefreshButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        todayRefreshButton.translatesAutoresizingMaskIntoConstraints = false
+        setRefreshButtonLoading(false)
+    }
+
+    @objc private func refreshTodayStats(_ sender: Any?) {
+        setRefreshButtonLoading(true)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await viewModel.loadAllStats()
+            applyRefreshButtonLoadingState()
+        }
+    }
+
+    private func applyRefreshButtonLoadingState() {
+        setRefreshButtonLoading(viewModel.states.values.contains { $0.isLoading })
+    }
+
+    private func setRefreshButtonLoading(_ isLoading: Bool) {
+        let symbolName = isLoading
+            ? Self.todayRefreshButtonLoadingSymbolName
+            : Self.todayRefreshButtonDefaultSymbolName
+        setRefreshButtonSymbol(symbolName, accessibilityDescription: isLoading ? "正在刷新" : "立即刷新")
+
+        todayRefreshButton.isEnabled = !isLoading
+        todayRefreshButton.toolTip = isLoading ? "正在刷新" : "立即刷新"
+        todayRefreshButton.setAccessibilityLabel(isLoading ? "正在刷新本日 token 消耗" : "刷新本日 token 消耗")
+    }
+
+    private func setRefreshButtonSymbol(_ symbolName: String, accessibilityDescription: String) {
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: accessibilityDescription
+        )?.withSymbolConfiguration(symbolConfig)
+        image?.isTemplate = true
+
+        todayRefreshButton.image = image
+        currentTodayRefreshButtonSymbolName = image == nil ? nil : symbolName
+    }
+
     private func render() {
         let now = nowProvider()
         let snapshot = CalendarHeatmapBuilder.build(
@@ -272,6 +394,7 @@ final class StatusPopoverViewController: NSViewController {
         applySummary(snapshot.summary)
         applyTodayDescription(todayTokens: snapshot.summary.todayTokens)
         applyHoverText()
+        applyRefreshButtonLoadingState()
         collectionView.reloadData()
     }
 
@@ -479,5 +602,98 @@ extension StatusPopoverViewController: NSCollectionViewDataSource {
         }
         heatmapItem.configure(with: cell)
         return heatmapItem
+    }
+}
+
+private final class StatusPopoverRefreshButton: NSButton {
+    private var hoverTrackingArea: NSTrackingArea?
+    private var isPointerInside = false
+
+    var debugCornerRadius: CGFloat { layer?.cornerRadius ?? 0 }
+    var debugHasBackground: Bool { layer?.backgroundColor != nil }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupChrome()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("StatusPopoverRefreshButton 不支持 storyboard 初始化")
+    }
+
+    override var isHighlighted: Bool {
+        didSet { updateChrome() }
+    }
+
+    override var isEnabled: Bool {
+        didSet { updateChrome() }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+        }
+
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        hoverTrackingArea = trackingArea
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        isPointerInside = true
+        updateChrome()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        isPointerInside = false
+        updateChrome()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateChrome()
+    }
+
+    func debugSetHovering(_ isHovering: Bool) {
+        isPointerInside = isHovering
+        updateChrome()
+    }
+
+    private func setupChrome() {
+        wantsLayer = true
+        focusRingType = .none
+        updateChrome()
+    }
+
+    private func updateChrome() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.cornerRadius = 6
+            layer?.masksToBounds = true
+
+            guard isEnabled else {
+                layer?.backgroundColor = nil
+                return
+            }
+
+            let backgroundColor: NSColor?
+            if isHighlighted {
+                backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.18)
+            } else if isPointerInside {
+                backgroundColor = NSColor.quaternaryLabelColor
+            } else {
+                backgroundColor = nil
+            }
+            layer?.backgroundColor = backgroundColor?.cgColor
+        }
     }
 }

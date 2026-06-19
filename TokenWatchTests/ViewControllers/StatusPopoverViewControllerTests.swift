@@ -25,11 +25,57 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugSummaryCards.allSatisfy { $0.cornerRadius == 8 })
         #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
         #expect(controller.debugTodayDescriptionAlignment == .left)
-        #expect(controller.debugTodayDescriptionLabelCenteredInRoot)
+        #expect(controller.debugTodayDescriptionRowCenteredInRoot)
         #expect(controller.debugTodayDescriptionLabelSitsAboveSummary)
         #expect(controller.debugCollectionView != nil)
         #expect(controller.debugWeekdayLabelCount == 0)
         #expect(controller.debugCollectionItemCount == 154)
+    }
+
+    @Test("本日 token 文案右侧展示 SF Symbols 刷新按钮")
+    func todayDescriptionShowsRefreshButtonOnRight() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugRefreshButtonTitle == "")
+        #expect(controller.debugRefreshButtonSymbolName == "arrow.clockwise")
+        #expect(controller.debugRefreshButtonUsesImageOnly)
+        #expect(controller.debugRefreshButtonToolTip == "立即刷新")
+        #expect(controller.debugRefreshButtonSitsRightOfDescriptionLabel)
+        #expect(controller.debugRefreshButtonTrailingAlignsWithDescriptionRow)
+        #expect(controller.debugRefreshButtonActionName == "refreshTodayStats:")
+    }
+
+    @Test("刷新按钮使用 ghost hover 样式")
+    func refreshButtonUsesGhostHoverStyle() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugRefreshButtonCornerRadius == 6)
+        #expect(!controller.debugRefreshButtonHasBackground)
+
+        controller.debugSetRefreshButtonHovering(true)
+        #expect(controller.debugRefreshButtonHasBackground)
+
+        controller.debugSetRefreshButtonHovering(false)
+        #expect(!controller.debugRefreshButtonHasBackground)
+    }
+
+    @Test("刷新按钮 loading 时禁用并显示同步图标")
+    func refreshButtonShowsLoadingFeedback() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        controller.debugSetRefreshButtonLoading(true)
+
+        #expect(!controller.debugRefreshButtonIsEnabled)
+        #expect(controller.debugRefreshButtonSymbolName == "arrow.triangle.2.circlepath")
+
+        controller.debugSetRefreshButtonLoading(false)
+        #expect(controller.debugRefreshButtonIsEnabled)
+        #expect(controller.debugRefreshButtonSymbolName == "arrow.clockwise")
     }
 
     @Test("本日 token 文案按消耗分档")
