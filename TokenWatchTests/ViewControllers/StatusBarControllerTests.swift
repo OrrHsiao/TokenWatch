@@ -96,6 +96,16 @@ struct StatusBarControllerTests {
         ])
     }
 
+    /// 从状态栏菜单打开主窗口时,应等菜单 action 结束后再激活并强制置前已有窗口。
+    @Test func mainWindowOpenFromStatusMenuDefersAndOrdersWindowFrontRegardless() {
+        #expect(StatusMainWindowPresentation.timing() == .afterCurrentEvent)
+        #expect(StatusMainWindowPresentation.actions(targetWindowExists: true) == [
+            .activateApplication,
+            .makeWindowKeyAndOrderFront,
+            .orderWindowFrontRegardless,
+        ])
+    }
+
     /// 空 popover 根视图也需要能成为 first responder,否则 makeFirstResponder 会失败。
     @Test func emptyPopoverViewAcceptsFirstResponder() async {
         await MainActor.run {

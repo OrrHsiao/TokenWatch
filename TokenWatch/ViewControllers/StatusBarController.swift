@@ -469,15 +469,34 @@ final class StatusBarController {
     }
 
     @objc private func openMainWindow() {
-        NSApp.activate(ignoringOtherApps: true)
+        switch StatusMainWindowPresentation.timing() {
+        case .afterCurrentEvent:
+            Task { @MainActor [weak self] in
+                self?.presentMainWindow()
+            }
+        }
+    }
+
+    private func presentMainWindow() {
         // 主窗口在 storyboard 中已设 releasedWhenClosed="NO",
         // 用户点红叉关闭后 window 对象仍在 NSApp.windows 里,可直接 makeKeyAndOrderFront 恢复。
         // 优先按 contentVC 类型匹配 ViewController 窗口,fallback 到 NSApp.mainWindow
         let target = NSApp.windows.first(where: { $0.contentViewController is ViewController })
             ?? NSApp.mainWindow
-        target?.makeKeyAndOrderFront(nil)
-        if target == nil {
+        guard let target else {
             logger.info("openMainWindow: 找不到 ViewController 窗口,跳过(后续版本再处理重建)")
+            return
+        }
+
+        for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
+            switch action {
+            case .activateApplication:
+                NSApp.activate(ignoringOtherApps: true)
+            case .makeWindowKeyAndOrderFront:
+                target.makeKeyAndOrderFront(nil)
+            case .orderWindowFrontRegardless:
+                target.orderFrontRegardless()
+            }
         }
     }
 
@@ -511,6 +530,35 @@ enum StatusPopoverActivation {
             .activateApplication,
             .makePopoverWindowKey,
             .makeContentFirstResponder,
+        ]
+    }
+}
+
+/// 状态栏菜单打开主窗口的置前策略。
+///
+/// NSMenu action 执行时菜单仍在 tracking;延后一轮主线程再处理,避免菜单关闭流程覆盖窗口激活。
+/// 已在屏幕上的主窗口若被其它 app 盖住,仅 makeKeyAndOrderFront 不够,需要 orderFrontRegardless。
+enum StatusMainWindowPresentation {
+    enum Timing: Equatable {
+        case afterCurrentEvent
+    }
+
+    enum Action: Equatable {
+        case activateApplication
+        case makeWindowKeyAndOrderFront
+        case orderWindowFrontRegardless
+    }
+
+    static func timing() -> Timing {
+        .afterCurrentEvent
+    }
+
+    static func actions(targetWindowExists: Bool) -> [Action] {
+        guard targetWindowExists else { return [] }
+        return [
+            .activateApplication,
+            .makeWindowKeyAndOrderFront,
+            .orderWindowFrontRegardless,
         ]
     }
 }
