@@ -117,6 +117,9 @@ final class MonthlyStatsViewController: NSViewController {
         if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
             return "请先在设置中授权访问用户目录"
         }
+        if snapshot.loadedProviderCount == 0, let errorMessage = snapshot.errorMessages.first {
+            return errorMessage
+        }
         if snapshot.totalTokens == 0 {
             return "过去 12 个月暂无 token 数据"
         }

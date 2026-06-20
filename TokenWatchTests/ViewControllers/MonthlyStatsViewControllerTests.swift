@@ -53,6 +53,47 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("无已加载 stats 且有错误时展示错误")
+    func showsErrorWhenNoStatsAreLoaded() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(stats: nil, isLoading: false, errorMessage: "Claude 失败", needsAuthorization: false)]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Claude 失败"))
+    }
+
+    @MainActor
+    @Test("已加载且无错误但零 token 时展示暂无数据")
+    func showsNoDataWhenLoadedStatsHaveZeroMonthlyTokens() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 0)]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("过去 12 个月暂无 token 数据"))
+    }
+
+    @MainActor
     @Test("部分加载中时保留已加载图表并提示")
     func keepsChartWhenSomeProvidersAreLoading() throws {
         let calendar = utcCalendar()
