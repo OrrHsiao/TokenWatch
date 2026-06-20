@@ -1,0 +1,140 @@
+import AppKit
+import Foundation
+import Testing
+@testable import TokenWatch
+
+@Suite("MonthlyStatsViewController")
+struct MonthlyStatsViewControllerTests {
+
+    @MainActor
+    @Test("加载后展示标题、说明和总量")
+    func rendersTitleSubtitleAndTotal() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 1_200_000)]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("按月"))
+        #expect(labels.contains("过去 12 个月,跨 provider 汇总"))
+        #expect(labels.contains("1.2M tokens"))
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        #expect(chartView.debugBarCount == 12)
+    }
+
+    @MainActor
+    @Test("无授权且无 stats 时提示先授权")
+    func promptsAuthorizationWhenNoStatsAreLoaded() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true)]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("请先在设置中授权访问用户目录"))
+    }
+
+    @MainActor
+    @Test("部分加载中时保留已加载图表并提示")
+    func keepsChartWhenSomeProvidersAreLoading() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(byMonth: ["2026-06": makeSummary(total: 500)]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false),
+                ]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        #expect(chartView.debugBarCount == 12)
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("部分数据仍在加载"))
+    }
+
+    private func utcCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
+    private func date(_ year: Int, _ month: Int, _ day: Int, calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day))!
+    }
+
+    private func makeSummary(total: Int) -> UsageSummary {
+        UsageSummary(
+            inputTokens: total,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: total,
+            cost: 0,
+            entryCount: 1,
+            modelBreakdown: [:]
+        )
+    }
+
+    private func makeStats(byMonth: [String: UsageSummary]) -> AggregatedStats {
+        AggregatedStats(
+            overall: .zero,
+            byHour: [:],
+            byDay: [:],
+            byWeek: [:],
+            byMonth: byMonth,
+            bySession: [:],
+            byModel: [:],
+            byProject: [:],
+            dataSourceCount: 1
+        )
+    }
+}
+
+private extension NSView {
+    func firstDescendant<T: NSView>(ofType type: T.Type) -> T? {
+        if let match = self as? T {
+            return match
+        }
+        for subview in subviews {
+            if let match = subview.firstDescendant(ofType: type) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    func allDescendants<T: NSView>(ofType type: T.Type) -> [T] {
+        let current = (self as? T).map { [$0] } ?? []
+        return current + subviews.flatMap { $0.allDescendants(ofType: type) }
+    }
+}
