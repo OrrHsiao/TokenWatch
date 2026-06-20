@@ -23,7 +23,7 @@ final class MonthlyTokenChartView: NSView {
     /// 用新的 snapshot 替换图表内容。
     func configure(with snapshot: MonthlyTokenChartSnapshot) {
         clearBars()
-        debugNormalizedHeights = snapshot.monthBuckets.map(\.normalizedHeight)
+        debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedHeight($0.normalizedHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
 
         for bucket in snapshot.monthBuckets {
@@ -78,11 +78,6 @@ final class MonthlyTokenChartView: NSView {
 
         column.addArrangedSubview(barView)
         column.addArrangedSubview(label)
-        NSLayoutConstraint.activate([
-            barView.widthAnchor.constraint(greaterThanOrEqualToConstant: 14),
-            barView.widthAnchor.constraint(lessThanOrEqualToConstant: 32),
-            barView.heightAnchor.constraint(greaterThanOrEqualToConstant: 160),
-        ])
 
         return column
     }
@@ -96,11 +91,21 @@ final class MonthlyTokenChartView: NSView {
     }
 }
 
+private func clampNormalizedHeight(_ value: Double) -> Double {
+    guard value.isFinite else { return 0 }
+    return min(max(value, 0), 1)
+}
+
 /// 单根柱子的可测试绘制视图。完整高度由布局决定,柱子高度由 normalizedHeight 决定。
 final class MonthlyTokenBarView: NSView {
-    var normalizedHeight: Double = 0 {
-        didSet {
-            normalizedHeight = min(max(normalizedHeight, 0), 1)
+    private var clampedNormalizedHeight: Double = 0
+
+    var normalizedHeight: Double {
+        get {
+            clampedNormalizedHeight
+        }
+        set {
+            clampedNormalizedHeight = clampNormalizedHeight(newValue)
             needsDisplay = true
         }
     }
@@ -115,10 +120,13 @@ final class MonthlyTokenBarView: NSView {
         false
     }
 
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: 18, height: 160)
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        let clamped = min(max(normalizedHeight, 0), 1)
-        let barHeight = bounds.height * CGFloat(clamped)
+        let barHeight = bounds.height * CGFloat(clampedNormalizedHeight)
         guard barHeight > 0 else { return }
 
         let rect = NSRect(

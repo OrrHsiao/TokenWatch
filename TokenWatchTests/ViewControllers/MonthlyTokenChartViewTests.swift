@@ -47,6 +47,30 @@ struct MonthlyTokenChartViewTests {
         #expect(view.debugNormalizedHeights.last == 1.0)
     }
 
+    @MainActor
+    @Test("debug 高度与渲染使用相同的稳定 clamp 值")
+    func debugHeightsUseClampedFiniteValues() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(normalizedHeights: [-0.2, 1.4, .nan, 0.25])
+
+        view.configure(with: snapshot)
+
+        #expect(view.debugNormalizedHeights[0] == 0)
+        #expect(view.debugNormalizedHeights[1] == 1)
+        #expect(view.debugNormalizedHeights[2] == 0)
+        #expect(view.debugNormalizedHeights[3] == 0.25)
+        #expect(view.debugNormalizedHeights.allSatisfy { $0.isFinite && (0...1).contains($0) })
+    }
+
+    @MainActor
+    @Test("单根柱子提供确定 intrinsic 尺寸")
+    func barViewHasDeterministicIntrinsicSize() {
+        let barView = MonthlyTokenBarView()
+
+        #expect(barView.intrinsicContentSize.width == 18)
+        #expect(barView.intrinsicContentSize.height == 160)
+    }
+
     private func makeSnapshot(tokens: [Int]) -> MonthlyTokenChartSnapshot {
         let monthKeys = [
             "2025-07", "2025-08", "2025-09", "2025-10",
@@ -73,6 +97,29 @@ struct MonthlyTokenChartViewTests {
             monthBuckets: buckets,
             totalTokens: tokens.reduce(0, +),
             maxMonthlyTokens: maxTokens,
+            loadedProviderCount: 1,
+            loadingProviderCount: 0,
+            unauthorizedProviderCount: 0,
+            errorMessages: []
+        )
+    }
+
+    private func makeSnapshot(normalizedHeights: [Double]) -> MonthlyTokenChartSnapshot {
+        let buckets = normalizedHeights.indices.map { index in
+            MonthlyTokenBucket(
+                id: "manual-\(index)",
+                monthKey: "manual-\(index)",
+                monthLabel: "\(index + 1)月",
+                totalTokens: index,
+                normalizedHeight: normalizedHeights[index],
+                isCurrentMonth: index == normalizedHeights.indices.last
+            )
+        }
+
+        return MonthlyTokenChartSnapshot(
+            monthBuckets: buckets,
+            totalTokens: 0,
+            maxMonthlyTokens: 0,
             loadedProviderCount: 1,
             loadingProviderCount: 0,
             unauthorizedProviderCount: 0,
