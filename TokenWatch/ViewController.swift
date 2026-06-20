@@ -15,10 +15,11 @@ class ViewController: NSViewController {
     private let splitViewController = NSSplitViewController()
     private let detailContainerViewController = NSViewController()
     private lazy var sidebarViewController = ProviderSidebarViewController(providers: providers)
+    private let settingsViewController = SettingsViewController()
 
     private var detailViewControllers: [ProviderID: ProviderStatsViewController] = [:]
-    private var currentDetailViewController: ProviderStatsViewController?
-    private var selectedProviderID: ProviderID?
+    private var currentDetailViewController: NSViewController?
+    private var selectedContent: SidebarContent?
 
     /// 通过 NSApp.delegate 获取与 AppDelegate 同一个 ViewModel 实例
     private var viewModel: TokenStatsViewModel? {
@@ -40,6 +41,9 @@ class ViewController: NSViewController {
 
         sidebarViewController.onSelectProvider = { [weak self] providerID in
             self?.showProvider(providerID)
+        }
+        sidebarViewController.onSelectSettings = { [weak self] in
+            self?.showSettings()
         }
 
         splitViewController.splitView.isVertical = true
@@ -73,26 +77,17 @@ class ViewController: NSViewController {
     }
 
     private func showProvider(_ providerID: ProviderID) {
-        guard selectedProviderID != providerID,
+        guard selectedContent != .provider(providerID),
               let provider = ProviderRegistry.provider(for: providerID) else { return }
 
-        currentDetailViewController?.view.removeFromSuperview()
-        currentDetailViewController?.removeFromParent()
+        installDetailViewController(detailViewController(for: provider))
+        selectedContent = .provider(providerID)
+    }
 
-        let detailViewController = detailViewController(for: provider)
-        detailContainerViewController.addChild(detailViewController)
-        detailViewController.view.translatesAutoresizingMaskIntoConstraints = false
-        detailContainerViewController.view.addSubview(detailViewController.view)
-
-        NSLayoutConstraint.activate([
-            detailViewController.view.leadingAnchor.constraint(equalTo: detailContainerViewController.view.leadingAnchor),
-            detailViewController.view.trailingAnchor.constraint(equalTo: detailContainerViewController.view.trailingAnchor),
-            detailViewController.view.topAnchor.constraint(equalTo: detailContainerViewController.view.topAnchor),
-            detailViewController.view.bottomAnchor.constraint(equalTo: detailContainerViewController.view.bottomAnchor),
-        ])
-
-        currentDetailViewController = detailViewController
-        selectedProviderID = providerID
+    private func showSettings() {
+        guard selectedContent != .settings else { return }
+        installDetailViewController(settingsViewController)
+        selectedContent = .settings
     }
 
     private func detailViewController(for provider: any UsageProvider) -> ProviderStatsViewController {
@@ -102,6 +97,24 @@ class ViewController: NSViewController {
         let viewController = ProviderStatsViewController(provider: provider)
         detailViewControllers[provider.id] = viewController
         return viewController
+    }
+
+    private func installDetailViewController(_ viewController: NSViewController) {
+        currentDetailViewController?.view.removeFromSuperview()
+        currentDetailViewController?.removeFromParent()
+
+        detailContainerViewController.addChild(viewController)
+        viewController.view.translatesAutoresizingMaskIntoConstraints = false
+        detailContainerViewController.view.addSubview(viewController.view)
+
+        NSLayoutConstraint.activate([
+            viewController.view.leadingAnchor.constraint(equalTo: detailContainerViewController.view.leadingAnchor),
+            viewController.view.trailingAnchor.constraint(equalTo: detailContainerViewController.view.trailingAnchor),
+            viewController.view.topAnchor.constraint(equalTo: detailContainerViewController.view.topAnchor),
+            viewController.view.bottomAnchor.constraint(equalTo: detailContainerViewController.view.bottomAnchor),
+        ])
+
+        currentDetailViewController = viewController
     }
 
     /// 把 ViewModel 的状态变更回调多路复用到 Notification,
@@ -126,20 +139,40 @@ class ViewController: NSViewController {
     }
 }
 
+private enum SidebarContent: Equatable {
+    case provider(ProviderID)
+    case settings
+}
+
+private enum ProviderSidebarItem {
+    case provider(any UsageProvider)
+    case settings
+
+    var title: String {
+        switch self {
+        case .provider(let provider):
+            return provider.displayName
+        case .settings:
+            return "设置"
+        }
+    }
+}
+
 /// Provider 原生侧边栏列表,负责展示 provider 顺序并发出选择事件。
 private final class ProviderSidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
 
     private static let columnIdentifier = NSUserInterfaceItemIdentifier("ProviderColumn")
     private static let cellIdentifier = NSUserInterfaceItemIdentifier("ProviderSidebarCell")
 
-    private let providers: [any UsageProvider]
+    private let items: [ProviderSidebarItem]
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
 
     var onSelectProvider: ((ProviderID) -> Void)?
+    var onSelectSettings: (() -> Void)?
 
     init(providers: [any UsageProvider]) {
-        self.providers = providers
+        self.items = providers.map { .provider($0) } + [.settings]
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -158,7 +191,12 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
 
     func selectProvider(_ providerID: ProviderID) {
         loadViewIfNeeded()
-        guard let row = providers.firstIndex(where: { $0.id == providerID }) else { return }
+        guard let row = items.firstIndex(where: { item in
+            if case .provider(let provider) = item {
+                return provider.id == providerID
+            }
+            return false
+        }) else { return }
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         tableView.scrollRowToVisible(row)
     }
@@ -196,20 +234,26 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        providers.count
+        items.count
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let item = items[row]
         let cell = tableView.makeView(withIdentifier: Self.cellIdentifier, owner: self) as? NSTableCellView
             ?? makeCellView()
-        cell.textField?.stringValue = providers[row].displayName
+        cell.textField?.stringValue = item.title
         return cell
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         let row = tableView.selectedRow
-        guard providers.indices.contains(row) else { return }
-        onSelectProvider?(providers[row].id)
+        guard items.indices.contains(row) else { return }
+        switch items[row] {
+        case .provider(let provider):
+            onSelectProvider?(provider.id)
+        case .settings:
+            onSelectSettings?()
+        }
     }
 
     private func makeCellView() -> NSTableCellView {
@@ -231,5 +275,152 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         ])
 
         return cell
+    }
+}
+
+/// 通用设置页,承载跨 provider 的授权、刷新和自动刷新配置。
+final class SettingsViewController: NSViewController {
+
+    private let titleLabel = NSTextField(labelWithString: "设置")
+    private let descriptionLabel = NSTextField(labelWithString: "管理 TokenWatch 的通用访问权限和数据刷新。")
+    private let authorizationTitleLabel = NSTextField(labelWithString: "通用访问权限")
+    private let authorizationActionButton = NSButton(title: "授权访问用户目录", target: nil, action: nil)
+    private let refreshButton = NSButton(title: "刷新全部数据", target: nil, action: nil)
+    private let autoRefreshIntervalLabel = NSTextField(labelWithString: "自动刷新间隔")
+    private let autoRefreshIntervalPopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let isAuthorized: @MainActor () -> Bool
+    private let autoRefreshSettings: AutoRefreshSettings
+
+    private var viewModel: TokenStatsViewModel? {
+        (NSApp.delegate as? AppDelegate)?.viewModel
+    }
+
+    init(isAuthorized: @escaping @MainActor () -> Bool = {
+        SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
+    }, autoRefreshSettings: AutoRefreshSettings = .shared) {
+        self.isAuthorized = isAuthorized
+        self.autoRefreshSettings = autoRefreshSettings
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    convenience init(isAuthorized: @escaping @MainActor () -> Bool, defaults: UserDefaults) {
+        self.init(isAuthorized: isAuthorized, autoRefreshSettings: AutoRefreshSettings(defaults: defaults))
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("SettingsViewController 必须用 init(isAuthorized:autoRefreshSettings:) 构造")
+    }
+
+    override func loadView() {
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 280))
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupSubviews()
+        renderAuthorizationState()
+    }
+
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        renderAuthorizationState()
+    }
+
+    private func setupSubviews() {
+        titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+
+        descriptionLabel.font = .systemFont(ofSize: 13)
+        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.lineBreakMode = .byWordWrapping
+        descriptionLabel.maximumNumberOfLines = 0
+
+        authorizationTitleLabel.font = .systemFont(ofSize: 13)
+
+        autoRefreshIntervalLabel.font = .systemFont(ofSize: 13)
+
+        autoRefreshIntervalPopUpButton.addItems(withTitles: AutoRefreshIntervalOption.allCases.map(\.title))
+        autoRefreshIntervalPopUpButton.selectItem(withTitle: autoRefreshSettings.selectedOption.title)
+        autoRefreshIntervalPopUpButton.target = self
+        autoRefreshIntervalPopUpButton.action = #selector(autoRefreshIntervalChanged)
+
+        authorizationActionButton.bezelStyle = .rounded
+        authorizationActionButton.target = self
+        authorizationActionButton.action = #selector(authorizationActionButtonClicked)
+
+        refreshButton.bezelStyle = .rounded
+        refreshButton.target = self
+        refreshButton.action = #selector(refreshButtonClicked)
+
+        let authorizationStack = NSStackView(views: [
+            authorizationTitleLabel,
+            authorizationActionButton,
+        ])
+        authorizationStack.orientation = .horizontal
+        authorizationStack.alignment = .centerY
+        authorizationStack.spacing = 8
+
+        let autoRefreshIntervalStack = NSStackView(views: [autoRefreshIntervalLabel, autoRefreshIntervalPopUpButton])
+        autoRefreshIntervalStack.orientation = .horizontal
+        autoRefreshIntervalStack.alignment = .centerY
+        autoRefreshIntervalStack.spacing = 8
+
+        let buttonStack = NSStackView(views: [refreshButton])
+        buttonStack.orientation = .vertical
+        buttonStack.alignment = .leading
+        buttonStack.spacing = 8
+
+        let contentStack = NSStackView(views: [
+            titleLabel,
+            descriptionLabel,
+            authorizationStack,
+            autoRefreshIntervalStack,
+            buttonStack,
+        ])
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.orientation = .vertical
+        contentStack.alignment = .leading
+        contentStack.spacing = 14
+
+        view.addSubview(contentStack)
+        NSLayoutConstraint.activate([
+            contentStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            contentStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -32),
+            contentStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
+        ])
+    }
+
+    private func renderAuthorizationState() {
+        if isAuthorized() {
+            authorizationActionButton.title = "已授权"
+            authorizationActionButton.isEnabled = false
+        } else {
+            authorizationActionButton.title = "去授权"
+            authorizationActionButton.isEnabled = true
+        }
+    }
+
+    @objc private func autoRefreshIntervalChanged() {
+        guard let selectedTitle = autoRefreshIntervalPopUpButton.titleOfSelectedItem,
+              let option = AutoRefreshIntervalOption.option(titled: selectedTitle) else { return }
+        autoRefreshSettings.selectedOption = option
+    }
+
+    @objc private func authorizationActionButtonClicked() {
+        guard !isAuthorized() else { return }
+        requestAuthorization()
+    }
+
+    private func requestAuthorization() {
+        guard let providerID = ProviderRegistry.allProviders.first?.id else { return }
+        Task { @MainActor in
+            await viewModel?.requestAuthorization(for: providerID)
+            renderAuthorizationState()
+        }
+    }
+
+    @objc private func refreshButtonClicked() {
+        Task { @MainActor in
+            await viewModel?.loadAllStats()
+        }
     }
 }

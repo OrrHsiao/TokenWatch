@@ -5,7 +5,7 @@ import os.log
 /// macOS 状态栏控制器
 ///
 /// 长驻一个图标 + 文本(今日所有 provider 累加 token 数),
-/// 定时(30s)拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 退出)。
+/// 按设置间隔拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 退出)。
 ///
 /// 设计原则:
 /// - 不直接读 JSONL / 不做聚合,完全复用 TokenStatsViewModel.states.byDay
@@ -13,13 +13,13 @@ import os.log
 @MainActor
 final class StatusBarController {
 
-    private static let refreshInterval: TimeInterval = 30
-
     private let viewModel: TokenStatsViewModel
+    private let autoRefreshSettings: AutoRefreshSettings
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private let statusMenu = NSMenu()
     private var observerToken: TokenStatsViewModel.ObservationToken?
+    private var autoRefreshSettingsObserverToken: AutoRefreshSettings.ObservationToken?
     private var popoverCloseObserver: NSObjectProtocol?
     private var popoverLocalEventMonitor: Any?
     private var popoverGlobalEventMonitor: Any?
@@ -41,14 +41,20 @@ final class StatusBarController {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
-    init(viewModel: TokenStatsViewModel) {
+    var debugRefreshTimerInterval: TimeInterval? {
+        refreshTimer?.timeInterval
+    }
+
+    init(viewModel: TokenStatsViewModel, autoRefreshSettings: AutoRefreshSettings = .shared) {
         self.viewModel = viewModel
+        self.autoRefreshSettings = autoRefreshSettings
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         configureButton()
         configurePopover()
         installMenu()
         subscribeToViewModel()
+        subscribeToAutoRefreshSettings()
         startRefreshTimer()
         // 立即按当前 ViewModel 状态画一次,避免空标题闪现
         renderTitle()
@@ -66,6 +72,9 @@ final class StatusBarController {
             if let token = popoverCloseObserver {
                 NotificationCenter.default.removeObserver(token)
             }
+            if let token = autoRefreshSettingsObserverToken {
+                autoRefreshSettings.removeObserver(token)
+            }
             removePopoverDismissMonitors()
         }
     }
@@ -79,6 +88,10 @@ final class StatusBarController {
         if let token = observerToken {
             viewModel.removeObserver(token)
             observerToken = nil
+        }
+        if let token = autoRefreshSettingsObserverToken {
+            autoRefreshSettings.removeObserver(token)
+            autoRefreshSettingsObserverToken = nil
         }
         if let token = popoverCloseObserver {
             NotificationCenter.default.removeObserver(token)
@@ -221,9 +234,17 @@ final class StatusBarController {
         }
     }
 
+    private func subscribeToAutoRefreshSettings() {
+        autoRefreshSettingsObserverToken = autoRefreshSettings.observe { [weak self] in
+            self?.restartRefreshTimer()
+        }
+    }
+
     private func startRefreshTimer() {
+        guard let interval = autoRefreshSettings.selectedOption.interval else { return }
+
         // 用 RunLoop.common 而非默认 mode,避免菜单展开时 Timer 被冻结
-        let timer = Timer(timeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
                 self.handleScheduledRefresh()
@@ -231,6 +252,12 @@ final class StatusBarController {
         }
         RunLoop.main.add(timer, forMode: .common)
         refreshTimer = timer
+    }
+
+    private func restartRefreshTimer() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+        startRefreshTimer()
     }
 
     // MARK: - Refresh
@@ -506,6 +533,101 @@ final class StatusBarController {
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
+    }
+}
+
+/// 自动刷新间隔选项,用于设置页展示并驱动状态栏定时器。
+enum AutoRefreshIntervalOption: String, CaseIterable {
+    case seconds30
+    case minute1
+    case minutes5
+    case minutes15
+    case disabled
+
+    var title: String {
+        switch self {
+        case .seconds30:
+            return "30 秒"
+        case .minute1:
+            return "1 分钟"
+        case .minutes5:
+            return "5 分钟"
+        case .minutes15:
+            return "15 分钟"
+        case .disabled:
+            return "关闭自动刷新"
+        }
+    }
+
+    var interval: TimeInterval? {
+        switch self {
+        case .seconds30:
+            return 30
+        case .minute1:
+            return 60
+        case .minutes5:
+            return 300
+        case .minutes15:
+            return 900
+        case .disabled:
+            return nil
+        }
+    }
+
+    static var defaultOption: AutoRefreshIntervalOption {
+        .seconds30
+    }
+
+    static func option(titled title: String) -> AutoRefreshIntervalOption? {
+        allCases.first { $0.title == title }
+    }
+}
+
+/// 持久化自动刷新设置,并同步通知状态栏重建 Timer。
+@MainActor
+final class AutoRefreshSettings {
+    struct ObservationToken: Hashable {
+        let id: UUID
+    }
+
+    static let shared = AutoRefreshSettings(defaults: .standard)
+    static let storageKey = "TokenWatch.autoRefreshInterval"
+
+    private let defaults: UserDefaults
+    private var observers: [ObservationToken: @MainActor () -> Void] = [:]
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    var selectedOption: AutoRefreshIntervalOption {
+        get {
+            defaults.string(forKey: Self.storageKey)
+                .flatMap(AutoRefreshIntervalOption.init(rawValue:))
+                ?? AutoRefreshIntervalOption.defaultOption
+        }
+        set {
+            guard selectedOption != newValue else { return }
+            defaults.set(newValue.rawValue, forKey: Self.storageKey)
+            notifyChange()
+        }
+    }
+
+    @discardableResult
+    func observe(_ handler: @escaping @MainActor () -> Void) -> ObservationToken {
+        let token = ObservationToken(id: UUID())
+        observers[token] = handler
+        return token
+    }
+
+    func removeObserver(_ token: ObservationToken) {
+        observers.removeValue(forKey: token)
+    }
+
+    private func notifyChange() {
+        for handler in Array(observers.values) {
+            handler()
+        }
     }
 }
 

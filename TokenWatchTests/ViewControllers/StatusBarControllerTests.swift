@@ -115,4 +115,25 @@ struct StatusBarControllerTests {
         }
     }
 
+    /// 自动刷新间隔来自持久化设置,设置变化后状态栏定时器应立即重建。
+    @MainActor
+    @Test func autoRefreshTimerFollowsPersistedSettingChanges() throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = AutoRefreshSettings(defaults: defaults)
+        settings.selectedOption = .minutes5
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            autoRefreshSettings: settings
+        )
+        defer { controller.stop() }
+
+        #expect(controller.debugRefreshTimerInterval == 300)
+
+        settings.selectedOption = .disabled
+        #expect(controller.debugRefreshTimerInterval == nil)
+    }
 }
