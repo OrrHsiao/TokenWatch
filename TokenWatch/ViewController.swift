@@ -16,6 +16,7 @@ class ViewController: NSViewController {
     private let detailContainerViewController = NSViewController()
     private lazy var sidebarViewController = ProviderSidebarViewController(providers: providers)
     private let settingsViewController = SettingsViewController()
+    private let monthlyStatsViewController = MonthlyStatsViewController()
 
     private var detailViewControllers: [ProviderID: ProviderStatsViewController] = [:]
     private var currentDetailViewController: NSViewController?
@@ -41,6 +42,9 @@ class ViewController: NSViewController {
 
         sidebarViewController.onSelectProvider = { [weak self] providerID in
             self?.showProvider(providerID)
+        }
+        sidebarViewController.onSelectMonthly = { [weak self] in
+            self?.showMonthly()
         }
         sidebarViewController.onSelectSettings = { [weak self] in
             self?.showSettings()
@@ -88,6 +92,12 @@ class ViewController: NSViewController {
         guard selectedContent != .settings else { return }
         installDetailViewController(settingsViewController)
         selectedContent = .settings
+    }
+
+    private func showMonthly() {
+        guard selectedContent != .monthly else { return }
+        installDetailViewController(monthlyStatsViewController)
+        selectedContent = .monthly
     }
 
     private func detailViewController(for provider: any UsageProvider) -> ProviderStatsViewController {
@@ -141,17 +151,21 @@ class ViewController: NSViewController {
 
 private enum SidebarContent: Equatable {
     case provider(ProviderID)
+    case monthly
     case settings
 }
 
 private enum ProviderSidebarItem {
     case provider(any UsageProvider)
+    case monthly
     case settings
 
     var title: String {
         switch self {
         case .provider(let provider):
             return provider.displayName
+        case .monthly:
+            return "按月"
         case .settings:
             return "设置"
         }
@@ -169,10 +183,11 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
     private let tableView = NSTableView()
 
     var onSelectProvider: ((ProviderID) -> Void)?
+    var onSelectMonthly: (() -> Void)?
     var onSelectSettings: (() -> Void)?
 
     init(providers: [any UsageProvider]) {
-        self.items = providers.map { .provider($0) } + [.settings]
+        self.items = providers.map { .provider($0) } + [.monthly, .settings]
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -251,6 +266,8 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         switch items[row] {
         case .provider(let provider):
             onSelectProvider?(provider.id)
+        case .monthly:
+            onSelectMonthly?()
         case .settings:
             onSelectSettings?()
         }

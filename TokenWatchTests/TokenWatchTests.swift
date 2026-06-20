@@ -22,7 +22,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func sidebarListsProvidersAndSettingsInRegistryOrder() throws {
+    @Test func sidebarListsProvidersMonthlyAndSettingsInRegistryOrder() throws {
         let viewController = ViewController()
         viewController.loadViewIfNeeded()
 
@@ -34,7 +34,21 @@ struct TokenWatchTests {
                 .textField?
                 .stringValue
         }
-        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["设置"])
+        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["按月", "设置"])
+    }
+
+    @MainActor
+    @Test func selectingMonthlyShowsMonthlyChartPage() throws {
+        let viewController = ViewController()
+        viewController.loadViewIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 2), byExtendingSelection: false)
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("按月"))
+        #expect(labels.contains("过去 12 个月,跨 provider 汇总"))
+        #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 
     @MainActor
