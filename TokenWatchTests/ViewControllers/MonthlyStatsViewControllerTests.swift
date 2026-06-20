@@ -53,6 +53,27 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("混合加载与授权状态时优先提示授权")
+    func mixedLoadingAndAuthorizationShowsAuthorization() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false),
+                    .codex: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true),
+                ]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("请先在设置中授权访问用户目录"))
+    }
+
+    @MainActor
     @Test("无已加载 stats 且有错误时展示错误")
     func showsErrorWhenNoStatsAreLoaded() {
         let calendar = utcCalendar()
@@ -91,6 +112,32 @@ struct MonthlyStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("过去 12 个月暂无 token 数据"))
+    }
+
+    @MainActor
+    @Test("零 token 数据伴随 provider 错误时展示错误")
+    func zeroDataWithProviderErrorShowsError() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(byMonth: ["2026-06": makeSummary(total: 0)]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(stats: nil, isLoading: false, errorMessage: "Codex 失败", needsAuthorization: false),
+                ]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Codex 失败"))
     }
 
     @MainActor

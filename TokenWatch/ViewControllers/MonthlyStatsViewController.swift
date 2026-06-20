@@ -81,6 +81,7 @@ final class MonthlyStatsViewController: NSViewController {
             contentStack.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -32),
             chartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             chartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
     }
 
@@ -99,25 +100,28 @@ final class MonthlyStatsViewController: NSViewController {
 
     @MainActor
     private func render() {
+        let states = stateProvider()
         let snapshot = MonthlyTokenChartBuilder.build(
-            states: stateProvider(),
+            states: states,
             now: nowProvider(),
             calendar: calendar
         )
         chartView.configure(with: snapshot)
         totalLabel.stringValue = "\(CompactNumberFormatter.format(snapshot.totalTokens)) tokens"
-        statusLabel.stringValue = statusText(for: snapshot)
+        statusLabel.stringValue = statusText(for: snapshot, totalProviderCount: states.count)
         statusLabel.isHidden = statusLabel.stringValue.isEmpty
     }
 
-    private func statusText(for snapshot: MonthlyTokenChartSnapshot) -> String {
-        if snapshot.loadingProviderCount > 0 && snapshot.loadedProviderCount == 0 {
+    private func statusText(for snapshot: MonthlyTokenChartSnapshot, totalProviderCount: Int) -> String {
+        if totalProviderCount > 0
+            && snapshot.loadingProviderCount == totalProviderCount
+            && snapshot.loadedProviderCount == 0 {
             return "正在加载用量数据..."
         }
         if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
             return "请先在设置中授权访问用户目录"
         }
-        if snapshot.loadedProviderCount == 0, let errorMessage = snapshot.errorMessages.first {
+        if let errorMessage = snapshot.errorMessages.first {
             return errorMessage
         }
         if snapshot.totalTokens == 0 {
