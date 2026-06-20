@@ -39,10 +39,12 @@ struct MonthlyTokenChartViewTests {
         let view = MonthlyTokenChartView()
 
         view.configure(with: makeSnapshot(tokens: Array(repeating: 1, count: 12)))
-        view.configure(with: makeSnapshot(tokens: Array(repeating: 2, count: 12)))
+        view.configure(with: makeSnapshot(tokens: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20]))
 
         #expect(view.debugBarCount == 12)
-        #expect(view.debugNormalizedHeights.allSatisfy { $0 == 1.0 })
+        #expect(view.debugNormalizedHeights.first == 0)
+        #expect(view.debugNormalizedHeights[10] == 0.5)
+        #expect(view.debugNormalizedHeights.last == 1.0)
     }
 
     private func makeSnapshot(tokens: [Int]) -> MonthlyTokenChartSnapshot {
