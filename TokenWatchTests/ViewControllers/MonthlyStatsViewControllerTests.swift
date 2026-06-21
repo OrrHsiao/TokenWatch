@@ -13,7 +13,7 @@ struct MonthlyStatsViewControllerTests {
         let viewController = MonthlyStatsViewController(
             stateProvider: {
                 [.claude: .init(
-                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 1_200_000)]),
+                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 1_200_000, cost: 12.5)]),
                     isLoading: false,
                     errorMessage: nil,
                     needsAuthorization: false
@@ -29,9 +29,13 @@ struct MonthlyStatsViewControllerTests {
         #expect(labels.contains("按月"))
         #expect(labels.contains("过去 12 个月,跨 provider 汇总"))
         #expect(labels.contains("1.2M tokens"))
+        #expect(labels.contains("$12.50"))
 
         let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
         #expect(chartView.debugBarCount == 12)
+
+        let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
+        #expect(costChartView.debugBarCount == 12)
     }
 
     @MainActor
@@ -169,6 +173,30 @@ struct MonthlyStatsViewControllerTests {
         #expect(labels.contains("部分数据仍在加载"))
     }
 
+    @MainActor
+    @Test("token 有数据但费用为零时仍展示费用图")
+    func rendersCostChartWhenCostIsZero() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 500, cost: 0)]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
+        #expect(costChartView.debugBarCount == 12)
+        #expect(costChartView.debugNormalizedHeights.allSatisfy { $0 == 0 })
+    }
+
     private func utcCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -179,7 +207,7 @@ struct MonthlyStatsViewControllerTests {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
-    private func makeSummary(total: Int) -> UsageSummary {
+    private func makeSummary(total: Int, cost: Double = 0) -> UsageSummary {
         UsageSummary(
             inputTokens: total,
             outputTokens: 0,
@@ -187,7 +215,7 @@ struct MonthlyStatsViewControllerTests {
             cacheCreationTokens: 0,
             reasoningTokens: 0,
             totalTokens: total,
-            cost: 0,
+            cost: cost,
             entryCount: 1,
             modelBreakdown: [:]
         )

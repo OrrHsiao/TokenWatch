@@ -5,8 +5,10 @@ final class MonthlyStatsViewController: NSViewController {
     private let titleLabel = NSTextField(labelWithString: "按月")
     private let subtitleLabel = NSTextField(labelWithString: "过去 12 个月,跨 provider 汇总")
     private let totalLabel = NSTextField(labelWithString: "0 tokens")
+    private let costLabel = NSTextField(labelWithString: "$0.00")
     private let statusLabel = NSTextField(labelWithString: "")
     private let chartView = MonthlyTokenChartView()
+    private let costChartView = MonthlyCostChartView()
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let nowProvider: () -> Date
     private let calendar: Calendar
@@ -49,38 +51,69 @@ final class MonthlyStatsViewController: NSViewController {
         subtitleLabel.font = .systemFont(ofSize: 13)
         subtitleLabel.textColor = .secondaryLabelColor
         totalLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
+        costLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
+        costLabel.textColor = .secondaryLabelColor
         statusLabel.font = .systemFont(ofSize: 12)
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.maximumNumberOfLines = 0
         statusLabel.lineBreakMode = .byWordWrapping
 
         chartView.translatesAutoresizingMaskIntoConstraints = false
+        costChartView.translatesAutoresizingMaskIntoConstraints = false
 
         let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
         headerTextStack.orientation = .vertical
         headerTextStack.alignment = .leading
         headerTextStack.spacing = 4
 
-        let headerStack = NSStackView(views: [headerTextStack, totalLabel])
+        let summaryStack = NSStackView(views: [totalLabel, costLabel])
+        summaryStack.orientation = .vertical
+        summaryStack.alignment = .trailing
+        summaryStack.spacing = 4
+
+        let headerStack = NSStackView(views: [headerTextStack, summaryStack])
         headerStack.orientation = .horizontal
         headerStack.alignment = .firstBaseline
         headerStack.distribution = .gravityAreas
         headerStack.spacing = 16
 
-        let contentStack = NSStackView(views: [headerStack, chartView, statusLabel])
+        let contentStack = NSStackView(views: [headerStack, chartView, costChartView, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
         contentStack.spacing = 18
 
-        view.addSubview(contentStack)
+        let contentView = NSView()
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(contentStack)
+
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.documentView = contentView
+
+        view.addSubview(scrollView)
         NSLayoutConstraint.activate([
-            contentStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            contentStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
-            contentStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
-            contentStack.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -32),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentView.trailingAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
+
+            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 32),
+            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
+            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
+            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
             chartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             chartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            costChartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            costChartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
     }
@@ -107,9 +140,15 @@ final class MonthlyStatsViewController: NSViewController {
             calendar: calendar
         )
         chartView.configure(with: snapshot)
+        costChartView.configure(with: snapshot)
         totalLabel.stringValue = "\(CompactNumberFormatter.format(snapshot.totalTokens)) tokens"
+        costLabel.stringValue = formatCurrency(snapshot.totalCost)
         statusLabel.stringValue = statusText(for: snapshot, totalProviderCount: states.count)
         statusLabel.isHidden = statusLabel.stringValue.isEmpty
+    }
+
+    private func formatCurrency(_ value: Double) -> String {
+        String(format: "$%.2f", value)
     }
 
     private func statusText(for snapshot: MonthlyTokenChartSnapshot, totalProviderCount: Int) -> String {

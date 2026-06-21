@@ -4,7 +4,9 @@ import Foundation
 struct MonthlyTokenChartSnapshot: Sendable, Equatable {
     let monthBuckets: [MonthlyTokenBucket]
     let totalTokens: Int
+    let totalCost: Double
     let maxMonthlyTokens: Int
+    let maxMonthlyCost: Double
     let loadedProviderCount: Int
     let loadingProviderCount: Int
     let unauthorizedProviderCount: Int
@@ -17,7 +19,9 @@ struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
     let monthKey: String
     let monthLabel: String
     let totalTokens: Int
+    let totalCost: Double
     let normalizedHeight: Double
+    let normalizedCostHeight: Double
     let isCurrentMonth: Bool
 }
 
@@ -43,6 +47,7 @@ enum MonthlyTokenChartBuilder {
         }
         let monthKeys = monthStarts.map { monthKey(for: $0, calendar: calendar) }
         var totals = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0) })
+        var costs = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0.0) })
 
         var loadedProviderCount = 0
         var loadingProviderCount = 0
@@ -63,23 +68,32 @@ enum MonthlyTokenChartBuilder {
             loadedProviderCount += 1
 
             for monthKey in monthKeys {
-                totals[monthKey, default: 0] += stats.byMonth[monthKey]?.totalTokens ?? 0
+                let summary = stats.byMonth[monthKey]
+                totals[monthKey, default: 0] += summary?.totalTokens ?? 0
+                costs[monthKey, default: 0] += summary?.cost ?? 0
             }
         }
 
         let maxMonthlyTokens = totals.values.max() ?? 0
+        let maxMonthlyCost = costs.values.max() ?? 0
         let buckets = monthStarts.map { monthStart in
             let key = monthKey(for: monthStart, calendar: calendar)
             let totalTokens = totals[key, default: 0]
+            let totalCost = costs[key, default: 0]
             let normalizedHeight = maxMonthlyTokens > 0
                 ? Double(totalTokens) / Double(maxMonthlyTokens)
+                : 0
+            let normalizedCostHeight = maxMonthlyCost > 0
+                ? totalCost / maxMonthlyCost
                 : 0
             return MonthlyTokenBucket(
                 id: key,
                 monthKey: key,
                 monthLabel: monthLabel(for: monthStart, calendar: calendar),
                 totalTokens: totalTokens,
+                totalCost: totalCost,
                 normalizedHeight: normalizedHeight,
+                normalizedCostHeight: normalizedCostHeight,
                 isCurrentMonth: key == monthKey(for: currentMonthStart, calendar: calendar)
             )
         }
@@ -87,7 +101,9 @@ enum MonthlyTokenChartBuilder {
         return MonthlyTokenChartSnapshot(
             monthBuckets: buckets,
             totalTokens: buckets.reduce(0) { $0 + $1.totalTokens },
+            totalCost: buckets.reduce(0) { $0 + $1.totalCost },
             maxMonthlyTokens: maxMonthlyTokens,
+            maxMonthlyCost: maxMonthlyCost,
             loadedProviderCount: loadedProviderCount,
             loadingProviderCount: loadingProviderCount,
             unauthorizedProviderCount: unauthorizedProviderCount,

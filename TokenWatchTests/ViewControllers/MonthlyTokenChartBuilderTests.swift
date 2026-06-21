@@ -57,6 +57,33 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.unauthorizedProviderCount == 1)
     }
 
+    @Test("跨 provider 合并 byMonth cost 并缺失月份补零")
+    func sumsMonthlyCostsAcrossProvidersAndFillsMissingMonths() {
+        let calendar = utcCalendar()
+        let claudeStats = makeStats(byMonth: [
+            "2026-05": makeSummary(total: 100, cost: 1.25),
+            "2026-06": makeSummary(total: 300, cost: 2.50),
+        ])
+        let codexStats = makeStats(byMonth: [
+            "2026-06": makeSummary(total: 50, cost: 0.75),
+        ])
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            ],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.bucket("2026-04")?.totalCost == 0)
+        #expect(snapshot.bucket("2026-05")?.totalCost == 1.25)
+        #expect(snapshot.bucket("2026-06")?.totalCost == 3.25)
+        #expect(snapshot.totalCost == 4.50)
+        #expect(snapshot.maxMonthlyCost == 3.25)
+    }
+
     @Test("normalizedHeight 保持在 0...1 且全零时稳定")
     func normalizedHeightIsBoundedAndStableForZeroData() {
         let calendar = utcCalendar()
@@ -83,6 +110,35 @@ struct MonthlyTokenChartBuilderTests {
         #expect(filledSnapshot.bucket("2026-06")?.normalizedHeight == 1.0)
         #expect(filledSnapshot.monthBuckets.allSatisfy {
             $0.normalizedHeight >= 0 && $0.normalizedHeight <= 1
+        })
+    }
+
+    @Test("normalizedCostHeight 保持在 0...1 且全零费用时稳定")
+    func normalizedCostHeightIsBoundedAndStableForZeroData() {
+        let calendar = utcCalendar()
+
+        let emptySnapshot = MonthlyTokenChartBuilder.build(
+            states: [.claude: .init(stats: makeStats(byMonth: [:]), isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(emptySnapshot.maxMonthlyCost == 0)
+        #expect(emptySnapshot.monthBuckets.allSatisfy { $0.normalizedCostHeight == 0 })
+
+        let filledSnapshot = MonthlyTokenChartBuilder.build(
+            states: [.claude: .init(stats: makeStats(byMonth: [
+                "2026-05": makeSummary(total: 50, cost: 1.0),
+                "2026-06": makeSummary(total: 100, cost: 4.0),
+            ]), isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(filledSnapshot.bucket("2026-05")?.normalizedCostHeight == 0.25)
+        #expect(filledSnapshot.bucket("2026-06")?.normalizedCostHeight == 1.0)
+        #expect(filledSnapshot.monthBuckets.allSatisfy {
+            $0.normalizedCostHeight >= 0 && $0.normalizedCostHeight <= 1
         })
     }
 
@@ -117,7 +173,7 @@ struct MonthlyTokenChartBuilderTests {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
-    private func makeSummary(total: Int) -> UsageSummary {
+    private func makeSummary(total: Int, cost: Double = 0) -> UsageSummary {
         UsageSummary(
             inputTokens: total,
             outputTokens: 0,
@@ -125,7 +181,7 @@ struct MonthlyTokenChartBuilderTests {
             cacheCreationTokens: 0,
             reasoningTokens: 0,
             totalTokens: total,
-            cost: 0,
+            cost: cost,
             entryCount: 1,
             modelBreakdown: [:]
         )
