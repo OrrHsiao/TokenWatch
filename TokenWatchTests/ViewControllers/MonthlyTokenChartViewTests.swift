@@ -16,8 +16,8 @@ struct MonthlyTokenChartViewTests {
 
         #expect(view.debugBarCount == 12)
         #expect(view.debugMonthLabels == [
-            "7月", "8月", "9月", "10月", "11月", "12月",
             "1月", "2月", "3月", "4月", "5月", "6月",
+            "7月", "8月", "9月", "10月", "11月", "12月",
         ])
         #expect(view.debugNormalizedHeights.last == 1.0)
         #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
@@ -72,10 +72,10 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
-    @Test("鼠标划过月份柱时回传该月 token 用量")
-    func hoveringMonthBarEmitsTokenUsageText() {
+    @Test("鼠标划过月份柱时用 M 单位回传该月 token 用量")
+    func hoveringMonthBarEmitsMillionTokenUsageText() {
         let view = MonthlyTokenChartView()
-        let snapshot = makeSnapshot(tokens: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 1_200_000])
+        let snapshot = makeSnapshot(tokens: [0, 10, 20, 30, 40, 1_234_567, 60, 70, 80, 90, 100, 110])
         var hoverTexts: [String?] = []
         view.onHoverTextChange = { text in
             hoverTexts.append(text)
@@ -86,8 +86,52 @@ struct MonthlyTokenChartViewTests {
         view.debugSimulateHover(monthKey: nil)
 
         #expect(hoverTexts.count == 2)
-        #expect(hoverTexts[0] == "6月 · 1,200,000 tokens")
+        #expect(hoverTexts[0] == "6月 · 1.2M")
         #expect(hoverTexts[1] == nil)
+    }
+
+    @MainActor
+    @Test("配置 snapshot 后保留每月模型段供堆叠柱渲染")
+    func configureKeepsMonthlyModelSegmentsForStackedBars() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(
+            tokens: [0, 10, 20, 30, 40, 1_200_000, 60, 70, 80, 90, 100, 110],
+            modelBreakdowns: [
+                5: [
+                    ("claude-sonnet", 800_000),
+                    ("gpt-5", 400_000),
+                ],
+            ]
+        )
+
+        view.configure(with: snapshot)
+
+        #expect(view.debugModelSegmentLabelsByMonth["2026-06"] == ["claude-sonnet", "gpt-5"])
+        #expect(view.debugModelSegmentTotalsByMonth["2026-06"] == [800_000, 400_000])
+    }
+
+    @MainActor
+    @Test("鼠标划过分段柱月份时回传该月模型明细")
+    func hoveringStackedMonthBarEmitsModelBreakdownText() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(
+            tokens: [0, 10, 20, 30, 40, 1_200_000, 60, 70, 80, 90, 100, 110],
+            modelBreakdowns: [
+                5: [
+                    ("claude-sonnet", 800_000),
+                    ("gpt-5", 400_000),
+                ],
+            ]
+        )
+        var hoverTexts: [String?] = []
+        view.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06")
+
+        #expect(hoverTexts == ["6月 · 1.2M · claude-sonnet 0.8M, gpt-5 0.4M"])
     }
 
     @MainActor
@@ -105,19 +149,29 @@ struct MonthlyTokenChartViewTests {
         #expect(view.debugNormalizedHeights.allSatisfy { $0.isFinite && (0...1).contains($0) })
     }
 
-    private func makeSnapshot(tokens: [Int]) -> MonthlyTokenChartSnapshot {
+    private func makeSnapshot(
+        tokens: [Int],
+        modelBreakdowns: [Int: [(String, Int)]] = [:]
+    ) -> MonthlyTokenChartSnapshot {
         let monthKeys = [
-            "2025-07", "2025-08", "2025-09", "2025-10",
-            "2025-11", "2025-12", "2026-01", "2026-02",
-            "2026-03", "2026-04", "2026-05", "2026-06",
+            "2026-01", "2026-02", "2026-03", "2026-04",
+            "2026-05", "2026-06", "2026-07", "2026-08",
+            "2026-09", "2026-10", "2026-11", "2026-12",
         ]
         let monthLabels = [
-            "7月", "8月", "9月", "10月", "11月", "12月",
             "1月", "2月", "3月", "4月", "5月", "6月",
+            "7月", "8月", "9月", "10月", "11月", "12月",
         ]
         let maxTokens = tokens.max() ?? 0
         let buckets = zip(monthKeys.indices, tokens).map { index, total in
-            MonthlyTokenBucket(
+            let modelSegments = (modelBreakdowns[index] ?? []).map { modelName, modelTotal in
+                MonthlyTokenModelSegment(
+                    modelName: modelName,
+                    totalTokens: modelTotal,
+                    percentage: total > 0 ? Double(modelTotal) / Double(total) : 0
+                )
+            }
+            return MonthlyTokenBucket(
                 id: monthKeys[index],
                 monthKey: monthKeys[index],
                 monthLabel: monthLabels[index],
@@ -125,7 +179,8 @@ struct MonthlyTokenChartViewTests {
                 totalCost: 0,
                 normalizedHeight: maxTokens > 0 ? Double(total) / Double(maxTokens) : 0,
                 normalizedCostHeight: 0,
-                isCurrentMonth: index == monthKeys.indices.last
+                isCurrentMonth: index == monthKeys.indices.last,
+                modelSegments: modelSegments
             )
         }
 
@@ -154,7 +209,8 @@ struct MonthlyTokenChartViewTests {
                 totalCost: 0,
                 normalizedHeight: normalizedHeights[index],
                 normalizedCostHeight: 0,
-                isCurrentMonth: index == normalizedHeights.indices.last
+                isCurrentMonth: index == normalizedHeights.indices.last,
+                modelSegments: []
             )
         }
 

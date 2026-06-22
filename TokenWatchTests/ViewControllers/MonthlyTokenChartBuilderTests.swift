@@ -5,8 +5,8 @@ import Testing
 @Suite("MonthlyTokenChartBuilder")
 struct MonthlyTokenChartBuilderTests {
 
-    @Test("生成过去十二个月窗口并按旧到新排序")
-    func buildsPastTwelveMonthsInAscendingOrder() {
+    @Test("生成本年十二个月窗口并按自然月排序")
+    func buildsCurrentYearMonthsInAscendingOrder() {
         let calendar = utcCalendar()
 
         let snapshot = MonthlyTokenChartBuilder.build(
@@ -16,15 +16,54 @@ struct MonthlyTokenChartBuilderTests {
         )
 
         #expect(snapshot.monthBuckets.map(\.monthKey) == [
-            "2025-07", "2025-08", "2025-09", "2025-10",
-            "2025-11", "2025-12", "2026-01", "2026-02",
-            "2026-03", "2026-04", "2026-05", "2026-06",
+            "2026-01", "2026-02", "2026-03", "2026-04",
+            "2026-05", "2026-06", "2026-07", "2026-08",
+            "2026-09", "2026-10", "2026-11", "2026-12",
         ])
         #expect(snapshot.monthBuckets.map(\.monthLabel) == [
-            "7月", "8月", "9月", "10月", "11月", "12月",
             "1月", "2月", "3月", "4月", "5月", "6月",
+            "7月", "8月", "9月", "10月", "11月", "12月",
         ])
-        #expect(snapshot.monthBuckets.last?.isCurrentMonth == true)
+        #expect(snapshot.bucket("2026-06")?.isCurrentMonth == true)
+        #expect(snapshot.bucket("2026-12")?.isCurrentMonth == false)
+    }
+
+    @Test("年初也展示本年完整十二个月")
+    func buildsFullCurrentYearWindowAtYearStart() {
+        let calendar = utcCalendar()
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [:],
+            now: date(2026, 1, 5, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.monthBuckets.map(\.monthKey) == [
+            "2026-01", "2026-02", "2026-03", "2026-04",
+            "2026-05", "2026-06", "2026-07", "2026-08",
+            "2026-09", "2026-10", "2026-11", "2026-12",
+        ])
+        #expect(snapshot.bucket("2026-01")?.isCurrentMonth == true)
+    }
+
+    @Test("跨年边界只统计本年月份")
+    func ignoresMonthsOutsideCurrentYear() {
+        let calendar = utcCalendar()
+        let stats = makeStats(byMonth: [
+            "2025-12": makeSummary(total: 999, cost: 9.99),
+            "2026-01": makeSummary(total: 100, cost: 1.00),
+        ])
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [.claude: .init(stats: stats, isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            now: date(2026, 1, 5, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.bucket("2025-12") == nil)
+        #expect(snapshot.bucket("2026-01")?.totalTokens == 100)
+        #expect(snapshot.totalTokens == 100)
+        #expect(snapshot.totalCost == 1.00)
     }
 
     @Test("跨 provider 合并 byMonth token 并缺失月份补零")
@@ -33,6 +72,7 @@ struct MonthlyTokenChartBuilderTests {
         let claudeStats = makeStats(byMonth: [
             "2026-05": makeSummary(total: 100),
             "2026-06": makeSummary(total: 300),
+            "2026-12": makeSummary(total: 70),
         ])
         let codexStats = makeStats(byMonth: [
             "2026-06": makeSummary(total: 50),
@@ -51,7 +91,8 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-04")?.totalTokens == 0)
         #expect(snapshot.bucket("2026-05")?.totalTokens == 100)
         #expect(snapshot.bucket("2026-06")?.totalTokens == 350)
-        #expect(snapshot.totalTokens == 450)
+        #expect(snapshot.bucket("2026-12")?.totalTokens == 70)
+        #expect(snapshot.totalTokens == 520)
         #expect(snapshot.maxMonthlyTokens == 350)
         #expect(snapshot.loadedProviderCount == 2)
         #expect(snapshot.unauthorizedProviderCount == 1)
@@ -63,6 +104,7 @@ struct MonthlyTokenChartBuilderTests {
         let claudeStats = makeStats(byMonth: [
             "2026-05": makeSummary(total: 100, cost: 1.25),
             "2026-06": makeSummary(total: 300, cost: 2.50),
+            "2026-12": makeSummary(total: 70, cost: 0.40),
         ])
         let codexStats = makeStats(byMonth: [
             "2026-06": makeSummary(total: 50, cost: 0.75),
@@ -80,7 +122,8 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-04")?.totalCost == 0)
         #expect(snapshot.bucket("2026-05")?.totalCost == 1.25)
         #expect(snapshot.bucket("2026-06")?.totalCost == 3.25)
-        #expect(snapshot.totalCost == 4.50)
+        #expect(snapshot.bucket("2026-12")?.totalCost == 0.40)
+        #expect(snapshot.totalCost == 4.90)
         #expect(snapshot.maxMonthlyCost == 3.25)
     }
 
@@ -162,11 +205,11 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.errorMessages == ["OpenCode 失败"])
     }
 
-    @Test("按过去十二个月生成工具和模型 token 占比")
+    @Test("按本年月份生成工具和模型 token 占比")
     func buildsToolAndModelTokenShareSlicesForVisibleMonths() {
         let calendar = utcCalendar()
         let claudeStats = makeStats(byMonth: [
-            "2025-06": makeSummary(total: 999, modelBreakdown: ["old-model": 999]),
+            "2025-12": makeSummary(total: 999, modelBreakdown: ["old-model": 999]),
             "2026-05": makeSummary(total: 100, modelBreakdown: [
                 "claude-sonnet": 80,
                 "claude-opus": 20,
@@ -196,6 +239,42 @@ struct MonthlyTokenChartBuilderTests {
         #expect(abs((snapshot.modelShareSlices.first?.percentage ?? 0) - 0.70) < 0.0001)
         #expect(snapshot.modelShareSlices.allSatisfy { $0.percentage > 0 })
         #expect(!snapshot.modelShareSlices.map(\.label).contains("old-model"))
+    }
+
+    @Test("每个月 bucket 包含按模型拆分的 token 段")
+    func buildsMonthlyModelSegmentsForStackedBars() {
+        let calendar = utcCalendar()
+        let claudeStats = makeStats(byMonth: [
+            "2026-05": makeSummary(total: 120, modelBreakdown: [
+                "claude-sonnet": 100,
+                "claude-opus": 20,
+            ]),
+            "2026-06": makeSummary(total: 300, modelBreakdown: [
+                "claude-sonnet": 180,
+                "claude-opus": 120,
+            ]),
+        ])
+        let codexStats = makeStats(byMonth: [
+            "2026-06": makeSummary(total: 100, modelBreakdown: [
+                "gpt-5": 100,
+            ]),
+        ])
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            ],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.bucket("2026-04")?.modelSegments == [])
+        #expect(snapshot.bucket("2026-05")?.modelSegments.map(\.modelName) == ["claude-sonnet", "claude-opus"])
+        #expect(snapshot.bucket("2026-05")?.modelSegments.map(\.totalTokens) == [100, 20])
+        #expect(snapshot.bucket("2026-06")?.modelSegments.map(\.modelName) == ["claude-sonnet", "claude-opus", "gpt-5"])
+        #expect(snapshot.bucket("2026-06")?.modelSegments.map(\.totalTokens) == [180, 120, 100])
+        #expect(abs((snapshot.bucket("2026-06")?.modelSegments.first?.percentage ?? 0) - 0.45) < 0.0001)
     }
 
     private func utcCalendar() -> Calendar {

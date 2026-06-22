@@ -222,7 +222,7 @@ final class UsageSharePieChartView: NSView {
         row.alignment = .centerY
         row.distribution = .fill
         row.spacing = 6
-        row.toolTip = "\(slice.label) · \(formatTokens(slice.totalTokens)) tokens · \(formatPercentage(slice.percentage))"
+        row.toolTip = "\(slice.label) · \(CompactNumberFormatter.formatMillions(slice.totalTokens)) · \(formatPercentage(slice.percentage))"
         row.slice = slice
         row.onHoverSliceChange = { [weak self] slice in
             self?.updateHoverText(slice: slice)
@@ -243,20 +243,13 @@ final class UsageSharePieChartView: NSView {
             hoverLabel.stringValue = ""
             return
         }
-        hoverLabel.stringValue = "\(slice.label) · \(formatTokens(slice.totalTokens)) tokens"
+        hoverLabel.stringValue = "\(slice.label) · \(CompactNumberFormatter.formatMillions(slice.totalTokens))"
     }
 
     private func formatPercentage(_ value: Double) -> String {
         String(format: "%.1f%%", value * 100)
     }
 
-    private func formatTokens(_ value: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
 }
 
 /// 饼图绘制视图。公开类型便于单元测试验证尺寸稳定。

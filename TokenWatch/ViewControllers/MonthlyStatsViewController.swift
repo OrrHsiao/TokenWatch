@@ -1,12 +1,12 @@
 import AppKit
 
-/// 跨 provider 的按月 token 消耗页面。
+/// 跨 provider 的本年 token 消耗页面。
 final class MonthlyStatsViewController: NSViewController {
     private static let compactBarChartWidth: CGFloat = 520
 
-    private let titleLabel = NSTextField(labelWithString: "按月")
-    private let subtitleLabel = NSTextField(labelWithString: "过去 12 个月,跨 provider 汇总")
-    private let totalLabel = NSTextField(labelWithString: "0 tokens")
+    private let titleLabel = NSTextField(labelWithString: "本年")
+    private let subtitleLabel = NSTextField(labelWithString: "本年 1-12 月,跨 provider 汇总")
+    private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let statusLabel = NSTextField(labelWithString: "")
     private let tokenChartTitleLabel = NSTextField(labelWithString: "Token 用量")
@@ -36,7 +36,7 @@ final class MonthlyStatsViewController: NSViewController {
         self.nowProvider = nowProvider
         self.calendar = calendar
         super.init(nibName: nil, bundle: nil)
-        self.title = "按月"
+        self.title = "本年"
     }
 
     var debugTokenChartHoverText: String {
@@ -279,7 +279,7 @@ final class MonthlyStatsViewController: NSViewController {
         costChartView.configure(with: snapshot)
         toolSharePieView.configure(slices: snapshot.toolShareSlices)
         modelSharePieView.configure(slices: snapshot.modelShareSlices)
-        totalLabel.stringValue = "\(CompactNumberFormatter.format(snapshot.totalTokens)) tokens"
+        totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
         statusLabel.stringValue = statusText(for: snapshot, totalProviderCount: states.count)
         statusLabel.isHidden = statusLabel.stringValue.isEmpty
@@ -310,7 +310,7 @@ final class MonthlyStatsViewController: NSViewController {
             return errorMessage
         }
         if snapshot.totalTokens == 0 {
-            return "过去 12 个月暂无 token 数据"
+            return "本年暂无 token 数据"
         }
         if snapshot.loadingProviderCount > 0 {
             return "部分数据仍在加载"

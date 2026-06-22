@@ -45,8 +45,8 @@ struct UsageSharePieChartViewTests {
     }
 
     @MainActor
-    @Test("图例值只展示百分比并保留完整 token tooltip")
-    func legendValuesShowOnlyPercentagesWithTokenTooltip() {
+    @Test("图例值只展示百分比并用 M 单位保留 token tooltip")
+    func legendValuesShowOnlyPercentagesWithMillionTokenTooltip() {
         let view = UsageSharePieChartView(title: "模型占比")
 
         view.configure(slices: [
@@ -58,21 +58,21 @@ struct UsageSharePieChartViewTests {
         #expect(view.debugLegendValueLabels == ["5.1%", "0.0%"])
         #expect(view.debugLegendNameLineBreakModes.allSatisfy { $0 == .byTruncatingMiddle })
         let toolTips = view.allDescendants(ofType: NSStackView.self).compactMap(\.toolTip)
-        #expect(toolTips.contains("codex-auto-review · 24,600,000 tokens · 5.1%"))
+        #expect(toolTips.contains("codex-auto-review · 24.6M · 5.1%"))
     }
 
     @MainActor
-    @Test("鼠标划过 slice 时标题右侧展示该项 token 用量")
-    func hoveringSliceShowsTokenUsageBesideTitle() {
+    @Test("鼠标划过 slice 时标题右侧用 M 单位展示该项 token 用量")
+    func hoveringSliceShowsMillionTokenUsageBesideTitle() {
         let view = UsageSharePieChartView(title: "工具占比")
         view.configure(slices: [
-            UsageShareSlice(id: "claude", label: "Claude Code", totalTokens: 300, percentage: 0.75),
-            UsageShareSlice(id: "codex", label: "Codex", totalTokens: 100, percentage: 0.25),
+            UsageShareSlice(id: "claude", label: "Claude Code", totalTokens: 1_234_567, percentage: 0.75),
+            UsageShareSlice(id: "codex", label: "Codex", totalTokens: 432_100, percentage: 0.25),
         ])
 
         view.debugSimulateHover(sliceID: "claude")
 
-        #expect(view.debugHoverText == "Claude Code · 300 tokens")
+        #expect(view.debugHoverText == "Claude Code · 1.2M")
 
         view.debugSimulateHover(sliceID: nil)
 

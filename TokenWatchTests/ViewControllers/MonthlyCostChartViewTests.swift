@@ -16,8 +16,8 @@ struct MonthlyCostChartViewTests {
 
         #expect(view.debugBarCount == 12)
         #expect(view.debugMonthLabels == [
-            "7月", "8月", "9月", "10月", "11月", "12月",
             "1月", "2月", "3月", "4月", "5月", "6月",
+            "7月", "8月", "9月", "10月", "11月", "12月",
         ])
         #expect(view.debugNormalizedHeights.last == 1.0)
         #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
@@ -75,7 +75,7 @@ struct MonthlyCostChartViewTests {
     @Test("鼠标划过月份柱时回传该月费用")
     func hoveringMonthBarEmitsCostText() {
         let view = MonthlyCostChartView()
-        let snapshot = makeSnapshot(costs: [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 12.5])
+        let snapshot = makeSnapshot(costs: [0, 0.25, 0.5, 0.75, 1, 12.5, 1.5, 1.75, 2, 2.25, 2.5, 5])
         var hoverTexts: [String?] = []
         view.onHoverTextChange = { text in
             hoverTexts.append(text)
@@ -107,13 +107,13 @@ struct MonthlyCostChartViewTests {
 
     private func makeSnapshot(costs: [Double]) -> MonthlyTokenChartSnapshot {
         let monthKeys = [
-            "2025-07", "2025-08", "2025-09", "2025-10",
-            "2025-11", "2025-12", "2026-01", "2026-02",
-            "2026-03", "2026-04", "2026-05", "2026-06",
+            "2026-01", "2026-02", "2026-03", "2026-04",
+            "2026-05", "2026-06", "2026-07", "2026-08",
+            "2026-09", "2026-10", "2026-11", "2026-12",
         ]
         let monthLabels = [
-            "7月", "8月", "9月", "10月", "11月", "12月",
             "1月", "2月", "3月", "4月", "5月", "6月",
+            "7月", "8月", "9月", "10月", "11月", "12月",
         ]
         let maxCost = costs.max() ?? 0
         let buckets = zip(monthKeys.indices, costs).map { index, totalCost in

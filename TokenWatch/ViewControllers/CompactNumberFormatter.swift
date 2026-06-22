@@ -33,4 +33,15 @@ enum CompactNumberFormatter {
         let frac = tenths % 10
         return "\(whole).\(frac)M"
     }
+
+    /// 把 token 总数统一换算成百万单位
+    /// - Parameter value: 整数 token 数,负数会被视为 0
+    /// - Returns: 使用 `M` 作为单位的字符串,用于本年内容页
+    static func formatMillions(_ value: Int) -> String {
+        let safeValue = max(value, 0)
+        let tenths = safeValue / 100_000
+        let whole = tenths / 10
+        let frac = tenths % 10
+        return "\(whole).\(frac)M"
+    }
 }

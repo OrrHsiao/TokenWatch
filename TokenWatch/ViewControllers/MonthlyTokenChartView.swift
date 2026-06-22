@@ -15,12 +15,14 @@ enum MonthlyBarChartStyle {
     }
 }
 
-/// 过去 12 个月 token 柱状图。只消费 snapshot,不读取 ViewModel。
+/// 本年 12 个月 token 柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyTokenChartView: NSView {
     private let chartHost = NSHostingView(rootView: AnyView(MonthlyTokenBarChartContent(buckets: [], onHoverMonthKeyChange: { _ in })))
     private var buckets: [MonthlyTokenBucket] = []
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
+    private(set) var debugModelSegmentLabelsByMonth: [String: [String]] = [:]
+    private(set) var debugModelSegmentTotalsByMonth: [String: [Int]] = [:]
     var onHoverTextChange: ((String?) -> Void)?
 
     var debugRegularBarColor: NSColor {
@@ -50,6 +52,12 @@ final class MonthlyTokenChartView: NSView {
         buckets = snapshot.monthBuckets
         debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedHeight($0.normalizedHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
+        debugModelSegmentLabelsByMonth = Dictionary(uniqueKeysWithValues: snapshot.monthBuckets.map { bucket in
+            (bucket.monthKey, bucket.modelSegments.map(\.modelName))
+        })
+        debugModelSegmentTotalsByMonth = Dictionary(uniqueKeysWithValues: snapshot.monthBuckets.map { bucket in
+            (bucket.monthKey, bucket.modelSegments.map(\.totalTokens))
+        })
         chartHost.rootView = AnyView(MonthlyTokenBarChartContent(
             buckets: snapshot.monthBuckets,
             onHoverMonthKeyChange: { [weak self] monthKey in
@@ -84,15 +92,14 @@ final class MonthlyTokenChartView: NSView {
             onHoverTextChange?(nil)
             return
         }
-        onHoverTextChange?("\(bucket.monthLabel) · \(formatTokens(bucket.totalTokens)) tokens")
-    }
-
-    private func formatTokens(_ value: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        var hoverText = "\(bucket.monthLabel) · \(CompactNumberFormatter.formatMillions(bucket.totalTokens))"
+        let modelText = bucket.modelSegments
+            .map { "\($0.modelName) \(CompactNumberFormatter.formatMillions($0.totalTokens))" }
+            .joined(separator: ", ")
+        if !modelText.isEmpty {
+            hoverText += " · \(modelText)"
+        }
+        onHoverTextChange?(hoverText)
     }
 }
 
@@ -110,21 +117,37 @@ private struct MonthlyTokenBarChartContent: View {
     }
 
     var body: some View {
-        Chart(buckets) { bucket in
-            BarMark(
-                x: .value("月份", bucket.monthKey),
-                y: .value("Tokens", Double(bucket.totalTokens))
-            )
-            .foregroundStyle(
-                bucket.isCurrentMonth
-                    ? MonthlyBarChartStyle.currentMonthBarSwiftUIColor
-                    : MonthlyBarChartStyle.regularBarSwiftUIColor
-            )
-            .cornerRadius(4)
-            .accessibilityLabel(bucket.monthLabel)
-            .accessibilityValue("\(bucket.totalTokens) tokens")
+        Chart {
+            ForEach(buckets) { bucket in
+                if bucket.modelSegments.isEmpty {
+                    BarMark(
+                        x: .value("月份", bucket.monthKey),
+                        y: .value("Tokens", Double(bucket.totalTokens))
+                    )
+                    .foregroundStyle(
+                        bucket.isCurrentMonth
+                            ? MonthlyBarChartStyle.currentMonthBarSwiftUIColor
+                            : MonthlyBarChartStyle.regularBarSwiftUIColor
+                    )
+                    .cornerRadius(4)
+                    .accessibilityLabel(bucket.monthLabel)
+                    .accessibilityValue(CompactNumberFormatter.formatMillions(bucket.totalTokens))
+                } else {
+                    ForEach(bucket.modelSegments) { segment in
+                        BarMark(
+                            x: .value("月份", bucket.monthKey),
+                            y: .value("Tokens", Double(segment.totalTokens))
+                        )
+                        .foregroundStyle(by: .value("模型", segment.modelName))
+                        .opacity(bucket.isCurrentMonth ? 1 : 0.74)
+                        .cornerRadius(4)
+                        .accessibilityLabel("\(bucket.monthLabel) \(segment.modelName)")
+                        .accessibilityValue(CompactNumberFormatter.formatMillions(segment.totalTokens))
+                    }
+                }
+            }
         }
-        .chartLegend(.hidden)
+        .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
         .chartYScale(domain: 0...maxTokens)
         .chartXAxis {
             AxisMarks(values: buckets.map(\.monthKey)) { value in
@@ -137,11 +160,13 @@ private struct MonthlyTokenBarChartContent: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading) {
+            AxisMarks(position: .leading) { value in
                 AxisGridLine()
                     .foregroundStyle(.secondary.opacity(0.18))
                 AxisTick()
-                AxisValueLabel()
+                if let tokens = value.as(Double.self) {
+                    AxisValueLabel(CompactNumberFormatter.formatMillions(Int(tokens)))
+                }
             }
         }
         .chartOverlay { proxy in
@@ -149,7 +174,7 @@ private struct MonthlyTokenBarChartContent: View {
         }
         .padding(.top, 8)
         .frame(minHeight: 220)
-        .accessibilityLabel("过去 12 个月 token 柱状图")
+        .accessibilityLabel("本年 token 柱状图")
     }
 
     private func monthLabel(for monthKey: String) -> String {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// 过去 12 个月 token 柱状图的完整数据快照,供 UI 直接渲染。
+/// 本年 12 个月 token 柱状图的完整数据快照,供 UI 直接渲染。
 struct MonthlyTokenChartSnapshot: Sendable, Equatable {
     let monthBuckets: [MonthlyTokenBucket]
     let totalTokens: Int
@@ -23,6 +23,15 @@ struct UsageShareSlice: Sendable, Equatable, Identifiable {
     let percentage: Double
 }
 
+/// 单月柱状图中某个模型的 token 分段。
+struct MonthlyTokenModelSegment: Sendable, Equatable, Identifiable {
+    let modelName: String
+    let totalTokens: Int
+    let percentage: Double
+
+    var id: String { modelName }
+}
+
 /// 单月 token 柱状图数据。
 struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
     let id: String
@@ -33,16 +42,39 @@ struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
     let normalizedHeight: Double
     let normalizedCostHeight: Double
     let isCurrentMonth: Bool
+    let modelSegments: [MonthlyTokenModelSegment]
+
+    init(
+        id: String,
+        monthKey: String,
+        monthLabel: String,
+        totalTokens: Int,
+        totalCost: Double,
+        normalizedHeight: Double,
+        normalizedCostHeight: Double,
+        isCurrentMonth: Bool,
+        modelSegments: [MonthlyTokenModelSegment] = []
+    ) {
+        self.id = id
+        self.monthKey = monthKey
+        self.monthLabel = monthLabel
+        self.totalTokens = totalTokens
+        self.totalCost = totalCost
+        self.normalizedHeight = normalizedHeight
+        self.normalizedCostHeight = normalizedCostHeight
+        self.isCurrentMonth = isCurrentMonth
+        self.modelSegments = modelSegments
+    }
 }
 
-/// 将多 provider 状态构建为过去 12 个月的 token 柱状图快照。
+/// 将多 provider 状态构建为本年 12 个月的 token 柱状图快照。
 enum MonthlyTokenChartBuilder {
     private static let monthCount = 12
 
-    /// 构建以 `now` 所在月份为终点的过去 12 个月 token 快照。
+    /// 构建 `now` 所在年份 1 月到 12 月的 token 快照。
     /// - Parameters:
     ///   - states: 各 provider 的统计状态;没有 stats 的 provider 不参与 token 求和。
-    ///   - now: 当前日期,用于确定当前月和窗口终点。
+    ///   - now: 当前日期,用于确定本年窗口和当前月高亮。
     ///   - calendar: 调用方指定的日历配置,用于稳定测试和本地月份计算。
     /// - Returns: 可直接渲染的月度 token 图表快照。
     static func build(
@@ -52,12 +84,15 @@ enum MonthlyTokenChartBuilder {
     ) -> MonthlyTokenChartSnapshot {
         let currentMonthStart = calendar.dateInterval(of: .month, for: now)?.start
             ?? calendar.startOfDay(for: now)
-        let monthStarts = (0..<monthCount).reversed().compactMap { offset in
-            calendar.date(byAdding: .month, value: -offset, to: currentMonthStart)
+        let yearStart = calendar.dateInterval(of: .year, for: now)?.start
+            ?? currentMonthStart
+        let monthStarts = (0..<monthCount).compactMap { offset in
+            calendar.date(byAdding: .month, value: offset, to: yearStart)
         }
         let monthKeys = monthStarts.map { monthKey(for: $0, calendar: calendar) }
         var totals = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0) })
         var costs = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0.0) })
+        var modelTotalsByMonth = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, [String: Int]()) })
         var toolTotals: [ProviderID: Int] = [:]
         var modelTotals: [String: Int] = [:]
 
@@ -89,6 +124,7 @@ enum MonthlyTokenChartBuilder {
 
                 for (model, modelSummary) in summary?.modelBreakdown ?? [:] {
                     modelTotals[model, default: 0] += modelSummary.totalTokens
+                    modelTotalsByMonth[monthKey, default: [:]][model, default: 0] += modelSummary.totalTokens
                 }
             }
             if providerVisibleTokens > 0 {
@@ -116,7 +152,11 @@ enum MonthlyTokenChartBuilder {
                 totalCost: totalCost,
                 normalizedHeight: normalizedHeight,
                 normalizedCostHeight: normalizedCostHeight,
-                isCurrentMonth: key == monthKey(for: currentMonthStart, calendar: calendar)
+                isCurrentMonth: key == monthKey(for: currentMonthStart, calendar: calendar),
+                modelSegments: buildModelSegments(
+                    modelTotalsByMonth[key, default: [:]],
+                    monthTotalTokens: totalTokens
+                )
             )
         }
 
@@ -161,6 +201,27 @@ enum MonthlyTokenChartBuilder {
             (id: model, label: model, totalTokens: totalTokens)
         }
         return buildShareSlices(values)
+    }
+
+    private static func buildModelSegments(
+        _ totals: [String: Int],
+        monthTotalTokens: Int
+    ) -> [MonthlyTokenModelSegment] {
+        let visibleTotals = totals.filter { $0.value > 0 }
+        guard monthTotalTokens > 0 else { return [] }
+
+        return visibleTotals.sorted { lhs, rhs in
+            if lhs.value != rhs.value {
+                return lhs.value > rhs.value
+            }
+            return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+        }.map { model, totalTokens in
+            MonthlyTokenModelSegment(
+                modelName: model,
+                totalTokens: totalTokens,
+                percentage: Double(totalTokens) / Double(monthTotalTokens)
+            )
+        }
     }
 
     private static func buildShareSlices(

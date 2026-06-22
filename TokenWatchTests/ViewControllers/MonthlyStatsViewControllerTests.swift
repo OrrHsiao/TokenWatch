@@ -32,11 +32,11 @@ struct MonthlyStatsViewControllerTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("按月"))
-        #expect(labels.contains("过去 12 个月,跨 provider 汇总"))
+        #expect(labels.contains("本年"))
+        #expect(labels.contains("本年 1-12 月,跨 provider 汇总"))
         #expect(labels.contains("Token 用量"))
         #expect(labels.contains("费用"))
-        #expect(labels.contains("1.2M tokens"))
+        #expect(labels.contains("1.2M"))
         #expect(labels.contains("$12.50"))
 
         let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
@@ -65,7 +65,7 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("两个饼图在按月页竖向排列")
+    @Test("两个饼图在本年页竖向排列")
     func pieChartsAreStackedVertically() throws {
         let calendar = utcCalendar()
         let viewController = MonthlyStatsViewController(
@@ -178,7 +178,7 @@ struct MonthlyStatsViewControllerTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("过去 12 个月暂无 token 数据"))
+        #expect(labels.contains("本年暂无 token 数据"))
     }
 
     @MainActor
@@ -323,10 +323,10 @@ struct MonthlyStatsViewControllerTests {
         modelPieView.debugSimulateHover(sliceID: "claude-sonnet")
         viewController.view.layoutSubtreeIfNeeded()
 
-        #expect(viewController.debugTokenChartHoverText == "6月 · 500 tokens")
+        #expect(viewController.debugTokenChartHoverText == "6月 · 0.0M · claude-sonnet 0.0M")
         #expect(viewController.debugCostChartHoverText == "6月 · $12.50")
-        #expect(toolPieView.debugHoverText == "Claude Code · 500 tokens")
-        #expect(modelPieView.debugHoverText == "claude-sonnet · 500 tokens")
+        #expect(toolPieView.debugHoverText == "Claude Code · 0.0M")
+        #expect(modelPieView.debugHoverText == "claude-sonnet · 0.0M")
         #expect(viewController.debugTokenHoverLabelTrailingAlignsWithTokenChart)
         #expect(viewController.debugCostHoverLabelTrailingAlignsWithCostChart)
         #expect(toolPieView.debugHoverLabelTrailingAlignsWithChart)

@@ -2,7 +2,7 @@ import AppKit
 import Charts
 import SwiftUI
 
-/// 过去 12 个月费用柱状图。只消费 snapshot,不读取 ViewModel。
+/// 本年 12 个月费用柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyCostChartView: NSView {
     private let chartHost = NSHostingView(rootView: AnyView(MonthlyCostBarChartContent(buckets: [], onHoverMonthKeyChange: { _ in })))
     private var buckets: [MonthlyTokenBucket] = []
@@ -132,7 +132,7 @@ private struct MonthlyCostBarChartContent: View {
         }
         .padding(.top, 8)
         .frame(minHeight: 220)
-        .accessibilityLabel("过去 12 个月费用柱状图")
+        .accessibilityLabel("本年费用柱状图")
     }
 
     private func monthLabel(for monthKey: String) -> String {

@@ -43,7 +43,7 @@ struct TokenWatchTests {
                 .textField?
                 .stringValue
         }
-        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["按月", "设置"])
+        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["本年", "设置"])
     }
 
     @MainActor
@@ -55,8 +55,8 @@ struct TokenWatchTests {
         sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 2), byExtendingSelection: false)
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("按月"))
-        #expect(labels.contains("过去 12 个月,跨 provider 汇总"))
+        #expect(labels.contains("本年"))
+        #expect(labels.contains("本年 1-12 月,跨 provider 汇总"))
         #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 

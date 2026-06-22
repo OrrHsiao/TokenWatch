@@ -165,7 +165,7 @@ private enum ProviderSidebarItem {
         case .provider(let provider):
             return provider.displayName
         case .monthly:
-            return "按月"
+            return "本年"
         case .settings:
             return "设置"
         }
