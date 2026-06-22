@@ -1,6 +1,28 @@
 import Foundation
 import os.log
 
+/// 记录未知模型定价日志的门控,避免长时间运行时同一 miss 持续刷屏。
+final class MissingPricingLogOnceGate: @unchecked Sendable {
+    static let shared = MissingPricingLogOnceGate()
+
+    private let lock = NSLock()
+    private var loggedModelIDs: Set<String> = []
+
+    /// 返回当前模型 miss 是否应输出日志;同一标准化 modelID 仅首次返回 true。
+    func shouldLogMiss(for modelID: String) -> Bool {
+        let normalized = modelID.lowercased()
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        if loggedModelIDs.contains(normalized) {
+            return false
+        }
+        loggedModelIDs.insert(normalized)
+        return true
+    }
+}
+
 /// 定价计算引擎
 ///
 /// 参考 ccusage `cost.rs::calculate_cost_from_tokens` + `tiered_cost`：
@@ -41,6 +63,11 @@ struct PricingEngine: Sendable {
     private static let fastSpeedValue: String = "fast"
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "PricingEngine")
+    private let missingPricingLogGate: MissingPricingLogOnceGate
+
+    init(missingPricingLogGate: MissingPricingLogOnceGate = .shared) {
+        self.missingPricingLogGate = missingPricingLogGate
+    }
 
     /// 阶梯计费：超过 200k 阈值的部分按 above 单价，否则全部按 base 单价
     /// 单价均为「每百万 token USD」，函数内部完成 ÷ 1e6
@@ -105,7 +132,9 @@ struct PricingEngine: Sendable {
     ///   如果模型无定价信息，返回 (0.0, nil)
     func calculateCost(usage: TokenUsage, model: String) -> (cost: Double, pricing: ModelPricing?) {
         guard let pricing = PricingTable.pricing(for: model) else {
-            logger.warning("未找到模型定价: \(model)，费用计为 $0.00")
+            if missingPricingLogGate.shouldLogMiss(for: model) {
+                logger.warning("未找到模型定价: \(model)，费用计为 $0.00")
+            }
             return (0.0, nil)
         }
         return (calculateCost(usage: usage, pricing: pricing), pricing)

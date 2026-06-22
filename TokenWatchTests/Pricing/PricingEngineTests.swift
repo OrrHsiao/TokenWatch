@@ -511,6 +511,15 @@ struct PricingEngineTests {
         #expect(cost == 0.0)
     }
 
+    @Test("未知模型日志同一标准化模型只放行一次")
+    func missingPricingLogGateAllowsEachNormalizedModelOnce() {
+        let gate = MissingPricingLogOnceGate()
+
+        #expect(gate.shouldLogMiss(for: "Private-Unknown-Model"))
+        #expect(!gate.shouldLogMiss(for: "private-unknown-model"))
+        #expect(gate.shouldLogMiss(for: "another-unknown-model"))
+    }
+
     // MARK: - Speed::Fast multiplier
     //
     // 参考 ccusage `cost.rs::calculate_cost_from_tokens`:
