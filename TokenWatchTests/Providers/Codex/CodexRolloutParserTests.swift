@@ -156,4 +156,29 @@ struct CodexRolloutParserTests {
         let merged = try parser.parseAllFiles([file, file])
         #expect(merged.count == 1)
     }
+
+    @Test("parseAllFiles 复用未变化 rollout 缓存,文件变化后失效")
+    func parseAllFilesCachesUnchangedRollouts() throws {
+        let (file, cleanup) = try makeJsonlFile([sessionMeta, turnContextGpt5, normalEvent])
+        defer { cleanup() }
+
+        let parser = CodexRolloutParser()
+        let firstEntries = try parser.parseAllFiles([file])
+        #expect(firstEntries.count == 1)
+        #expect(parser.debugCachedFileCount == 1)
+
+        let hitCountBeforeSecondParse = parser.debugCacheHitCount
+        let secondEntries = try parser.parseAllFiles([file])
+        #expect(secondEntries.count == 1)
+        #expect(parser.debugCacheHitCount == hitCountBeforeSecondParse + 1)
+
+        let secondEvent = #"{"timestamp":"2026-05-04T08:36:30.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":2000,"cached_input_tokens":500,"output_tokens":300,"reasoning_output_tokens":100,"total_tokens":2300}}}}"#
+        let changedBody = [sessionMeta, turnContextGpt5, normalEvent, secondEvent].joined(separator: "\n") + "\n"
+        try changedBody.write(to: file.url, atomically: true, encoding: .utf8)
+
+        let hitCountBeforeChangedParse = parser.debugCacheHitCount
+        let changedEntries = try parser.parseAllFiles([file])
+        #expect(changedEntries.count == 2)
+        #expect(parser.debugCacheHitCount == hitCountBeforeChangedParse)
+    }
 }

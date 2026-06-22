@@ -264,4 +264,48 @@ struct ClaudeJSONLParserTests {
 
         try? FileManager.default.removeItem(at: fileURL)
     }
+
+    @Test("批量解析复用未变化文件缓存,文件变化后失效")
+    func parseAllFilesCachesUnchangedFiles() throws {
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeJSONLParserCacheTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        let fileURL = tmpDir.appendingPathComponent("cached.jsonl")
+        let firstLine = Self.assistantLine(messageId: "cached-1", inputTokens: 10)
+        try (firstLine + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let info = ClaudeJSONLFileInfo(
+            url: fileURL,
+            sessionID: "s1",
+            projectPath: "/p",
+            isSubagent: false,
+            agentId: nil
+        )
+        let parser = ClaudeJSONLParser()
+
+        let firstEntries = try parser.parseAllFiles([info], claudeDataRoot: tmpDir)
+        #expect(firstEntries.count == 1)
+        #expect(parser.debugCachedFileCount == 1)
+
+        let hitCountBeforeSecondParse = parser.debugCacheHitCount
+        let secondEntries = try parser.parseAllFiles([info], claudeDataRoot: tmpDir)
+        #expect(secondEntries.count == 1)
+        #expect(parser.debugCacheHitCount == hitCountBeforeSecondParse + 1)
+
+        let secondLine = Self.assistantLine(messageId: "cached-2", inputTokens: 20)
+        try (firstLine + "\n" + secondLine + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let hitCountBeforeChangedParse = parser.debugCacheHitCount
+        let changedEntries = try parser.parseAllFiles([info], claudeDataRoot: tmpDir)
+        #expect(changedEntries.count == 2)
+        #expect(parser.debugCacheHitCount == hitCountBeforeChangedParse)
+    }
+
+    private static func assistantLine(messageId: String, inputTokens: Int) -> String {
+        """
+        {"type":"assistant","uuid":"\(messageId)-uuid","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","message":{"id":"\(messageId)","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":\(inputTokens),"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
+        """
+    }
 }

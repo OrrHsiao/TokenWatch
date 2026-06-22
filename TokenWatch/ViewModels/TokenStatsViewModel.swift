@@ -30,6 +30,7 @@ final class TokenStatsViewModel: Sendable {
     private let bookmarkManager = SecurityScopedBookmarkManager.shared
     private let aggregator = UsageAggregator()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
+    private var loadGate = ProviderLoadGate()
 
     init() {
         for provider in ProviderRegistry.allProviders {
@@ -79,6 +80,11 @@ final class TokenStatsViewModel: Sendable {
     /// 加载指定 provider 的统计
     func loadStats(for id: ProviderID) async {
         guard let provider = ProviderRegistry.provider(for: id) else { return }
+        guard loadGate.enter(id) else {
+            logger.info("\(provider.displayName) 已在刷新中,跳过重复请求")
+            return
+        }
+        defer { loadGate.leave(id) }
 
         states[id]?.isLoading = true
         states[id]?.errorMessage = nil
@@ -154,5 +160,18 @@ final class TokenStatsViewModel: Sendable {
         } else {
             logger.info("\(provider.displayName) 用户取消授权")
         }
+    }
+}
+
+/// 跟踪正在刷新的 provider,避免定时刷新和手动刷新重叠触发重复全量解析。
+struct ProviderLoadGate {
+    private var activeProviderIDs: Set<ProviderID> = []
+
+    mutating func enter(_ id: ProviderID) -> Bool {
+        activeProviderIDs.insert(id).inserted
+    }
+
+    mutating func leave(_ id: ProviderID) {
+        activeProviderIDs.remove(id)
     }
 }

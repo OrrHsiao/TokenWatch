@@ -56,4 +56,21 @@ struct TokenStatsViewModelObserverTests {
         })
         #expect(Set(received) == Set(ProviderRegistry.allProviders.map(\.id)))
     }
+
+    /// 同一 provider 已在刷新时,后续刷新请求应被挡掉;不同 provider 不互相影响
+    @Test func providerLoadGateRejectsDuplicateInFlightLoads() {
+        var gate = ProviderLoadGate()
+
+        let firstClaudeEnter = gate.enter(.claude)
+        let secondClaudeEnter = gate.enter(.claude)
+        let codexEnter = gate.enter(.codex)
+
+        #expect(firstClaudeEnter)
+        #expect(!secondClaudeEnter)
+        #expect(codexEnter)
+
+        gate.leave(.claude)
+        let thirdClaudeEnter = gate.enter(.claude)
+        #expect(thirdClaudeEnter)
+    }
 }

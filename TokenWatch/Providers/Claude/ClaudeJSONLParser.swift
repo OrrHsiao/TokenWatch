@@ -7,9 +7,37 @@ import os.log
 /// `claudeMessageDedupKey`），使用 `message.id`（必填）+ `requestId`（可选）
 /// 作为 dedup key。Anthropic 协议保证 `message.id` 全局唯一，`requestId`
 /// 缺失（DeepSeek/Kimi/Mimo 等兼容端点不返回 `request-id` header）时不应短路。
-final class ClaudeJSONLParser: Sendable {
+final class ClaudeJSONLParser: @unchecked Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLParser")
+    // Parser 会被后台 task 复用;可变缓存统一由 cacheLock 保护。
+    private let cacheLock = NSLock()
+    private var cachedFiles: [String: CachedFile] = [:]
+    private var cacheHitCount = 0
+
+    var debugCachedFileCount: Int {
+        withCacheLock { cachedFiles.count }
+    }
+
+    var debugCacheHitCount: Int {
+        withCacheLock { cacheHitCount }
+    }
+
+    private struct FileSignature: Equatable {
+        let size: Int
+        let modificationDate: Date
+
+        init(url: URL) throws {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            size = (attributes[.size] as? NSNumber)?.intValue ?? 0
+            modificationDate = (attributes[.modificationDate] as? Date) ?? .distantPast
+        }
+    }
+
+    private struct CachedFile {
+        let signature: FileSignature
+        let entries: [ParsedUsageEntry]
+    }
 
     /// 解析单个 JSONL 文件，提取所有包含 usage 的 assistant 记录
     /// - Parameters:
@@ -109,15 +137,23 @@ final class ClaudeJSONLParser: Sendable {
     /// - Returns: 去重后的用量条目列表
     func parseAllFiles(_ files: [ClaudeJSONLFileInfo], claudeDataRoot: URL) throws -> [ParsedUsageEntry] {
         var allEntries: [ParsedUsageEntry] = []
+        var currentCacheKeys: Set<String> = []
 
         for fileInfo in files {
+            let cacheKey = Self.cacheKey(for: fileInfo.url)
+            currentCacheKeys.insert(cacheKey)
             do {
-                let entries = try parseJSONLFile(fileInfo, claudeDataRoot: claudeDataRoot)
+                let entries = try parseCachedJSONLFile(
+                    fileInfo,
+                    claudeDataRoot: claudeDataRoot,
+                    cacheKey: cacheKey
+                )
                 allEntries.append(contentsOf: entries)
             } catch {
                 logger.warning("Claude 文件解析失败: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)")
             }
         }
+        pruneCache(keeping: currentCacheKeys)
 
         logger.info("解析完成：\(allEntries.count) 条记录（去重前）")
 
@@ -158,5 +194,49 @@ final class ClaudeJSONLParser: Sendable {
             + usage.outputTokens
             + usage.cacheReadInputTokens
             + usage.totalCacheCreationTokens
+    }
+
+    private func parseCachedJSONLFile(
+        _ fileInfo: ClaudeJSONLFileInfo,
+        claudeDataRoot: URL,
+        cacheKey: String
+    ) throws -> [ParsedUsageEntry] {
+        let signature = try FileSignature(url: fileInfo.url)
+        if let cached = cachedFile(for: cacheKey, matching: signature) {
+            return cached
+        }
+
+        let entries = try parseJSONLFile(fileInfo, claudeDataRoot: claudeDataRoot)
+        withCacheLock {
+            cachedFiles[cacheKey] = CachedFile(signature: signature, entries: entries)
+        }
+        return entries
+    }
+
+    private func cachedFile(for cacheKey: String, matching signature: FileSignature) -> [ParsedUsageEntry]? {
+        withCacheLock {
+            guard let cached = cachedFiles[cacheKey],
+                  cached.signature == signature else {
+                return nil
+            }
+            cacheHitCount += 1
+            return cached.entries
+        }
+    }
+
+    private func pruneCache(keeping currentKeys: Set<String>) {
+        withCacheLock {
+            cachedFiles = cachedFiles.filter { currentKeys.contains($0.key) }
+        }
+    }
+
+    private static func cacheKey(for url: URL) -> String {
+        url.standardizedFileURL.path
+    }
+
+    private func withCacheLock<T>(_ body: () throws -> T) rethrows -> T {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return try body()
     }
 }

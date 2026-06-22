@@ -9,9 +9,37 @@ import os.log
 /// - 4 维全 0 的事件视为 replay marker / 心跳,跳过(prevTotals 仍要更新)
 /// - `pure_input = max(0, input - cached_input)` 防止与 cache_read 双计
 /// - `output_tokens` 已含 reasoning,直接进 PricingEngine,reasoning 不另计费
-final class CodexRolloutParser: Sendable {
+final class CodexRolloutParser: @unchecked Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "CodexRolloutParser")
+    // Parser 会被后台 task 复用;可变缓存统一由 cacheLock 保护。
+    private let cacheLock = NSLock()
+    private var cachedFiles: [String: CachedFile] = [:]
+    private var cacheHitCount = 0
+
+    var debugCachedFileCount: Int {
+        withCacheLock { cachedFiles.count }
+    }
+
+    var debugCacheHitCount: Int {
+        withCacheLock { cacheHitCount }
+    }
+
+    private struct FileSignature: Equatable {
+        let size: Int
+        let modificationDate: Date
+
+        init(url: URL) throws {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            size = (attributes[.size] as? NSNumber)?.intValue ?? 0
+            modificationDate = (attributes[.modificationDate] as? Date) ?? .distantPast
+        }
+    }
+
+    private struct CachedFile {
+        let signature: FileSignature
+        let entries: [ParsedUsageEntry]
+    }
 
     /// 解析单文件
     func parseFile(_ fileInfo: CodexRolloutFileInfo) throws -> [ParsedUsageEntry] {
@@ -141,13 +169,17 @@ final class CodexRolloutParser: Sendable {
     /// 批量解析并按 dedupKey 取 magnitude 最大那条(沿用 Claude 的策略)
     func parseAllFiles(_ files: [CodexRolloutFileInfo]) throws -> [ParsedUsageEntry] {
         var all: [ParsedUsageEntry] = []
+        var currentCacheKeys: Set<String> = []
         for f in files {
+            let cacheKey = Self.cacheKey(for: f.url)
+            currentCacheKeys.insert(cacheKey)
             do {
-                all.append(contentsOf: try parseFile(f))
+                all.append(contentsOf: try parseCachedFile(f, cacheKey: cacheKey))
             } catch {
                 logger.warning("Codex 文件解析失败: \(f.url.lastPathComponent) — \(error.localizedDescription)")
             }
         }
+        pruneCache(keeping: currentCacheKeys)
 
         var bestByKey: [String: ParsedUsageEntry] = [:]
         bestByKey.reserveCapacity(all.count)
@@ -174,5 +206,45 @@ final class CodexRolloutParser: Sendable {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
+    }
+
+    private func parseCachedFile(_ fileInfo: CodexRolloutFileInfo, cacheKey: String) throws -> [ParsedUsageEntry] {
+        let signature = try FileSignature(url: fileInfo.url)
+        if let cached = cachedFile(for: cacheKey, matching: signature) {
+            return cached
+        }
+
+        let entries = try parseFile(fileInfo)
+        withCacheLock {
+            cachedFiles[cacheKey] = CachedFile(signature: signature, entries: entries)
+        }
+        return entries
+    }
+
+    private func cachedFile(for cacheKey: String, matching signature: FileSignature) -> [ParsedUsageEntry]? {
+        withCacheLock {
+            guard let cached = cachedFiles[cacheKey],
+                  cached.signature == signature else {
+                return nil
+            }
+            cacheHitCount += 1
+            return cached.entries
+        }
+    }
+
+    private func pruneCache(keeping currentKeys: Set<String>) {
+        withCacheLock {
+            cachedFiles = cachedFiles.filter { currentKeys.contains($0.key) }
+        }
+    }
+
+    private static func cacheKey(for url: URL) -> String {
+        url.standardizedFileURL.path
+    }
+
+    private func withCacheLock<T>(_ body: () throws -> T) rethrows -> T {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return try body()
     }
 }
