@@ -24,6 +24,28 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("费用图表内容保持完整宽度")
+    func chartHostKeepsFullWidth() throws {
+        let view = MonthlyCostChartView(frame: NSRect(x: 0, y: 0, width: 520, height: 246))
+        view.configure(with: makeSnapshot(costs: [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 5]))
+
+        view.layoutSubtreeIfNeeded()
+
+        let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
+        let hostFrame = chartHost.convert(chartHost.bounds, to: view)
+        #expect(hostFrame.width > 500)
+    }
+
+    @MainActor
+    @Test("费用图表宿主直接填满外层视图")
+    func chartHostIsDirectSubview() throws {
+        let view = MonthlyCostChartView()
+
+        let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
+        #expect(chartHost.superview === view)
+    }
+
+    @MainActor
     @Test("全零费用保持稳定柱高状态")
     func zeroCostsKeepStableBarState() {
         let view = MonthlyCostChartView()

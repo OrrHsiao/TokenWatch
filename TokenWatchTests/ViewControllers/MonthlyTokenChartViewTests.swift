@@ -24,6 +24,28 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("图表内容保持完整宽度")
+    func chartHostKeepsFullWidth() throws {
+        let view = MonthlyTokenChartView(frame: NSRect(x: 0, y: 0, width: 520, height: 246))
+        view.configure(with: makeSnapshot(tokens: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110]))
+
+        view.layoutSubtreeIfNeeded()
+
+        let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
+        let hostFrame = chartHost.convert(chartHost.bounds, to: view)
+        #expect(hostFrame.width > 500)
+    }
+
+    @MainActor
+    @Test("图表宿主直接填满外层视图")
+    func chartHostIsDirectSubview() throws {
+        let view = MonthlyTokenChartView()
+
+        let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
+        #expect(chartHost.superview === view)
+    }
+
+    @MainActor
     @Test("全零数据保持稳定柱高状态")
     func zeroDataKeepsStableBarState() {
         let view = MonthlyTokenChartView()

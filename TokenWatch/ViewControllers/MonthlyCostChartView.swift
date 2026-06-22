@@ -8,6 +8,14 @@ final class MonthlyCostChartView: NSView {
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
 
+    var debugRegularBarColor: NSColor {
+        MonthlyBarChartStyle.regularBarColor
+    }
+
+    var debugCurrentMonthBarColor: NSColor {
+        MonthlyBarChartStyle.currentMonthBarColor
+    }
+
     var debugBarCount: Int {
         debugMonthLabels.count
     }
@@ -64,7 +72,11 @@ private struct MonthlyCostBarChartContent: View {
                 x: .value("月份", bucket.monthKey),
                 y: .value("USD", bucket.totalCost)
             )
-            .foregroundStyle(bucket.isCurrentMonth ? Color.accentColor : Color(nsColor: .systemGreen))
+            .foregroundStyle(
+                bucket.isCurrentMonth
+                    ? MonthlyBarChartStyle.currentMonthBarSwiftUIColor
+                    : MonthlyBarChartStyle.regularBarSwiftUIColor
+            )
             .cornerRadius(4)
             .accessibilityLabel(bucket.monthLabel)
             .accessibilityValue(String(format: "$%.2f", bucket.totalCost))

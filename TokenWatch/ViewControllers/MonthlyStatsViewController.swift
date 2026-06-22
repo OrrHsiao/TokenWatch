@@ -9,6 +9,8 @@ final class MonthlyStatsViewController: NSViewController {
     private let totalLabel = NSTextField(labelWithString: "0 tokens")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let statusLabel = NSTextField(labelWithString: "")
+    private let tokenChartTitleLabel = NSTextField(labelWithString: "Token 用量")
+    private let costChartTitleLabel = NSTextField(labelWithString: "费用")
     private let chartView = MonthlyTokenChartView()
     private let costChartView = MonthlyCostChartView()
     private let toolSharePieView = UsageSharePieChartView(title: "工具占比")
@@ -61,7 +63,11 @@ final class MonthlyStatsViewController: NSViewController {
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.maximumNumberOfLines = 0
         statusLabel.lineBreakMode = .byWordWrapping
+        configureChartTitle(tokenChartTitleLabel)
+        configureChartTitle(costChartTitleLabel)
 
+        tokenChartTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        costChartTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         chartView.translatesAutoresizingMaskIntoConstraints = false
         costChartView.translatesAutoresizingMaskIntoConstraints = false
         toolSharePieView.translatesAutoresizingMaskIntoConstraints = false
@@ -85,6 +91,9 @@ final class MonthlyStatsViewController: NSViewController {
         headerStack.distribution = .gravityAreas
         headerStack.spacing = 16
 
+        let tokenChartSection = makeChartSection(titleLabel: tokenChartTitleLabel, chartView: chartView)
+        let costChartSection = makeChartSection(titleLabel: costChartTitleLabel, chartView: costChartView)
+
         let pieChartsStack = NSStackView(views: [toolSharePieView, modelSharePieView])
         pieChartsStack.translatesAutoresizingMaskIntoConstraints = false
         pieChartsStack.orientation = .vertical
@@ -93,7 +102,7 @@ final class MonthlyStatsViewController: NSViewController {
         pieChartsStack.spacing = 18
         pieChartsStack.setContentHuggingPriority(.required, for: .horizontal)
 
-        let contentStack = NSStackView(views: [headerStack, chartView, costChartView, pieChartsStack, statusLabel])
+        let contentStack = NSStackView(views: [headerStack, tokenChartSection, costChartSection, pieChartsStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -126,9 +135,11 @@ final class MonthlyStatsViewController: NSViewController {
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
             contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-            chartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            tokenChartSection.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            tokenChartSection.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             chartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
-            costChartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            costChartSection.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            costChartSection.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             costChartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             pieChartsStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             pieChartsStack.trailingAnchor.constraint(lessThanOrEqualTo: contentStack.trailingAnchor),
@@ -137,6 +148,22 @@ final class MonthlyStatsViewController: NSViewController {
             modelSharePieView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
+    }
+
+    private func configureChartTitle(_ label: NSTextField) {
+        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.textColor = .labelColor
+        label.alignment = .left
+    }
+
+    private func makeChartSection(titleLabel: NSTextField, chartView: NSView) -> NSStackView {
+        let stack = NSStackView(views: [titleLabel, chartView])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.setContentHuggingPriority(.required, for: .horizontal)
+        return stack
     }
 
     private func bindNotifications() {

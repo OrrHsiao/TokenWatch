@@ -34,6 +34,8 @@ struct MonthlyStatsViewControllerTests {
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("按月"))
         #expect(labels.contains("过去 12 个月,跨 provider 汇总"))
+        #expect(labels.contains("Token 用量"))
+        #expect(labels.contains("费用"))
         #expect(labels.contains("1.2M tokens"))
         #expect(labels.contains("$12.50"))
 
@@ -47,6 +49,19 @@ struct MonthlyStatsViewControllerTests {
         #expect(pieViews.map(\.debugTitle) == ["工具占比", "模型占比"])
         #expect(pieViews.first?.debugSliceLabels == ["Claude Code"])
         #expect(pieViews.last?.debugSliceLabels == ["claude-sonnet"])
+    }
+
+    @MainActor
+    @Test("两个柱状图使用一致配色")
+    func barChartsUseMatchingColors() throws {
+        let viewController = MonthlyStatsViewController()
+
+        viewController.loadViewIfNeeded()
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
+        #expect(chartView.debugRegularBarColor == costChartView.debugRegularBarColor)
+        #expect(chartView.debugCurrentMonthBarColor == costChartView.debugCurrentMonthBarColor)
     }
 
     @MainActor

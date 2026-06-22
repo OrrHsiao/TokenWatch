@@ -87,6 +87,12 @@ final class UsageSharePieChartView: NSView {
     private func setupView() {
         titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.textColor = .labelColor
+        titleLabel.alignment = .left
+
+        let titleContainer = NSView()
+        titleContainer.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleContainer.addSubview(titleLabel)
 
         drawingView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -108,7 +114,7 @@ final class UsageSharePieChartView: NSView {
         bodyStack.spacing = 14
         bodyStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let rootStack = NSStackView(views: [titleLabel, bodyStack])
+        let rootStack = NSStackView(views: [titleContainer, bodyStack])
         rootStack.translatesAutoresizingMaskIntoConstraints = false
         rootStack.orientation = .vertical
         rootStack.alignment = .width
@@ -116,6 +122,10 @@ final class UsageSharePieChartView: NSView {
 
         addSubview(rootStack)
         NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: titleContainer.leadingAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: titleContainer.trailingAnchor),
+            titleLabel.topAnchor.constraint(equalTo: titleContainer.topAnchor),
+            titleLabel.bottomAnchor.constraint(equalTo: titleContainer.bottomAnchor),
             rootStack.leadingAnchor.constraint(equalTo: leadingAnchor),
             rootStack.trailingAnchor.constraint(equalTo: trailingAnchor),
             rootStack.topAnchor.constraint(equalTo: topAnchor),

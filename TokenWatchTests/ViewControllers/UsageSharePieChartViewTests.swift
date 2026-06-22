@@ -26,6 +26,25 @@ struct UsageSharePieChartViewTests {
     }
 
     @MainActor
+    @Test("标题左对齐")
+    func titleAlignsLeft() throws {
+        let view = UsageSharePieChartView(title: "工具占比")
+        view.frame = NSRect(x: 0, y: 0, width: 520, height: 170)
+
+        view.configure(slices: [
+            UsageShareSlice(id: "claude", label: "Claude Code", totalTokens: 300, percentage: 1.0),
+        ])
+        view.layoutSubtreeIfNeeded()
+
+        let titleLabel = try #require(view.allDescendants(ofType: NSTextField.self).first {
+            $0.stringValue == "工具占比"
+        })
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: view)
+        #expect(titleLabel.alignment == .left)
+        #expect(titleFrame.minX < 4)
+    }
+
+    @MainActor
     @Test("图例值只展示百分比并保留完整 token tooltip")
     func legendValuesShowOnlyPercentagesWithTokenTooltip() {
         let view = UsageSharePieChartView(title: "模型占比")

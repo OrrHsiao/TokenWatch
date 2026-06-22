@@ -2,11 +2,32 @@ import AppKit
 import Charts
 import SwiftUI
 
+enum MonthlyBarChartStyle {
+    static let regularBarColor = NSColor.systemBlue
+    static let currentMonthBarColor = NSColor.controlAccentColor
+
+    static var regularBarSwiftUIColor: Color {
+        Color(nsColor: regularBarColor)
+    }
+
+    static var currentMonthBarSwiftUIColor: Color {
+        Color(nsColor: currentMonthBarColor)
+    }
+}
+
 /// 过去 12 个月 token 柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyTokenChartView: NSView {
     private let chartHost = NSHostingView(rootView: AnyView(MonthlyTokenBarChartContent(buckets: [])))
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
+
+    var debugRegularBarColor: NSColor {
+        MonthlyBarChartStyle.regularBarColor
+    }
+
+    var debugCurrentMonthBarColor: NSColor {
+        MonthlyBarChartStyle.currentMonthBarColor
+    }
 
     var debugBarCount: Int {
         debugMonthLabels.count
@@ -64,7 +85,11 @@ private struct MonthlyTokenBarChartContent: View {
                 x: .value("月份", bucket.monthKey),
                 y: .value("Tokens", Double(bucket.totalTokens))
             )
-            .foregroundStyle(bucket.isCurrentMonth ? Color.accentColor : Color(nsColor: .systemBlue))
+            .foregroundStyle(
+                bucket.isCurrentMonth
+                    ? MonthlyBarChartStyle.currentMonthBarSwiftUIColor
+                    : MonthlyBarChartStyle.regularBarSwiftUIColor
+            )
             .cornerRadius(4)
             .accessibilityLabel(bucket.monthLabel)
             .accessibilityValue("\(bucket.totalTokens) tokens")
