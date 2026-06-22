@@ -13,7 +13,13 @@ struct MonthlyStatsViewControllerTests {
         let viewController = MonthlyStatsViewController(
             stateProvider: {
                 [.claude: .init(
-                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 1_200_000, cost: 12.5)]),
+                    stats: makeStats(byMonth: [
+                        "2026-06": makeSummary(
+                            total: 1_200_000,
+                            cost: 12.5,
+                            modelBreakdown: ["claude-sonnet": 1_200_000]
+                        )
+                    ]),
                     isLoading: false,
                     errorMessage: nil,
                     needsAuthorization: false
@@ -36,6 +42,48 @@ struct MonthlyStatsViewControllerTests {
 
         let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
         #expect(costChartView.debugBarCount == 12)
+
+        let pieViews = viewController.view.allDescendants(ofType: UsageSharePieChartView.self)
+        #expect(pieViews.map(\.debugTitle) == ["工具占比", "模型占比"])
+        #expect(pieViews.first?.debugSliceLabels == ["Claude Code"])
+        #expect(pieViews.last?.debugSliceLabels == ["claude-sonnet"])
+    }
+
+    @MainActor
+    @Test("两个饼图在按月页竖向排列")
+    func pieChartsAreStackedVertically() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(byMonth: [
+                            "2026-06": makeSummary(total: 1_200_000, modelBreakdown: ["claude-sonnet": 1_200_000])
+                        ]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(
+                        stats: makeStats(byMonth: [
+                            "2026-06": makeSummary(total: 800_000, modelBreakdown: ["gpt-5.5": 800_000])
+                        ]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let pieViews = viewController.view.allDescendants(ofType: UsageSharePieChartView.self)
+        let pieContainer = try #require(pieViews.first?.superview as? NSStackView)
+        #expect(pieContainer.orientation == .vertical)
+        #expect(pieContainer.arrangedSubviews.compactMap { $0 as? UsageSharePieChartView }.map(\.debugTitle) == ["工具占比", "模型占比"])
     }
 
     @MainActor
@@ -207,7 +255,11 @@ struct MonthlyStatsViewControllerTests {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
-    private func makeSummary(total: Int, cost: Double = 0) -> UsageSummary {
+    private func makeSummary(
+        total: Int,
+        cost: Double = 0,
+        modelBreakdown: [String: Int] = [:]
+    ) -> UsageSummary {
         UsageSummary(
             inputTokens: total,
             outputTokens: 0,
@@ -217,7 +269,19 @@ struct MonthlyStatsViewControllerTests {
             totalTokens: total,
             cost: cost,
             entryCount: 1,
-            modelBreakdown: [:]
+            modelBreakdown: modelBreakdown.mapValues { modelTotal in
+                UsageSummary(
+                    inputTokens: modelTotal,
+                    outputTokens: 0,
+                    cacheReadTokens: 0,
+                    cacheCreationTokens: 0,
+                    reasoningTokens: 0,
+                    totalTokens: modelTotal,
+                    cost: 0,
+                    entryCount: 1,
+                    modelBreakdown: [:]
+                )
+            }
         )
     }
 

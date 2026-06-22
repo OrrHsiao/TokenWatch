@@ -7,10 +7,20 @@ struct MonthlyTokenChartSnapshot: Sendable, Equatable {
     let totalCost: Double
     let maxMonthlyTokens: Int
     let maxMonthlyCost: Double
+    let toolShareSlices: [UsageShareSlice]
+    let modelShareSlices: [UsageShareSlice]
     let loadedProviderCount: Int
     let loadingProviderCount: Int
     let unauthorizedProviderCount: Int
     let errorMessages: [String]
+}
+
+/// token 占比饼图的一块数据。
+struct UsageShareSlice: Sendable, Equatable, Identifiable {
+    let id: String
+    let label: String
+    let totalTokens: Int
+    let percentage: Double
 }
 
 /// 单月 token 柱状图数据。
@@ -48,13 +58,15 @@ enum MonthlyTokenChartBuilder {
         let monthKeys = monthStarts.map { monthKey(for: $0, calendar: calendar) }
         var totals = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0) })
         var costs = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0.0) })
+        var toolTotals: [ProviderID: Int] = [:]
+        var modelTotals: [String: Int] = [:]
 
         var loadedProviderCount = 0
         var loadingProviderCount = 0
         var unauthorizedProviderCount = 0
         var errorMessages: [String] = []
 
-        for state in states.values {
+        for (providerID, state) in states {
             if state.isLoading {
                 loadingProviderCount += 1
             }
@@ -67,10 +79,20 @@ enum MonthlyTokenChartBuilder {
             guard let stats = state.stats else { continue }
             loadedProviderCount += 1
 
+            var providerVisibleTokens = 0
             for monthKey in monthKeys {
                 let summary = stats.byMonth[monthKey]
-                totals[monthKey, default: 0] += summary?.totalTokens ?? 0
+                let monthTokens = summary?.totalTokens ?? 0
+                providerVisibleTokens += monthTokens
+                totals[monthKey, default: 0] += monthTokens
                 costs[monthKey, default: 0] += summary?.cost ?? 0
+
+                for (model, modelSummary) in summary?.modelBreakdown ?? [:] {
+                    modelTotals[model, default: 0] += modelSummary.totalTokens
+                }
+            }
+            if providerVisibleTokens > 0 {
+                toolTotals[providerID, default: 0] += providerVisibleTokens
             }
         }
 
@@ -104,6 +126,8 @@ enum MonthlyTokenChartBuilder {
             totalCost: buckets.reduce(0) { $0 + $1.totalCost },
             maxMonthlyTokens: maxMonthlyTokens,
             maxMonthlyCost: maxMonthlyCost,
+            toolShareSlices: buildToolShareSlices(toolTotals),
+            modelShareSlices: buildModelShareSlices(modelTotals),
             loadedProviderCount: loadedProviderCount,
             loadingProviderCount: loadingProviderCount,
             unauthorizedProviderCount: unauthorizedProviderCount,
@@ -119,5 +143,45 @@ enum MonthlyTokenChartBuilder {
     private static func monthLabel(for date: Date, calendar: Calendar) -> String {
         let month = calendar.component(.month, from: date)
         return "\(month)月"
+    }
+
+    private static func buildToolShareSlices(_ totals: [ProviderID: Int]) -> [UsageShareSlice] {
+        let values = totals.map { providerID, totalTokens in
+            (
+                id: providerID.rawValue,
+                label: ProviderRegistry.provider(for: providerID)?.displayName ?? providerID.rawValue,
+                totalTokens: totalTokens
+            )
+        }
+        return buildShareSlices(values)
+    }
+
+    private static func buildModelShareSlices(_ totals: [String: Int]) -> [UsageShareSlice] {
+        let values = totals.map { model, totalTokens in
+            (id: model, label: model, totalTokens: totalTokens)
+        }
+        return buildShareSlices(values)
+    }
+
+    private static func buildShareSlices(
+        _ values: [(id: String, label: String, totalTokens: Int)]
+    ) -> [UsageShareSlice] {
+        let visibleValues = values.filter { $0.totalTokens > 0 }
+        let grandTotal = visibleValues.reduce(0) { $0 + $1.totalTokens }
+        guard grandTotal > 0 else { return [] }
+
+        return visibleValues.sorted { lhs, rhs in
+            if lhs.totalTokens != rhs.totalTokens {
+                return lhs.totalTokens > rhs.totalTokens
+            }
+            return lhs.label.localizedCaseInsensitiveCompare(rhs.label) == .orderedAscending
+        }.map { value in
+            UsageShareSlice(
+                id: value.id,
+                label: value.label,
+                totalTokens: value.totalTokens,
+                percentage: Double(value.totalTokens) / Double(grandTotal)
+            )
+        }
     }
 }

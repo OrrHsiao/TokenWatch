@@ -162,6 +162,42 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.errorMessages == ["OpenCode 失败"])
     }
 
+    @Test("按过去十二个月生成工具和模型 token 占比")
+    func buildsToolAndModelTokenShareSlicesForVisibleMonths() {
+        let calendar = utcCalendar()
+        let claudeStats = makeStats(byMonth: [
+            "2025-06": makeSummary(total: 999, modelBreakdown: ["old-model": 999]),
+            "2026-05": makeSummary(total: 100, modelBreakdown: [
+                "claude-sonnet": 80,
+                "claude-opus": 20,
+            ]),
+            "2026-06": makeSummary(total: 200, modelBreakdown: ["claude-sonnet": 200]),
+        ])
+        let codexStats = makeStats(byMonth: [
+            "2026-06": makeSummary(total: 100, modelBreakdown: ["gpt-5": 100]),
+        ])
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            ],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.toolShareSlices.map(\.label) == ["Claude Code", "Codex"])
+        #expect(snapshot.toolShareSlices.map(\.totalTokens) == [300, 100])
+        #expect(abs((snapshot.toolShareSlices.first?.percentage ?? 0) - 0.75) < 0.0001)
+        #expect(abs((snapshot.toolShareSlices.last?.percentage ?? 0) - 0.25) < 0.0001)
+
+        #expect(snapshot.modelShareSlices.map(\.label) == ["claude-sonnet", "gpt-5", "claude-opus"])
+        #expect(snapshot.modelShareSlices.map(\.totalTokens) == [280, 100, 20])
+        #expect(abs((snapshot.modelShareSlices.first?.percentage ?? 0) - 0.70) < 0.0001)
+        #expect(snapshot.modelShareSlices.allSatisfy { $0.percentage > 0 })
+        #expect(!snapshot.modelShareSlices.map(\.label).contains("old-model"))
+    }
+
     private func utcCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -173,7 +209,11 @@ struct MonthlyTokenChartBuilderTests {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
-    private func makeSummary(total: Int, cost: Double = 0) -> UsageSummary {
+    private func makeSummary(
+        total: Int,
+        cost: Double = 0,
+        modelBreakdown: [String: Int] = [:]
+    ) -> UsageSummary {
         UsageSummary(
             inputTokens: total,
             outputTokens: 0,
@@ -183,7 +223,19 @@ struct MonthlyTokenChartBuilderTests {
             totalTokens: total,
             cost: cost,
             entryCount: 1,
-            modelBreakdown: [:]
+            modelBreakdown: modelBreakdown.mapValues { modelTotal in
+                UsageSummary(
+                    inputTokens: modelTotal,
+                    outputTokens: 0,
+                    cacheReadTokens: 0,
+                    cacheCreationTokens: 0,
+                    reasoningTokens: 0,
+                    totalTokens: modelTotal,
+                    cost: 0,
+                    entryCount: 1,
+                    modelBreakdown: [:]
+                )
+            }
         )
     }
 

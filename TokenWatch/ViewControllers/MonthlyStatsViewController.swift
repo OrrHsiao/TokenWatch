@@ -9,6 +9,8 @@ final class MonthlyStatsViewController: NSViewController {
     private let statusLabel = NSTextField(labelWithString: "")
     private let chartView = MonthlyTokenChartView()
     private let costChartView = MonthlyCostChartView()
+    private let toolSharePieView = UsageSharePieChartView(title: "工具占比")
+    private let modelSharePieView = UsageSharePieChartView(title: "模型占比")
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let nowProvider: () -> Date
     private let calendar: Calendar
@@ -60,6 +62,8 @@ final class MonthlyStatsViewController: NSViewController {
 
         chartView.translatesAutoresizingMaskIntoConstraints = false
         costChartView.translatesAutoresizingMaskIntoConstraints = false
+        toolSharePieView.translatesAutoresizingMaskIntoConstraints = false
+        modelSharePieView.translatesAutoresizingMaskIntoConstraints = false
 
         let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
         headerTextStack.orientation = .vertical
@@ -77,7 +81,13 @@ final class MonthlyStatsViewController: NSViewController {
         headerStack.distribution = .gravityAreas
         headerStack.spacing = 16
 
-        let contentStack = NSStackView(views: [headerStack, chartView, costChartView, statusLabel])
+        let pieChartsStack = NSStackView(views: [toolSharePieView, modelSharePieView])
+        pieChartsStack.orientation = .vertical
+        pieChartsStack.alignment = .width
+        pieChartsStack.distribution = .fill
+        pieChartsStack.spacing = 18
+
+        let contentStack = NSStackView(views: [headerStack, chartView, costChartView, pieChartsStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -114,6 +124,8 @@ final class MonthlyStatsViewController: NSViewController {
             chartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
             costChartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             costChartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            pieChartsStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            pieChartsStack.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
     }
@@ -141,6 +153,8 @@ final class MonthlyStatsViewController: NSViewController {
         )
         chartView.configure(with: snapshot)
         costChartView.configure(with: snapshot)
+        toolSharePieView.configure(slices: snapshot.toolShareSlices)
+        modelSharePieView.configure(slices: snapshot.modelShareSlices)
         totalLabel.stringValue = "\(CompactNumberFormatter.format(snapshot.totalTokens)) tokens"
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
         statusLabel.stringValue = statusText(for: snapshot, totalProviderCount: states.count)
