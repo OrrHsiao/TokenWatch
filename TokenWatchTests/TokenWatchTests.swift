@@ -12,6 +12,15 @@ import AppKit
 struct TokenWatchTests {
 
     @MainActor
+    @Test func mainStoryboardUsesRoomierDefaultWindowSize() throws {
+        let storyboard = NSStoryboard(name: "Main", bundle: Bundle.main)
+        let windowController = try #require(storyboard.instantiateInitialController() as? NSWindowController)
+        let contentSize = try #require(windowController.window?.contentView?.frame.size)
+
+        #expect(contentSize == NSSize(width: 900, height: 640))
+    }
+
+    @MainActor
     @Test func mainWindowUsesNativeSidebarSplitLayout() throws {
         let viewController = ViewController()
         viewController.loadViewIfNeeded()
