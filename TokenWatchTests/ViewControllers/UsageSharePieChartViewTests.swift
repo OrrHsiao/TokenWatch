@@ -62,6 +62,39 @@ struct UsageSharePieChartViewTests {
     }
 
     @MainActor
+    @Test("鼠标划过 slice 时标题右侧展示该项 token 用量")
+    func hoveringSliceShowsTokenUsageBesideTitle() {
+        let view = UsageSharePieChartView(title: "工具占比")
+        view.configure(slices: [
+            UsageShareSlice(id: "claude", label: "Claude Code", totalTokens: 300, percentage: 0.75),
+            UsageShareSlice(id: "codex", label: "Codex", totalTokens: 100, percentage: 0.25),
+        ])
+
+        view.debugSimulateHover(sliceID: "claude")
+
+        #expect(view.debugHoverText == "Claude Code · 300 tokens")
+
+        view.debugSimulateHover(sliceID: nil)
+
+        #expect(view.debugHoverText == "")
+    }
+
+    @MainActor
+    @Test("标题右侧用量贴齐饼图右侧")
+    func hoverUsageAlignsWithPieChartTrailingEdge() throws {
+        let view = UsageSharePieChartView(title: "工具占比")
+        view.frame = NSRect(x: 0, y: 0, width: 520, height: 170)
+        view.configure(slices: [
+            UsageShareSlice(id: "claude", label: "Claude Code", totalTokens: 300, percentage: 1.0),
+        ])
+
+        view.debugSimulateHover(sliceID: "claude")
+        view.layoutSubtreeIfNeeded()
+
+        #expect(view.debugHoverLabelTrailingAlignsWithChart)
+    }
+
+    @MainActor
     @Test("图例超过五项时合并剩余项为其他")
     func legendMergesOverflowRowsIntoOther() {
         let view = UsageSharePieChartView(title: "模型占比")

@@ -5,12 +5,18 @@ final class UsageSharePieChartView: NSView {
     private static let maxLegendRowCount = 5
 
     private let titleLabel: NSTextField
+    private let hoverLabel = NSTextField(labelWithString: "")
+    private let titleContainer = NSView()
     private let drawingView = UsageSharePieDrawingView()
     private let legendStack = NSStackView()
     private let emptyLabel = NSTextField(labelWithString: "暂无数据")
     private var slices: [UsageShareSlice] = []
     private var legendNameLabels: [NSTextField] = []
     private var legendValueLabels: [NSTextField] = []
+    private var hoverLabelTrailingConstraint: NSLayoutConstraint?
+    private var titleContainerTrailingConstraint: NSLayoutConstraint?
+    private var bodyStackTrailingConstraint: NSLayoutConstraint?
+    private var rootStackTrailingConstraint: NSLayoutConstraint?
 
     let debugTitle: String
 
@@ -38,6 +44,17 @@ final class UsageSharePieChartView: NSView {
         legendNameLabels.map(\.lineBreakMode)
     }
 
+    var debugHoverText: String {
+        hoverLabel.stringValue
+    }
+
+    var debugHoverLabelTrailingAlignsWithChart: Bool {
+        hoverLabelTrailingConstraint?.isActive == true
+            && titleContainerTrailingConstraint?.isActive == true
+            && bodyStackTrailingConstraint?.isActive == true
+            && rootStackTrailingConstraint?.isActive == true
+    }
+
     init(title: String) {
         self.debugTitle = title
         self.titleLabel = NSTextField(labelWithString: title)
@@ -60,8 +77,17 @@ final class UsageSharePieChartView: NSView {
         self.slices = Self.compactSlices(visibleSlices)
         drawingView.configure(slices: self.slices)
         rebuildLegend()
+        updateHoverText(slice: nil)
         emptyLabel.isHidden = !self.slices.isEmpty
         legendStack.isHidden = self.slices.isEmpty
+    }
+
+    func debugSimulateHover(sliceID: String?) {
+        guard let sliceID else {
+            updateHoverText(slice: nil)
+            return
+        }
+        updateHoverText(slice: slices.first { $0.id == sliceID })
     }
 
     private static func compactSlices(_ slices: [UsageShareSlice]) -> [UsageShareSlice] {
@@ -89,12 +115,22 @@ final class UsageSharePieChartView: NSView {
         titleLabel.textColor = .labelColor
         titleLabel.alignment = .left
 
-        let titleContainer = NSView()
+        hoverLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        hoverLabel.textColor = .secondaryLabelColor
+        hoverLabel.alignment = .right
+        hoverLabel.lineBreakMode = .byTruncatingMiddle
+        hoverLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
         titleContainer.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        hoverLabel.translatesAutoresizingMaskIntoConstraints = false
         titleContainer.addSubview(titleLabel)
+        titleContainer.addSubview(hoverLabel)
 
         drawingView.translatesAutoresizingMaskIntoConstraints = false
+        drawingView.onHoverSliceChange = { [weak self] slice in
+            self?.updateHoverText(slice: slice)
+        }
 
         legendStack.orientation = .vertical
         legendStack.alignment = .width
@@ -121,17 +157,29 @@ final class UsageSharePieChartView: NSView {
         rootStack.spacing = 10
 
         addSubview(rootStack)
+        let hoverLabelTrailingConstraint = hoverLabel.trailingAnchor.constraint(equalTo: titleContainer.trailingAnchor)
+        let titleContainerTrailingConstraint = titleContainer.trailingAnchor.constraint(equalTo: bodyStack.trailingAnchor)
+        let bodyStackTrailingConstraint = bodyStack.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor)
+        let rootStackTrailingConstraint = rootStack.trailingAnchor.constraint(equalTo: trailingAnchor)
+        self.hoverLabelTrailingConstraint = hoverLabelTrailingConstraint
+        self.titleContainerTrailingConstraint = titleContainerTrailingConstraint
+        self.bodyStackTrailingConstraint = bodyStackTrailingConstraint
+        self.rootStackTrailingConstraint = rootStackTrailingConstraint
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: titleContainer.leadingAnchor),
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: titleContainer.trailingAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: hoverLabel.leadingAnchor, constant: -12),
             titleLabel.topAnchor.constraint(equalTo: titleContainer.topAnchor),
             titleLabel.bottomAnchor.constraint(equalTo: titleContainer.bottomAnchor),
+            hoverLabelTrailingConstraint,
+            hoverLabel.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
             rootStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            rootStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            rootStackTrailingConstraint,
             rootStack.topAnchor.constraint(equalTo: topAnchor),
             rootStack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            titleContainer.leadingAnchor.constraint(equalTo: bodyStack.leadingAnchor),
+            titleContainerTrailingConstraint,
             bodyStack.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor),
-            bodyStack.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor),
+            bodyStackTrailingConstraint,
             drawingView.widthAnchor.constraint(equalToConstant: 128),
             drawingView.heightAnchor.constraint(equalToConstant: 128),
             heightAnchor.constraint(greaterThanOrEqualToConstant: 170),
@@ -169,12 +217,16 @@ final class UsageSharePieChartView: NSView {
         valueLabel.setContentHuggingPriority(.required, for: .horizontal)
         valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        let row = NSStackView(views: [swatch, nameLabel, valueLabel])
+        let row = UsageShareLegendRowView(views: [swatch, nameLabel, valueLabel])
         row.orientation = .horizontal
         row.alignment = .centerY
         row.distribution = .fill
         row.spacing = 6
         row.toolTip = "\(slice.label) · \(formatTokens(slice.totalTokens)) tokens · \(formatPercentage(slice.percentage))"
+        row.slice = slice
+        row.onHoverSliceChange = { [weak self] slice in
+            self?.updateHoverText(slice: slice)
+        }
         legendNameLabels.append(nameLabel)
         legendValueLabels.append(valueLabel)
 
@@ -184,6 +236,14 @@ final class UsageSharePieChartView: NSView {
             valueLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 52),
         ])
         return row
+    }
+
+    private func updateHoverText(slice: UsageShareSlice?) {
+        guard let slice else {
+            hoverLabel.stringValue = ""
+            return
+        }
+        hoverLabel.stringValue = "\(slice.label) · \(formatTokens(slice.totalTokens)) tokens"
     }
 
     private func formatPercentage(_ value: Double) -> String {
@@ -202,6 +262,8 @@ final class UsageSharePieChartView: NSView {
 /// 饼图绘制视图。公开类型便于单元测试验证尺寸稳定。
 final class UsageSharePieDrawingView: NSView {
     private var slices: [UsageShareSlice] = []
+    private var hoverTrackingArea: NSTrackingArea?
+    var onHoverSliceChange: ((UsageShareSlice?) -> Void)?
 
     override var intrinsicContentSize: NSSize {
         NSSize(width: 128, height: 128)
@@ -210,7 +272,40 @@ final class UsageSharePieDrawingView: NSView {
     /// 用新的 slices 替换绘制内容。
     func configure(slices: [UsageShareSlice]) {
         self.slices = slices
+        updateTrackingAreas()
         needsDisplay = true
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+            self.hoverTrackingArea = nil
+        }
+
+        guard !slices.isEmpty else { return }
+
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        hoverTrackingArea = trackingArea
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        updateHoverSlice(with: event)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        updateHoverSlice(with: event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onHoverSliceChange?(nil)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -299,6 +394,84 @@ final class UsageSharePieDrawingView: NSView {
         let path = NSBezierPath(ovalIn: rect)
         path.lineWidth = 1
         path.stroke()
+    }
+
+    private func updateHoverSlice(with event: NSEvent) {
+        let location = convert(event.locationInWindow, from: nil)
+        onHoverSliceChange?(slice(at: location))
+    }
+
+    private func slice(at point: NSPoint) -> UsageShareSlice? {
+        let rect = bounds.insetBy(dx: 4, dy: 4)
+        guard rect.width > 0, rect.height > 0 else { return nil }
+
+        let totalTokens = slices.reduce(0) { $0 + $1.totalTokens }
+        guard totalTokens > 0 else { return nil }
+
+        let radius = min(rect.width, rect.height) / 2
+        let innerRadius = radius * 0.58
+        let center = NSPoint(x: rect.midX, y: rect.midY)
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        let distance = sqrt(dx * dx + dy * dy)
+        guard distance >= innerRadius, distance <= radius else { return nil }
+
+        let angle = atan2(dy, dx) * 180 / .pi
+        var clockwiseDegreesFromTop = 90 - angle
+        while clockwiseDegreesFromTop < 0 {
+            clockwiseDegreesFromTop += 360
+        }
+        while clockwiseDegreesFromTop >= 360 {
+            clockwiseDegreesFromTop -= 360
+        }
+
+        var accumulated: CGFloat = 0
+        for slice in slices {
+            let sweep = CGFloat(slice.totalTokens) / CGFloat(totalTokens) * 360
+            if clockwiseDegreesFromTop <= accumulated + sweep {
+                return slice
+            }
+            accumulated += sweep
+        }
+        return slices.last
+    }
+}
+
+private final class UsageShareLegendRowView: NSStackView {
+    var slice: UsageShareSlice? {
+        didSet {
+            updateTrackingAreas()
+        }
+    }
+    var onHoverSliceChange: ((UsageShareSlice?) -> Void)?
+    private var hoverTrackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+            self.hoverTrackingArea = nil
+        }
+
+        guard slice != nil, !isHidden else { return }
+
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        hoverTrackingArea = trackingArea
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onHoverSliceChange?(slice)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onHoverSliceChange?(nil)
     }
 }
 

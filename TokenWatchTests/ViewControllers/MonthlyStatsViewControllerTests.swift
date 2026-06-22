@@ -288,6 +288,62 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("四个图表 hover 用量展示在标题右侧")
+    func hoverUsageAppearsBesideChartTitles() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: [
+                        "2026-06": makeSummary(
+                            total: 500,
+                            cost: 12.5,
+                            modelBreakdown: ["claude-sonnet": 500]
+                        )
+                    ]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.frame = NSRect(x: 0, y: 0, width: 1_200, height: 800)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        viewController.debugSimulateTokenChartHover(monthKey: "2026-06")
+        viewController.debugSimulateCostChartHover(monthKey: "2026-06")
+        let pieViews = viewController.view.allDescendants(ofType: UsageSharePieChartView.self)
+        let toolPieView = try #require(pieViews.first)
+        let modelPieView = try #require(pieViews.last)
+        toolPieView.debugSimulateHover(sliceID: "claude")
+        modelPieView.debugSimulateHover(sliceID: "claude-sonnet")
+        viewController.view.layoutSubtreeIfNeeded()
+
+        #expect(viewController.debugTokenChartHoverText == "6月 · 500 tokens")
+        #expect(viewController.debugCostChartHoverText == "6月 · $12.50")
+        #expect(toolPieView.debugHoverText == "Claude Code · 500 tokens")
+        #expect(modelPieView.debugHoverText == "claude-sonnet · 500 tokens")
+        #expect(viewController.debugTokenHoverLabelTrailingAlignsWithTokenChart)
+        #expect(viewController.debugCostHoverLabelTrailingAlignsWithCostChart)
+        #expect(toolPieView.debugHoverLabelTrailingAlignsWithChart)
+        #expect(modelPieView.debugHoverLabelTrailingAlignsWithChart)
+
+        viewController.debugSimulateTokenChartHover(monthKey: nil)
+        viewController.debugSimulateCostChartHover(monthKey: nil)
+        toolPieView.debugSimulateHover(sliceID: nil)
+        modelPieView.debugSimulateHover(sliceID: nil)
+
+        #expect(viewController.debugTokenChartHoverText == "")
+        #expect(viewController.debugCostChartHoverText == "")
+        #expect(toolPieView.debugHoverText == "")
+        #expect(modelPieView.debugHoverText == "")
+    }
+
+    @MainActor
     @Test("主界面很宽时饼图贴左且图例贴齐柱状图右侧")
     func pieChartsAlignPieLeftAndLegendRightWithBarChart() throws {
         let calendar = utcCalendar()

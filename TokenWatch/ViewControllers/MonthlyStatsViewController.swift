@@ -11,6 +11,8 @@ final class MonthlyStatsViewController: NSViewController {
     private let statusLabel = NSTextField(labelWithString: "")
     private let tokenChartTitleLabel = NSTextField(labelWithString: "Token 用量")
     private let costChartTitleLabel = NSTextField(labelWithString: "费用")
+    private let tokenChartHoverLabel = NSTextField(labelWithString: "")
+    private let costChartHoverLabel = NSTextField(labelWithString: "")
     private let chartView = MonthlyTokenChartView()
     private let costChartView = MonthlyCostChartView()
     private let toolSharePieView = UsageSharePieChartView(title: "工具占比")
@@ -18,6 +20,10 @@ final class MonthlyStatsViewController: NSViewController {
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let nowProvider: () -> Date
     private let calendar: Calendar
+    private var tokenHoverLabelTrailingConstraint: NSLayoutConstraint?
+    private var tokenTitleRowTrailingConstraint: NSLayoutConstraint?
+    private var costHoverLabelTrailingConstraint: NSLayoutConstraint?
+    private var costTitleRowTrailingConstraint: NSLayoutConstraint?
 
     init(
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
@@ -31,6 +37,32 @@ final class MonthlyStatsViewController: NSViewController {
         self.calendar = calendar
         super.init(nibName: nil, bundle: nil)
         self.title = "按月"
+    }
+
+    var debugTokenChartHoverText: String {
+        tokenChartHoverLabel.stringValue
+    }
+
+    var debugCostChartHoverText: String {
+        costChartHoverLabel.stringValue
+    }
+
+    var debugTokenHoverLabelTrailingAlignsWithTokenChart: Bool {
+        tokenHoverLabelTrailingConstraint?.isActive == true
+            && tokenTitleRowTrailingConstraint?.isActive == true
+    }
+
+    var debugCostHoverLabelTrailingAlignsWithCostChart: Bool {
+        costHoverLabelTrailingConstraint?.isActive == true
+            && costTitleRowTrailingConstraint?.isActive == true
+    }
+
+    func debugSimulateTokenChartHover(monthKey: String?) {
+        chartView.debugSimulateHover(monthKey: monthKey)
+    }
+
+    func debugSimulateCostChartHover(monthKey: String?) {
+        costChartView.debugSimulateHover(monthKey: monthKey)
     }
 
     required init?(coder: NSCoder) {
@@ -65,15 +97,25 @@ final class MonthlyStatsViewController: NSViewController {
         statusLabel.lineBreakMode = .byWordWrapping
         configureChartTitle(tokenChartTitleLabel)
         configureChartTitle(costChartTitleLabel)
+        configureChartHoverLabel(tokenChartHoverLabel)
+        configureChartHoverLabel(costChartHoverLabel)
 
         tokenChartTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         costChartTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        tokenChartHoverLabel.translatesAutoresizingMaskIntoConstraints = false
+        costChartHoverLabel.translatesAutoresizingMaskIntoConstraints = false
         chartView.translatesAutoresizingMaskIntoConstraints = false
         costChartView.translatesAutoresizingMaskIntoConstraints = false
         toolSharePieView.translatesAutoresizingMaskIntoConstraints = false
         modelSharePieView.translatesAutoresizingMaskIntoConstraints = false
         chartView.setContentHuggingPriority(.required, for: .horizontal)
         costChartView.setContentHuggingPriority(.required, for: .horizontal)
+        chartView.onHoverTextChange = { [weak self] text in
+            self?.updateTokenChartHoverText(text)
+        }
+        costChartView.onHoverTextChange = { [weak self] text in
+            self?.updateCostChartHoverText(text)
+        }
 
         let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
         headerTextStack.orientation = .vertical
@@ -91,8 +133,20 @@ final class MonthlyStatsViewController: NSViewController {
         headerStack.distribution = .gravityAreas
         headerStack.spacing = 16
 
-        let tokenChartSection = makeChartSection(titleLabel: tokenChartTitleLabel, chartView: chartView)
-        let costChartSection = makeChartSection(titleLabel: costChartTitleLabel, chartView: costChartView)
+        let tokenChartSection = makeChartSection(
+            titleLabel: tokenChartTitleLabel,
+            hoverLabel: tokenChartHoverLabel,
+            chartView: chartView
+        )
+        tokenHoverLabelTrailingConstraint = tokenChartSection.hoverLabelTrailingConstraint
+        tokenTitleRowTrailingConstraint = tokenChartSection.titleRowTrailingConstraint
+        let costChartSection = makeChartSection(
+            titleLabel: costChartTitleLabel,
+            hoverLabel: costChartHoverLabel,
+            chartView: costChartView
+        )
+        costHoverLabelTrailingConstraint = costChartSection.hoverLabelTrailingConstraint
+        costTitleRowTrailingConstraint = costChartSection.titleRowTrailingConstraint
 
         let pieChartsStack = NSStackView(views: [toolSharePieView, modelSharePieView])
         pieChartsStack.translatesAutoresizingMaskIntoConstraints = false
@@ -102,7 +156,7 @@ final class MonthlyStatsViewController: NSViewController {
         pieChartsStack.spacing = 18
         pieChartsStack.setContentHuggingPriority(.required, for: .horizontal)
 
-        let contentStack = NSStackView(views: [headerStack, tokenChartSection, costChartSection, pieChartsStack, statusLabel])
+        let contentStack = NSStackView(views: [headerStack, tokenChartSection.stack, costChartSection.stack, pieChartsStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -135,11 +189,11 @@ final class MonthlyStatsViewController: NSViewController {
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
             contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-            tokenChartSection.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
-            tokenChartSection.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
+            tokenChartSection.stack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            tokenChartSection.stack.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             chartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
-            costChartSection.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
-            costChartSection.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
+            costChartSection.stack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            costChartSection.stack.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             costChartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             pieChartsStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             pieChartsStack.trailingAnchor.constraint(lessThanOrEqualTo: contentStack.trailingAnchor),
@@ -156,14 +210,48 @@ final class MonthlyStatsViewController: NSViewController {
         label.alignment = .left
     }
 
-    private func makeChartSection(titleLabel: NSTextField, chartView: NSView) -> NSStackView {
-        let stack = NSStackView(views: [titleLabel, chartView])
+    private func configureChartHoverLabel(_ label: NSTextField) {
+        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.alignment = .right
+        label.lineBreakMode = .byTruncatingMiddle
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    }
+
+    private func makeChartSection(
+        titleLabel: NSTextField,
+        hoverLabel: NSTextField,
+        chartView: NSView
+    ) -> ChartSectionLayout {
+        let titleRow = NSView()
+        titleRow.translatesAutoresizingMaskIntoConstraints = false
+        titleRow.addSubview(titleLabel)
+        titleRow.addSubview(hoverLabel)
+
+        let stack = NSStackView(views: [titleRow, chartView])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
         stack.setContentHuggingPriority(.required, for: .horizontal)
-        return stack
+
+        let hoverLabelTrailingConstraint = hoverLabel.trailingAnchor.constraint(equalTo: titleRow.trailingAnchor)
+        let titleRowTrailingConstraint = titleRow.trailingAnchor.constraint(equalTo: chartView.trailingAnchor)
+        NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: titleRow.leadingAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: hoverLabel.leadingAnchor, constant: -12),
+            titleLabel.topAnchor.constraint(equalTo: titleRow.topAnchor),
+            titleLabel.bottomAnchor.constraint(equalTo: titleRow.bottomAnchor),
+            hoverLabelTrailingConstraint,
+            hoverLabel.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+            titleRow.leadingAnchor.constraint(equalTo: chartView.leadingAnchor),
+            titleRowTrailingConstraint,
+        ])
+        return ChartSectionLayout(
+            stack: stack,
+            hoverLabelTrailingConstraint: hoverLabelTrailingConstraint,
+            titleRowTrailingConstraint: titleRowTrailingConstraint
+        )
     }
 
     private func bindNotifications() {
@@ -197,6 +285,14 @@ final class MonthlyStatsViewController: NSViewController {
         statusLabel.isHidden = statusLabel.stringValue.isEmpty
     }
 
+    private func updateTokenChartHoverText(_ text: String?) {
+        tokenChartHoverLabel.stringValue = text ?? ""
+    }
+
+    private func updateCostChartHoverText(_ text: String?) {
+        costChartHoverLabel.stringValue = text ?? ""
+    }
+
     private func formatCurrency(_ value: Double) -> String {
         String(format: "$%.2f", value)
     }
@@ -224,4 +320,10 @@ final class MonthlyStatsViewController: NSViewController {
         }
         return ""
     }
+}
+
+private struct ChartSectionLayout {
+    let stack: NSStackView
+    let hoverLabelTrailingConstraint: NSLayoutConstraint
+    let titleRowTrailingConstraint: NSLayoutConstraint
 }

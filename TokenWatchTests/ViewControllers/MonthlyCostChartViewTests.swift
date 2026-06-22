@@ -72,6 +72,25 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("鼠标划过月份柱时回传该月费用")
+    func hoveringMonthBarEmitsCostText() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(costs: [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 12.5])
+        var hoverTexts: [String?] = []
+        view.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06")
+        view.debugSimulateHover(monthKey: nil)
+
+        #expect(hoverTexts.count == 2)
+        #expect(hoverTexts[0] == "6月 · $12.50")
+        #expect(hoverTexts[1] == nil)
+    }
+
+    @MainActor
     @Test("debug 高度与渲染使用相同的稳定 clamp 值")
     func debugHeightsUseClampedFiniteValues() {
         let view = MonthlyCostChartView()

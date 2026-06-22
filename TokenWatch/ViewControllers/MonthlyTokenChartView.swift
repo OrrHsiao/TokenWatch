@@ -17,9 +17,11 @@ enum MonthlyBarChartStyle {
 
 /// 过去 12 个月 token 柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyTokenChartView: NSView {
-    private let chartHost = NSHostingView(rootView: AnyView(MonthlyTokenBarChartContent(buckets: [])))
+    private let chartHost = NSHostingView(rootView: AnyView(MonthlyTokenBarChartContent(buckets: [], onHoverMonthKeyChange: { _ in })))
+    private var buckets: [MonthlyTokenBucket] = []
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
+    var onHoverTextChange: ((String?) -> Void)?
 
     var debugRegularBarColor: NSColor {
         MonthlyBarChartStyle.regularBarColor
@@ -45,9 +47,19 @@ final class MonthlyTokenChartView: NSView {
 
     /// 用新的 snapshot 替换图表内容。
     func configure(with snapshot: MonthlyTokenChartSnapshot) {
+        buckets = snapshot.monthBuckets
         debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedHeight($0.normalizedHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
-        chartHost.rootView = AnyView(MonthlyTokenBarChartContent(buckets: snapshot.monthBuckets))
+        chartHost.rootView = AnyView(MonthlyTokenBarChartContent(
+            buckets: snapshot.monthBuckets,
+            onHoverMonthKeyChange: { [weak self] monthKey in
+                self?.updateHoverText(monthKey: monthKey)
+            }
+        ))
+    }
+
+    func debugSimulateHover(monthKey: String?) {
+        updateHoverText(monthKey: monthKey)
     }
 
     private func setupView() {
@@ -65,6 +77,23 @@ final class MonthlyTokenChartView: NSView {
             heightAnchor.constraint(greaterThanOrEqualToConstant: 220),
         ])
     }
+
+    private func updateHoverText(monthKey: String?) {
+        guard let monthKey,
+              let bucket = buckets.first(where: { $0.monthKey == monthKey }) else {
+            onHoverTextChange?(nil)
+            return
+        }
+        onHoverTextChange?("\(bucket.monthLabel) · \(formatTokens(bucket.totalTokens)) tokens")
+    }
+
+    private func formatTokens(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
 }
 
 private func clampNormalizedHeight(_ value: Double) -> Double {
@@ -74,6 +103,7 @@ private func clampNormalizedHeight(_ value: Double) -> Double {
 
 private struct MonthlyTokenBarChartContent: View {
     let buckets: [MonthlyTokenBucket]
+    let onHoverMonthKeyChange: (String?) -> Void
 
     private var maxTokens: Double {
         max(1, Double(buckets.map(\.totalTokens).max() ?? 0))
@@ -114,6 +144,9 @@ private struct MonthlyTokenBarChartContent: View {
                 AxisValueLabel()
             }
         }
+        .chartOverlay { proxy in
+            hoverOverlay(proxy: proxy)
+        }
         .padding(.top, 8)
         .frame(minHeight: 220)
         .accessibilityLabel("过去 12 个月 token 柱状图")
@@ -121,5 +154,31 @@ private struct MonthlyTokenBarChartContent: View {
 
     private func monthLabel(for monthKey: String) -> String {
         buckets.first { $0.monthKey == monthKey }?.monthLabel ?? monthKey
+    }
+
+    private func hoverOverlay(proxy: ChartProxy) -> some View {
+        GeometryReader { geometry in
+            Rectangle()
+                .fill(.clear)
+                .contentShape(Rectangle())
+                .onContinuousHover { phase in
+                    guard let plotFrame = proxy.plotFrame else {
+                        onHoverMonthKeyChange(nil)
+                        return
+                    }
+                    let frame = geometry[plotFrame]
+                    switch phase {
+                    case .active(let location):
+                        guard frame.contains(location) else {
+                            onHoverMonthKeyChange(nil)
+                            return
+                        }
+                        let xPosition = location.x - frame.origin.x
+                        onHoverMonthKeyChange(proxy.value(atX: xPosition, as: String.self))
+                    case .ended:
+                        onHoverMonthKeyChange(nil)
+                    }
+                }
+        }
     }
 }

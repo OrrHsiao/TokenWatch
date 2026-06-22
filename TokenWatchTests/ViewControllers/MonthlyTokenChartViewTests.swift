@@ -72,6 +72,25 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("鼠标划过月份柱时回传该月 token 用量")
+    func hoveringMonthBarEmitsTokenUsageText() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(tokens: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 1_200_000])
+        var hoverTexts: [String?] = []
+        view.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06")
+        view.debugSimulateHover(monthKey: nil)
+
+        #expect(hoverTexts.count == 2)
+        #expect(hoverTexts[0] == "6月 · 1,200,000 tokens")
+        #expect(hoverTexts[1] == nil)
+    }
+
+    @MainActor
     @Test("debug 高度与渲染使用相同的稳定 clamp 值")
     func debugHeightsUseClampedFiniteValues() {
         let view = MonthlyTokenChartView()
