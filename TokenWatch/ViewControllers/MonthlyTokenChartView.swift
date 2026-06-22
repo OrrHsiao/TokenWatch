@@ -1,13 +1,15 @@
 import AppKit
+import Charts
+import SwiftUI
 
 /// 过去 12 个月 token 柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyTokenChartView: NSView {
-    private let barsStack = NSStackView()
+    private let chartHost = NSHostingView(rootView: AnyView(MonthlyTokenBarChartContent(buckets: [])))
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
 
     var debugBarCount: Int {
-        barsStack.arrangedSubviews.count
+        debugMonthLabels.count
     }
 
     override init(frame frameRect: NSRect) {
@@ -22,72 +24,25 @@ final class MonthlyTokenChartView: NSView {
 
     /// 用新的 snapshot 替换图表内容。
     func configure(with snapshot: MonthlyTokenChartSnapshot) {
-        clearBars()
         debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedHeight($0.normalizedHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
-
-        for bucket in snapshot.monthBuckets {
-            let column = makeColumn(for: bucket)
-            barsStack.addArrangedSubview(column)
-        }
+        chartHost.rootView = AnyView(MonthlyTokenBarChartContent(buckets: snapshot.monthBuckets))
     }
 
     private func setupView() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
 
-        barsStack.translatesAutoresizingMaskIntoConstraints = false
-        barsStack.orientation = .horizontal
-        barsStack.alignment = .bottom
-        barsStack.distribution = .fillEqually
-        barsStack.spacing = 10
+        chartHost.translatesAutoresizingMaskIntoConstraints = false
 
-        addSubview(barsStack)
+        addSubview(chartHost)
         NSLayoutConstraint.activate([
-            barsStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            barsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            barsStack.topAnchor.constraint(equalTo: topAnchor),
-            barsStack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            chartHost.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chartHost.trailingAnchor.constraint(equalTo: trailingAnchor),
+            chartHost.topAnchor.constraint(equalTo: topAnchor),
+            chartHost.bottomAnchor.constraint(equalTo: bottomAnchor),
             heightAnchor.constraint(greaterThanOrEqualToConstant: 220),
         ])
-    }
-
-    private func clearBars() {
-        for view in barsStack.arrangedSubviews {
-            barsStack.removeArrangedSubview(view)
-            view.removeFromSuperview()
-        }
-    }
-
-    private func makeColumn(for bucket: MonthlyTokenBucket) -> NSView {
-        let column = NSStackView()
-        column.orientation = .vertical
-        column.alignment = .centerX
-        column.spacing = 8
-
-        let barView = MonthlyTokenBarView()
-        barView.translatesAutoresizingMaskIntoConstraints = false
-        barView.normalizedHeight = bucket.normalizedHeight
-        barView.fillColor = bucket.isCurrentMonth ? .controlAccentColor : .systemBlue
-        barView.toolTip = "\(bucket.monthKey) · \(formatTokens(bucket.totalTokens)) tokens"
-
-        let label = NSTextField(labelWithString: bucket.monthLabel)
-        label.font = .systemFont(ofSize: 11)
-        label.textColor = .secondaryLabelColor
-        label.alignment = .center
-
-        column.addArrangedSubview(barView)
-        column.addArrangedSubview(label)
-
-        return column
-    }
-
-    private func formatTokens(_ value: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }
 
@@ -96,46 +51,50 @@ private func clampNormalizedHeight(_ value: Double) -> Double {
     return min(max(value, 0), 1)
 }
 
-/// 单根柱子的可测试绘制视图。完整高度由布局决定,柱子高度由 normalizedHeight 决定。
-final class MonthlyTokenBarView: NSView {
-    private var clampedNormalizedHeight: Double = 0
+private struct MonthlyTokenBarChartContent: View {
+    let buckets: [MonthlyTokenBucket]
 
-    var normalizedHeight: Double {
-        get {
-            clampedNormalizedHeight
+    private var maxTokens: Double {
+        max(1, Double(buckets.map(\.totalTokens).max() ?? 0))
+    }
+
+    var body: some View {
+        Chart(buckets) { bucket in
+            BarMark(
+                x: .value("月份", bucket.monthKey),
+                y: .value("Tokens", Double(bucket.totalTokens))
+            )
+            .foregroundStyle(bucket.isCurrentMonth ? Color.accentColor : Color(nsColor: .systemBlue))
+            .cornerRadius(4)
+            .accessibilityLabel(bucket.monthLabel)
+            .accessibilityValue("\(bucket.totalTokens) tokens")
         }
-        set {
-            clampedNormalizedHeight = clampNormalizedHeight(newValue)
-            needsDisplay = true
+        .chartLegend(.hidden)
+        .chartYScale(domain: 0...maxTokens)
+        .chartXAxis {
+            AxisMarks(values: buckets.map(\.monthKey)) { value in
+                AxisTick()
+                AxisValueLabel {
+                    if let monthKey = value.as(String.self) {
+                        Text(monthLabel(for: monthKey))
+                    }
+                }
+            }
         }
-    }
-
-    var fillColor: NSColor = .systemBlue {
-        didSet {
-            needsDisplay = true
+        .chartYAxis {
+            AxisMarks(position: .leading) {
+                AxisGridLine()
+                    .foregroundStyle(.secondary.opacity(0.18))
+                AxisTick()
+                AxisValueLabel()
+            }
         }
+        .padding(.top, 8)
+        .frame(minHeight: 220)
+        .accessibilityLabel("过去 12 个月 token 柱状图")
     }
 
-    override var isFlipped: Bool {
-        false
-    }
-
-    override var intrinsicContentSize: NSSize {
-        NSSize(width: 18, height: 160)
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        let barHeight = bounds.height * CGFloat(clampedNormalizedHeight)
-        guard barHeight > 0 else { return }
-
-        let rect = NSRect(
-            x: 0,
-            y: 0,
-            width: bounds.width,
-            height: barHeight
-        )
-        fillColor.setFill()
-        NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3).fill()
+    private func monthLabel(for monthKey: String) -> String {
+        buckets.first { $0.monthKey == monthKey }?.monthLabel ?? monthKey
     }
 }

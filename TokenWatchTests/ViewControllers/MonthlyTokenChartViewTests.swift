@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 @testable import TokenWatch
 
@@ -19,6 +20,7 @@ struct MonthlyTokenChartViewTests {
             "1月", "2月", "3月", "4月", "5月", "6月",
         ])
         #expect(view.debugNormalizedHeights.last == 1.0)
+        #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
     }
 
     @MainActor
@@ -60,15 +62,6 @@ struct MonthlyTokenChartViewTests {
         #expect(view.debugNormalizedHeights[2] == 0)
         #expect(view.debugNormalizedHeights[3] == 0.25)
         #expect(view.debugNormalizedHeights.allSatisfy { $0.isFinite && (0...1).contains($0) })
-    }
-
-    @MainActor
-    @Test("单根柱子提供确定 intrinsic 尺寸")
-    func barViewHasDeterministicIntrinsicSize() {
-        let barView = MonthlyTokenBarView()
-
-        #expect(barView.intrinsicContentSize.width == 18)
-        #expect(barView.intrinsicContentSize.height == 160)
     }
 
     private func makeSnapshot(tokens: [Int]) -> MonthlyTokenChartSnapshot {
@@ -137,5 +130,12 @@ struct MonthlyTokenChartViewTests {
             unauthorizedProviderCount: 0,
             errorMessages: []
         )
+    }
+}
+
+private extension NSView {
+    func allDescendants<T: NSView>(ofType type: T.Type) -> [T] {
+        let current = (self as? T).map { [$0] } ?? []
+        return current + subviews.flatMap { $0.allDescendants(ofType: type) }
     }
 }

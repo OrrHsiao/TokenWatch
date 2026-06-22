@@ -1,13 +1,15 @@
 import AppKit
+import Charts
+import SwiftUI
 
 /// 过去 12 个月费用柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyCostChartView: NSView {
-    private let barsStack = NSStackView()
+    private let chartHost = NSHostingView(rootView: AnyView(MonthlyCostBarChartContent(buckets: [])))
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
 
     var debugBarCount: Int {
-        barsStack.arrangedSubviews.count
+        debugMonthLabels.count
     }
 
     override init(frame frameRect: NSRect) {
@@ -22,67 +24,25 @@ final class MonthlyCostChartView: NSView {
 
     /// 用新的 snapshot 替换费用图表内容。
     func configure(with snapshot: MonthlyTokenChartSnapshot) {
-        clearBars()
         debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedCostHeight($0.normalizedCostHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
-
-        for bucket in snapshot.monthBuckets {
-            barsStack.addArrangedSubview(makeColumn(for: bucket))
-        }
+        chartHost.rootView = AnyView(MonthlyCostBarChartContent(buckets: snapshot.monthBuckets))
     }
 
     private func setupView() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
 
-        barsStack.translatesAutoresizingMaskIntoConstraints = false
-        barsStack.orientation = .horizontal
-        barsStack.alignment = .bottom
-        barsStack.distribution = .fillEqually
-        barsStack.spacing = 10
+        chartHost.translatesAutoresizingMaskIntoConstraints = false
 
-        addSubview(barsStack)
+        addSubview(chartHost)
         NSLayoutConstraint.activate([
-            barsStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            barsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            barsStack.topAnchor.constraint(equalTo: topAnchor),
-            barsStack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            chartHost.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chartHost.trailingAnchor.constraint(equalTo: trailingAnchor),
+            chartHost.topAnchor.constraint(equalTo: topAnchor),
+            chartHost.bottomAnchor.constraint(equalTo: bottomAnchor),
             heightAnchor.constraint(greaterThanOrEqualToConstant: 220),
         ])
-    }
-
-    private func clearBars() {
-        for view in barsStack.arrangedSubviews {
-            barsStack.removeArrangedSubview(view)
-            view.removeFromSuperview()
-        }
-    }
-
-    private func makeColumn(for bucket: MonthlyTokenBucket) -> NSView {
-        let column = NSStackView()
-        column.orientation = .vertical
-        column.alignment = .centerX
-        column.spacing = 8
-
-        let barView = MonthlyCostBarView()
-        barView.translatesAutoresizingMaskIntoConstraints = false
-        barView.normalizedHeight = bucket.normalizedCostHeight
-        barView.fillColor = bucket.isCurrentMonth ? .controlAccentColor : .systemGreen
-        barView.toolTip = "\(bucket.monthKey) · \(formatCurrency(bucket.totalCost))"
-
-        let label = NSTextField(labelWithString: bucket.monthLabel)
-        label.font = .systemFont(ofSize: 11)
-        label.textColor = .secondaryLabelColor
-        label.alignment = .center
-
-        column.addArrangedSubview(barView)
-        column.addArrangedSubview(label)
-
-        return column
-    }
-
-    private func formatCurrency(_ value: Double) -> String {
-        String(format: "$%.2f", value)
     }
 }
 
@@ -91,41 +51,50 @@ private func clampNormalizedCostHeight(_ value: Double) -> Double {
     return min(max(value, 0), 1)
 }
 
-/// 单根费用柱子的可测试绘制视图。完整高度由布局决定,柱子高度由 normalizedHeight 决定。
-final class MonthlyCostBarView: NSView {
-    private var clampedNormalizedHeight: Double = 0
+private struct MonthlyCostBarChartContent: View {
+    let buckets: [MonthlyTokenBucket]
 
-    var normalizedHeight: Double {
-        get {
-            clampedNormalizedHeight
+    private var maxCost: Double {
+        max(1, buckets.map(\.totalCost).max() ?? 0)
+    }
+
+    var body: some View {
+        Chart(buckets) { bucket in
+            BarMark(
+                x: .value("月份", bucket.monthKey),
+                y: .value("USD", bucket.totalCost)
+            )
+            .foregroundStyle(bucket.isCurrentMonth ? Color.accentColor : Color(nsColor: .systemGreen))
+            .cornerRadius(4)
+            .accessibilityLabel(bucket.monthLabel)
+            .accessibilityValue(String(format: "$%.2f", bucket.totalCost))
         }
-        set {
-            clampedNormalizedHeight = clampNormalizedCostHeight(newValue)
-            needsDisplay = true
+        .chartLegend(.hidden)
+        .chartYScale(domain: 0...maxCost)
+        .chartXAxis {
+            AxisMarks(values: buckets.map(\.monthKey)) { value in
+                AxisTick()
+                AxisValueLabel {
+                    if let monthKey = value.as(String.self) {
+                        Text(monthLabel(for: monthKey))
+                    }
+                }
+            }
         }
-    }
-
-    var fillColor: NSColor = .systemGreen {
-        didSet {
-            needsDisplay = true
+        .chartYAxis {
+            AxisMarks(position: .leading) {
+                AxisGridLine()
+                    .foregroundStyle(.secondary.opacity(0.18))
+                AxisTick()
+                AxisValueLabel()
+            }
         }
+        .padding(.top, 8)
+        .frame(minHeight: 220)
+        .accessibilityLabel("过去 12 个月费用柱状图")
     }
 
-    override var isFlipped: Bool {
-        false
-    }
-
-    override var intrinsicContentSize: NSSize {
-        NSSize(width: 18, height: 160)
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        let barHeight = bounds.height * CGFloat(clampedNormalizedHeight)
-        guard barHeight > 0 else { return }
-
-        let rect = NSRect(x: 0, y: 0, width: bounds.width, height: barHeight)
-        fillColor.setFill()
-        NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3).fill()
+    private func monthLabel(for monthKey: String) -> String {
+        buckets.first { $0.monthKey == monthKey }?.monthLabel ?? monthKey
     }
 }
