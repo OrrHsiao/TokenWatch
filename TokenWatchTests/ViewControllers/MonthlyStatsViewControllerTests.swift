@@ -245,6 +245,75 @@ struct MonthlyStatsViewControllerTests {
         #expect(costChartView.debugNormalizedHeights.allSatisfy { $0 == 0 })
     }
 
+    @MainActor
+    @Test("主界面很宽时柱状图仍保持紧凑宽度")
+    func barChartsKeepCompactWidthInWideContainer() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 500, cost: 1.5)]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.frame = NSRect(x: 0, y: 0, width: 1_200, height: 800)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
+        #expect(chartView.frame.width == 520)
+        #expect(costChartView.frame.width == 520)
+    }
+
+    @MainActor
+    @Test("主界面很宽时饼图贴左且图例贴齐柱状图右侧")
+    func pieChartsAlignPieLeftAndLegendRightWithBarChart() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: [
+                        "2026-06": makeSummary(
+                            total: 1_200_000,
+                            modelBreakdown: ["claude-sonnet": 1_200_000]
+                        )
+                    ]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.frame = NSRect(x: 0, y: 0, width: 1_200, height: 800)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        let pieViews = viewController.view.allDescendants(ofType: UsageSharePieChartView.self)
+        let toolPieView = try #require(pieViews.first)
+        let pieContainer = try #require(pieViews.first?.superview as? NSStackView)
+        let chartFrame = chartView.convert(chartView.bounds, to: viewController.view)
+        let pieContainerFrame = pieContainer.convert(pieContainer.bounds, to: viewController.view)
+        let drawingView = try #require(toolPieView.firstDescendant(ofType: UsageSharePieDrawingView.self))
+        let drawingFrame = drawingView.convert(drawingView.bounds, to: viewController.view)
+        let legendRight = try #require(toolPieView.legendRowRights(in: viewController.view).max())
+
+        #expect(abs(pieContainerFrame.minX - chartFrame.minX) < 0.5)
+        #expect(abs(pieContainerFrame.width - chartFrame.width) < 0.5)
+        #expect(abs(drawingFrame.minX - chartFrame.minX) < 0.5)
+        #expect(abs(legendRight - chartFrame.maxX) < 0.5)
+    }
+
     private func utcCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -316,5 +385,11 @@ private extension NSView {
     func allDescendants<T: NSView>(ofType type: T.Type) -> [T] {
         let current = (self as? T).map { [$0] } ?? []
         return current + subviews.flatMap { $0.allDescendants(ofType: type) }
+    }
+
+    func legendRowRights(in targetView: NSView) -> [CGFloat] {
+        allDescendants(ofType: NSStackView.self)
+            .filter { $0.toolTip != nil }
+            .map { row in row.convert(row.bounds, to: targetView).maxX }
     }
 }

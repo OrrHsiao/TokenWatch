@@ -2,6 +2,8 @@ import AppKit
 
 /// 跨 provider 的按月 token 消耗页面。
 final class MonthlyStatsViewController: NSViewController {
+    private static let compactBarChartWidth: CGFloat = 520
+
     private let titleLabel = NSTextField(labelWithString: "按月")
     private let subtitleLabel = NSTextField(labelWithString: "过去 12 个月,跨 provider 汇总")
     private let totalLabel = NSTextField(labelWithString: "0 tokens")
@@ -64,6 +66,8 @@ final class MonthlyStatsViewController: NSViewController {
         costChartView.translatesAutoresizingMaskIntoConstraints = false
         toolSharePieView.translatesAutoresizingMaskIntoConstraints = false
         modelSharePieView.translatesAutoresizingMaskIntoConstraints = false
+        chartView.setContentHuggingPriority(.required, for: .horizontal)
+        costChartView.setContentHuggingPriority(.required, for: .horizontal)
 
         let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
         headerTextStack.orientation = .vertical
@@ -82,10 +86,12 @@ final class MonthlyStatsViewController: NSViewController {
         headerStack.spacing = 16
 
         let pieChartsStack = NSStackView(views: [toolSharePieView, modelSharePieView])
+        pieChartsStack.translatesAutoresizingMaskIntoConstraints = false
         pieChartsStack.orientation = .vertical
         pieChartsStack.alignment = .width
         pieChartsStack.distribution = .fill
         pieChartsStack.spacing = 18
+        pieChartsStack.setContentHuggingPriority(.required, for: .horizontal)
 
         let contentStack = NSStackView(views: [headerStack, chartView, costChartView, pieChartsStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
@@ -121,11 +127,14 @@ final class MonthlyStatsViewController: NSViewController {
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
             contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
             chartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
-            chartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            chartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             costChartView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
-            costChartView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            costChartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             pieChartsStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
-            pieChartsStack.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            pieChartsStack.trailingAnchor.constraint(lessThanOrEqualTo: contentStack.trailingAnchor),
+            pieChartsStack.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
+            toolSharePieView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
+            modelSharePieView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
     }
