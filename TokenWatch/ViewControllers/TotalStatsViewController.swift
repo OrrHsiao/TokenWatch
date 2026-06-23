@@ -83,6 +83,7 @@ final class TotalStatsViewController: NSViewController {
         let summaryStack = NSStackView(views: [totalMetricStack, costMetricStack])
         summaryStack.orientation = .vertical
         summaryStack.alignment = .leading
+        summaryStack.distribution = .fill
         summaryStack.spacing = 10
 
         modelRowsStack.orientation = .vertical
@@ -101,6 +102,7 @@ final class TotalStatsViewController: NSViewController {
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
+        contentStack.distribution = .fill
         contentStack.spacing = 18
 
         let contentView = NSView()
@@ -130,7 +132,7 @@ final class TotalStatsViewController: NSViewController {
             contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor),
-            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            contentStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor),
             summaryStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             summaryStack.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
             modelSectionStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),

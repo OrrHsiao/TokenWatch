@@ -107,6 +107,47 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("部分数据加载中时总 token 和总费用保持紧凑间距")
+    func keepsSummaryMetricsCompactWhilePartiallyLoading() throws {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(
+                            total: 1_200_000,
+                            cost: 12.50,
+                            byModel: ["claude-sonnet": 900_000]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(
+                        stats: nil,
+                        isLoading: true,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            }
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self)
+        let totalTitleLabel = try #require(labels.first { $0.stringValue == "总 token" })
+        let costTitleLabel = try #require(labels.first { $0.stringValue == "总费用" })
+        let totalTitleFrame = totalTitleLabel.frame(in: viewController.view)
+        let costTitleFrame = costTitleLabel.frame(in: viewController.view)
+        let titleDistance = totalTitleFrame.maxY - costTitleFrame.maxY
+
+        #expect(viewController.debugStatusText == "部分数据仍在加载")
+        #expect(titleDistance <= 80)
+    }
+
+    @MainActor
     @Test("无授权且无 stats 时提示先授权")
     func promptsAuthorizationWhenNoStatsAreLoaded() {
         let viewController = TotalStatsViewController(
