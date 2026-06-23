@@ -19,8 +19,31 @@ struct MonthlyCostChartViewTests {
             "1月", "2月", "3月", "4月", "5月", "6月",
             "7月", "8月", "9月", "10月", "11月", "12月",
         ])
+        #expect(view.debugXAxisLabels == [
+            "2026年\n1月", "2026年\n2月", "2026年\n3月", "2026年\n4月",
+            "2026年\n5月", "2026年\n6月", "2026年\n7月", "2026年\n8月",
+            "2026年\n9月", "2026年\n10月", "2026年\n11月", "2026年\n12月",
+        ])
         #expect(view.debugNormalizedHeights.last == 1.0)
         #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
+    }
+
+    @MainActor
+    @Test("费用纵轴标签不显示小数")
+    func costYAxisLabelsUseWholeCurrencyValues() {
+        let view = MonthlyCostChartView()
+
+        #expect(view.debugYAxisLabel(for: 12.5) == "$13")
+        #expect(view.debugYAxisLabel(for: 12.0) == "$12")
+        #expect(!view.debugYAxisLabel(for: 12.5).contains("."))
+    }
+
+    @MainActor
+    @Test("费用横轴标签使用小字号以容纳十二个月")
+    func costXAxisLabelsUseCompactFontSize() {
+        let view = MonthlyCostChartView()
+
+        #expect(view.debugXAxisLabelFontSize <= 9)
     }
 
     @MainActor
@@ -43,6 +66,14 @@ struct MonthlyCostChartViewTests {
 
         let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
         #expect(chartHost.superview === view)
+    }
+
+    @MainActor
+    @Test("费用图例与 Token 图一样右对齐")
+    func costLegendAlignsTrailing() {
+        let view = MonthlyCostChartView()
+
+        #expect(view.debugLegendAlignment == .trailing)
     }
 
     @MainActor
@@ -105,7 +136,58 @@ struct MonthlyCostChartViewTests {
         #expect(view.debugNormalizedHeights.allSatisfy { $0.isFinite && (0...1).contains($0) })
     }
 
+    @MainActor
+    @Test("配置 snapshot 后保留每月模型费用段供堆叠柱渲染")
+    func configureKeepsMonthlyModelCostSegmentsForStackedBars() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(
+            costs: [0, 0.25, 0.5, 0.75, 1, 12.5, 1.5, 1.75, 2, 2.25, 2.5, 5],
+            modelBreakdowns: [
+                5: [
+                    ("claude-sonnet", 8.25),
+                    ("gpt-5", 4.25),
+                ],
+            ]
+        )
+
+        view.configure(with: snapshot)
+
+        #expect(view.debugModelSegmentLabelsByMonth["2026-06"] == ["claude-sonnet", "gpt-5"])
+        #expect(view.debugModelSegmentCostsByMonth["2026-06"] == [8.25, 4.25])
+    }
+
+    @MainActor
+    @Test("鼠标划过分段费用月份时回传该月模型费用明细")
+    func hoveringStackedCostMonthBarEmitsModelBreakdownText() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(
+            costs: [0, 0.25, 0.5, 0.75, 1, 12.5, 1.5, 1.75, 2, 2.25, 2.5, 5],
+            modelBreakdowns: [
+                5: [
+                    ("claude-sonnet", 8.25),
+                    ("gpt-5", 4.25),
+                ],
+            ]
+        )
+        var hoverTexts: [String?] = []
+        view.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06")
+
+        #expect(hoverTexts == ["6月 · $12.50 · claude-sonnet $8.25, gpt-5 $4.25"])
+    }
+
     private func makeSnapshot(costs: [Double]) -> MonthlyTokenChartSnapshot {
+        makeSnapshot(costs: costs, modelBreakdowns: [:])
+    }
+
+    private func makeSnapshot(
+        costs: [Double],
+        modelBreakdowns: [Int: [(String, Double)]]
+    ) -> MonthlyTokenChartSnapshot {
         let monthKeys = [
             "2026-01", "2026-02", "2026-03", "2026-04",
             "2026-05", "2026-06", "2026-07", "2026-08",
@@ -117,7 +199,15 @@ struct MonthlyCostChartViewTests {
         ]
         let maxCost = costs.max() ?? 0
         let buckets = zip(monthKeys.indices, costs).map { index, totalCost in
-            MonthlyTokenBucket(
+            let modelSegments = (modelBreakdowns[index] ?? []).map { modelName, modelCost in
+                MonthlyTokenModelSegment(
+                    modelName: modelName,
+                    totalTokens: 0,
+                    totalCost: modelCost,
+                    percentage: totalCost > 0 ? modelCost / totalCost : 0
+                )
+            }
+            return MonthlyTokenBucket(
                 id: monthKeys[index],
                 monthKey: monthKeys[index],
                 monthLabel: monthLabels[index],
@@ -125,7 +215,8 @@ struct MonthlyCostChartViewTests {
                 totalCost: totalCost,
                 normalizedHeight: 0,
                 normalizedCostHeight: maxCost > 0 ? totalCost / maxCost : 0,
-                isCurrentMonth: index == monthKeys.indices.last
+                isCurrentMonth: index == monthKeys.indices.last,
+                modelSegments: modelSegments
             )
         }
 

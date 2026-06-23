@@ -1,6 +1,6 @@
 import Foundation
 
-/// 本年 12 个月 token 柱状图的完整数据快照,供 UI 直接渲染。
+/// 最近 12 个月 token 柱状图的完整数据快照,供 UI 直接渲染。
 struct MonthlyTokenChartSnapshot: Sendable, Equatable {
     let monthBuckets: [MonthlyTokenBucket]
     let totalTokens: Int
@@ -27,9 +27,22 @@ struct UsageShareSlice: Sendable, Equatable, Identifiable {
 struct MonthlyTokenModelSegment: Sendable, Equatable, Identifiable {
     let modelName: String
     let totalTokens: Int
+    let totalCost: Double
     let percentage: Double
 
     var id: String { modelName }
+
+    init(
+        modelName: String,
+        totalTokens: Int,
+        totalCost: Double = 0,
+        percentage: Double
+    ) {
+        self.modelName = modelName
+        self.totalTokens = totalTokens
+        self.totalCost = totalCost
+        self.percentage = percentage
+    }
 }
 
 /// 单月 token 柱状图数据。
@@ -67,14 +80,16 @@ struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
     }
 }
 
-/// 将多 provider 状态构建为本年 12 个月的 token 柱状图快照。
+/// 将多 provider 状态构建为最近 12 个月的 token 柱状图快照。
 enum MonthlyTokenChartBuilder {
     private static let monthCount = 12
+    private static let maxModelSegmentCount = 5
+    private static let otherModelSegmentName = "其他"
 
-    /// 构建 `now` 所在年份 1 月到 12 月的 token 快照。
+    /// 构建包含 `now` 所在月份、向前回溯 11 个月的 token 快照。
     /// - Parameters:
     ///   - states: 各 provider 的统计状态;没有 stats 的 provider 不参与 token 求和。
-    ///   - now: 当前日期,用于确定本年窗口和当前月高亮。
+    ///   - now: 当前日期,用于确定最近 12 个月窗口和当前月高亮。
     ///   - calendar: 调用方指定的日历配置,用于稳定测试和本地月份计算。
     /// - Returns: 可直接渲染的月度 token 图表快照。
     static func build(
@@ -84,15 +99,16 @@ enum MonthlyTokenChartBuilder {
     ) -> MonthlyTokenChartSnapshot {
         let currentMonthStart = calendar.dateInterval(of: .month, for: now)?.start
             ?? calendar.startOfDay(for: now)
-        let yearStart = calendar.dateInterval(of: .year, for: now)?.start
+        let windowStart = calendar.date(byAdding: .month, value: -(monthCount - 1), to: currentMonthStart)
             ?? currentMonthStart
         let monthStarts = (0..<monthCount).compactMap { offset in
-            calendar.date(byAdding: .month, value: offset, to: yearStart)
+            calendar.date(byAdding: .month, value: offset, to: windowStart)
         }
         let monthKeys = monthStarts.map { monthKey(for: $0, calendar: calendar) }
         var totals = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0) })
         var costs = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0.0) })
         var modelTotalsByMonth = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, [String: Int]()) })
+        var modelCostsByMonth = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, [String: Double]()) })
         var toolTotals: [ProviderID: Int] = [:]
         var modelTotals: [String: Int] = [:]
 
@@ -125,6 +141,7 @@ enum MonthlyTokenChartBuilder {
                 for (model, modelSummary) in summary?.modelBreakdown ?? [:] {
                     modelTotals[model, default: 0] += modelSummary.totalTokens
                     modelTotalsByMonth[monthKey, default: [:]][model, default: 0] += modelSummary.totalTokens
+                    modelCostsByMonth[monthKey, default: [:]][model, default: 0] += modelSummary.cost
                 }
             }
             if providerVisibleTokens > 0 {
@@ -134,6 +151,7 @@ enum MonthlyTokenChartBuilder {
 
         let maxMonthlyTokens = totals.values.max() ?? 0
         let maxMonthlyCost = costs.values.max() ?? 0
+        let modelSegmentLegendNames = buildModelSegmentLegendNames(modelTotals)
         let buckets = monthStarts.map { monthStart in
             let key = monthKey(for: monthStart, calendar: calendar)
             let totalTokens = totals[key, default: 0]
@@ -155,7 +173,9 @@ enum MonthlyTokenChartBuilder {
                 isCurrentMonth: key == monthKey(for: currentMonthStart, calendar: calendar),
                 modelSegments: buildModelSegments(
                     modelTotalsByMonth[key, default: [:]],
-                    monthTotalTokens: totalTokens
+                    costs: modelCostsByMonth[key, default: [:]],
+                    monthTotalTokens: totalTokens,
+                    legendModelNames: modelSegmentLegendNames
                 )
             )
         }
@@ -205,20 +225,40 @@ enum MonthlyTokenChartBuilder {
 
     private static func buildModelSegments(
         _ totals: [String: Int],
-        monthTotalTokens: Int
+        costs: [String: Double],
+        monthTotalTokens: Int,
+        legendModelNames: [String]
     ) -> [MonthlyTokenModelSegment] {
-        let visibleTotals = totals.filter { $0.value > 0 }
-        guard monthTotalTokens > 0 else { return [] }
+        guard monthTotalTokens > 0, !legendModelNames.isEmpty else { return [] }
+        let leadingModelNames = legendModelNames.filter { $0 != otherModelSegmentName }
+        let leadingModelNameSet = Set(leadingModelNames)
 
-        return visibleTotals.sorted { lhs, rhs in
-            if lhs.value != rhs.value {
-                return lhs.value > rhs.value
+        return legendModelNames.compactMap { modelName in
+            let totalTokens: Int
+            let totalCost: Double
+            if modelName == otherModelSegmentName {
+                totalTokens = totals.reduce(0) { partialResult, entry in
+                    guard !leadingModelNameSet.contains(entry.key), entry.value > 0 else {
+                        return partialResult
+                    }
+                    return partialResult + entry.value
+                }
+                totalCost = costs.reduce(0) { partialResult, entry in
+                    guard !leadingModelNameSet.contains(entry.key), entry.value > 0 else {
+                        return partialResult
+                    }
+                    return partialResult + entry.value
+                }
+            } else {
+                totalTokens = totals[modelName, default: 0]
+                totalCost = costs[modelName, default: 0]
             }
-            return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
-        }.map { model, totalTokens in
-            MonthlyTokenModelSegment(
-                modelName: model,
+
+            guard totalTokens > 0 else { return nil }
+            return MonthlyTokenModelSegment(
+                modelName: modelName,
                 totalTokens: totalTokens,
+                totalCost: totalCost,
                 percentage: Double(totalTokens) / Double(monthTotalTokens)
             )
         }
@@ -244,5 +284,20 @@ enum MonthlyTokenChartBuilder {
                 percentage: Double(value.totalTokens) / Double(grandTotal)
             )
         }
+    }
+
+    private static func buildModelSegmentLegendNames(_ totals: [String: Int]) -> [String] {
+        let sortedNames = totals
+            .filter { $0.value > 0 }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value {
+                    return lhs.value > rhs.value
+                }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            .map(\.key)
+
+        guard sortedNames.count > maxModelSegmentCount else { return sortedNames }
+        return Array(sortedNames.prefix(maxModelSegmentCount - 1)) + [otherModelSegmentName]
     }
 }

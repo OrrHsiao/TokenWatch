@@ -32,8 +32,8 @@ struct MonthlyStatsViewControllerTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("本年"))
-        #expect(labels.contains("本年 1-12 月,跨 provider 汇总"))
+        #expect(labels.contains("最近 12 个月"))
+        #expect(labels.contains("最近 12 个月,跨 provider 汇总"))
         #expect(labels.contains("Token 用量"))
         #expect(labels.contains("费用"))
         #expect(labels.contains("1.2M"))
@@ -65,7 +65,7 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("两个饼图在本年页竖向排列")
+    @Test("两个饼图在最近十二个月页竖向排列")
     func pieChartsAreStackedVertically() throws {
         let calendar = utcCalendar()
         let viewController = MonthlyStatsViewController(
@@ -178,7 +178,7 @@ struct MonthlyStatsViewControllerTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("本年暂无 token 数据"))
+        #expect(labels.contains("最近 12 个月暂无 token 数据"))
     }
 
     @MainActor

@@ -19,8 +19,31 @@ struct MonthlyTokenChartViewTests {
             "1月", "2月", "3月", "4月", "5月", "6月",
             "7月", "8月", "9月", "10月", "11月", "12月",
         ])
+        #expect(view.debugXAxisLabels == [
+            "2026年\n1月", "2026年\n2月", "2026年\n3月", "2026年\n4月",
+            "2026年\n5月", "2026年\n6月", "2026年\n7月", "2026年\n8月",
+            "2026年\n9月", "2026年\n10月", "2026年\n11月", "2026年\n12月",
+        ])
         #expect(view.debugNormalizedHeights.last == 1.0)
         #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
+    }
+
+    @MainActor
+    @Test("Token 纵轴标签不显示小数")
+    func tokenYAxisLabelsUseWholeCompactNumbers() {
+        let view = MonthlyTokenChartView()
+
+        #expect(view.debugYAxisLabel(for: 950_000) == "950k")
+        #expect(view.debugYAxisLabel(for: 1_234_567) == "1M")
+        #expect(!view.debugYAxisLabel(for: 1_234_567).contains("."))
+    }
+
+    @MainActor
+    @Test("横轴标签使用小字号以容纳十二个月")
+    func xAxisLabelsUseCompactFontSize() {
+        let view = MonthlyTokenChartView()
+
+        #expect(view.debugXAxisLabelFontSize <= 9)
     }
 
     @MainActor
@@ -43,6 +66,14 @@ struct MonthlyTokenChartViewTests {
 
         let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
         #expect(chartHost.superview === view)
+    }
+
+    @MainActor
+    @Test("Token 图例右对齐")
+    func tokenLegendAlignsTrailing() {
+        let view = MonthlyTokenChartView()
+
+        #expect(view.debugLegendAlignment == .trailing)
     }
 
     @MainActor
