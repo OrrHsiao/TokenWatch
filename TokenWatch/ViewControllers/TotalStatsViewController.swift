@@ -3,6 +3,7 @@ import AppKit
 /// 跨 provider 的全量 token 消耗总计页面。
 final class TotalStatsViewController: NSViewController {
     private static let contentWidth: CGFloat = 520
+    private static let horizontalInset: CGFloat = 32
 
     private let totalTitleLabel = NSTextField(labelWithString: "总 token")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
@@ -129,8 +130,8 @@ final class TotalStatsViewController: NSViewController {
             contentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
             contentView.heightAnchor.constraint(greaterThanOrEqualTo: scrollView.contentView.heightAnchor),
 
-            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Self.horizontalInset),
+            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Self.horizontalInset),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor),
             contentStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor),
             summaryStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),

@@ -55,8 +55,8 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("总 token、总费用和模型列表从详情视图左上角开始布局")
-    func alignsSummaryAndModelRowsToDetailTopLeadingCorner() throws {
+    @Test("总 token、总费用和模型列表与其他详情页保持左侧边距")
+    func keepsSummaryAndModelRowsInsetFromDetailLeadingEdge() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [
@@ -97,13 +97,13 @@ struct TotalStatsViewControllerTests {
         let modelNameLabel = try #require(labels.first { $0.stringValue == "claude-sonnet" })
         let detailTopY = viewController.view.bounds.maxY
 
-        #expect(totalTitleLabel.frame(in: viewController.view).minX <= 1)
+        #expect(abs(totalTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
         #expect(abs(totalTitleLabel.frame(in: viewController.view).maxY - detailTopY) <= 1)
-        #expect(totalLabel.frame(in: viewController.view).minX <= 1)
-        #expect(costTitleLabel.frame(in: viewController.view).minX <= 1)
-        #expect(costLabel.frame(in: viewController.view).minX <= 1)
-        #expect(modelSectionTitleLabel.frame(in: viewController.view).minX <= 1)
-        #expect(modelNameLabel.frame(in: viewController.view).minX <= 1)
+        #expect(abs(totalLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(abs(costTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(abs(costLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(abs(modelNameLabel.frame(in: viewController.view).minX - 32) <= 2)
     }
 
     @MainActor
