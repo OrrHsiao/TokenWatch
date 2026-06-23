@@ -7,8 +7,8 @@ import Testing
 struct TotalStatsViewControllerTests {
 
     @MainActor
-    @Test("加载后展示标题、总量、费用和模型排序")
-    func rendersTitleSummaryAndSortedModelRows() throws {
+    @Test("加载后展示总量、费用和模型排序")
+    func rendersSummaryAndSortedModelRows() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [
@@ -45,8 +45,8 @@ struct TotalStatsViewControllerTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("总计"))
-        #expect(labels.contains("跨 provider 全量汇总"))
+        #expect(labels.contains("总 token"))
+        #expect(labels.contains("总费用"))
         #expect(labels.contains("模型消耗"))
         #expect(labels.contains("2.0M"))
         #expect(labels.contains("$16.75"))
@@ -55,8 +55,8 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("总 token、总费用和模型列表从内容左侧开始布局")
-    func alignsSummaryAndModelRowsToContentLeadingEdge() throws {
+    @Test("总 token、总费用和模型列表从详情视图左上角开始布局")
+    func alignsSummaryAndModelRowsToDetailTopLeadingCorner() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [
@@ -89,17 +89,21 @@ struct TotalStatsViewControllerTests {
         viewController.view.layoutSubtreeIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self)
-        let titleLabel = try #require(labels.first { $0.stringValue == "总计" })
+        let totalTitleLabel = try #require(labels.first { $0.stringValue == "总 token" })
         let totalLabel = try #require(labels.first { $0.stringValue == "2.0M" })
+        let costTitleLabel = try #require(labels.first { $0.stringValue == "总费用" })
         let costLabel = try #require(labels.first { $0.stringValue == "$16.75" })
         let modelSectionTitleLabel = try #require(labels.first { $0.stringValue == "模型消耗" })
         let modelNameLabel = try #require(labels.first { $0.stringValue == "claude-sonnet" })
-        let contentLeadingX = titleLabel.frame(in: viewController.view).minX
+        let detailTopY = viewController.view.bounds.maxY
 
-        #expect(abs(totalLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
-        #expect(abs(costLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
-        #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
-        #expect(abs(modelNameLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
+        #expect(totalTitleLabel.frame(in: viewController.view).minX <= 1)
+        #expect(abs(totalTitleLabel.frame(in: viewController.view).maxY - detailTopY) <= 1)
+        #expect(totalLabel.frame(in: viewController.view).minX <= 1)
+        #expect(costTitleLabel.frame(in: viewController.view).minX <= 1)
+        #expect(costLabel.frame(in: viewController.view).minX <= 1)
+        #expect(modelSectionTitleLabel.frame(in: viewController.view).minX <= 1)
+        #expect(modelNameLabel.frame(in: viewController.view).minX <= 1)
     }
 
     @MainActor

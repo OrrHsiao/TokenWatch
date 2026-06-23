@@ -4,8 +4,6 @@ import AppKit
 final class TotalStatsViewController: NSViewController {
     private static let contentWidth: CGFloat = 520
 
-    private let titleLabel = NSTextField(labelWithString: "总计")
-    private let subtitleLabel = NSTextField(labelWithString: "跨 provider 全量汇总")
     private let totalTitleLabel = NSTextField(labelWithString: "总 token")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costTitleLabel = NSTextField(labelWithString: "总费用")
@@ -64,9 +62,6 @@ final class TotalStatsViewController: NSViewController {
     }
 
     private func setupSubviews() {
-        titleLabel.font = .systemFont(ofSize: 22, weight: .semibold)
-        subtitleLabel.font = .systemFont(ofSize: 13)
-        subtitleLabel.textColor = .secondaryLabelColor
         configureMetricTitle(totalTitleLabel)
         configureMetricTitle(costTitleLabel)
         totalLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
@@ -82,11 +77,6 @@ final class TotalStatsViewController: NSViewController {
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.maximumNumberOfLines = 0
         statusLabel.lineBreakMode = .byWordWrapping
-
-        let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
-        headerTextStack.orientation = .vertical
-        headerTextStack.alignment = .leading
-        headerTextStack.spacing = 4
 
         let totalMetricStack = makeMetricStack(titleLabel: totalTitleLabel, valueLabel: totalLabel)
         let costMetricStack = makeMetricStack(titleLabel: costTitleLabel, valueLabel: costLabel)
@@ -107,7 +97,7 @@ final class TotalStatsViewController: NSViewController {
         modelSectionStack.alignment = .leading
         modelSectionStack.spacing = 10
 
-        let contentStack = NSStackView(views: [headerTextStack, summaryStack, modelSectionStack, statusLabel])
+        let contentStack = NSStackView(views: [summaryStack, modelSectionStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -135,12 +125,12 @@ final class TotalStatsViewController: NSViewController {
             contentView.trailingAnchor.constraint(equalTo: scrollView.contentView.trailingAnchor),
             contentView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
+            contentView.heightAnchor.constraint(greaterThanOrEqualTo: scrollView.contentView.heightAnchor),
 
-            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 32),
-            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
-            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
-            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-            headerTextStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor),
+            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             summaryStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             summaryStack.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
             modelSectionStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),

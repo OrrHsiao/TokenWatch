@@ -55,8 +55,8 @@ struct TokenWatchTests {
         sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 5), byExtendingSelection: false)
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("总计"))
-        #expect(labels.contains("跨 provider 全量汇总"))
+        #expect(labels.contains("总 token"))
+        #expect(labels.contains("模型消耗"))
     }
 
     @MainActor
