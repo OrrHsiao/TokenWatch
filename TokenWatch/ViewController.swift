@@ -18,6 +18,7 @@ class ViewController: NSViewController {
     private let settingsViewController = SettingsViewController()
     private let monthlyStatsViewController = MonthlyStatsViewController()
     private let recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days)
+    private let todayStatsViewController = MonthlyStatsViewController(period: .today)
 
     private var detailViewControllers: [ProviderID: ProviderStatsViewController] = [:]
     private var currentDetailViewController: NSViewController?
@@ -49,6 +50,9 @@ class ViewController: NSViewController {
         }
         sidebarViewController.onSelectRecentThirtyDays = { [weak self] in
             self?.showRecentThirtyDays()
+        }
+        sidebarViewController.onSelectToday = { [weak self] in
+            self?.showToday()
         }
         sidebarViewController.onSelectSettings = { [weak self] in
             self?.showSettings()
@@ -110,6 +114,12 @@ class ViewController: NSViewController {
         selectedContent = .recentThirtyDays
     }
 
+    private func showToday() {
+        guard selectedContent != .today else { return }
+        installDetailViewController(todayStatsViewController)
+        selectedContent = .today
+    }
+
     private func detailViewController(for provider: any UsageProvider) -> ProviderStatsViewController {
         if let existing = detailViewControllers[provider.id] {
             return existing
@@ -163,6 +173,7 @@ private enum SidebarContent: Equatable {
     case provider(ProviderID)
     case monthly
     case recentThirtyDays
+    case today
     case settings
 }
 
@@ -170,6 +181,7 @@ private enum ProviderSidebarItem {
     case provider(any UsageProvider)
     case monthly
     case recentThirtyDays
+    case today
     case settings
 
     var title: String {
@@ -180,6 +192,8 @@ private enum ProviderSidebarItem {
             return "最近 12 个月"
         case .recentThirtyDays:
             return "最近 30 天"
+        case .today:
+            return "本日"
         case .settings:
             return "设置"
         }
@@ -199,10 +213,11 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
     var onSelectProvider: ((ProviderID) -> Void)?
     var onSelectMonthly: (() -> Void)?
     var onSelectRecentThirtyDays: (() -> Void)?
+    var onSelectToday: (() -> Void)?
     var onSelectSettings: (() -> Void)?
 
     init(providers: [any UsageProvider]) {
-        self.items = providers.map { .provider($0) } + [.monthly, .recentThirtyDays, .settings]
+        self.items = providers.map { .provider($0) } + [.monthly, .recentThirtyDays, .today, .settings]
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -285,6 +300,8 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
             onSelectMonthly?()
         case .recentThirtyDays:
             onSelectRecentThirtyDays?()
+        case .today:
+            onSelectToday?()
         case .settings:
             onSelectSettings?()
         }

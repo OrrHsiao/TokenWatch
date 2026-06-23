@@ -66,6 +66,26 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-06-19")?.isCurrentMonth == false)
     }
 
+    @Test("本日窗口生成当天二十四个小时桶")
+    func buildsTodayWindowWithTwentyFourHourlyBuckets() {
+        let calendar = utcCalendar()
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [:],
+            period: .today,
+            now: dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.monthBuckets.count == 24)
+        #expect(snapshot.monthBuckets.first?.monthKey == "2026-06-20T00")
+        #expect(snapshot.monthBuckets.last?.monthKey == "2026-06-20T23")
+        #expect(snapshot.monthBuckets.first?.monthLabel == "0时")
+        #expect(snapshot.monthBuckets.last?.monthLabel == "23时")
+        #expect(snapshot.bucket("2026-06-20T14")?.isCurrentMonth == true)
+        #expect(snapshot.bucket("2026-06-20T13")?.isCurrentMonth == false)
+    }
+
     @Test("跨年边界只统计最近十二个月")
     func ignoresMonthsOutsideRecentTwelveMonthWindow() {
         let calendar = utcCalendar()
@@ -194,6 +214,53 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.totalCost == 5.30)
         #expect(snapshot.maxMonthlyTokens == 350)
         #expect(snapshot.maxMonthlyCost == 3.25)
+        #expect(snapshot.loadedProviderCount == 2)
+        #expect(snapshot.unauthorizedProviderCount == 1)
+    }
+
+    @Test("本日按小时汇总当天的 byHour token 和 cost")
+    func todaySumsCurrentDayHourlyTokensAndCosts() {
+        let calendar = utcCalendar()
+        let claudeStats = makeStats(
+            byHour: [
+                "2026-06-19T23": makeSummary(total: 100, cost: 1.00),
+                "2026-06-20T09": makeSummary(total: 120, cost: 1.25),
+                "2026-06-20T14": makeSummary(total: 300, cost: 2.50),
+                "2026-06-21T00": makeSummary(total: 700, cost: 7.00),
+            ],
+            byDay: [
+                "2026-06-20": makeSummary(total: 999, cost: 9.99),
+            ],
+            byMonth: [:]
+        )
+        let codexStats = makeStats(
+            byHour: [
+                "2026-06-20T14": makeSummary(total: 50, cost: 0.75),
+            ],
+            byDay: [:],
+            byMonth: [:]
+        )
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .opencode: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true),
+            ],
+            period: .today,
+            now: dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.bucket("2026-06-19T23") == nil)
+        #expect(snapshot.bucket("2026-06-20T08")?.totalTokens == 0)
+        #expect(snapshot.bucket("2026-06-20T09")?.totalTokens == 120)
+        #expect(snapshot.bucket("2026-06-20T14")?.totalTokens == 350)
+        #expect(snapshot.bucket("2026-06-20T14")?.totalCost == 3.25)
+        #expect(snapshot.bucket("2026-06-21T00") == nil)
+        #expect(snapshot.totalTokens == 470)
+        #expect(snapshot.totalCost == 4.50)
+        #expect(snapshot.maxMonthlyTokens == 350)
         #expect(snapshot.loadedProviderCount == 2)
         #expect(snapshot.unauthorizedProviderCount == 1)
     }
@@ -405,6 +472,17 @@ struct MonthlyTokenChartBuilderTests {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
+    private func dateTime(
+        _ year: Int,
+        _ month: Int,
+        _ day: Int,
+        hour: Int,
+        minute: Int,
+        calendar: Calendar
+    ) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+    }
+
     private func makeSummary(
         total: Int,
         cost: Double = 0,
@@ -448,12 +526,13 @@ struct MonthlyTokenChartBuilderTests {
     }
 
     private func makeStats(
+        byHour: [String: UsageSummary] = [:],
         byDay: [String: UsageSummary] = [:],
         byMonth: [String: UsageSummary]
     ) -> AggregatedStats {
         AggregatedStats(
             overall: .zero,
-            byHour: [:],
+            byHour: byHour,
             byDay: byDay,
             byWeek: [:],
             byMonth: byMonth,

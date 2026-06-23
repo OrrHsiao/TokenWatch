@@ -4,6 +4,7 @@ import Foundation
 enum UsageStatsPeriod: Sendable, Equatable {
     case recent12Months
     case recent30Days
+    case today
 
     var title: String {
         switch self {
@@ -11,6 +12,8 @@ enum UsageStatsPeriod: Sendable, Equatable {
             return "最近 12 个月"
         case .recent30Days:
             return "最近 30 天"
+        case .today:
+            return "本日"
         }
     }
 
@@ -28,6 +31,8 @@ enum UsageStatsPeriod: Sendable, Equatable {
             return 12
         case .recent30Days:
             return 30
+        case .today:
+            return 24
         }
     }
 
@@ -37,6 +42,8 @@ enum UsageStatsPeriod: Sendable, Equatable {
             return .month
         case .recent30Days:
             return .day
+        case .today:
+            return .hour
         }
     }
 
@@ -47,6 +54,23 @@ enum UsageStatsPeriod: Sendable, Equatable {
                 ?? calendar.startOfDay(for: now)
         case .recent30Days:
             return calendar.startOfDay(for: now)
+        case .today:
+            return calendar.dateInterval(of: .hour, for: now)?.start
+                ?? calendar.startOfDay(for: now)
+        }
+    }
+
+    fileprivate func windowStart(currentBucketStart: Date, now: Date, calendar: Calendar) -> Date {
+        switch self {
+        case .today:
+            // 本日视图展示自然日 00...23 点,不能用最近 24 小时滚动窗口。
+            return calendar.startOfDay(for: now)
+        case .recent12Months, .recent30Days:
+            return calendar.date(
+                byAdding: calendarComponent,
+                value: -(bucketCount - 1),
+                to: currentBucketStart
+            ) ?? currentBucketStart
         }
     }
 
@@ -56,6 +80,8 @@ enum UsageStatsPeriod: Sendable, Equatable {
             return Self.monthKey(for: date, calendar: calendar)
         case .recent30Days:
             return Self.dayKey(for: date, calendar: calendar)
+        case .today:
+            return Self.hourKey(for: date, calendar: calendar)
         }
     }
 
@@ -67,6 +93,9 @@ enum UsageStatsPeriod: Sendable, Equatable {
         case .recent30Days:
             let components = calendar.dateComponents([.month, .day], from: date)
             return "\(components.month ?? 0)/\(components.day ?? 0)"
+        case .today:
+            let hour = calendar.component(.hour, from: date)
+            return "\(hour)时"
         }
     }
 
@@ -76,6 +105,8 @@ enum UsageStatsPeriod: Sendable, Equatable {
             return stats.byMonth[key]
         case .recent30Days:
             return stats.byDay[key]
+        case .today:
+            return stats.byHour[key]
         }
     }
 
@@ -91,6 +122,17 @@ enum UsageStatsPeriod: Sendable, Equatable {
             components.year ?? 0,
             components.month ?? 0,
             components.day ?? 0
+        )
+    }
+
+    private static func hourKey(for date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
+        return String(
+            format: "%04d-%02d-%02dT%02d",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0,
+            components.hour ?? 0
         )
     }
 }
@@ -194,11 +236,7 @@ enum MonthlyTokenChartBuilder {
         calendar: Calendar
     ) -> MonthlyTokenChartSnapshot {
         let currentBucketStart = period.currentBucketStart(now: now, calendar: calendar)
-        let windowStart = calendar.date(
-            byAdding: period.calendarComponent,
-            value: -(period.bucketCount - 1),
-            to: currentBucketStart
-        ) ?? currentBucketStart
+        let windowStart = period.windowStart(currentBucketStart: currentBucketStart, now: now, calendar: calendar)
         let bucketStarts = (0..<period.bucketCount).compactMap { offset in
             calendar.date(byAdding: period.calendarComponent, value: offset, to: windowStart)
         }

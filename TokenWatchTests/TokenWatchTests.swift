@@ -43,7 +43,7 @@ struct TokenWatchTests {
                 .textField?
                 .stringValue
         }
-        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["最近 12 个月", "最近 30 天", "设置"])
+        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["最近 12 个月", "最近 30 天", "本日", "设置"])
     }
 
     @MainActor
@@ -52,7 +52,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 3), byExtendingSelection: false)
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 4), byExtendingSelection: false)
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 12 个月"))
@@ -66,11 +66,25 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 2), byExtendingSelection: false)
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 3), byExtendingSelection: false)
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 30 天"))
         #expect(labels.contains("最近 30 天,跨 provider 汇总"))
+        #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
+    }
+
+    @MainActor
+    @Test func selectingTodayShowsTodayChartPage() throws {
+        let viewController = ViewController()
+        viewController.loadViewIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 2), byExtendingSelection: false)
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("本日"))
+        #expect(labels.contains("本日,跨 provider 汇总"))
         #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 

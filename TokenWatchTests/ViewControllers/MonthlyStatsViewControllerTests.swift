@@ -91,6 +91,56 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("本日配置展示标题、说明和二十四个小时桶")
+    func rendersTodayTitleSubtitleAndHourlyBuckets() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byHour: [
+                        "2026-06-20T09": makeSummary(
+                            total: 150_000,
+                            cost: 0.5,
+                            modelBreakdown: ["claude-haiku": 150_000]
+                        ),
+                        "2026-06-20T14": makeSummary(
+                            total: 250_000,
+                            cost: 1.0,
+                            modelBreakdown: ["claude-sonnet": 250_000]
+                        ),
+                    ], byDay: [
+                        "2026-06-20": makeSummary(
+                            total: 999_000,
+                            cost: 9.99,
+                            modelBreakdown: ["ignored-day-total": 999_000]
+                        ),
+                    ], byMonth: [:]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("本日"))
+        #expect(labels.contains("本日,跨 provider 汇总"))
+        #expect(labels.contains("0.4M"))
+        #expect(labels.contains("$1.50"))
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        #expect(chartView.debugBarCount == 24)
+
+        let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
+        #expect(costChartView.debugBarCount == 24)
+    }
+
+    @MainActor
     @Test("两个柱状图使用一致配色")
     func barChartsUseMatchingColors() throws {
         let viewController = MonthlyStatsViewController()
@@ -465,12 +515,13 @@ struct MonthlyStatsViewControllerTests {
     }
 
     private func makeStats(
+        byHour: [String: UsageSummary] = [:],
         byDay: [String: UsageSummary] = [:],
         byMonth: [String: UsageSummary]
     ) -> AggregatedStats {
         AggregatedStats(
             overall: .zero,
-            byHour: [:],
+            byHour: byHour,
             byDay: byDay,
             byWeek: [:],
             byMonth: byMonth,

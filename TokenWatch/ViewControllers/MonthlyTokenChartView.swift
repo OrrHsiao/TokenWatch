@@ -30,6 +30,11 @@ enum MonthlyBarChartStyle {
     }
 
     static func monthAxisLabel(for monthKey: String) -> String {
+        if let hourSeparatorRange = monthKey.range(of: "T"),
+           let hour = Int(monthKey[hourSeparatorRange.upperBound...]) {
+            return "\(hour)"
+        }
+
         let parts = monthKey.split(separator: "-")
         if parts.count == 3,
            let month = Int(parts[1]),

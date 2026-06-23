@@ -47,6 +47,24 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("本日小时桶横轴只展示小时")
+    func todayHourlyXAxisLabelsShowOnlyHour() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(
+            monthKeys: ["2026-06-20T00", "2026-06-20T14", "2026-06-20T23"],
+            monthLabels: ["0", "14", "23"],
+            tokens: [10, 20, 30]
+        )
+
+        view.configure(with: snapshot)
+
+        #expect(view.debugXAxisLabels == ["0", "14", "23"])
+        #expect(view.debugXAxisLabels.allSatisfy { !$0.contains("2026") && !$0.contains("6/20") })
+        #expect(view.debugXAxisLabels.allSatisfy { !$0.contains(":") })
+        #expect(view.debugXAxisLabels.allSatisfy { !$0.contains("时") })
+    }
+
+    @MainActor
     @Test("图表内容保持完整宽度")
     func chartHostKeepsFullWidth() throws {
         let view = MonthlyTokenChartView(frame: NSRect(x: 0, y: 0, width: 520, height: 246))

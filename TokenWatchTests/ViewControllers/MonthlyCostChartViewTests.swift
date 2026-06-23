@@ -47,6 +47,24 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("本日小时桶费用横轴只展示小时")
+    func todayHourlyCostXAxisLabelsShowOnlyHour() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(
+            monthKeys: ["2026-06-20T00", "2026-06-20T14", "2026-06-20T23"],
+            monthLabels: ["0", "14", "23"],
+            costs: [0.5, 1.25, 2.0]
+        )
+
+        view.configure(with: snapshot)
+
+        #expect(view.debugXAxisLabels == ["0", "14", "23"])
+        #expect(view.debugXAxisLabels.allSatisfy { !$0.contains("2026") && !$0.contains("6/20") })
+        #expect(view.debugXAxisLabels.allSatisfy { !$0.contains(":") })
+        #expect(view.debugXAxisLabels.allSatisfy { !$0.contains("时") })
+    }
+
+    @MainActor
     @Test("费用图表内容保持完整宽度")
     func chartHostKeepsFullWidth() throws {
         let view = MonthlyCostChartView(frame: NSRect(x: 0, y: 0, width: 520, height: 246))
@@ -300,6 +318,40 @@ struct MonthlyCostChartViewTests {
             totalCost: 0,
             maxMonthlyTokens: tokens[0],
             maxMonthlyCost: 0,
+            toolShareSlices: [],
+            modelShareSlices: [],
+            loadedProviderCount: 1,
+            loadingProviderCount: 0,
+            unauthorizedProviderCount: 0,
+            errorMessages: []
+        )
+    }
+
+    private func makeSnapshot(
+        monthKeys: [String],
+        monthLabels: [String],
+        costs: [Double]
+    ) -> MonthlyTokenChartSnapshot {
+        let maxCost = costs.max() ?? 0
+        let buckets = zip(monthKeys.indices, costs).map { index, totalCost in
+            MonthlyTokenBucket(
+                id: monthKeys[index],
+                monthKey: monthKeys[index],
+                monthLabel: monthLabels[index],
+                totalTokens: 0,
+                totalCost: totalCost,
+                normalizedHeight: 0,
+                normalizedCostHeight: maxCost > 0 ? totalCost / maxCost : 0,
+                isCurrentMonth: index == monthKeys.indices.last
+            )
+        }
+
+        return MonthlyTokenChartSnapshot(
+            monthBuckets: buckets,
+            totalTokens: 0,
+            totalCost: costs.reduce(0, +),
+            maxMonthlyTokens: 0,
+            maxMonthlyCost: maxCost,
             toolShareSlices: [],
             modelShareSlices: [],
             loadedProviderCount: 1,
