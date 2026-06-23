@@ -46,6 +46,26 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-01")?.isCurrentMonth == true)
     }
 
+    @Test("生成最近三十天窗口并按自然日排序")
+    func buildsRecentThirtyDaysInAscendingOrder() {
+        let calendar = utcCalendar()
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [:],
+            period: .recent30Days,
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.monthBuckets.count == 30)
+        #expect(snapshot.monthBuckets.first?.monthKey == "2026-05-22")
+        #expect(snapshot.monthBuckets.last?.monthKey == "2026-06-20")
+        #expect(snapshot.monthBuckets.first?.monthLabel == "5/22")
+        #expect(snapshot.monthBuckets.last?.monthLabel == "6/20")
+        #expect(snapshot.bucket("2026-06-20")?.isCurrentMonth == true)
+        #expect(snapshot.bucket("2026-06-19")?.isCurrentMonth == false)
+    }
+
     @Test("跨年边界只统计最近十二个月")
     func ignoresMonthsOutsideRecentTwelveMonthWindow() {
         let calendar = utcCalendar()
@@ -131,6 +151,51 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-12") == nil)
         #expect(snapshot.totalCost == 5.30)
         #expect(snapshot.maxMonthlyCost == 3.25)
+    }
+
+    @Test("最近三十天跨 provider 合并 byDay token 和 cost")
+    func recentThirtyDaysSumsDailyTokensAndCostsAcrossProviders() {
+        let calendar = utcCalendar()
+        let claudeStats = makeStats(
+            byDay: [
+                "2026-05-21": makeSummary(total: 999, cost: 9.99),
+                "2026-05-22": makeSummary(total: 80, cost: 0.80),
+                "2026-06-19": makeSummary(total: 100, cost: 1.25),
+                "2026-06-20": makeSummary(total: 300, cost: 2.50),
+                "2026-06-21": makeSummary(total: 700, cost: 7.00),
+            ],
+            byMonth: [:]
+        )
+        let codexStats = makeStats(
+            byDay: [
+                "2026-06-20": makeSummary(total: 50, cost: 0.75),
+            ],
+            byMonth: [:]
+        )
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .opencode: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true),
+            ],
+            period: .recent30Days,
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.bucket("2026-05-21") == nil)
+        #expect(snapshot.bucket("2026-05-22")?.totalTokens == 80)
+        #expect(snapshot.bucket("2026-06-18")?.totalTokens == 0)
+        #expect(snapshot.bucket("2026-06-19")?.totalTokens == 100)
+        #expect(snapshot.bucket("2026-06-20")?.totalTokens == 350)
+        #expect(snapshot.bucket("2026-06-21") == nil)
+        #expect(snapshot.totalTokens == 530)
+        #expect(snapshot.totalCost == 5.30)
+        #expect(snapshot.maxMonthlyTokens == 350)
+        #expect(snapshot.maxMonthlyCost == 3.25)
+        #expect(snapshot.loadedProviderCount == 2)
+        #expect(snapshot.unauthorizedProviderCount == 1)
     }
 
     @Test("normalizedHeight 保持在 0...1 且全零时稳定")
@@ -382,11 +447,14 @@ struct MonthlyTokenChartBuilderTests {
         )
     }
 
-    private func makeStats(byMonth: [String: UsageSummary]) -> AggregatedStats {
+    private func makeStats(
+        byDay: [String: UsageSummary] = [:],
+        byMonth: [String: UsageSummary]
+    ) -> AggregatedStats {
         AggregatedStats(
             overall: .zero,
             byHour: [:],
-            byDay: [:],
+            byDay: byDay,
             byWeek: [:],
             byMonth: byMonth,
             bySession: [:],

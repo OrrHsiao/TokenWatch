@@ -11,6 +11,7 @@ final class MonthlyCostChartView: NSView {
     private(set) var debugXAxisLabels: [String] = []
     private(set) var debugModelSegmentLabelsByMonth: [String: [String]] = [:]
     private(set) var debugModelSegmentCostsByMonth: [String: [Double]] = [:]
+    private(set) var debugModelSegmentColorsByMonth: [String: [String: NSColor]] = [:]
     var onHoverTextChange: ((String?) -> Void)?
 
     var debugRegularBarColor: NSColor {
@@ -54,6 +55,9 @@ final class MonthlyCostChartView: NSView {
         })
         debugModelSegmentCostsByMonth = Dictionary(uniqueKeysWithValues: snapshot.monthBuckets.map { bucket in
             (bucket.monthKey, bucket.modelSegments.map(\.totalCost))
+        })
+        debugModelSegmentColorsByMonth = Dictionary(uniqueKeysWithValues: snapshot.monthBuckets.map { bucket in
+            (bucket.monthKey, MonthlyBarChartStyle.modelColorDebugMap(for: bucket))
         })
         chartHost.rootView = AnyView(MonthlyCostBarChartContent(
             buckets: snapshot.monthBuckets,
@@ -140,6 +144,7 @@ private struct MonthlyCostBarChartContent: View {
                     .accessibilityValue(String(format: "$%.2f", bucket.totalCost))
                 } else {
                     ForEach(bucket.modelSegments) { segment in
+                        let accessibilityLabel = "\(bucket.monthLabel) \(segment.modelName)"
                         BarMark(
                             x: .value("月份", bucket.monthKey),
                             y: .value("USD", segment.totalCost)
@@ -147,13 +152,17 @@ private struct MonthlyCostBarChartContent: View {
                         .foregroundStyle(by: .value("模型", segment.modelName))
                         .opacity(bucket.isCurrentMonth ? 1 : 0.74)
                         .cornerRadius(4)
-                        .accessibilityLabel("\(bucket.monthLabel) \(segment.modelName)")
+                        .accessibilityLabel(accessibilityLabel)
                         .accessibilityValue(String(format: "$%.2f", segment.totalCost))
                     }
                 }
             }
         }
         .chartLegend(position: .bottom, alignment: .trailing, spacing: 8)
+        .chartForegroundStyleScale(
+            domain: MonthlyBarChartStyle.modelNames(in: buckets),
+            mapping: { modelName in MonthlyBarChartStyle.modelSwiftUIColor(for: modelName) }
+        )
         .chartYScale(domain: 0...maxCost)
         .chartXAxis {
             AxisMarks(values: buckets.map(\.monthKey)) { value in

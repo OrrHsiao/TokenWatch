@@ -1,6 +1,101 @@
 import Foundation
 
-/// 最近 12 个月 token 柱状图的完整数据快照,供 UI 直接渲染。
+/// 跨 provider 汇总页支持的时间窗口。
+enum UsageStatsPeriod: Sendable, Equatable {
+    case recent12Months
+    case recent30Days
+
+    var title: String {
+        switch self {
+        case .recent12Months:
+            return "最近 12 个月"
+        case .recent30Days:
+            return "最近 30 天"
+        }
+    }
+
+    var subtitle: String {
+        "\(title),跨 provider 汇总"
+    }
+
+    var emptyDataText: String {
+        "\(title)暂无 token 数据"
+    }
+
+    fileprivate var bucketCount: Int {
+        switch self {
+        case .recent12Months:
+            return 12
+        case .recent30Days:
+            return 30
+        }
+    }
+
+    fileprivate var calendarComponent: Calendar.Component {
+        switch self {
+        case .recent12Months:
+            return .month
+        case .recent30Days:
+            return .day
+        }
+    }
+
+    fileprivate func currentBucketStart(now: Date, calendar: Calendar) -> Date {
+        switch self {
+        case .recent12Months:
+            return calendar.dateInterval(of: .month, for: now)?.start
+                ?? calendar.startOfDay(for: now)
+        case .recent30Days:
+            return calendar.startOfDay(for: now)
+        }
+    }
+
+    fileprivate func bucketKey(for date: Date, calendar: Calendar) -> String {
+        switch self {
+        case .recent12Months:
+            return Self.monthKey(for: date, calendar: calendar)
+        case .recent30Days:
+            return Self.dayKey(for: date, calendar: calendar)
+        }
+    }
+
+    fileprivate func bucketLabel(for date: Date, calendar: Calendar) -> String {
+        switch self {
+        case .recent12Months:
+            let month = calendar.component(.month, from: date)
+            return "\(month)月"
+        case .recent30Days:
+            let components = calendar.dateComponents([.month, .day], from: date)
+            return "\(components.month ?? 0)/\(components.day ?? 0)"
+        }
+    }
+
+    fileprivate func summary(in stats: AggregatedStats, for key: String) -> UsageSummary? {
+        switch self {
+        case .recent12Months:
+            return stats.byMonth[key]
+        case .recent30Days:
+            return stats.byDay[key]
+        }
+    }
+
+    private static func monthKey(for date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
+    }
+
+    private static func dayKey(for date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(
+            format: "%04d-%02d-%02d",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0
+        )
+    }
+}
+
+/// 跨 provider 时间窗口 token 柱状图的完整数据快照,供 UI 直接渲染。
 struct MonthlyTokenChartSnapshot: Sendable, Equatable {
     let monthBuckets: [MonthlyTokenBucket]
     let totalTokens: Int
@@ -80,35 +175,38 @@ struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
     }
 }
 
-/// 将多 provider 状态构建为最近 12 个月的 token 柱状图快照。
+/// 将多 provider 状态构建为指定时间窗口的 token 柱状图快照。
 enum MonthlyTokenChartBuilder {
-    private static let monthCount = 12
     private static let maxModelSegmentCount = 5
     private static let otherModelSegmentName = "其他"
 
-    /// 构建包含 `now` 所在月份、向前回溯 11 个月的 token 快照。
+    /// 构建包含 `now` 所在桶、按指定窗口向前回溯的 token 快照。
     /// - Parameters:
     ///   - states: 各 provider 的统计状态;没有 stats 的 provider 不参与 token 求和。
-    ///   - now: 当前日期,用于确定最近 12 个月窗口和当前月高亮。
-    ///   - calendar: 调用方指定的日历配置,用于稳定测试和本地月份计算。
-    /// - Returns: 可直接渲染的月度 token 图表快照。
+    ///   - period: 统计窗口,默认保持最近 12 个月。
+    ///   - now: 当前日期,用于确定窗口范围和当前桶高亮。
+    ///   - calendar: 调用方指定的日历配置,用于稳定测试和本地日期计算。
+    /// - Returns: 可直接渲染的 token 图表快照。
     static func build(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
+        period: UsageStatsPeriod = .recent12Months,
         now: Date,
         calendar: Calendar
     ) -> MonthlyTokenChartSnapshot {
-        let currentMonthStart = calendar.dateInterval(of: .month, for: now)?.start
-            ?? calendar.startOfDay(for: now)
-        let windowStart = calendar.date(byAdding: .month, value: -(monthCount - 1), to: currentMonthStart)
-            ?? currentMonthStart
-        let monthStarts = (0..<monthCount).compactMap { offset in
-            calendar.date(byAdding: .month, value: offset, to: windowStart)
+        let currentBucketStart = period.currentBucketStart(now: now, calendar: calendar)
+        let windowStart = calendar.date(
+            byAdding: period.calendarComponent,
+            value: -(period.bucketCount - 1),
+            to: currentBucketStart
+        ) ?? currentBucketStart
+        let bucketStarts = (0..<period.bucketCount).compactMap { offset in
+            calendar.date(byAdding: period.calendarComponent, value: offset, to: windowStart)
         }
-        let monthKeys = monthStarts.map { monthKey(for: $0, calendar: calendar) }
-        var totals = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0) })
-        var costs = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, 0.0) })
-        var modelTotalsByMonth = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, [String: Int]()) })
-        var modelCostsByMonth = Dictionary(uniqueKeysWithValues: monthKeys.map { ($0, [String: Double]()) })
+        let bucketKeys = bucketStarts.map { period.bucketKey(for: $0, calendar: calendar) }
+        var totals = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, 0) })
+        var costs = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, 0.0) })
+        var modelTotalsByBucket = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, [String: Int]()) })
+        var modelCostsByBucket = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, [String: Double]()) })
         var toolTotals: [ProviderID: Int] = [:]
         var modelTotals: [String: Int] = [:]
 
@@ -131,17 +229,17 @@ enum MonthlyTokenChartBuilder {
             loadedProviderCount += 1
 
             var providerVisibleTokens = 0
-            for monthKey in monthKeys {
-                let summary = stats.byMonth[monthKey]
+            for bucketKey in bucketKeys {
+                let summary = period.summary(in: stats, for: bucketKey)
                 let monthTokens = summary?.totalTokens ?? 0
                 providerVisibleTokens += monthTokens
-                totals[monthKey, default: 0] += monthTokens
-                costs[monthKey, default: 0] += summary?.cost ?? 0
+                totals[bucketKey, default: 0] += monthTokens
+                costs[bucketKey, default: 0] += summary?.cost ?? 0
 
                 for (model, modelSummary) in summary?.modelBreakdown ?? [:] {
                     modelTotals[model, default: 0] += modelSummary.totalTokens
-                    modelTotalsByMonth[monthKey, default: [:]][model, default: 0] += modelSummary.totalTokens
-                    modelCostsByMonth[monthKey, default: [:]][model, default: 0] += modelSummary.cost
+                    modelTotalsByBucket[bucketKey, default: [:]][model, default: 0] += modelSummary.totalTokens
+                    modelCostsByBucket[bucketKey, default: [:]][model, default: 0] += modelSummary.cost
                 }
             }
             if providerVisibleTokens > 0 {
@@ -152,8 +250,8 @@ enum MonthlyTokenChartBuilder {
         let maxMonthlyTokens = totals.values.max() ?? 0
         let maxMonthlyCost = costs.values.max() ?? 0
         let modelSegmentLegendNames = buildModelSegmentLegendNames(modelTotals)
-        let buckets = monthStarts.map { monthStart in
-            let key = monthKey(for: monthStart, calendar: calendar)
+        let buckets = bucketStarts.map { bucketStart in
+            let key = period.bucketKey(for: bucketStart, calendar: calendar)
             let totalTokens = totals[key, default: 0]
             let totalCost = costs[key, default: 0]
             let normalizedHeight = maxMonthlyTokens > 0
@@ -165,15 +263,15 @@ enum MonthlyTokenChartBuilder {
             return MonthlyTokenBucket(
                 id: key,
                 monthKey: key,
-                monthLabel: monthLabel(for: monthStart, calendar: calendar),
+                monthLabel: period.bucketLabel(for: bucketStart, calendar: calendar),
                 totalTokens: totalTokens,
                 totalCost: totalCost,
                 normalizedHeight: normalizedHeight,
                 normalizedCostHeight: normalizedCostHeight,
-                isCurrentMonth: key == monthKey(for: currentMonthStart, calendar: calendar),
+                isCurrentMonth: key == period.bucketKey(for: currentBucketStart, calendar: calendar),
                 modelSegments: buildModelSegments(
-                    modelTotalsByMonth[key, default: [:]],
-                    costs: modelCostsByMonth[key, default: [:]],
+                    modelTotalsByBucket[key, default: [:]],
+                    costs: modelCostsByBucket[key, default: [:]],
                     monthTotalTokens: totalTokens,
                     legendModelNames: modelSegmentLegendNames
                 )
@@ -193,16 +291,6 @@ enum MonthlyTokenChartBuilder {
             unauthorizedProviderCount: unauthorizedProviderCount,
             errorMessages: errorMessages
         )
-    }
-
-    private static func monthKey(for date: Date, calendar: Calendar) -> String {
-        let components = calendar.dateComponents([.year, .month], from: date)
-        return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
-    }
-
-    private static func monthLabel(for date: Date, calendar: Calendar) -> String {
-        let month = calendar.component(.month, from: date)
-        return "\(month)月"
     }
 
     private static func buildToolShareSlices(_ totals: [ProviderID: Int]) -> [UsageShareSlice] {

@@ -157,6 +157,42 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("Token 图和费用图对同一模型使用同一图例颜色")
+    func tokenAndCostChartsShareModelLegendColors() {
+        let tokenView = MonthlyTokenChartView()
+        let costView = MonthlyCostChartView()
+        let tokenSnapshot = makeTokenSnapshot(
+            modelBreakdowns: [
+                0: [
+                    ("claude-sonnet", 800_000),
+                    ("gpt-5", 400_000),
+                ],
+            ]
+        )
+        let costSnapshot = makeSnapshot(
+            costs: [12.5],
+            modelBreakdowns: [
+                0: [
+                    ("gpt-5", 4.25),
+                    ("claude-sonnet", 8.25),
+                ],
+            ]
+        )
+
+        tokenView.configure(with: tokenSnapshot)
+        costView.configure(with: costSnapshot)
+
+        #expect(
+            tokenView.debugModelSegmentColorsByMonth["2026-06"]?["claude-sonnet"]
+                == costView.debugModelSegmentColorsByMonth["2026-01"]?["claude-sonnet"]
+        )
+        #expect(
+            tokenView.debugModelSegmentColorsByMonth["2026-06"]?["gpt-5"]
+                == costView.debugModelSegmentColorsByMonth["2026-01"]?["gpt-5"]
+        )
+    }
+
+    @MainActor
     @Test("鼠标划过分段费用月份时回传该月模型费用明细")
     func hoveringStackedCostMonthBarEmitsModelBreakdownText() {
         let view = MonthlyCostChartView()
@@ -226,6 +262,44 @@ struct MonthlyCostChartViewTests {
             totalCost: costs.reduce(0, +),
             maxMonthlyTokens: 0,
             maxMonthlyCost: maxCost,
+            toolShareSlices: [],
+            modelShareSlices: [],
+            loadedProviderCount: 1,
+            loadingProviderCount: 0,
+            unauthorizedProviderCount: 0,
+            errorMessages: []
+        )
+    }
+
+    private func makeTokenSnapshot(
+        modelBreakdowns: [Int: [(String, Int)]]
+    ) -> MonthlyTokenChartSnapshot {
+        let tokens = [1_200_000]
+        let modelSegments = (modelBreakdowns[0] ?? []).map { modelName, modelTotal in
+            MonthlyTokenModelSegment(
+                modelName: modelName,
+                totalTokens: modelTotal,
+                percentage: Double(modelTotal) / Double(tokens[0])
+            )
+        }
+        return MonthlyTokenChartSnapshot(
+            monthBuckets: [
+                MonthlyTokenBucket(
+                    id: "2026-06",
+                    monthKey: "2026-06",
+                    monthLabel: "6月",
+                    totalTokens: tokens[0],
+                    totalCost: 0,
+                    normalizedHeight: 1,
+                    normalizedCostHeight: 0,
+                    isCurrentMonth: true,
+                    modelSegments: modelSegments
+                ),
+            ],
+            totalTokens: tokens[0],
+            totalCost: 0,
+            maxMonthlyTokens: tokens[0],
+            maxMonthlyCost: 0,
             toolShareSlices: [],
             modelShareSlices: [],
             loadedProviderCount: 1,

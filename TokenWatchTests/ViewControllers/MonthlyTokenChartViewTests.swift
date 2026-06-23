@@ -142,6 +142,47 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("同一模型在最近十二个月和最近三十天视图中使用同一图例颜色")
+    func modelLegendColorsRemainStableAcrossMonthlyAndDailySnapshots() {
+        let monthlyView = MonthlyTokenChartView()
+        let dailyView = MonthlyTokenChartView()
+        let monthlySnapshot = makeSnapshot(
+            monthKeys: ["2026-06"],
+            monthLabels: ["6月"],
+            tokens: [300],
+            modelBreakdowns: [
+                0: [
+                    ("claude-sonnet", 100),
+                    ("gpt-5", 200),
+                ],
+            ]
+        )
+        let dailySnapshot = makeSnapshot(
+            monthKeys: ["2026-06-20"],
+            monthLabels: ["6/20"],
+            tokens: [300],
+            modelBreakdowns: [
+                0: [
+                    ("gpt-5", 200),
+                    ("claude-sonnet", 100),
+                ],
+            ]
+        )
+
+        monthlyView.configure(with: monthlySnapshot)
+        dailyView.configure(with: dailySnapshot)
+
+        #expect(
+            monthlyView.debugModelSegmentColorsByMonth["2026-06"]?["claude-sonnet"]
+                == dailyView.debugModelSegmentColorsByMonth["2026-06-20"]?["claude-sonnet"]
+        )
+        #expect(
+            monthlyView.debugModelSegmentColorsByMonth["2026-06"]?["gpt-5"]
+                == dailyView.debugModelSegmentColorsByMonth["2026-06-20"]?["gpt-5"]
+        )
+    }
+
+    @MainActor
     @Test("鼠标划过分段柱月份时回传该月模型明细")
     func hoveringStackedMonthBarEmitsModelBreakdownText() {
         let view = MonthlyTokenChartView()
@@ -193,6 +234,20 @@ struct MonthlyTokenChartViewTests {
             "1月", "2月", "3月", "4月", "5月", "6月",
             "7月", "8月", "9月", "10月", "11月", "12月",
         ]
+        return makeSnapshot(
+            monthKeys: monthKeys,
+            monthLabels: monthLabels,
+            tokens: tokens,
+            modelBreakdowns: modelBreakdowns
+        )
+    }
+
+    private func makeSnapshot(
+        monthKeys: [String],
+        monthLabels: [String],
+        tokens: [Int],
+        modelBreakdowns: [Int: [(String, Int)]] = [:]
+    ) -> MonthlyTokenChartSnapshot {
         let maxTokens = tokens.max() ?? 0
         let buckets = zip(monthKeys.indices, tokens).map { index, total in
             let modelSegments = (modelBreakdowns[index] ?? []).map { modelName, modelTotal in

@@ -52,6 +52,45 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("最近三十天配置展示标题、说明和三十个日桶")
+    func rendersRecentThirtyDaysTitleSubtitleAndDailyBuckets() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .recent30Days,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byDay: [
+                        "2026-06-20": makeSummary(
+                            total: 500_000,
+                            cost: 2.5,
+                            modelBreakdown: ["claude-sonnet": 500_000]
+                        )
+                    ], byMonth: [:]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("最近 30 天"))
+        #expect(labels.contains("最近 30 天,跨 provider 汇总"))
+        #expect(labels.contains("0.5M"))
+        #expect(labels.contains("$2.50"))
+
+        let chartView = try #require(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self))
+        #expect(chartView.debugBarCount == 30)
+
+        let costChartView = try #require(viewController.view.firstDescendant(ofType: MonthlyCostChartView.self))
+        #expect(costChartView.debugBarCount == 30)
+    }
+
+    @MainActor
     @Test("两个柱状图使用一致配色")
     func barChartsUseMatchingColors() throws {
         let viewController = MonthlyStatsViewController()
@@ -425,11 +464,14 @@ struct MonthlyStatsViewControllerTests {
         )
     }
 
-    private func makeStats(byMonth: [String: UsageSummary]) -> AggregatedStats {
+    private func makeStats(
+        byDay: [String: UsageSummary] = [:],
+        byMonth: [String: UsageSummary]
+    ) -> AggregatedStats {
         AggregatedStats(
             overall: .zero,
             byHour: [:],
-            byDay: [:],
+            byDay: byDay,
             byWeek: [:],
             byMonth: byMonth,
             bySession: [:],

@@ -1,11 +1,11 @@
 import AppKit
 
-/// 跨 provider 的最近 12 个月 token 消耗页面。
+/// 跨 provider 的时间窗口 token 消耗页面。
 final class MonthlyStatsViewController: NSViewController {
     private static let compactBarChartWidth: CGFloat = 520
 
-    private let titleLabel = NSTextField(labelWithString: "最近 12 个月")
-    private let subtitleLabel = NSTextField(labelWithString: "最近 12 个月,跨 provider 汇总")
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let statusLabel = NSTextField(labelWithString: "")
@@ -17,6 +17,7 @@ final class MonthlyStatsViewController: NSViewController {
     private let costChartView = MonthlyCostChartView()
     private let toolSharePieView = UsageSharePieChartView(title: "工具占比")
     private let modelSharePieView = UsageSharePieChartView(title: "模型占比")
+    private let period: UsageStatsPeriod
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let nowProvider: () -> Date
     private let calendar: Calendar
@@ -26,17 +27,21 @@ final class MonthlyStatsViewController: NSViewController {
     private var costTitleRowTrailingConstraint: NSLayoutConstraint?
 
     init(
+        period: UsageStatsPeriod = .recent12Months,
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
             (NSApp.delegate as? AppDelegate)?.viewModel.states ?? [:]
         },
         nowProvider: @escaping () -> Date = Date.init,
         calendar: Calendar = .current
     ) {
+        self.period = period
         self.stateProvider = stateProvider
         self.nowProvider = nowProvider
         self.calendar = calendar
         super.init(nibName: nil, bundle: nil)
-        self.title = "最近 12 个月"
+        self.title = period.title
+        titleLabel.stringValue = period.title
+        subtitleLabel.stringValue = period.subtitle
     }
 
     var debugTokenChartHoverText: String {
@@ -272,6 +277,7 @@ final class MonthlyStatsViewController: NSViewController {
         let states = stateProvider()
         let snapshot = MonthlyTokenChartBuilder.build(
             states: states,
+            period: period,
             now: nowProvider(),
             calendar: calendar
         )
@@ -310,7 +316,7 @@ final class MonthlyStatsViewController: NSViewController {
             return errorMessage
         }
         if snapshot.totalTokens == 0 {
-            return "最近 12 个月暂无 token 数据"
+            return period.emptyDataText
         }
         if snapshot.loadingProviderCount > 0 {
             return "部分数据仍在加载"
