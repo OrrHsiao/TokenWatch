@@ -45,8 +45,10 @@ struct TotalStatsViewControllerTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("总 token"))
-        #expect(labels.contains("总费用"))
+        #expect(labels.contains("总计"))
+        #expect(labels.contains("跨 provider 全量汇总"))
+        #expect(!labels.contains("总 token"))
+        #expect(!labels.contains("总费用"))
         #expect(labels.contains("模型消耗"))
         #expect(labels.contains("2.0M"))
         #expect(labels.contains("$16.75"))
@@ -85,8 +87,8 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("总 token、总费用和模型列表与其他详情页保持左侧边距")
-    func keepsSummaryAndModelRowsInsetFromDetailLeadingEdge() throws {
+    @Test("总 token 和总费用使用最近十二个月页的右对齐数值样式")
+    func summaryMetricsUseRecentMonthsValueStyle() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [
@@ -119,25 +121,32 @@ struct TotalStatsViewControllerTests {
         viewController.view.layoutSubtreeIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self)
-        let totalTitleLabel = try #require(labels.first { $0.stringValue == "总 token" })
         let totalLabel = try #require(labels.first { $0.stringValue == "2.0M" })
-        let costTitleLabel = try #require(labels.first { $0.stringValue == "总费用" })
         let costLabel = try #require(labels.first { $0.stringValue == "$16.75" })
+        let titleLabel = try #require(labels.first { $0.stringValue == "总计" })
+        let subtitleLabel = try #require(labels.first { $0.stringValue == "跨 provider 全量汇总" })
         let modelSectionTitleLabel = try #require(labels.first { $0.stringValue == "模型消耗" })
         let modelNameLabel = try #require(labels.first { $0.stringValue == "claude-sonnet" })
-        let detailTopY = viewController.view.bounds.maxY
+        let expectedTopY = viewController.view.bounds.maxY - 32
+        let totalFrame = totalLabel.frame(in: viewController.view)
+        let costFrame = costLabel.frame(in: viewController.view)
 
-        #expect(abs(totalTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
-        #expect(abs(totalTitleLabel.frame(in: viewController.view).maxY - detailTopY) <= 1)
-        #expect(abs(totalLabel.frame(in: viewController.view).minX - 32) <= 2)
-        #expect(abs(costTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
-        #expect(abs(costLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(titleLabel.font == .systemFont(ofSize: 22, weight: .semibold))
+        #expect(subtitleLabel.textColor == .secondaryLabelColor)
+        #expect(totalLabel.alignment == .right)
+        #expect(costLabel.alignment == .right)
+        #expect(costLabel.textColor == .secondaryLabelColor)
+        #expect(abs(totalFrame.maxX - costFrame.maxX) <= 1)
+        #expect(abs(titleLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(abs(titleLabel.frame(in: viewController.view).maxY - expectedTopY) <= 1)
+        #expect(totalFrame.midY < titleLabel.frame(in: viewController.view).maxY)
+        #expect(totalFrame.midY > subtitleLabel.frame(in: viewController.view).minY)
         #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
         #expect(abs(modelNameLabel.frame(in: viewController.view).minX - 32) <= 2)
     }
 
     @MainActor
-    @Test("部分数据加载中时总 token 和总费用保持紧凑间距")
+    @Test("部分数据加载中时总 token 和总费用保持最近十二个月页的紧凑间距")
     func keepsSummaryMetricsCompactWhilePartiallyLoading() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
@@ -167,14 +176,14 @@ struct TotalStatsViewControllerTests {
         viewController.view.layoutSubtreeIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self)
-        let totalTitleLabel = try #require(labels.first { $0.stringValue == "总 token" })
-        let costTitleLabel = try #require(labels.first { $0.stringValue == "总费用" })
-        let totalTitleFrame = totalTitleLabel.frame(in: viewController.view)
-        let costTitleFrame = costTitleLabel.frame(in: viewController.view)
-        let titleDistance = totalTitleFrame.maxY - costTitleFrame.maxY
+        let totalLabel = try #require(labels.first { $0.stringValue == "1.2M" })
+        let costLabel = try #require(labels.first { $0.stringValue == "$12.50" })
+        let totalFrame = totalLabel.frame(in: viewController.view)
+        let costFrame = costLabel.frame(in: viewController.view)
+        let valueDistance = totalFrame.minY - costFrame.minY
 
         #expect(viewController.debugStatusText == "部分数据仍在加载")
-        #expect(titleDistance <= 80)
+        #expect(valueDistance <= 28)
     }
 
     @MainActor
