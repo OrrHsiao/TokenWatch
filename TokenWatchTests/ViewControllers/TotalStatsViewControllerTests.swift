@@ -55,6 +55,54 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("总 token、总费用和模型列表从内容左侧开始布局")
+    func alignsSummaryAndModelRowsToContentLeadingEdge() throws {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(
+                            total: 1_200_000,
+                            cost: 12.50,
+                            byModel: ["claude-sonnet": 900_000]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(
+                        stats: makeStats(
+                            total: 800_000,
+                            cost: 4.25,
+                            byModel: ["gpt-5": 500_000]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            }
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self)
+        let titleLabel = try #require(labels.first { $0.stringValue == "总计" })
+        let totalLabel = try #require(labels.first { $0.stringValue == "2.0M" })
+        let costLabel = try #require(labels.first { $0.stringValue == "$16.75" })
+        let modelSectionTitleLabel = try #require(labels.first { $0.stringValue == "模型消耗" })
+        let modelNameLabel = try #require(labels.first { $0.stringValue == "claude-sonnet" })
+        let contentLeadingX = titleLabel.frame(in: viewController.view).minX
+
+        #expect(abs(totalLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
+        #expect(abs(costLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
+        #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
+        #expect(abs(modelNameLabel.frame(in: viewController.view).minX - contentLeadingX) <= 1)
+    }
+
+    @MainActor
     @Test("无授权且无 stats 时提示先授权")
     func promptsAuthorizationWhenNoStatsAreLoaded() {
         let viewController = TotalStatsViewController(
@@ -163,5 +211,9 @@ private extension NSView {
     func allDescendants<T: NSView>(ofType type: T.Type) -> [T] {
         let current = (self as? T).map { [$0] } ?? []
         return current + subviews.flatMap { $0.allDescendants(ofType: type) }
+    }
+
+    func frame(in rootView: NSView) -> NSRect {
+        convert(bounds, to: rootView)
     }
 }

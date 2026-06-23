@@ -6,7 +6,9 @@ final class TotalStatsViewController: NSViewController {
 
     private let titleLabel = NSTextField(labelWithString: "总计")
     private let subtitleLabel = NSTextField(labelWithString: "跨 provider 全量汇总")
+    private let totalTitleLabel = NSTextField(labelWithString: "总 token")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
+    private let costTitleLabel = NSTextField(labelWithString: "总费用")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let modelSectionTitleLabel = NSTextField(labelWithString: "模型消耗")
     private let modelRowsStack = NSStackView()
@@ -65,10 +67,15 @@ final class TotalStatsViewController: NSViewController {
         titleLabel.font = .systemFont(ofSize: 22, weight: .semibold)
         subtitleLabel.font = .systemFont(ofSize: 13)
         subtitleLabel.textColor = .secondaryLabelColor
+        configureMetricTitle(totalTitleLabel)
+        configureMetricTitle(costTitleLabel)
         totalLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
+        totalLabel.alignment = .left
         costLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
         costLabel.textColor = .secondaryLabelColor
+        costLabel.alignment = .left
         modelSectionTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        modelSectionTitleLabel.alignment = .left
         emptyModelLabel.font = .systemFont(ofSize: 12)
         emptyModelLabel.textColor = .secondaryLabelColor
         statusLabel.font = .systemFont(ofSize: 12)
@@ -81,27 +88,26 @@ final class TotalStatsViewController: NSViewController {
         headerTextStack.alignment = .leading
         headerTextStack.spacing = 4
 
-        let summaryStack = NSStackView(views: [totalLabel, costLabel])
+        let totalMetricStack = makeMetricStack(titleLabel: totalTitleLabel, valueLabel: totalLabel)
+        let costMetricStack = makeMetricStack(titleLabel: costTitleLabel, valueLabel: costLabel)
+        let summaryStack = NSStackView(views: [totalMetricStack, costMetricStack])
         summaryStack.orientation = .vertical
-        summaryStack.alignment = .trailing
-        summaryStack.spacing = 4
-
-        let headerStack = NSStackView(views: [headerTextStack, summaryStack])
-        headerStack.orientation = .horizontal
-        headerStack.alignment = .firstBaseline
-        headerStack.distribution = .gravityAreas
-        headerStack.spacing = 16
+        summaryStack.alignment = .leading
+        summaryStack.spacing = 10
 
         modelRowsStack.orientation = .vertical
         modelRowsStack.alignment = .width
         modelRowsStack.spacing = 8
+        modelRowsStack.translatesAutoresizingMaskIntoConstraints = false
+        modelSectionTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        emptyModelLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let modelSectionStack = NSStackView(views: [modelSectionTitleLabel, modelRowsStack, emptyModelLabel])
         modelSectionStack.orientation = .vertical
-        modelSectionStack.alignment = .width
+        modelSectionStack.alignment = .leading
         modelSectionStack.spacing = 10
 
-        let contentStack = NSStackView(views: [headerStack, modelSectionStack, statusLabel])
+        let contentStack = NSStackView(views: [headerTextStack, summaryStack, modelSectionStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -134,10 +140,31 @@ final class TotalStatsViewController: NSViewController {
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
             contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-            headerStack.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            headerTextStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            summaryStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            summaryStack.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
+            modelSectionStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             modelSectionStack.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            modelSectionTitleLabel.leadingAnchor.constraint(equalTo: modelSectionStack.leadingAnchor),
+            modelRowsStack.leadingAnchor.constraint(equalTo: modelSectionStack.leadingAnchor),
+            modelRowsStack.widthAnchor.constraint(equalTo: modelSectionStack.widthAnchor),
+            emptyModelLabel.leadingAnchor.constraint(equalTo: modelSectionStack.leadingAnchor),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
+    }
+
+    private func configureMetricTitle(_ label: NSTextField) {
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.alignment = .left
+    }
+
+    private func makeMetricStack(titleLabel: NSTextField, valueLabel: NSTextField) -> NSStackView {
+        let stack = NSStackView(views: [titleLabel, valueLabel])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 3
+        return stack
     }
 
     private func bindNotifications() {
@@ -182,6 +209,7 @@ final class TotalStatsViewController: NSViewController {
 
     private func makeModelRow(_ row: TotalStatsModelRow, tokenText: String) -> NSView {
         let nameLabel = NSTextField(labelWithString: row.modelName)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = .systemFont(ofSize: 12)
         nameLabel.lineBreakMode = .byTruncatingMiddle
         nameLabel.maximumNumberOfLines = 1
@@ -189,23 +217,29 @@ final class TotalStatsViewController: NSViewController {
         nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let tokenLabel = NSTextField(labelWithString: tokenText)
+        tokenLabel.translatesAutoresizingMaskIntoConstraints = false
         tokenLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         tokenLabel.textColor = .secondaryLabelColor
         tokenLabel.alignment = .right
         tokenLabel.setContentHuggingPriority(.required, for: .horizontal)
         tokenLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        let rowStack = NSStackView(views: [nameLabel, tokenLabel])
-        rowStack.orientation = .horizontal
-        rowStack.alignment = .centerY
-        rowStack.distribution = .fill
-        rowStack.spacing = 12
-        rowStack.toolTip = "\(row.modelName) · \(tokenText)"
+        let rowView = NSView()
+        rowView.translatesAutoresizingMaskIntoConstraints = false
+        rowView.addSubview(nameLabel)
+        rowView.addSubview(tokenLabel)
+        rowView.toolTip = "\(row.modelName) · \(tokenText)"
 
         NSLayoutConstraint.activate([
+            nameLabel.leadingAnchor.constraint(equalTo: rowView.leadingAnchor),
+            nameLabel.topAnchor.constraint(equalTo: rowView.topAnchor),
+            nameLabel.bottomAnchor.constraint(equalTo: rowView.bottomAnchor),
+            tokenLabel.leadingAnchor.constraint(greaterThanOrEqualTo: nameLabel.trailingAnchor, constant: 12),
+            tokenLabel.trailingAnchor.constraint(equalTo: rowView.trailingAnchor),
+            tokenLabel.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
             tokenLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 72),
         ])
-        return rowStack
+        return rowView
     }
 
     private func formatCurrency(_ value: Double) -> String {
