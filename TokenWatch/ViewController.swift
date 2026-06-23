@@ -7,21 +7,18 @@
 
 import Cocoa
 
-/// 主视图控制器 — 左侧原生侧边栏 + 右侧 provider 详情容器。
-/// 每个 provider 的详情页仍由 ProviderStatsViewController 提供。
+/// 主视图控制器 — 左侧原生侧边栏 + 右侧汇总详情容器。
 class ViewController: NSViewController {
 
-    private let providers = ProviderRegistry.allProviders
     private let splitViewController = NSSplitViewController()
     private let detailContainerViewController = NSViewController()
-    private lazy var sidebarViewController = ProviderSidebarViewController(providers: providers)
+    private let sidebarViewController = ProviderSidebarViewController()
     private let settingsViewController = SettingsViewController()
     private let totalStatsViewController = TotalStatsViewController()
     private let monthlyStatsViewController = MonthlyStatsViewController()
     private let recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days)
     private let todayStatsViewController = MonthlyStatsViewController(period: .today)
 
-    private var detailViewControllers: [ProviderID: ProviderStatsViewController] = [:]
     private var currentDetailViewController: NSViewController?
     private var selectedContent: SidebarContent?
 
@@ -39,13 +36,10 @@ class ViewController: NSViewController {
         bindViewModel()
     }
 
-    /// 安装左右布局并选中第一个 provider。
+    /// 安装左右布局并选中总计页。
     private func installSplitLayout() {
         detailContainerViewController.view = NSView(frame: .zero)
 
-        sidebarViewController.onSelectProvider = { [weak self] providerID in
-            self?.showProvider(providerID)
-        }
         sidebarViewController.onSelectTotal = { [weak self] in
             self?.showTotal()
         }
@@ -77,10 +71,8 @@ class ViewController: NSViewController {
             splitViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        if let firstProvider = providers.first {
-            sidebarViewController.selectProvider(firstProvider.id)
-            showProvider(firstProvider.id)
-        }
+        sidebarViewController.selectTotal()
+        showTotal()
     }
 
     private func makeSidebarItem() -> NSSplitViewItem {
@@ -90,14 +82,6 @@ class ViewController: NSViewController {
         item.maximumThickness = 220
         item.preferredThicknessFraction = 0.28
         return item
-    }
-
-    private func showProvider(_ providerID: ProviderID) {
-        guard selectedContent != .provider(providerID),
-              let provider = ProviderRegistry.provider(for: providerID) else { return }
-
-        installDetailViewController(detailViewController(for: provider))
-        selectedContent = .provider(providerID)
     }
 
     private func showSettings() {
@@ -130,15 +114,6 @@ class ViewController: NSViewController {
         selectedContent = .today
     }
 
-    private func detailViewController(for provider: any UsageProvider) -> ProviderStatsViewController {
-        if let existing = detailViewControllers[provider.id] {
-            return existing
-        }
-        let viewController = ProviderStatsViewController(provider: provider)
-        detailViewControllers[provider.id] = viewController
-        return viewController
-    }
-
     private func installDetailViewController(_ viewController: NSViewController) {
         currentDetailViewController?.view.removeFromSuperview()
         currentDetailViewController?.removeFromParent()
@@ -158,7 +133,7 @@ class ViewController: NSViewController {
     }
 
     /// 把 ViewModel 的状态变更回调多路复用到 Notification,
-    /// 详情 ProviderStatsViewController 自行订阅自己 provider id 的事件。
+    /// 汇总页面自行订阅并按需刷新。
     private func bindViewModel() {
         observerToken = viewModel?.observe { providerID in
             NotificationCenter.default.post(
@@ -180,7 +155,6 @@ class ViewController: NSViewController {
 }
 
 private enum SidebarContent: Equatable {
-    case provider(ProviderID)
     case total
     case monthly
     case recentThirtyDays
@@ -189,7 +163,6 @@ private enum SidebarContent: Equatable {
 }
 
 private enum ProviderSidebarItem {
-    case provider(any UsageProvider)
     case total
     case monthly
     case recentThirtyDays
@@ -198,8 +171,6 @@ private enum ProviderSidebarItem {
 
     var title: String {
         switch self {
-        case .provider(let provider):
-            return provider.displayName
         case .total:
             return "总计"
         case .monthly:
@@ -214,7 +185,7 @@ private enum ProviderSidebarItem {
     }
 }
 
-/// Provider 原生侧边栏列表,负责展示 provider 顺序并发出选择事件。
+/// 原生侧边栏列表,负责展示汇总页面并发出选择事件。
 private final class ProviderSidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
 
     private static let columnIdentifier = NSUserInterfaceItemIdentifier("ProviderColumn")
@@ -224,20 +195,19 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
 
-    var onSelectProvider: ((ProviderID) -> Void)?
     var onSelectTotal: (() -> Void)?
     var onSelectMonthly: (() -> Void)?
     var onSelectRecentThirtyDays: (() -> Void)?
     var onSelectToday: (() -> Void)?
     var onSelectSettings: (() -> Void)?
 
-    init(providers: [any UsageProvider]) {
-        self.items = providers.map { .provider($0) } + [.total, .monthly, .recentThirtyDays, .today, .settings]
+    init() {
+        self.items = [.total, .monthly, .recentThirtyDays, .today, .settings]
         super.init(nibName: nil, bundle: nil)
     }
 
     required init?(coder: NSCoder) {
-        fatalError("ProviderSidebarViewController 必须用 init(providers:) 构造")
+        fatalError("ProviderSidebarViewController 必须用 init() 构造")
     }
 
     override func loadView() {
@@ -249,12 +219,10 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         setupSidebar()
     }
 
-    func selectProvider(_ providerID: ProviderID) {
+    func selectTotal() {
         loadViewIfNeeded()
-        guard let row = items.firstIndex(where: { item in
-            if case .provider(let provider) = item {
-                return provider.id == providerID
-            }
+        guard let row = items.firstIndex(where: {
+            if case .total = $0 { return true }
             return false
         }) else { return }
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
@@ -309,8 +277,6 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         let row = tableView.selectedRow
         guard items.indices.contains(row) else { return }
         switch items[row] {
-        case .provider(let provider):
-            onSelectProvider?(provider.id)
         case .total:
             onSelectTotal?()
         case .monthly:

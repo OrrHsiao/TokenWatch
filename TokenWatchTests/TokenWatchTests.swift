@@ -31,7 +31,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func sidebarListsProvidersMonthlyAndSettingsInRegistryOrder() throws {
+    @Test func sidebarListsAggregatePagesAndSettingsOnly() throws {
         let viewController = ViewController()
         viewController.loadViewIfNeeded()
 
@@ -43,7 +43,17 @@ struct TokenWatchTests {
                 .textField?
                 .stringValue
         }
-        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["总计", "最近 12 个月", "最近 30 天", "本日", "设置"])
+        #expect(displayedTitles == ["总计", "最近 12 个月", "最近 30 天", "本日", "设置"])
+    }
+
+    @MainActor
+    @Test func initialSelectionShowsTotalStatsPage() throws {
+        let viewController = ViewController()
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("总 token"))
+        #expect(labels.contains("模型消耗"))
     }
 
     @MainActor
