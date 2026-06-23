@@ -51,7 +51,37 @@ struct TotalStatsViewControllerTests {
         #expect(labels.contains("2.0M"))
         #expect(labels.contains("$16.75"))
         #expect(viewController.debugModelRowLabels == ["claude-sonnet", "claude-haiku", "gpt-5"])
-        #expect(viewController.debugModelRowTokenTexts == ["0.9M", "0.6M", "0.5M"])
+        #expect(viewController.debugModelRowValueTexts == ["0.9M · $0.00", "0.6M · $0.00", "0.5M · $0.00"])
+    }
+
+    @MainActor
+    @Test("模型消耗行在 token 后展示费用并避免小用量显示为 0.0M")
+    func modelRowsShowCostAndCompactSmallTokenCounts() throws {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(
+                            total: 125_000,
+                            cost: 1.83,
+                            byModel: [
+                                "small-model": (tokens: 50_000, cost: 0.42),
+                                "tiny-model": (tokens: 900, cost: 0.01),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            }
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(viewController.debugModelRowLabels == ["small-model", "tiny-model"])
+        #expect(viewController.debugModelRowValueTexts == ["50.0k · $0.42", "900 · $0.01"])
+        #expect(!viewController.debugModelRowValueTexts.contains("0.0M"))
     }
 
     @MainActor
@@ -215,16 +245,28 @@ struct TotalStatsViewControllerTests {
         cost: Double = 0,
         byModel: [String: Int] = [:]
     ) -> AggregatedStats {
-        let modelSummaries = byModel.mapValues { tokens in
+        makeStats(
+            total: total,
+            cost: cost,
+            byModel: byModel.mapValues { (tokens: $0, cost: 0) }
+        )
+    }
+
+    private func makeStats(
+        total: Int,
+        cost: Double = 0,
+        byModel: [String: (tokens: Int, cost: Double)]
+    ) -> AggregatedStats {
+        let modelSummaries = byModel.mapValues { modelSummary in
             UsageSummary(
-                inputTokens: tokens,
+                inputTokens: modelSummary.tokens,
                 outputTokens: 0,
                 cacheReadTokens: 0,
                 cacheCreationTokens: 0,
                 reasoningTokens: 0,
-                totalTokens: tokens,
-                cost: 0,
-                entryCount: tokens > 0 ? 1 : 0,
+                totalTokens: modelSummary.tokens,
+                cost: modelSummary.cost,
+                entryCount: modelSummary.tokens > 0 ? 1 : 0,
                 modelBreakdown: [:]
             )
         }

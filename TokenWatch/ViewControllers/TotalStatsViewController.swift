@@ -15,7 +15,7 @@ final class TotalStatsViewController: NSViewController {
     private let statusLabel = NSTextField(labelWithString: "")
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private var modelRowLabels: [String] = []
-    private var modelRowTokenTexts: [String] = []
+    private var modelRowValueTexts: [String] = []
 
     init(
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
@@ -39,8 +39,8 @@ final class TotalStatsViewController: NSViewController {
         modelRowLabels
     }
 
-    var debugModelRowTokenTexts: [String] {
-        modelRowTokenTexts
+    var debugModelRowValueTexts: [String] {
+        modelRowValueTexts
     }
 
     required init?(coder: NSCoder) {
@@ -191,12 +191,12 @@ final class TotalStatsViewController: NSViewController {
         }
 
         modelRowLabels = rows.map(\.modelName)
-        modelRowTokenTexts = rows.map { CompactNumberFormatter.formatMillions($0.totalTokens) }
+        modelRowValueTexts = rows.map { formatModelRowValue($0) }
         emptyModelLabel.isHidden = !rows.isEmpty
         modelRowsStack.isHidden = rows.isEmpty
 
         for (index, row) in rows.enumerated() {
-            modelRowsStack.addArrangedSubview(makeModelRow(row, tokenText: modelRowTokenTexts[index]))
+            modelRowsStack.addArrangedSubview(makeModelRow(row, tokenText: modelRowValueTexts[index]))
         }
     }
 
@@ -237,6 +237,17 @@ final class TotalStatsViewController: NSViewController {
 
     private func formatCurrency(_ value: Double) -> String {
         String(format: "$%.2f", value)
+    }
+
+    private func formatModelRowValue(_ row: TotalStatsModelRow) -> String {
+        "\(formatModelTokens(row.totalTokens)) · \(formatCurrency(row.totalCost))"
+    }
+
+    private func formatModelTokens(_ value: Int) -> String {
+        if value >= 100_000 {
+            return CompactNumberFormatter.formatMillions(value)
+        }
+        return CompactNumberFormatter.format(value)
     }
 
     private func statusText(for snapshot: TotalStatsSnapshot, totalProviderCount: Int) -> String {

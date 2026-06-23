@@ -15,19 +15,20 @@ struct TotalStatsSnapshot: Sendable, Equatable {
 struct TotalStatsModelRow: Sendable, Equatable, Identifiable {
     let modelName: String
     let totalTokens: Int
+    let totalCost: Double
 
     var id: String { modelName }
 }
 
 /// 将多 provider 状态构建为全量总计快照。
 enum TotalStatsBuilder {
-    /// 汇总所有已加载 provider 的全量 token、费用和模型 token。
+    /// 汇总所有已加载 provider 的全量 token、费用和模型 token、费用。
     /// - Parameter states: 各 provider 的统计状态;没有 stats 的 provider 不参与用量求和。
     /// - Returns: 可直接渲染的总计页快照。
     static func build(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> TotalStatsSnapshot {
         var totalTokens = 0
         var totalCost = 0.0
-        var modelTotals: [String: Int] = [:]
+        var modelTotals: [String: (tokens: Int, cost: Double)] = [:]
         var loadedProviderCount = 0
         var loadingProviderCount = 0
         var unauthorizedProviderCount = 0
@@ -49,19 +50,29 @@ enum TotalStatsBuilder {
             totalTokens += stats.overall.totalTokens
             totalCost += stats.overall.cost
             for (model, summary) in stats.byModel {
-                modelTotals[model, default: 0] += summary.totalTokens
+                let current = modelTotals[model] ?? (tokens: 0, cost: 0)
+                modelTotals[model] = (
+                    tokens: current.tokens + summary.totalTokens,
+                    cost: current.cost + summary.cost
+                )
             }
         }
 
         let modelRows = modelTotals
-            .filter { $0.value > 0 }
+            .filter { $0.value.tokens > 0 }
             .sorted { lhs, rhs in
-                if lhs.value != rhs.value {
-                    return lhs.value > rhs.value
+                if lhs.value.tokens != rhs.value.tokens {
+                    return lhs.value.tokens > rhs.value.tokens
                 }
                 return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
             }
-            .map { TotalStatsModelRow(modelName: $0.key, totalTokens: $0.value) }
+            .map {
+                TotalStatsModelRow(
+                    modelName: $0.key,
+                    totalTokens: $0.value.tokens,
+                    totalCost: $0.value.cost
+                )
+            }
 
         return TotalStatsSnapshot(
             totalTokens: totalTokens,
