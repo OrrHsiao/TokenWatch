@@ -43,7 +43,20 @@ struct TokenWatchTests {
                 .textField?
                 .stringValue
         }
-        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["最近 12 个月", "最近 30 天", "本日", "设置"])
+        #expect(displayedTitles == ProviderRegistry.allProviders.map(\.displayName) + ["总计", "最近 12 个月", "最近 30 天", "本日", "设置"])
+    }
+
+    @MainActor
+    @Test func selectingTotalShowsTotalStatsPage() throws {
+        let viewController = ViewController()
+        viewController.loadViewIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 5), byExtendingSelection: false)
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("总计"))
+        #expect(labels.contains("跨 provider 全量汇总"))
     }
 
     @MainActor
