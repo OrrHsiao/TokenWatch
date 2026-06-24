@@ -107,7 +107,10 @@ final class MonthlyStatsViewController: NSViewController {
     }
 
     var debugRefreshButtonFrameInView: NSRect {
-        refreshButton.convert(refreshButton.bounds, to: view)
+        guard let superview = refreshButton.superview else {
+            return .zero
+        }
+        return superview.convert(refreshButton.frame, to: view)
     }
 
     var debugTokenHoverLabelTrailingAlignsWithTokenChart: Bool {
