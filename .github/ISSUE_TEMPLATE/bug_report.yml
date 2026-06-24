@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible TokenWatch problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please remove any private project paths, prompts, or usage records before sharing logs.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+      placeholder: TokenWatch shows...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can someone else reproduce this?
+      placeholder: |
+        1. Open TokenWatch
+        2. Authorize...
+        3. Refresh...
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Data source
+      description: Which provider is involved?
+      placeholder: Claude Code, Codex, opencode, or multiple
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: macOS 15.5
+  - type: input
+    id: xcode
+    attributes:
+      label: Xcode version
+      placeholder: Xcode 26.5
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect TokenWatch to do?
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Optional. Redact local paths, prompts, responses, API keys, and usage records.
+
