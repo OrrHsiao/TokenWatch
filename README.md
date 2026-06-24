@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml)
 
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
 TokenWatch is a native macOS app for tracking token usage and estimated cost from local coding-agent data. It reads local usage records from Claude Code, Codex, and opencode, then summarizes totals by day, month, model, project, and provider.
 
 The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does not send your usage data anywhere.
@@ -56,7 +58,7 @@ You can refresh manually from the window or menu bar popover. Automatic refresh 
 Requirements:
 
 - macOS 15.0+
-- Xcode 26.5+
+- Xcode 16.4+
 - Swift 6.0
 
 Build the app:
