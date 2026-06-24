@@ -1,6 +1,12 @@
 # TokenWatch
 
 [![CI](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](./LICENSE)
+![macOS 15+](https://img.shields.io/badge/macOS-15.0%2B-000000?logo=apple)
+![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)
+![AppKit](https://img.shields.io/badge/AppKit-native-0A84FF)
+![Menu Bar App](https://img.shields.io/badge/menu%20bar-app-34C759)
+![Privacy: local only](https://img.shields.io/badge/privacy-local--only-30D158)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 

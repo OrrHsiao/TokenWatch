@@ -3,6 +3,12 @@
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
 [![CI](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](./LICENSE)
+![macOS 15+](https://img.shields.io/badge/macOS-15.0%2B-000000?logo=apple)
+![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)
+![AppKit](https://img.shields.io/badge/AppKit-native-0A84FF)
+![Menu Bar App](https://img.shields.io/badge/menu%20bar-app-34C759)
+![Privacy: local only](https://img.shields.io/badge/privacy-local--only-30D158)
 
 TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中统计 token 用量和预估费用。它会读取 Claude Code、Codex 和 opencode 的本地使用记录，并按日期、月份、模型、项目和 provider 汇总数据。
 
