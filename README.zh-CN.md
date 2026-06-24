@@ -14,6 +14,16 @@ TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中
 
 应用使用 Swift、AppKit 和 macOS App Sandbox 构建。TokenWatch 不会把你的使用数据发送到任何地方。
 
+## 截图
+
+<p align="center">
+  <img src="./docs/images/tokenwatch-statusbar-area-inspect.png" alt="TokenWatch 菜单栏状态项，展示当前 token 用量" width="820">
+</p>
+
+<p align="center">
+  <img src="./docs/images/tokenwatch-popview.png" alt="TokenWatch 菜单栏弹窗，展示 token 汇总和日历热力图" width="520">
+</p>
+
 ## 功能
 
 - 原生 macOS 菜单栏和窗口体验

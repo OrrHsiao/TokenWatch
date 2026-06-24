@@ -14,6 +14,16 @@ TokenWatch is a native macOS app for tracking token usage and estimated cost fro
 
 The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does not send your usage data anywhere.
 
+## Screenshots
+
+<p align="center">
+  <img src="./docs/images/tokenwatch-statusbar-area-inspect.png" alt="TokenWatch menu bar status item showing current token usage" width="820">
+</p>
+
+<p align="center">
+  <img src="./docs/images/tokenwatch-popview.png" alt="TokenWatch menu bar popover showing token totals and a calendar heatmap" width="520">
+</p>
+
 ## Features
 
 - Native macOS menu bar and window experience
