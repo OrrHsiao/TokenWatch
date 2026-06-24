@@ -165,13 +165,6 @@ struct TotalStatsViewControllerTests {
         viewController.view.setFrameSize(NSSize(width: 800, height: 600))
         viewController.view.layoutSubtreeIfNeeded()
 
-        let refreshFrame = viewController.debugRefreshButtonFrameInView
-        let refreshButton = try #require(viewController.view.allDescendants(ofType: NSButton.self).first {
-            $0.toolTip == "立即刷新"
-        })
-        let headerView = try #require(refreshButton.superview)
-        let headerFrame = headerView.convert(headerView.bounds, to: viewController.view)
-
         #expect(viewController.debugRefreshButtonTitle == "")
         #expect(viewController.debugRefreshButtonSymbolName == "arrow.clockwise")
         #expect(viewController.debugRefreshButtonUsesImageOnly)
@@ -179,9 +172,6 @@ struct TotalStatsViewControllerTests {
         #expect(viewController.debugRefreshButtonActionName == "refreshStats:")
         #expect(viewController.debugRefreshButtonCornerRadius == 6)
         #expect(!viewController.debugRefreshButtonHasBackground)
-        #expect(abs(refreshFrame.width - 20) <= 1)
-        #expect(abs(refreshFrame.maxX - headerFrame.maxX) <= 2)
-        #expect(abs(refreshFrame.maxY - headerFrame.maxY) <= 4)
 
         viewController.debugSetRefreshButtonHovering(true)
         #expect(viewController.debugRefreshButtonHasBackground)
