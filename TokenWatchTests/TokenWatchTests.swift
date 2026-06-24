@@ -264,7 +264,7 @@ struct TokenWatchTests {
             let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
             #expect(labels.contains("自动刷新间隔"))
 
-            let popUpButton = try #require(settingsViewController.view.firstDescendant(ofType: NSPopUpButton.self))
+            let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
             #expect(popUpButton.itemTitles == ["30 秒", "1 分钟", "5 分钟", "15 分钟", "关闭自动刷新"])
             #expect(popUpButton.titleOfSelectedItem == "30 秒")
         }
@@ -276,7 +276,7 @@ struct TokenWatchTests {
             let settingsViewController = SettingsViewController(isAuthorized: { false }, defaults: defaults)
             settingsViewController.loadViewIfNeeded()
 
-            let popUpButton = try #require(settingsViewController.view.firstDescendant(ofType: NSPopUpButton.self))
+            let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
             popUpButton.selectItem(withTitle: "5 分钟")
             _ = popUpButton.sendAction(popUpButton.action, to: popUpButton.target)
 
@@ -295,8 +295,9 @@ struct TokenWatchTests {
             )
             settingsViewController.loadViewIfNeeded()
 
-            #expect(settingsViewController.debugLanguageItemTitles == ["跟随系统", "中文", "English"])
-            #expect(settingsViewController.debugLanguageSelectedTitle == "跟随系统")
+            let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+            #expect(popUpButton.itemTitles == ["跟随系统", "中文", "English"])
+            #expect(popUpButton.titleOfSelectedItem == "跟随系统")
         }
     }
 
@@ -311,14 +312,16 @@ struct TokenWatchTests {
             )
             settingsViewController.loadViewIfNeeded()
 
-            settingsViewController.debugSelectLanguagePreference(.en)
+            let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+            popUpButton.selectItem(withTitle: "English")
+            _ = popUpButton.sendAction(popUpButton.action, to: popUpButton.target)
 
             let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
             #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
             #expect(labels.contains("Settings"))
             #expect(labels.contains("Language"))
-            #expect(settingsViewController.debugLanguageItemTitles == ["System", "Chinese", "English"])
-            #expect(settingsViewController.debugLanguageSelectedTitle == "English")
+            #expect(popUpButton.itemTitles == ["System", "Chinese", "English"])
+            #expect(popUpButton.titleOfSelectedItem == "English")
         }
     }
 
@@ -358,6 +361,12 @@ private extension NSView {
     func allDescendants<T: NSView>(ofType type: T.Type) -> [T] {
         let current = (self as? T).map { [$0] } ?? []
         return current + subviews.flatMap { $0.allDescendants(ofType: type) }
+    }
+
+    func popUpButton(identifier: String) -> NSPopUpButton? {
+        allDescendants(ofType: NSPopUpButton.self).first {
+            $0.identifier?.rawValue == identifier
+        }
     }
 }
 

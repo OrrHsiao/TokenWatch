@@ -419,10 +419,12 @@ final class SettingsViewController: NSViewController {
 
         autoRefreshIntervalLabel.font = .systemFont(ofSize: 13)
 
+        autoRefreshIntervalPopUpButton.identifier = NSUserInterfaceItemIdentifier("AutoRefreshIntervalPopUpButton")
         autoRefreshIntervalPopUpButton.target = self
         autoRefreshIntervalPopUpButton.action = #selector(autoRefreshIntervalChanged)
 
         languageLabel.font = .systemFont(ofSize: 13)
+        languagePopUpButton.identifier = NSUserInterfaceItemIdentifier("LanguagePreferencePopUpButton")
         languagePopUpButton.target = self
         languagePopUpButton.action = #selector(languagePreferenceChanged)
 
@@ -532,20 +534,6 @@ final class SettingsViewController: NSViewController {
         reloadAutoRefreshIntervalPopUp(language: language)
         reloadLanguagePopUp(language: language)
         renderAuthorizationState()
-    }
-
-    var debugLanguageItemTitles: [String] {
-        languagePopUpButton.itemTitles
-    }
-
-    var debugLanguageSelectedTitle: String {
-        languagePopUpButton.titleOfSelectedItem ?? ""
-    }
-
-    func debugSelectLanguagePreference(_ preference: AppLanguagePreference) {
-        guard let index = AppLanguagePreference.allCases.firstIndex(of: preference) else { return }
-        languagePopUpButton.selectItem(at: index)
-        languagePreferenceChanged()
     }
 
     private func subscribeToLanguageSettings() {
