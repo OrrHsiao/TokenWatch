@@ -62,13 +62,7 @@ Download the latest packaged app from the [GitHub Releases page](https://github.
 3. Move `TokenWatch.app` to `/Applications`.
 4. Open TokenWatch and authorize access to your user directory when prompted.
 
-If macOS says `TokenWatch.app is damaged and can't be opened. You should move it to the Trash.`, confirm that the app came from the official TokenWatch release page, then remove the quarantine attribute from your local copy:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/TokenWatch.app
-```
-
-Then open TokenWatch again.
+If macOS says `TokenWatch.app is damaged and can't be opened. You should move it to the Trash.`, confirm that the app came from the official TokenWatch release page, then go to **System Settings > Privacy & Security**. In the Security section, click **Open Anyway** for TokenWatch, then open TokenWatch again and choose **Open** when prompted.
 
 To build from source instead:
 
