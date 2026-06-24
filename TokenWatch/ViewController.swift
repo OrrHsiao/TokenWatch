@@ -12,8 +12,9 @@ class ViewController: NSViewController {
 
     private let splitViewController = NSSplitViewController()
     private let detailContainerViewController = NSViewController()
-    private let sidebarViewController = ProviderSidebarViewController()
-    private let settingsViewController = SettingsViewController()
+    private let languageSettings: AppLanguageSettings
+    private let sidebarViewController: ProviderSidebarViewController
+    private let settingsViewController: SettingsViewController
     private let totalStatsViewController = TotalStatsViewController()
     private let monthlyStatsViewController = MonthlyStatsViewController()
     private let recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days)
@@ -29,11 +30,28 @@ class ViewController: NSViewController {
 
     /// observer 凭证 — 用于 deinit 时取消订阅,避免 ViewModel 持有失效闭包
     private var observerToken: TokenStatsViewModel.ObservationToken?
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
+
+    init(languageSettings: AppLanguageSettings = .shared) {
+        self.languageSettings = languageSettings
+        self.sidebarViewController = ProviderSidebarViewController(languageSettings: languageSettings)
+        self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        let languageSettings = AppLanguageSettings.shared
+        self.languageSettings = languageSettings
+        self.sidebarViewController = ProviderSidebarViewController(languageSettings: languageSettings)
+        self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
+        super.init(coder: coder)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         installSplitLayout()
         bindViewModel()
+        bindLanguageSettings()
     }
 
     /// 安装左右布局并选中总计页。
@@ -144,12 +162,22 @@ class ViewController: NSViewController {
         }
     }
 
+    private func bindLanguageSettings() {
+        languageSettingsObserverToken = languageSettings.observe { [weak self] in
+            self?.sidebarViewController.reloadLocalizedText()
+        }
+    }
+
     deinit {
-        guard let token = observerToken else { return }
-        // 由 AppDelegate 强引用的 ViewModel 仍存活;deinit 在 main actor 调度路径中触发,
-        // 用 assumeIsolated 同步移除,避免 fire-and-forget Task 在销毁后仍 fire 闭包
         MainActor.assumeIsolated {
-            (NSApp.delegate as? AppDelegate)?.viewModel.removeObserver(token)
+            if let token = observerToken {
+                // 由 AppDelegate 强引用的 ViewModel 仍存活;deinit 在 main actor 调度路径中触发,
+                // 用 assumeIsolated 同步移除,避免 fire-and-forget Task 在销毁后仍 fire 闭包
+                (NSApp.delegate as? AppDelegate)?.viewModel.removeObserver(token)
+            }
+            if let token = languageSettingsObserverToken {
+                languageSettings.removeObserver(token)
+            }
         }
     }
 }
@@ -169,18 +197,18 @@ private enum ProviderSidebarItem {
     case today
     case settings
 
-    var title: String {
+    func title(language: AppLanguage) -> String {
         switch self {
         case .total:
-            return "总计"
+            return AppStrings.text(.sidebarTotal, language: language)
         case .monthly:
-            return "最近 12 个月"
+            return AppStrings.text(.sidebarRecent12Months, language: language)
         case .recentThirtyDays:
-            return "最近 30 天"
+            return AppStrings.text(.sidebarRecent30Days, language: language)
         case .today:
-            return "本日"
+            return AppStrings.text(.sidebarToday, language: language)
         case .settings:
-            return "设置"
+            return AppStrings.text(.sidebarSettings, language: language)
         }
     }
 }
@@ -192,6 +220,7 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
     private static let cellIdentifier = NSUserInterfaceItemIdentifier("ProviderSidebarCell")
 
     private let items: [ProviderSidebarItem]
+    private let languageSettings: AppLanguageSettings
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
 
@@ -201,13 +230,16 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
     var onSelectToday: (() -> Void)?
     var onSelectSettings: (() -> Void)?
 
-    init() {
+    init(languageSettings: AppLanguageSettings = .shared) {
         self.items = [.total, .monthly, .recentThirtyDays, .today, .settings]
+        self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
     }
 
     required init?(coder: NSCoder) {
-        fatalError("ProviderSidebarViewController 必须用 init() 构造")
+        self.items = [.total, .monthly, .recentThirtyDays, .today, .settings]
+        self.languageSettings = .shared
+        super.init(coder: coder)
     }
 
     override func loadView() {
@@ -227,6 +259,11 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         }) else { return }
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         tableView.scrollRowToVisible(row)
+    }
+
+    func reloadLocalizedText() {
+        loadViewIfNeeded()
+        tableView.reloadData()
     }
 
     private func setupSidebar() {
@@ -269,7 +306,7 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         let item = items[row]
         let cell = tableView.makeView(withIdentifier: Self.cellIdentifier, owner: self) as? NSTableCellView
             ?? makeCellView()
-        cell.textField?.stringValue = item.title
+        cell.textField?.stringValue = item.title(language: languageSettings.resolvedLanguage)
         return cell
     }
 
@@ -322,8 +359,12 @@ final class SettingsViewController: NSViewController {
     private let refreshButton = NSButton(title: "刷新全部数据", target: nil, action: nil)
     private let autoRefreshIntervalLabel = NSTextField(labelWithString: "自动刷新间隔")
     private let autoRefreshIntervalPopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let languageLabel = NSTextField(labelWithString: "语言")
+    private let languagePopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
     private let isAuthorized: @MainActor () -> Bool
     private let autoRefreshSettings: AutoRefreshSettings
+    private let languageSettings: AppLanguageSettings
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
 
     private var viewModel: TokenStatsViewModel? {
         (NSApp.delegate as? AppDelegate)?.viewModel
@@ -331,14 +372,19 @@ final class SettingsViewController: NSViewController {
 
     init(isAuthorized: @escaping @MainActor () -> Bool = {
         SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
-    }, autoRefreshSettings: AutoRefreshSettings = .shared) {
+    }, autoRefreshSettings: AutoRefreshSettings = .shared, languageSettings: AppLanguageSettings = .shared) {
         self.isAuthorized = isAuthorized
         self.autoRefreshSettings = autoRefreshSettings
+        self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
     }
 
     convenience init(isAuthorized: @escaping @MainActor () -> Bool, defaults: UserDefaults) {
-        self.init(isAuthorized: isAuthorized, autoRefreshSettings: AutoRefreshSettings(defaults: defaults))
+        self.init(
+            isAuthorized: isAuthorized,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: AppLanguageSettings(defaults: defaults)
+        )
     }
 
     required init?(coder: NSCoder) {
@@ -352,6 +398,7 @@ final class SettingsViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupSubviews()
+        subscribeToLanguageSettings()
         renderAuthorizationState()
     }
 
@@ -372,10 +419,12 @@ final class SettingsViewController: NSViewController {
 
         autoRefreshIntervalLabel.font = .systemFont(ofSize: 13)
 
-        autoRefreshIntervalPopUpButton.addItems(withTitles: AutoRefreshIntervalOption.allCases.map(\.title))
-        autoRefreshIntervalPopUpButton.selectItem(withTitle: autoRefreshSettings.selectedOption.title)
         autoRefreshIntervalPopUpButton.target = self
         autoRefreshIntervalPopUpButton.action = #selector(autoRefreshIntervalChanged)
+
+        languageLabel.font = .systemFont(ofSize: 13)
+        languagePopUpButton.target = self
+        languagePopUpButton.action = #selector(languagePreferenceChanged)
 
         authorizationActionButton.bezelStyle = .rounded
         authorizationActionButton.target = self
@@ -398,6 +447,11 @@ final class SettingsViewController: NSViewController {
         autoRefreshIntervalStack.alignment = .centerY
         autoRefreshIntervalStack.spacing = 8
 
+        let languageStack = NSStackView(views: [languageLabel, languagePopUpButton])
+        languageStack.orientation = .horizontal
+        languageStack.alignment = .centerY
+        languageStack.spacing = 8
+
         let buttonStack = NSStackView(views: [refreshButton])
         buttonStack.orientation = .vertical
         buttonStack.alignment = .leading
@@ -408,6 +462,7 @@ final class SettingsViewController: NSViewController {
             descriptionLabel,
             authorizationStack,
             autoRefreshIntervalStack,
+            languageStack,
             buttonStack,
         ])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
@@ -421,22 +476,30 @@ final class SettingsViewController: NSViewController {
             contentStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -32),
             contentStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
         ])
+
+        reloadLocalizedText()
     }
 
     private func renderAuthorizationState() {
         if isAuthorized() {
-            authorizationActionButton.title = "已授权"
+            authorizationActionButton.title = AppStrings.text(.settingsAuthorized, language: languageSettings.resolvedLanguage)
             authorizationActionButton.isEnabled = false
         } else {
-            authorizationActionButton.title = "去授权"
+            authorizationActionButton.title = AppStrings.text(.settingsAuthorize, language: languageSettings.resolvedLanguage)
             authorizationActionButton.isEnabled = true
         }
     }
 
     @objc private func autoRefreshIntervalChanged() {
-        guard let selectedTitle = autoRefreshIntervalPopUpButton.titleOfSelectedItem,
-              let option = AutoRefreshIntervalOption.option(titled: selectedTitle) else { return }
-        autoRefreshSettings.selectedOption = option
+        let selectedIndex = autoRefreshIntervalPopUpButton.indexOfSelectedItem
+        guard AutoRefreshIntervalOption.allCases.indices.contains(selectedIndex) else { return }
+        autoRefreshSettings.selectedOption = AutoRefreshIntervalOption.allCases[selectedIndex]
+    }
+
+    @objc private func languagePreferenceChanged() {
+        let selectedIndex = languagePopUpButton.indexOfSelectedItem
+        guard AppLanguagePreference.allCases.indices.contains(selectedIndex) else { return }
+        languageSettings.selectedPreference = AppLanguagePreference.allCases[selectedIndex]
     }
 
     @objc private func authorizationActionButtonClicked() {
@@ -455,6 +518,65 @@ final class SettingsViewController: NSViewController {
     @objc private func refreshButtonClicked() {
         Task { @MainActor in
             await viewModel?.loadAllStats()
+        }
+    }
+
+    func reloadLocalizedText() {
+        let language = languageSettings.resolvedLanguage
+        titleLabel.stringValue = AppStrings.text(.settingsTitle, language: language)
+        descriptionLabel.stringValue = AppStrings.text(.settingsDescription, language: language)
+        authorizationTitleLabel.stringValue = AppStrings.text(.settingsAuthorizationTitle, language: language)
+        refreshButton.title = AppStrings.text(.settingsRefreshAllData, language: language)
+        autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
+        languageLabel.stringValue = AppStrings.text(.settingsLanguage, language: language)
+        reloadAutoRefreshIntervalPopUp(language: language)
+        reloadLanguagePopUp(language: language)
+        renderAuthorizationState()
+    }
+
+    var debugLanguageItemTitles: [String] {
+        languagePopUpButton.itemTitles
+    }
+
+    var debugLanguageSelectedTitle: String {
+        languagePopUpButton.titleOfSelectedItem ?? ""
+    }
+
+    func debugSelectLanguagePreference(_ preference: AppLanguagePreference) {
+        guard let index = AppLanguagePreference.allCases.firstIndex(of: preference) else { return }
+        languagePopUpButton.selectItem(at: index)
+        languagePreferenceChanged()
+    }
+
+    private func subscribeToLanguageSettings() {
+        languageSettingsObserverToken = languageSettings.observe { [weak self] in
+            self?.reloadLocalizedText()
+        }
+    }
+
+    private func reloadAutoRefreshIntervalPopUp(language: AppLanguage) {
+        let selectedOption = autoRefreshSettings.selectedOption
+        autoRefreshIntervalPopUpButton.removeAllItems()
+        autoRefreshIntervalPopUpButton.addItems(withTitles: AutoRefreshIntervalOption.allCases.map { $0.title(language: language) })
+        if let selectedIndex = AutoRefreshIntervalOption.allCases.firstIndex(of: selectedOption) {
+            autoRefreshIntervalPopUpButton.selectItem(at: selectedIndex)
+        }
+    }
+
+    private func reloadLanguagePopUp(language: AppLanguage) {
+        let selectedPreference = languageSettings.selectedPreference
+        languagePopUpButton.removeAllItems()
+        languagePopUpButton.addItems(withTitles: AppLanguagePreference.allCases.map { $0.title(language: language) })
+        if let selectedIndex = AppLanguagePreference.allCases.firstIndex(of: selectedPreference) {
+            languagePopUpButton.selectItem(at: selectedIndex)
+        }
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            if let token = languageSettingsObserverToken {
+                languageSettings.removeObserver(token)
+            }
         }
     }
 }

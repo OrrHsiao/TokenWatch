@@ -545,17 +545,21 @@ enum AutoRefreshIntervalOption: String, CaseIterable {
     case disabled
 
     var title: String {
+        title(language: .zhHans)
+    }
+
+    func title(language: AppLanguage) -> String {
         switch self {
         case .seconds30:
-            return "30 秒"
+            return AppStrings.text(.autoRefreshSeconds30, language: language)
         case .minute1:
-            return "1 分钟"
+            return AppStrings.text(.autoRefreshMinute1, language: language)
         case .minutes5:
-            return "5 分钟"
+            return AppStrings.text(.autoRefreshMinutes5, language: language)
         case .minutes15:
-            return "15 分钟"
+            return AppStrings.text(.autoRefreshMinutes15, language: language)
         case .disabled:
-            return "关闭自动刷新"
+            return AppStrings.text(.autoRefreshDisabled, language: language)
         }
     }
 

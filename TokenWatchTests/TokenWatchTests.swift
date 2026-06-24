@@ -283,6 +283,63 @@ struct TokenWatchTests {
             #expect(defaults.string(forKey: "TokenWatch.autoRefreshInterval") == "minutes5")
         }
     }
+
+    @MainActor
+    @Test func settingsShowsLanguageMenu() throws {
+        try withTemporaryDefaults { defaults in
+            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+            let settingsViewController = SettingsViewController(
+                isAuthorized: { false },
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: languageSettings
+            )
+            settingsViewController.loadViewIfNeeded()
+
+            #expect(settingsViewController.debugLanguageItemTitles == ["跟随系统", "中文", "English"])
+            #expect(settingsViewController.debugLanguageSelectedTitle == "跟随系统")
+        }
+    }
+
+    @MainActor
+    @Test func changingLanguagePersistsSelectionAndRefreshesSettingsLabels() throws {
+        try withTemporaryDefaults { defaults in
+            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+            let settingsViewController = SettingsViewController(
+                isAuthorized: { false },
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: languageSettings
+            )
+            settingsViewController.loadViewIfNeeded()
+
+            settingsViewController.debugSelectLanguagePreference(.en)
+
+            let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
+            #expect(labels.contains("Settings"))
+            #expect(labels.contains("Language"))
+            #expect(settingsViewController.debugLanguageItemTitles == ["System", "Chinese", "English"])
+            #expect(settingsViewController.debugLanguageSelectedTitle == "English")
+        }
+    }
+
+    @MainActor
+    @Test func sidebarUsesEnglishTitlesWhenLanguageIsEnglish() throws {
+        try withTemporaryDefaults { defaults in
+            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+            languageSettings.selectedPreference = .en
+            let viewController = ViewController(languageSettings: languageSettings)
+            viewController.loadViewIfNeeded()
+
+            let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+            let displayedTitles = (0..<sidebar.numberOfRows).compactMap { row in
+                (sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView)?
+                    .textField?
+                    .stringValue
+            }
+
+            #expect(displayedTitles == ["Total", "Last 12 Months", "Last 30 Days", "Today", "Settings"])
+        }
+    }
 }
 
 private extension NSView {
