@@ -8,23 +8,25 @@ final class TotalStatsViewController: NSViewController {
     private static let refreshButtonSpacing: CGFloat = 8
     private static let refreshButtonDefaultSymbolName = "arrow.clockwise"
     private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
-    private static let partialLoadingStatusText = "部分数据仍在加载"
 
-    private let titleLabel = NSTextField(labelWithString: "总计")
-    private let subtitleLabel = NSTextField(labelWithString: "跨 provider 全量汇总")
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costLabel = NSTextField(labelWithString: "$0.00")
-    private let modelSectionTitleLabel = NSTextField(labelWithString: "模型消耗")
+    private let modelSectionTitleLabel = NSTextField(labelWithString: "")
     private let modelRowsStack = NSStackView()
-    private let emptyModelLabel = NSTextField(labelWithString: "暂无模型数据")
+    private let emptyModelLabel = NSTextField(labelWithString: "")
     private let statusLabel = NSTextField(labelWithString: "")
     private let partialLoadingStatusLabel = NSTextField(labelWithString: "")
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let refreshAction: @MainActor () async -> Void
+    private let languageSettings: AppLanguageSettings
     private let refreshButton = RefreshIconButton()
     private var currentRefreshButtonSymbolName: String?
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var modelRowLabels: [String] = []
     private var modelRowValueTexts: [String] = []
+    private var language: AppLanguage { languageSettings.resolvedLanguage }
 
     init(
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
@@ -34,12 +36,14 @@ final class TotalStatsViewController: NSViewController {
             if let viewModel = (NSApp.delegate as? AppDelegate)?.viewModel {
                 await viewModel.loadAllStats()
             }
-        }
+        },
+        languageSettings: AppLanguageSettings = .shared
     ) {
         self.stateProvider = stateProvider
         self.refreshAction = refreshAction
+        self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
-        self.title = "总计"
+        self.title = AppStrings.text(.sidebarTotal, language: languageSettings.resolvedLanguage)
     }
 
     var debugTotalText: String {
@@ -124,7 +128,12 @@ final class TotalStatsViewController: NSViewController {
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        MainActor.assumeIsolated {
+            NotificationCenter.default.removeObserver(self)
+            if let token = languageSettingsObserverToken {
+                languageSettings.removeObserver(token)
+            }
+        }
     }
 
     private func setupSubviews() {
@@ -263,14 +272,13 @@ final class TotalStatsViewController: NSViewController {
         refreshButton.isBordered = false
         refreshButton.bezelStyle = .smallSquare
         refreshButton.contentTintColor = .secondaryLabelColor
-        refreshButton.toolTip = "立即刷新"
         refreshButton.target = self
         refreshButton.action = #selector(refreshStats(_:))
         refreshButton.setButtonType(.momentaryChange)
         refreshButton.setContentHuggingPriority(.required, for: .horizontal)
         refreshButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
-        setRefreshButtonLoading(false)
+        applyLocalizedText()
     }
 
     private func bindNotifications() {
@@ -280,6 +288,10 @@ final class TotalStatsViewController: NSViewController {
             name: .providerStateDidChange,
             object: nil
         )
+        languageSettingsObserverToken = languageSettings.observe { [weak self] in
+            self?.applyLocalizedText()
+            self?.render()
+        }
     }
 
     @objc private func providerStateDidChange(_ note: Notification) {
@@ -293,12 +305,22 @@ final class TotalStatsViewController: NSViewController {
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
         rebuildModelRows(snapshot.modelRows)
-        applyStatusText(statusText(for: snapshot, totalProviderCount: states.count))
+        let status = statusText(for: snapshot, totalProviderCount: states.count)
+        applyStatusText(status.text, isPartialLoading: status.isPartialLoading)
         applyRefreshButtonLoadingState(states: states)
     }
 
-    private func applyStatusText(_ text: String) {
-        if text == Self.partialLoadingStatusText {
+    private func applyLocalizedText() {
+        title = AppStrings.text(.sidebarTotal, language: language)
+        titleLabel.stringValue = AppStrings.text(.sidebarTotal, language: language)
+        subtitleLabel.stringValue = AppStrings.text(.totalSubtitle, language: language)
+        modelSectionTitleLabel.stringValue = AppStrings.text(.totalModelUsage, language: language)
+        emptyModelLabel.stringValue = AppStrings.text(.totalEmptyModels, language: language)
+        setRefreshButtonLoading(!refreshButton.isEnabled)
+    }
+
+    private func applyStatusText(_ text: String, isPartialLoading: Bool) {
+        if isPartialLoading {
             partialLoadingStatusLabel.stringValue = text
             partialLoadingStatusLabel.isHidden = false
             statusLabel.stringValue = ""
@@ -329,11 +351,22 @@ final class TotalStatsViewController: NSViewController {
         let symbolName = isLoading
             ? Self.refreshButtonLoadingSymbolName
             : Self.refreshButtonDefaultSymbolName
-        setRefreshButtonSymbol(symbolName, accessibilityDescription: isLoading ? "正在刷新" : "立即刷新")
+        setRefreshButtonSymbol(
+            symbolName,
+            accessibilityDescription: isLoading
+                ? AppStrings.text(.refreshInProgress, language: language)
+                : AppStrings.text(.refreshNow, language: language)
+        )
 
         refreshButton.isEnabled = !isLoading
-        refreshButton.toolTip = isLoading ? "正在刷新" : "立即刷新"
-        refreshButton.setAccessibilityLabel(isLoading ? "正在刷新总计数据" : "刷新总计数据")
+        refreshButton.toolTip = isLoading
+            ? AppStrings.text(.refreshInProgress, language: language)
+            : AppStrings.text(.refreshNow, language: language)
+        refreshButton.setAccessibilityLabel(
+            isLoading
+                ? AppStrings.text(.refreshingTotalAccessibility, language: language)
+                : AppStrings.text(.refreshTotalAccessibility, language: language)
+        )
     }
 
     private func setRefreshButtonSymbol(_ symbolName: String, accessibilityDescription: String) {
@@ -414,27 +447,27 @@ final class TotalStatsViewController: NSViewController {
         return CompactNumberFormatter.format(value)
     }
 
-    private func statusText(for snapshot: TotalStatsSnapshot, totalProviderCount: Int) -> String {
+    private func statusText(for snapshot: TotalStatsSnapshot, totalProviderCount: Int) -> (text: String, isPartialLoading: Bool) {
         if totalProviderCount > 0
             && snapshot.loadingProviderCount == totalProviderCount
             && snapshot.loadedProviderCount == 0 {
-            return "正在加载用量数据..."
+            return (AppStrings.text(.statusLoadingUsage, language: language), false)
         }
         if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
-            return "请先在设置中授权访问用户目录"
+            return (AppStrings.text(.statusNeedsHomeAuthorization, language: language), false)
         }
         if snapshot.loadedProviderCount == 0, let errorMessage = snapshot.errorMessages.first {
-            return errorMessage
+            return (errorMessage, false)
         }
         if snapshot.totalTokens == 0 {
-            return "总计暂无 token 数据"
+            return (AppStrings.text(.statusTotalNoTokenData, language: language), false)
         }
         if snapshot.loadingProviderCount > 0 {
-            return Self.partialLoadingStatusText
+            return (AppStrings.text(.statusPartialLoading, language: language), true)
         }
         if let errorMessage = snapshot.errorMessages.first {
-            return errorMessage
+            return (errorMessage, false)
         }
-        return ""
+        return ("", false)
     }
 }

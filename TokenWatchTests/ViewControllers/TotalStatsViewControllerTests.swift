@@ -57,6 +57,28 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("英文下展示总计页文案")
+    func rendersEnglishCopy() throws {
+        let settings = AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
+        settings.selectedPreference = .en
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [.claude: .init(stats: makeStats(total: 0), isLoading: false, errorMessage: nil, needsAuthorization: false)]
+            },
+            languageSettings: settings
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Total"))
+        #expect(labels.contains("All-time summary across providers"))
+        #expect(labels.contains("Model Usage"))
+        #expect(viewController.debugStatusText == "No total token data")
+        #expect(viewController.debugRefreshButtonToolTip == "Refresh Now")
+    }
+
+    @MainActor
     @Test("模型消耗行在 token 后展示费用并避免小用量显示为 0.0M")
     func modelRowsShowCostAndCompactSmallTokenCounts() throws {
         let viewController = TotalStatsViewController(
@@ -377,6 +399,13 @@ struct TotalStatsViewControllerTests {
             byProject: [:],
             dataSourceCount: 1
         )
+    }
+
+    private func temporaryDefaults() -> UserDefaults {
+        let suiteName = "TotalStatsViewControllerTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
     }
 }
 
