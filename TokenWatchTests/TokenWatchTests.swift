@@ -12,6 +12,102 @@ import AppKit
 struct TokenWatchTests {
 
     @MainActor
+    @Test func firstLaunchWithoutBookmarkRequestsInitialAuthorization() async {
+        var didLoadAllStats = false
+        var didRequestAuthorization = false
+        var didMarkPrompted = false
+
+        let coordinator = AppLaunchAuthorizationCoordinator(
+            hasBookmark: { false },
+            hasPromptedInitialAuthorization: { false },
+            markInitialAuthorizationPrompted: { didMarkPrompted = true },
+            loadAllStats: { didLoadAllStats = true },
+            requestInitialAuthorization: {
+                didRequestAuthorization = true
+                return true
+            }
+        )
+
+        await coordinator.performStartupWork()
+
+        #expect(didRequestAuthorization)
+        #expect(didMarkPrompted)
+        #expect(!didLoadAllStats)
+    }
+
+    @MainActor
+    @Test func startupWithBookmarkLoadsStatsWithoutInitialAuthorization() async {
+        var didLoadAllStats = false
+        var didRequestAuthorization = false
+        var didMarkPrompted = false
+
+        let coordinator = AppLaunchAuthorizationCoordinator(
+            hasBookmark: { true },
+            hasPromptedInitialAuthorization: { false },
+            markInitialAuthorizationPrompted: { didMarkPrompted = true },
+            loadAllStats: { didLoadAllStats = true },
+            requestInitialAuthorization: {
+                didRequestAuthorization = true
+                return true
+            }
+        )
+
+        await coordinator.performStartupWork()
+
+        #expect(didLoadAllStats)
+        #expect(!didRequestAuthorization)
+        #expect(!didMarkPrompted)
+    }
+
+    @MainActor
+    @Test func startupAfterInitialPromptAttemptLoadsStatsWithoutReprompting() async {
+        var didLoadAllStats = false
+        var didRequestAuthorization = false
+        var didMarkPrompted = false
+
+        let coordinator = AppLaunchAuthorizationCoordinator(
+            hasBookmark: { false },
+            hasPromptedInitialAuthorization: { true },
+            markInitialAuthorizationPrompted: { didMarkPrompted = true },
+            loadAllStats: { didLoadAllStats = true },
+            requestInitialAuthorization: {
+                didRequestAuthorization = true
+                return true
+            }
+        )
+
+        await coordinator.performStartupWork()
+
+        #expect(didLoadAllStats)
+        #expect(!didRequestAuthorization)
+        #expect(!didMarkPrompted)
+    }
+
+    @MainActor
+    @Test func canceledInitialAuthorizationFallsBackToStatsLoad() async {
+        var didLoadAllStats = false
+        var didRequestAuthorization = false
+        var didMarkPrompted = false
+
+        let coordinator = AppLaunchAuthorizationCoordinator(
+            hasBookmark: { false },
+            hasPromptedInitialAuthorization: { false },
+            markInitialAuthorizationPrompted: { didMarkPrompted = true },
+            loadAllStats: { didLoadAllStats = true },
+            requestInitialAuthorization: {
+                didRequestAuthorization = true
+                return false
+            }
+        )
+
+        await coordinator.performStartupWork()
+
+        #expect(didRequestAuthorization)
+        #expect(didMarkPrompted)
+        #expect(didLoadAllStats)
+    }
+
+    @MainActor
     @Test func mainStoryboardUsesRoomierDefaultWindowSize() throws {
         let storyboard = NSStoryboard(name: "Main", bundle: Bundle.main)
         let windowController = try #require(storyboard.instantiateInitialController() as? NSWindowController)

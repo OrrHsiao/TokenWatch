@@ -11,6 +11,8 @@ import Cocoa
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
+    private static let initialAuthorizationPromptedKey = "TokenWatch.didPromptInitialHomeAuthorization"
+
     /// ViewModel 实例,协调数据加载和统计计算
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
     let viewModel = TokenStatsViewModel()
@@ -23,10 +25,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 先建状态栏(订阅 ViewModel),再异步加载,确保首次 onStateChange 能被状态栏接到
         statusBarController = StatusBarController(viewModel: viewModel)
 
-        // 尝试恢复所有 provider 的 Security-Scoped Bookmark 并并发加载数据
-        // ViewController 会在 viewDidLoad 注册 observer,此处异步加载到完成时它已 ready
-        Task {
-            await viewModel.loadAllStats()
+        // 首次无授权时主动弹出用户目录授权;其余启动路径保持原有自动加载行为。
+        Task { @MainActor in
+            let coordinator = AppLaunchAuthorizationCoordinator(
+                hasBookmark: {
+                    SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
+                },
+                hasPromptedInitialAuthorization: {
+                    UserDefaults.standard.bool(forKey: Self.initialAuthorizationPromptedKey)
+                },
+                markInitialAuthorizationPrompted: {
+                    UserDefaults.standard.set(true, forKey: Self.initialAuthorizationPromptedKey)
+                },
+                loadAllStats: { [viewModel] in
+                    await viewModel.loadAllStats()
+                },
+                requestInitialAuthorization: { [viewModel] in
+                    guard let providerID = ProviderRegistry.allProviders.first?.id else { return false }
+                    return await viewModel.requestAuthorization(for: providerID)
+                }
+            )
+            await coordinator.performStartupWork()
         }
     }
 
@@ -40,5 +59,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return true
+    }
+}
+
+/// 协调应用启动时的数据加载和首次授权弹窗。
+@MainActor
+struct AppLaunchAuthorizationCoordinator {
+    let hasBookmark: () -> Bool
+    let hasPromptedInitialAuthorization: () -> Bool
+    let markInitialAuthorizationPrompted: () -> Void
+    let loadAllStats: () async -> Void
+    let requestInitialAuthorization: () async -> Bool
+
+    /// 执行启动流程:已有授权直接加载;首次缺失授权则弹出授权,取消后回落为普通未授权状态。
+    func performStartupWork() async {
+        if hasBookmark() {
+            await loadAllStats()
+            return
+        }
+
+        guard !hasPromptedInitialAuthorization() else {
+            await loadAllStats()
+            return
+        }
+
+        markInitialAuthorizationPrompted()
+        let didAuthorize = await requestInitialAuthorization()
+        if !didAuthorize {
+            await loadAllStats()
+        }
     }
 }

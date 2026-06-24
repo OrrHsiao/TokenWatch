@@ -151,14 +151,18 @@ final class TokenStatsViewModel: Sendable {
     }
 
     /// 触发指定 provider 的授权流程
-    func requestAuthorization(for id: ProviderID) async {
-        guard let provider = ProviderRegistry.provider(for: id) else { return }
+    /// - Returns: 用户完成授权并保存 bookmark 时返回 true;取消或 provider 不存在时返回 false
+    @discardableResult
+    func requestAuthorization(for id: ProviderID) async -> Bool {
+        guard let provider = ProviderRegistry.provider(for: id) else { return false }
         if let _ = await bookmarkManager.promptUserToSelectDirectory(forProvider: provider) {
             markProvidersAuthorized(sharingBookmarkWith: provider)
             logger.info("\(provider.displayName) 用户授权成功")
             await loadAllStats()
+            return true
         } else {
             logger.info("\(provider.displayName) 用户取消授权")
+            return false
         }
     }
 }
