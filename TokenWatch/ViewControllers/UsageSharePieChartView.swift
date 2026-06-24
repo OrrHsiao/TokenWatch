@@ -9,7 +9,7 @@ final class UsageSharePieChartView: NSView {
     private let titleContainer = NSView()
     private let drawingView = UsageSharePieDrawingView()
     private let legendStack = NSStackView()
-    private let emptyLabel = NSTextField(labelWithString: "暂无数据")
+    private let emptyLabel = NSTextField(labelWithString: "")
     private var slices: [UsageShareSlice] = []
     private var legendNameLabels: [NSTextField] = []
     private var legendValueLabels: [NSTextField] = []
@@ -18,7 +18,9 @@ final class UsageSharePieChartView: NSView {
     private var bodyStackTrailingConstraint: NSLayoutConstraint?
     private var rootStackTrailingConstraint: NSLayoutConstraint?
 
-    let debugTitle: String
+    var debugTitle: String {
+        titleLabel.stringValue
+    }
 
     var debugLegendRowCount: Int {
         legendStack.arrangedSubviews.count
@@ -56,25 +58,28 @@ final class UsageSharePieChartView: NSView {
     }
 
     init(title: String) {
-        self.debugTitle = title
         self.titleLabel = NSTextField(labelWithString: title)
         super.init(frame: .zero)
         setupView()
     }
 
     required init?(coder: NSCoder) {
-        self.debugTitle = "占比"
         self.titleLabel = NSTextField(labelWithString: "占比")
         super.init(coder: coder)
         setupView()
     }
 
+    func setTitle(_ title: String) {
+        titleLabel.stringValue = title
+    }
+
     /// 用新的 slices 替换饼图和图例。
-    func configure(slices: [UsageShareSlice]) {
+    func configure(slices: [UsageShareSlice], language: AppLanguage = .zhHans) {
         let visibleSlices = slices.filter {
             $0.totalTokens > 0 && $0.percentage.isFinite && $0.percentage > 0
         }
-        self.slices = Self.compactSlices(visibleSlices)
+        self.slices = Self.compactSlices(visibleSlices, language: language)
+        emptyLabel.stringValue = AppStrings.text(.shareEmpty, language: language)
         drawingView.configure(slices: self.slices)
         rebuildLegend()
         updateHoverText(slice: nil)
@@ -90,7 +95,7 @@ final class UsageSharePieChartView: NSView {
         updateHoverText(slice: slices.first { $0.id == sliceID })
     }
 
-    private static func compactSlices(_ slices: [UsageShareSlice]) -> [UsageShareSlice] {
+    private static func compactSlices(_ slices: [UsageShareSlice], language: AppLanguage) -> [UsageShareSlice] {
         guard slices.count > maxLegendRowCount else { return slices }
 
         let leadingCount = maxLegendRowCount - 1
@@ -103,7 +108,7 @@ final class UsageSharePieChartView: NSView {
         return leadingSlices + [
             UsageShareSlice(
                 id: "other",
-                label: "其他",
+                label: AppStrings.text(.shareOther, language: language),
                 totalTokens: otherTokens,
                 percentage: otherPercentage
             ),

@@ -29,6 +29,17 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("英文下费用月份横轴使用英文缩写")
+    func englishCostXAxisLabelsUseShortMonthNames() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(monthKeys: ["2026-06"], monthLabels: ["Jun"], costs: [12.5])
+
+        view.configure(with: snapshot, language: .en)
+
+        #expect(view.debugXAxisLabels == ["2026\nJun"])
+    }
+
+    @MainActor
     @Test("费用纵轴标签不显示小数")
     func costYAxisLabelsUseWholeCurrencyValues() {
         let view = MonthlyCostChartView()

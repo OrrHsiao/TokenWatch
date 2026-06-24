@@ -86,6 +86,24 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-06-20T13")?.isCurrentMonth == false)
     }
 
+    @Test("英文标题、说明、空状态和小时标签")
+    func periodTextUsesEnglish() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 9, minute: 0, calendar: calendar)
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [:],
+            period: .today,
+            now: now,
+            calendar: calendar,
+            language: .en
+        )
+
+        #expect(UsageStatsPeriod.recent12Months.title(language: .en) == "Last 12 Months")
+        #expect(UsageStatsPeriod.recent30Days.subtitle(language: .en) == "Last 30 Days, Summary across providers")
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .en) == "Today has no token data")
+        #expect(snapshot.monthBuckets[9].monthLabel == "9")
+    }
+
     @Test("跨年边界只统计最近十二个月")
     func ignoresMonthsOutsideRecentTwelveMonthWindow() {
         let calendar = utcCalendar()

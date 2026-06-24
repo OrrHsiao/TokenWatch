@@ -7,22 +7,50 @@ enum UsageStatsPeriod: Sendable, Equatable {
     case today
 
     var title: String {
-        switch self {
-        case .recent12Months:
+        title(language: .zhHans)
+    }
+
+    func title(language: AppLanguage) -> String {
+        switch (self, language) {
+        case (.recent12Months, .zhHans):
             return "最近 12 个月"
-        case .recent30Days:
+        case (.recent30Days, .zhHans):
             return "最近 30 天"
-        case .today:
+        case (.today, .zhHans):
             return "本日"
+        case (.recent12Months, .en):
+            return "Last 12 Months"
+        case (.recent30Days, .en):
+            return "Last 30 Days"
+        case (.today, .en):
+            return "Today"
         }
     }
 
     var subtitle: String {
-        "\(title),跨 provider 汇总"
+        subtitle(language: .zhHans)
+    }
+
+    func subtitle(language: AppLanguage) -> String {
+        switch language {
+        case .zhHans:
+            return "\(title(language: language)),\(AppStrings.text(.periodSubtitleSuffix, language: language))"
+        case .en:
+            return "\(title(language: language)), \(AppStrings.text(.periodSubtitleSuffix, language: language))"
+        }
     }
 
     var emptyDataText: String {
-        "\(title)暂无 token 数据"
+        emptyDataText(language: .zhHans)
+    }
+
+    func emptyDataText(language: AppLanguage) -> String {
+        switch language {
+        case .zhHans:
+            return "\(title(language: language))\(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
+        case .en:
+            return "\(title(language: language)) \(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
+        }
     }
 
     fileprivate var bucketCount: Int {
@@ -85,17 +113,27 @@ enum UsageStatsPeriod: Sendable, Equatable {
         }
     }
 
-    fileprivate func bucketLabel(for date: Date, calendar: Calendar) -> String {
+    fileprivate func bucketLabel(for date: Date, calendar: Calendar, language: AppLanguage) -> String {
         switch self {
         case .recent12Months:
             let month = calendar.component(.month, from: date)
-            return "\(month)月"
+            switch language {
+            case .zhHans:
+                return "\(month)月"
+            case .en:
+                return Self.englishShortMonthName(for: month)
+            }
         case .recent30Days:
             let components = calendar.dateComponents([.month, .day], from: date)
             return "\(components.month ?? 0)/\(components.day ?? 0)"
         case .today:
             let hour = calendar.component(.hour, from: date)
-            return "\(hour)时"
+            switch language {
+            case .zhHans:
+                return "\(hour)时"
+            case .en:
+                return "\(hour)"
+            }
         }
     }
 
@@ -134,6 +172,12 @@ enum UsageStatsPeriod: Sendable, Equatable {
             components.day ?? 0,
             components.hour ?? 0
         )
+    }
+
+    static func englishShortMonthName(for month: Int) -> String {
+        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        guard (1...12).contains(month) else { return "\(month)" }
+        return names[month - 1]
     }
 }
 
@@ -220,7 +264,6 @@ struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
 /// 将多 provider 状态构建为指定时间窗口的 token 柱状图快照。
 enum MonthlyTokenChartBuilder {
     private static let maxModelSegmentCount = 5
-    private static let otherModelSegmentName = "其他"
 
     /// 构建包含 `now` 所在桶、按指定窗口向前回溯的 token 快照。
     /// - Parameters:
@@ -233,7 +276,8 @@ enum MonthlyTokenChartBuilder {
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         period: UsageStatsPeriod = .recent12Months,
         now: Date,
-        calendar: Calendar
+        calendar: Calendar,
+        language: AppLanguage = .zhHans
     ) -> MonthlyTokenChartSnapshot {
         let currentBucketStart = period.currentBucketStart(now: now, calendar: calendar)
         let windowStart = period.windowStart(currentBucketStart: currentBucketStart, now: now, calendar: calendar)
@@ -287,7 +331,8 @@ enum MonthlyTokenChartBuilder {
 
         let maxMonthlyTokens = totals.values.max() ?? 0
         let maxMonthlyCost = costs.values.max() ?? 0
-        let modelSegmentLegendNames = buildModelSegmentLegendNames(modelTotals)
+        let otherModelSegmentName = AppStrings.text(.shareOther, language: language)
+        let modelSegmentLegendNames = buildModelSegmentLegendNames(modelTotals, otherModelSegmentName: otherModelSegmentName)
         let buckets = bucketStarts.map { bucketStart in
             let key = period.bucketKey(for: bucketStart, calendar: calendar)
             let totalTokens = totals[key, default: 0]
@@ -301,7 +346,7 @@ enum MonthlyTokenChartBuilder {
             return MonthlyTokenBucket(
                 id: key,
                 monthKey: key,
-                monthLabel: period.bucketLabel(for: bucketStart, calendar: calendar),
+                monthLabel: period.bucketLabel(for: bucketStart, calendar: calendar, language: language),
                 totalTokens: totalTokens,
                 totalCost: totalCost,
                 normalizedHeight: normalizedHeight,
@@ -311,7 +356,8 @@ enum MonthlyTokenChartBuilder {
                     modelTotalsByBucket[key, default: [:]],
                     costs: modelCostsByBucket[key, default: [:]],
                     monthTotalTokens: totalTokens,
-                    legendModelNames: modelSegmentLegendNames
+                    legendModelNames: modelSegmentLegendNames,
+                    otherModelSegmentName: otherModelSegmentName
                 )
             )
         }
@@ -353,7 +399,8 @@ enum MonthlyTokenChartBuilder {
         _ totals: [String: Int],
         costs: [String: Double],
         monthTotalTokens: Int,
-        legendModelNames: [String]
+        legendModelNames: [String],
+        otherModelSegmentName: String
     ) -> [MonthlyTokenModelSegment] {
         guard monthTotalTokens > 0, !legendModelNames.isEmpty else { return [] }
         let leadingModelNames = legendModelNames.filter { $0 != otherModelSegmentName }
@@ -412,7 +459,10 @@ enum MonthlyTokenChartBuilder {
         }
     }
 
-    private static func buildModelSegmentLegendNames(_ totals: [String: Int]) -> [String] {
+    private static func buildModelSegmentLegendNames(
+        _ totals: [String: Int],
+        otherModelSegmentName: String
+    ) -> [String] {
         let sortedNames = totals
             .filter { $0.value > 0 }
             .sorted { lhs, rhs in

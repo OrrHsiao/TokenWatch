@@ -52,6 +52,73 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("英文下展示时间窗口页文案")
+    func rendersEnglishCopy() throws {
+        let calendar = utcCalendar()
+        let settings = AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
+        settings.selectedPreference = .en
+        let viewController = MonthlyStatsViewController(
+            period: .recent30Days,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byDay: ["2026-06-20": makeSummary(total: 0)], byMonth: [:]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: settings
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Last 30 Days"))
+        #expect(labels.contains("Last 30 Days, Summary across providers"))
+        #expect(labels.contains("Token Usage"))
+        #expect(labels.contains("Cost"))
+        #expect(labels.contains("Tool Share"))
+        #expect(labels.contains("Model Share"))
+        #expect(viewController.debugStatusText == "Last 30 Days has no token data")
+        #expect(viewController.debugRefreshButtonToolTip == "Refresh Now")
+    }
+
+    @MainActor
+    @Test("切换语言只重渲染文案不触发刷新")
+    func languageChangeRerendersWithoutRefreshing() async throws {
+        var refreshCount = 0
+        let calendar = utcCalendar()
+        let settings = AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(byMonth: ["2026-06": makeSummary(total: 0)]),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {
+                refreshCount += 1
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: settings
+        )
+
+        viewController.loadViewIfNeeded()
+        settings.selectedPreference = .en
+        await Task.yield()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Last 12 Months"))
+        #expect(viewController.debugStatusText == "Last 12 Months has no token data")
+        #expect(refreshCount == 0)
+    }
+
+    @MainActor
     @Test("最近三十天配置展示标题、说明和三十个日桶")
     func rendersRecentThirtyDaysTitleSubtitleAndDailyBuckets() throws {
         let calendar = utcCalendar()
@@ -606,6 +673,13 @@ struct MonthlyStatsViewControllerTests {
 
     private func date(_ year: Int, _ month: Int, _ day: Int, calendar: Calendar) -> Date {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
+    }
+
+    private func temporaryDefaults() -> UserDefaults {
+        let suiteName = "MonthlyStatsViewControllerTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
     }
 
     private func makeSummary(

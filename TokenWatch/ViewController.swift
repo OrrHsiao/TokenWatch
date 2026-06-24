@@ -15,10 +15,16 @@ class ViewController: NSViewController {
     private let languageSettings: AppLanguageSettings
     private let sidebarViewController: ProviderSidebarViewController
     private let settingsViewController: SettingsViewController
-    private let totalStatsViewController = TotalStatsViewController()
-    private let monthlyStatsViewController = MonthlyStatsViewController()
-    private let recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days)
-    private let todayStatsViewController = MonthlyStatsViewController(period: .today)
+    private lazy var totalStatsViewController = TotalStatsViewController(languageSettings: languageSettings)
+    private lazy var monthlyStatsViewController = MonthlyStatsViewController(languageSettings: languageSettings)
+    private lazy var recentThirtyDaysStatsViewController = MonthlyStatsViewController(
+        period: .recent30Days,
+        languageSettings: languageSettings
+    )
+    private lazy var todayStatsViewController = MonthlyStatsViewController(
+        period: .today,
+        languageSettings: languageSettings
+    )
 
     private var currentDetailViewController: NSViewController?
     private var selectedContent: SidebarContent?

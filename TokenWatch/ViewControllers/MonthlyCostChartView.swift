@@ -4,7 +4,11 @@ import SwiftUI
 
 /// 最近 12 个月费用柱状图。只消费 snapshot,不读取 ViewModel。
 final class MonthlyCostChartView: NSView {
-    private let chartHost = NSHostingView(rootView: AnyView(MonthlyCostBarChartContent(buckets: [], onHoverMonthKeyChange: { _ in })))
+    private let chartHost = NSHostingView(rootView: AnyView(MonthlyCostBarChartContent(
+        buckets: [],
+        language: .zhHans,
+        onHoverMonthKeyChange: { _ in }
+    )))
     private var buckets: [MonthlyTokenBucket] = []
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugMonthLabels: [String] = []
@@ -13,6 +17,7 @@ final class MonthlyCostChartView: NSView {
     private(set) var debugModelSegmentCostsByMonth: [String: [Double]] = [:]
     private(set) var debugModelSegmentColorsByMonth: [String: [String: NSColor]] = [:]
     var onHoverTextChange: ((String?) -> Void)?
+    private var language: AppLanguage = .zhHans
 
     var debugRegularBarColor: NSColor {
         MonthlyBarChartStyle.regularBarColor
@@ -45,11 +50,14 @@ final class MonthlyCostChartView: NSView {
     }
 
     /// 用新的 snapshot 替换费用图表内容。
-    func configure(with snapshot: MonthlyTokenChartSnapshot) {
+    func configure(with snapshot: MonthlyTokenChartSnapshot, language: AppLanguage = .zhHans) {
+        self.language = language
         buckets = snapshot.monthBuckets
         debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedCostHeight($0.normalizedCostHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
-        debugXAxisLabels = snapshot.monthBuckets.map { MonthlyBarChartStyle.monthAxisLabel(for: $0.monthKey) }
+        debugXAxisLabels = snapshot.monthBuckets.map {
+            MonthlyBarChartStyle.monthAxisLabel(for: $0.monthKey, language: language)
+        }
         debugModelSegmentLabelsByMonth = Dictionary(uniqueKeysWithValues: snapshot.monthBuckets.map { bucket in
             (bucket.monthKey, bucket.modelSegments.map(\.modelName))
         })
@@ -61,6 +69,7 @@ final class MonthlyCostChartView: NSView {
         })
         chartHost.rootView = AnyView(MonthlyCostBarChartContent(
             buckets: snapshot.monthBuckets,
+            language: language,
             onHoverMonthKeyChange: { [weak self] monthKey in
                 self?.updateHoverText(monthKey: monthKey)
             }
@@ -120,6 +129,7 @@ private func clampNormalizedCostHeight(_ value: Double) -> Double {
 
 private struct MonthlyCostBarChartContent: View {
     let buckets: [MonthlyTokenBucket]
+    let language: AppLanguage
     let onHoverMonthKeyChange: (String?) -> Void
 
     private var maxCost: Double {
@@ -131,7 +141,7 @@ private struct MonthlyCostBarChartContent: View {
             ForEach(buckets) { bucket in
                 if bucket.modelSegments.isEmpty {
                     BarMark(
-                        x: .value("月份", bucket.monthKey),
+                        x: .value(axisValueName, bucket.monthKey),
                         y: .value("USD", bucket.totalCost)
                     )
                     .foregroundStyle(
@@ -140,13 +150,13 @@ private struct MonthlyCostBarChartContent: View {
                             : MonthlyBarChartStyle.regularBarSwiftUIColor
                     )
                     .cornerRadius(4)
-                    .accessibilityLabel(bucket.monthLabel)
+                    .accessibilityLabel(accessibilityLabel(for: bucket))
                     .accessibilityValue(String(format: "$%.2f", bucket.totalCost))
                 } else {
                     ForEach(bucket.modelSegments) { segment in
-                        let accessibilityLabel = "\(bucket.monthLabel) \(segment.modelName)"
+                        let accessibilityLabel = "\(accessibilityLabel(for: bucket)) \(segment.modelName)"
                         BarMark(
-                            x: .value("月份", bucket.monthKey),
+                            x: .value(axisValueName, bucket.monthKey),
                             y: .value("USD", segment.totalCost)
                         )
                         .foregroundStyle(by: .value("模型", segment.modelName))
@@ -169,7 +179,7 @@ private struct MonthlyCostBarChartContent: View {
                 AxisTick()
                 AxisValueLabel {
                     if let monthKey = value.as(String.self) {
-                        Text(MonthlyBarChartStyle.monthAxisLabel(for: monthKey))
+                        Text(MonthlyBarChartStyle.monthAxisLabel(for: monthKey, language: language))
                             .font(.system(size: MonthlyBarChartStyle.monthAxisLabelFontSize))
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
@@ -193,7 +203,21 @@ private struct MonthlyCostBarChartContent: View {
         }
         .padding(.top, 8)
         .frame(minHeight: 220)
-        .accessibilityLabel("最近 12 个月费用柱状图")
+        .accessibilityLabel(AppStrings.text(.chartCostAccessibility, language: language))
+    }
+
+    private var axisValueName: String {
+        switch language {
+        case .zhHans:
+            return "月份"
+        case .en:
+            return "Period"
+        }
+    }
+
+    private func accessibilityLabel(for bucket: MonthlyTokenBucket) -> String {
+        MonthlyBarChartStyle.monthAxisLabel(for: bucket.monthKey, language: language)
+            .replacingOccurrences(of: "\n", with: " ")
     }
 
     private func hoverOverlay(proxy: ChartProxy) -> some View {

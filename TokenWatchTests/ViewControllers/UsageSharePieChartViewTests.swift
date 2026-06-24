@@ -115,6 +115,26 @@ struct UsageSharePieChartViewTests {
     }
 
     @MainActor
+    @Test("英文下空状态和合并项使用英文")
+    func englishEmptyAndOverflowLabelsAreLocalized() {
+        let view = UsageSharePieChartView(title: "Model Share")
+
+        view.configure(slices: [], language: .en)
+        #expect(view.allDescendants(ofType: NSTextField.self).map(\.stringValue).contains("No data"))
+
+        view.configure(slices: [
+            UsageShareSlice(id: "a", label: "a", totalTokens: 500, percentage: 0.50),
+            UsageShareSlice(id: "b", label: "b", totalTokens: 200, percentage: 0.20),
+            UsageShareSlice(id: "c", label: "c", totalTokens: 120, percentage: 0.12),
+            UsageShareSlice(id: "d", label: "d", totalTokens: 80, percentage: 0.08),
+            UsageShareSlice(id: "e", label: "e", totalTokens: 60, percentage: 0.06),
+            UsageShareSlice(id: "f", label: "f", totalTokens: 40, percentage: 0.04),
+        ], language: .en)
+
+        #expect(view.debugSliceLabels == ["a", "b", "c", "d", "Other"])
+    }
+
+    @MainActor
     @Test("重复配置会替换旧图例")
     func repeatedConfigureReplacesExistingLegendRows() {
         let view = UsageSharePieChartView(title: "模型占比")

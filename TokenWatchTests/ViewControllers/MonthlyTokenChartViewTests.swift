@@ -29,6 +29,17 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("英文下月份横轴使用英文缩写")
+    func englishXAxisLabelsUseShortMonthNames() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(monthKeys: ["2026-06"], monthLabels: ["Jun"], tokens: [100])
+
+        view.configure(with: snapshot, language: .en)
+
+        #expect(view.debugXAxisLabels == ["2026\nJun"])
+    }
+
+    @MainActor
     @Test("Token 纵轴标签不显示小数")
     func tokenYAxisLabelsUseWholeCompactNumbers() {
         let view = MonthlyTokenChartView()

@@ -7,7 +7,6 @@ final class MonthlyStatsViewController: NSViewController {
     private static let refreshButtonSpacing: CGFloat = 8
     private static let refreshButtonDefaultSymbolName = "arrow.clockwise"
     private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
-    private static let partialLoadingStatusText = "部分数据仍在加载"
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
@@ -26,14 +25,17 @@ final class MonthlyStatsViewController: NSViewController {
     private let period: UsageStatsPeriod
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let refreshAction: @MainActor () async -> Void
+    private let languageSettings: AppLanguageSettings
     private let refreshButton = RefreshIconButton()
     private let nowProvider: () -> Date
     private let calendar: Calendar
     private var currentRefreshButtonSymbolName: String?
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var tokenHoverLabelTrailingConstraint: NSLayoutConstraint?
     private var tokenTitleRowTrailingConstraint: NSLayoutConstraint?
     private var costHoverLabelTrailingConstraint: NSLayoutConstraint?
     private var costTitleRowTrailingConstraint: NSLayoutConstraint?
+    private var language: AppLanguage { languageSettings.resolvedLanguage }
 
     init(
         period: UsageStatsPeriod = .recent12Months,
@@ -46,17 +48,17 @@ final class MonthlyStatsViewController: NSViewController {
             }
         },
         nowProvider: @escaping () -> Date = Date.init,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        languageSettings: AppLanguageSettings = .shared
     ) {
         self.period = period
         self.stateProvider = stateProvider
         self.refreshAction = refreshAction
         self.nowProvider = nowProvider
         self.calendar = calendar
+        self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
-        self.title = period.title
-        titleLabel.stringValue = period.title
-        subtitleLabel.stringValue = period.subtitle
+        self.title = period.title(language: languageSettings.resolvedLanguage)
     }
 
     var debugTokenChartHoverText: String {
@@ -155,7 +157,12 @@ final class MonthlyStatsViewController: NSViewController {
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        MainActor.assumeIsolated {
+            NotificationCenter.default.removeObserver(self)
+            if let token = languageSettingsObserverToken {
+                languageSettings.removeObserver(token)
+            }
+        }
     }
 
     private func setupSubviews() {
@@ -323,7 +330,6 @@ final class MonthlyStatsViewController: NSViewController {
         refreshButton.isBordered = false
         refreshButton.bezelStyle = .smallSquare
         refreshButton.contentTintColor = .secondaryLabelColor
-        refreshButton.toolTip = "立即刷新"
         refreshButton.target = self
         refreshButton.action = #selector(refreshStats(_:))
         refreshButton.setButtonType(.momentaryChange)
@@ -390,6 +396,10 @@ final class MonthlyStatsViewController: NSViewController {
             name: .providerStateDidChange,
             object: nil
         )
+        languageSettingsObserverToken = languageSettings.observe { [weak self] in
+            self?.applyLocalizedText()
+            self?.render()
+        }
     }
 
     @objc private func providerStateDidChange(_ note: Notification) {
@@ -398,25 +408,39 @@ final class MonthlyStatsViewController: NSViewController {
 
     @MainActor
     private func render() {
+        applyLocalizedText()
         let states = stateProvider()
         let snapshot = MonthlyTokenChartBuilder.build(
             states: states,
             period: period,
             now: nowProvider(),
-            calendar: calendar
+            calendar: calendar,
+            language: language
         )
-        chartView.configure(with: snapshot)
-        costChartView.configure(with: snapshot)
-        toolSharePieView.configure(slices: snapshot.toolShareSlices)
-        modelSharePieView.configure(slices: snapshot.modelShareSlices)
+        chartView.configure(with: snapshot, language: language)
+        costChartView.configure(with: snapshot, language: language)
+        toolSharePieView.configure(slices: snapshot.toolShareSlices, language: language)
+        modelSharePieView.configure(slices: snapshot.modelShareSlices, language: language)
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
-        applyStatusText(statusText(for: snapshot, totalProviderCount: states.count))
+        let status = statusText(for: snapshot, totalProviderCount: states.count)
+        applyStatusText(status.text, isPartialLoading: status.isPartialLoading)
         applyRefreshButtonLoadingState(states: states)
     }
 
-    private func applyStatusText(_ text: String) {
-        if text == Self.partialLoadingStatusText {
+    private func applyLocalizedText() {
+        title = period.title(language: language)
+        titleLabel.stringValue = period.title(language: language)
+        subtitleLabel.stringValue = period.subtitle(language: language)
+        tokenChartTitleLabel.stringValue = AppStrings.text(.chartTokenUsage, language: language)
+        costChartTitleLabel.stringValue = AppStrings.text(.chartCost, language: language)
+        toolSharePieView.setTitle(AppStrings.text(.shareTool, language: language))
+        modelSharePieView.setTitle(AppStrings.text(.shareModel, language: language))
+        setRefreshButtonLoading(!refreshButton.isEnabled)
+    }
+
+    private func applyStatusText(_ text: String, isPartialLoading: Bool) {
+        if isPartialLoading {
             partialLoadingStatusLabel.stringValue = text
             partialLoadingStatusLabel.isHidden = false
             statusLabel.stringValue = ""
@@ -447,11 +471,18 @@ final class MonthlyStatsViewController: NSViewController {
         let symbolName = isLoading
             ? Self.refreshButtonLoadingSymbolName
             : Self.refreshButtonDefaultSymbolName
-        setRefreshButtonSymbol(symbolName, accessibilityDescription: isLoading ? "正在刷新" : "立即刷新")
+        setRefreshButtonSymbol(
+            symbolName,
+            accessibilityDescription: isLoading
+                ? AppStrings.text(.refreshInProgress, language: language)
+                : AppStrings.text(.refreshNow, language: language)
+        )
 
         refreshButton.isEnabled = !isLoading
-        refreshButton.toolTip = isLoading ? "正在刷新" : "立即刷新"
-        refreshButton.setAccessibilityLabel(isLoading ? "正在刷新用量数据" : "刷新用量数据")
+        refreshButton.toolTip = isLoading
+            ? AppStrings.text(.refreshInProgress, language: language)
+            : AppStrings.text(.refreshNow, language: language)
+        refreshButton.setAccessibilityLabel(refreshButtonAccessibilityLabel(isLoading: isLoading))
     }
 
     private func setRefreshButtonSymbol(_ symbolName: String, accessibilityDescription: String) {
@@ -478,28 +509,44 @@ final class MonthlyStatsViewController: NSViewController {
         String(format: "$%.2f", value)
     }
 
-    private func statusText(for snapshot: MonthlyTokenChartSnapshot, totalProviderCount: Int) -> String {
+    private func statusText(
+        for snapshot: MonthlyTokenChartSnapshot,
+        totalProviderCount: Int
+    ) -> (text: String, isPartialLoading: Bool) {
         if totalProviderCount > 0
             && snapshot.loadingProviderCount == totalProviderCount
             && snapshot.loadedProviderCount == 0 {
-            return "正在加载用量数据..."
+            return (AppStrings.text(.statusLoadingUsage, language: language), false)
         }
         if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
-            return "请先在设置中授权访问用户目录"
+            return (AppStrings.text(.statusNeedsHomeAuthorization, language: language), false)
         }
         if let errorMessage = snapshot.errorMessages.first {
-            return errorMessage
+            return (errorMessage, false)
         }
         if snapshot.totalTokens == 0 {
-            return period.emptyDataText
+            return (period.emptyDataText(language: language), false)
         }
         if snapshot.loadingProviderCount > 0 {
-            return Self.partialLoadingStatusText
+            return (AppStrings.text(.statusPartialLoading, language: language), true)
         }
         if let errorMessage = snapshot.errorMessages.first {
-            return errorMessage
+            return (errorMessage, false)
         }
-        return ""
+        return ("", false)
+    }
+
+    private func refreshButtonAccessibilityLabel(isLoading: Bool) -> String {
+        switch (period, isLoading) {
+        case (.today, true):
+            return AppStrings.text(.refreshingTodayAccessibility, language: language)
+        case (.today, false):
+            return AppStrings.text(.refreshTodayAccessibility, language: language)
+        case (_, true):
+            return AppStrings.text(.refreshingUsageAccessibility, language: language)
+        case (_, false):
+            return AppStrings.text(.refreshUsageAccessibility, language: language)
+        }
     }
 }
 
