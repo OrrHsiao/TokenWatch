@@ -79,6 +79,35 @@ struct AppLanguageSettingsTests {
         #expect(AppLanguagePreference.system.title(language: .zhHans) == "跟随系统")
         #expect(AppLanguagePreference.system.title(language: .en) == "System")
     }
+
+    @Test("英文文案表覆盖所有 key")
+    func englishStringTableCoversAllKeys() {
+        for key in AppStringKey.allCases {
+            #expect(
+                AppStrings.text(key, language: .en) != String(describing: key),
+                "Missing English string for \(key)"
+            )
+        }
+    }
+
+    @Test("所有文案 key 均解析为非空字符串")
+    func allStringKeysResolveToNonEmptyText() {
+        for key in AppStringKey.allCases {
+            for language in [AppLanguage.zhHans, .en] {
+                #expect(
+                    !AppStrings.text(key, language: language).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    "Empty string for \(key) in \(language)"
+                )
+            }
+        }
+    }
+
+    @Test("缺失中英文文案时回落到 key 名称")
+    func missingStringsFallBackToKeyName() {
+        #expect(
+            AppStrings.text(.settingsTitle, language: .zhHans, zhHans: [:], en: [:]) == "settingsTitle"
+        )
+    }
 }
 
 private func withTemporaryDefaults(_ body: (UserDefaults) throws -> Void) rethrows {

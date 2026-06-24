@@ -71,11 +71,20 @@ enum AppStringKey: CaseIterable, Sendable {
 enum AppStrings {
     /// Returns localized text for a stable app string key.
     static func text(_ key: AppStringKey, language: AppLanguage) -> String {
+        text(key, language: language, zhHans: zhHans, en: en)
+    }
+
+    static func text(
+        _ key: AppStringKey,
+        language: AppLanguage,
+        zhHans zhHansTable: [AppStringKey: String],
+        en enTable: [AppStringKey: String]
+    ) -> String {
         switch language {
         case .zhHans:
-            return zhHans[key] ?? en[key]!
+            return zhHansTable[key] ?? enTable[key] ?? String(describing: key)
         case .en:
-            return en[key]!
+            return enTable[key] ?? String(describing: key)
         }
     }
 
