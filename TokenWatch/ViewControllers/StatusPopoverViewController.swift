@@ -44,6 +44,7 @@ final class StatusPopoverViewController: NSViewController {
     struct DebugSummaryCard: Equatable {
         let title: String
         let value: String
+        let toolTip: String?
         let styleName: String
         let hasBackgroundColor: Bool
         let hasBorder: Bool
@@ -55,6 +56,7 @@ final class StatusPopoverViewController: NSViewController {
             DebugSummaryCard(
                 title: $0.debugTitle,
                 value: $0.debugValue,
+                toolTip: $0.debugToolTip,
                 styleName: $0.debugStyleName,
                 hasBackgroundColor: $0.debugHasBackgroundColor,
                 hasBorder: $0.debugHasBorder,
@@ -450,8 +452,9 @@ final class StatusPopoverViewController: NSViewController {
             summary.averageDailyTokens,
         ].map(CompactNumberFormatter.format)
 
+        let tokenUnit = AppStrings.text(.statusBarTokenUnit, language: language)
         for (card, titleAndValue) in zip(summaryCards, zip(titles, values)) {
-            card.configure(title: titleAndValue.0, value: titleAndValue.1)
+            card.configure(title: titleAndValue.0, value: titleAndValue.1, tokenUnit: tokenUnit)
         }
     }
 
@@ -531,6 +534,7 @@ private final class SummaryMetricCardView: NSView {
 
     var debugTitle: String { titleLabel.stringValue }
     var debugValue: String { valueLabel.stringValue }
+    var debugToolTip: String? { toolTip }
     var debugStyleName: String { style.name }
     var debugHasBackgroundColor: Bool { layer?.backgroundColor != nil }
     var debugHasBorder: Bool { (layer?.borderWidth ?? 0) > 0 && layer?.borderColor != nil }
@@ -580,10 +584,10 @@ private final class SummaryMetricCardView: NSView {
         updateCardColors()
     }
 
-    func configure(title: String, value: String) {
+    func configure(title: String, value: String, tokenUnit: String) {
         titleLabel.stringValue = title
         valueLabel.stringValue = value
-        toolTip = "\(titleLabel.stringValue) \(value) tokens"
+        toolTip = "\(titleLabel.stringValue) \(value) \(tokenUnit)"
     }
 
     private func updateCardColors() {
@@ -643,7 +647,7 @@ extension StatusPopoverViewController: NSCollectionViewDataSource {
         heatmapItem.onHoverTextChange = { [weak self] text in
             self?.updateHoverText(text)
         }
-        heatmapItem.configure(with: cell)
+        heatmapItem.configure(with: cell, language: languageSettings.resolvedLanguage)
         return heatmapItem
     }
 }

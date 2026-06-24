@@ -14,6 +14,7 @@ struct StatusPopoverViewControllerTests {
 
         #expect(controller.debugSummaryCards.map(\.title) == ["本月", "本周", "今日", "日均"])
         #expect(controller.debugSummaryCards.map(\.value) == ["0", "0", "0", "0"])
+        #expect(controller.debugSummaryCards.map(\.toolTip) == ["本月 0 Tokens", "本周 0 Tokens", "今日 0 Tokens", "日均 0 Tokens"])
         #expect(controller.debugSummaryCards.map(\.styleName) == ["neutral", "neutral", "neutral", "neutral"])
         #expect(controller.debugSummaryCards.allSatisfy { $0.hasBackgroundColor })
         #expect(controller.debugSummaryCards.allSatisfy { !$0.hasBorder })
@@ -96,6 +97,7 @@ struct StatusPopoverViewControllerTests {
         controller.loadViewIfNeeded()
 
         #expect(controller.debugSummaryCards.map(\.title) == ["Month", "Week", "Today", "Daily Avg"])
+        #expect(controller.debugSummaryCards.map(\.toolTip) == ["Month 0 Tokens", "Week 0 Tokens", "Today 0 Tokens", "Daily Avg 0 Tokens"])
         #expect(controller.debugTodayDescriptionText == "No token usage today")
         #expect(controller.debugRefreshButtonToolTip == "Refresh Now")
         #expect(controller.debugRefreshButtonAccessibilityLabel == "Refresh today's token usage")
@@ -241,12 +243,14 @@ struct StatusPopoverViewControllerTests {
             language == .zhHans ? ["zh-Hans"] : ["en-US"]
         })
         languageSettings.selectedPreference = language == .zhHans ? .zhHans : .en
-        return StatusPopoverViewController(
+        let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },
             calendar: fixedCalendar(),
             languageSettings: languageSettings
         )
+        defaults.removePersistentDomain(forName: suiteName)
+        return controller
     }
 
     private func fixedCalendar() -> Calendar {

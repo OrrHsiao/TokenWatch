@@ -9,7 +9,7 @@ struct CalendarHeatmapCellStyle: Equatable {
     let alpha: CGFloat
     let intensity: Int
 
-    static func make(for cell: CalendarHeatmapCell) -> CalendarHeatmapCellStyle {
+    static func make(for cell: CalendarHeatmapCell, language: AppLanguage = .zhHans) -> CalendarHeatmapCellStyle {
         switch cell {
         case .placeholder:
             return CalendarHeatmapCellStyle(
@@ -22,7 +22,7 @@ struct CalendarHeatmapCellStyle: Equatable {
         case .day(let day):
             return CalendarHeatmapCellStyle(
                 title: "",
-                toolTip: "\(day.dateKey) · \(formatTokens(day.totalTokens)) tokens",
+                toolTip: "\(day.dateKey) · \(formatTokens(day.totalTokens)) \(AppStrings.text(.statusBarTokenUnit, language: language))",
                 isHidden: false,
                 alpha: day.isFuture ? 0.45 : 1.0,
                 intensity: day.intensity
@@ -74,8 +74,8 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
         ])
     }
 
-    func configure(with cell: CalendarHeatmapCell) {
-        let style = CalendarHeatmapCellStyle.make(for: cell)
+    func configure(with cell: CalendarHeatmapCell, language: AppLanguage = .zhHans) {
+        let style = CalendarHeatmapCellStyle.make(for: cell, language: language)
         dayLabel.stringValue = style.title
         view.toolTip = style.toolTip
         view.isHidden = style.isHidden

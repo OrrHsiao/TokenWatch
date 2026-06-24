@@ -30,7 +30,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
         #expect(style.title == "")
-        #expect(style.toolTip == "2026-06-10 · 12,345 tokens")
+        #expect(style.toolTip == "2026-06-10 · 12,345 Tokens")
         #expect(!style.isHidden)
         #expect(style.alpha == 1.0)
     }
@@ -51,7 +51,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
         #expect(style.alpha < 1.0)
-        #expect(style.toolTip == "2026-06-20 · 0 tokens")
+        #expect(style.toolTip == "2026-06-20 · 0 Tokens")
     }
 
     @Test("token tooltip 使用固定逗号分组")
@@ -69,7 +69,8 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
-        #expect(style.toolTip == "2026-06-15 · 1,234,567 tokens")
+        #expect(style.toolTip == "2026-06-15 · 1,234,567 Tokens")
+        #expect(CalendarHeatmapCellStyle.make(for: .day(day), language: .en).toolTip == "2026-06-15 · 1,234,567 Tokens")
     }
 
     @MainActor
@@ -149,7 +150,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.configure(with: .day(day))
 
         #expect(item.view.isHidden == false)
-        #expect(item.view.toolTip == "2026-06-10 · 12,345 tokens")
+        #expect(item.view.toolTip == "2026-06-10 · 12,345 Tokens")
         #expect(item.view.alphaValue == 1.0)
     }
 
@@ -179,7 +180,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.debugSimulateMouseExited()
 
         #expect(hoverTexts.count == 2)
-        #expect(hoverTexts[0] == "2026-06-10 · 12,345 tokens")
+        #expect(hoverTexts[0] == "2026-06-10 · 12,345 Tokens")
         #expect(hoverTexts[1] == nil)
     }
 
