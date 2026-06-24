@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TokenWatch
 
@@ -73,4 +74,19 @@ struct TokenStatsViewModelObserverTests {
         let thirdClaudeEnter = gate.enter(.claude)
         #expect(thirdClaudeEnter)
     }
+
+    /// 用户可见错误信息应按当前语言生成,同时保留底层错误描述。
+    @Test func localizedErrorMessagesUseAppStrings() {
+        let error = StubLocalizedError(description: "disk read failed")
+
+        #expect(TokenStatsViewModel.cannotAccessHomeMessage(language: .zhHans) == "无法访问用户目录,请重新授权")
+        #expect(TokenStatsViewModel.cannotAccessHomeMessage(language: .en) == "Cannot access home folder. Please authorize again")
+        #expect(TokenStatsViewModel.loadFailedMessage(error: error, language: .zhHans) == "数据加载失败: disk read failed")
+        #expect(TokenStatsViewModel.loadFailedMessage(error: error, language: .en) == "Data load failed: disk read failed")
+    }
+}
+
+private struct StubLocalizedError: LocalizedError {
+    let description: String
+    var errorDescription: String? { description }
 }

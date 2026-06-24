@@ -8,12 +8,7 @@ struct StatusPopoverViewControllerTests {
 
     @Test("加载后创建摘要方块和二十二列热力图 collection view")
     func loadViewCreatesTwentyTwoColumnCollectionView() {
-        let viewModel = TokenStatsViewModel()
-        let controller = StatusPopoverViewController(
-            viewModel: viewModel,
-            nowProvider: { fixedDate() },
-            calendar: fixedCalendar()
-        )
+        let controller = makeController(language: .zhHans)
 
         controller.loadViewIfNeeded()
 
@@ -42,6 +37,8 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonSymbolName == "arrow.clockwise")
         #expect(controller.debugRefreshButtonUsesImageOnly)
         #expect(controller.debugRefreshButtonToolTip == "立即刷新")
+        #expect(controller.debugRefreshButtonAccessibilityLabel == "刷新本日 token 消耗")
+        #expect(controller.debugRefreshButtonImageAccessibilityDescription == "立即刷新")
         #expect(controller.debugRefreshButtonSitsRightOfDescriptionLabel)
         #expect(controller.debugRefreshButtonTrailingAlignsWithDescriptionRow)
         #expect(controller.debugRefreshButtonActionName == "refreshTodayStats:")
@@ -72,17 +69,69 @@ struct StatusPopoverViewControllerTests {
 
         #expect(!controller.debugRefreshButtonIsEnabled)
         #expect(controller.debugRefreshButtonSymbolName == "arrow.triangle.2.circlepath")
+        #expect(controller.debugRefreshButtonToolTip == "正在刷新")
+        #expect(controller.debugRefreshButtonAccessibilityLabel == "正在刷新本日 token 消耗")
+        #expect(controller.debugRefreshButtonImageAccessibilityDescription == "正在刷新")
 
         controller.debugSetRefreshButtonLoading(false)
         #expect(controller.debugRefreshButtonIsEnabled)
         #expect(controller.debugRefreshButtonSymbolName == "arrow.clockwise")
+        #expect(controller.debugRefreshButtonToolTip == "立即刷新")
     }
 
     @Test("本日 token 文案按消耗分档")
     func todayDescriptionTextReflectsUsageTier() {
-        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 0) == "本日还没有消耗 token 哦～")
-        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 100_000) == "本日 token 消耗正在加速～")
-        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 6_700_000) == "本日 token 消耗爆表～")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 0, language: .zhHans) == "本日还没有消耗 token 哦～")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 100_000, language: .zhHans) == "本日 token 消耗正在加速～")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 6_700_000, language: .zhHans) == "本日 token 消耗爆表～")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 0, language: .en) == "No token usage today")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 100_000, language: .en) == "Today's token usage is picking up")
+        #expect(StatusPopoverDailyTokenDescription.text(forTodayTokens: 6_700_000, language: .en) == "Today's token usage is off the charts")
+    }
+
+    @Test("英文语言下摘要、描述和刷新按钮文案使用英文")
+    func englishLanguageLocalizesSummaryDescriptionAndRefreshButton() {
+        let controller = makeController(language: .en)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugSummaryCards.map(\.title) == ["Month", "Week", "Today", "Daily Avg"])
+        #expect(controller.debugTodayDescriptionText == "No token usage today")
+        #expect(controller.debugRefreshButtonToolTip == "Refresh Now")
+        #expect(controller.debugRefreshButtonAccessibilityLabel == "Refresh today's token usage")
+        #expect(controller.debugRefreshButtonImageAccessibilityDescription == "Refresh Now")
+
+        controller.debugSetRefreshButtonLoading(true)
+
+        #expect(controller.debugRefreshButtonToolTip == "Refreshing")
+        #expect(controller.debugRefreshButtonAccessibilityLabel == "Refreshing today's token usage")
+        #expect(controller.debugRefreshButtonImageAccessibilityDescription == "Refreshing")
+    }
+
+    @Test("语言切换时重新渲染弹窗可见文案")
+    func languageChangeRerendersVisibleText() throws {
+        let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans"] })
+        languageSettings.selectedPreference = .zhHans
+        let controller = StatusPopoverViewController(
+            viewModel: TokenStatsViewModel(languageSettings: languageSettings),
+            nowProvider: { fixedDate() },
+            calendar: fixedCalendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        #expect(controller.debugSummaryCards.map(\.title) == ["本月", "本周", "今日", "日均"])
+        #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
+
+        languageSettings.selectedPreference = .en
+
+        #expect(controller.debugSummaryCards.map(\.title) == ["Month", "Week", "Today", "Daily Avg"])
+        #expect(controller.debugTodayDescriptionText == "No token usage today")
+        #expect(controller.debugRefreshButtonToolTip == "Refresh Now")
     }
 
     @Test("根视图使用动态窗口背景")
@@ -184,11 +233,19 @@ struct StatusPopoverViewControllerTests {
         #expect(!controller.debugHasCell(at: 999))
     }
 
-    private func makeController() -> StatusPopoverViewController {
-        StatusPopoverViewController(
-            viewModel: TokenStatsViewModel(),
+    private func makeController(language: AppLanguage = .zhHans) -> StatusPopoverViewController {
+        let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: {
+            language == .zhHans ? ["zh-Hans"] : ["en-US"]
+        })
+        languageSettings.selectedPreference = language == .zhHans ? .zhHans : .en
+        return StatusPopoverViewController(
+            viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },
-            calendar: fixedCalendar()
+            calendar: fixedCalendar(),
+            languageSettings: languageSettings
         )
     }
 

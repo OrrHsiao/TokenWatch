@@ -136,4 +136,41 @@ struct StatusBarControllerTests {
         settings.selectedOption = .disabled
         #expect(controller.debugRefreshTimerInterval == nil)
     }
+
+    /// 状态栏菜单文案应跟随语言设置变化,且切换语言只重绘 UI。
+    @MainActor
+    @Test func statusMenuTitlesFollowLanguageChanges() throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["zh-Hans"] }
+        )
+        languageSettings.selectedPreference = .zhHans
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings
+        )
+        defer { controller.stop() }
+
+        #expect(controller.debugStatusMenuItemTitles == [
+            "打开 TokenWatch",
+            "立即刷新",
+            "退出 TokenWatch",
+        ])
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+
+        languageSettings.selectedPreference = .en
+
+        #expect(controller.debugStatusMenuItemTitles == [
+            "Open TokenWatch",
+            "Refresh Now",
+            "Quit TokenWatch",
+        ])
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+    }
 }

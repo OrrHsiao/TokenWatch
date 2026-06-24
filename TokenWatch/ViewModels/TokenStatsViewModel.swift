@@ -28,14 +28,24 @@ final class TokenStatsViewModel: Sendable {
     private var observers: [ObservationToken: @MainActor (ProviderID) -> Void] = [:]
 
     private let bookmarkManager = SecurityScopedBookmarkManager.shared
+    private let languageSettings: AppLanguageSettings
     private let aggregator = UsageAggregator()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
 
-    init() {
+    init(languageSettings: AppLanguageSettings = .shared) {
+        self.languageSettings = languageSettings
         for provider in ProviderRegistry.allProviders {
             states[provider.id] = ProviderState()
         }
+    }
+
+    nonisolated static func cannotAccessHomeMessage(language: AppLanguage) -> String {
+        AppStrings.text(.errorCannotAccessHome, language: language)
+    }
+
+    nonisolated static func loadFailedMessage(error: Error, language: AppLanguage) -> String {
+        "\(AppStrings.text(.errorLoadFailedPrefix, language: language)): \(error.localizedDescription)"
     }
 
     /// 注册状态变更监听
@@ -101,7 +111,7 @@ final class TokenStatsViewModel: Sendable {
 
         // Step 2: 恢复 Bookmark
         guard let rootURL = bookmarkManager.restoreBookmarkAndAccess(forKey: provider.bookmarkKey) else {
-            states[id]?.errorMessage = "无法访问用户目录,请重新授权"
+            states[id]?.errorMessage = Self.cannotAccessHomeMessage(language: languageSettings.resolvedLanguage)
             states[id]?.needsAuthorization = true
             states[id]?.isLoading = false
             logger.error("\(provider.displayName) Bookmark 恢复失败")
@@ -132,7 +142,10 @@ final class TokenStatsViewModel: Sendable {
             states[id]?.needsAuthorization = false
             states[id]?.errorMessage = nil
         case .failure(let error):
-            states[id]?.errorMessage = "数据加载失败: \(error.localizedDescription)"
+            states[id]?.errorMessage = Self.loadFailedMessage(
+                error: error,
+                language: languageSettings.resolvedLanguage
+            )
             logger.error("\(provider.displayName) 加载失败: \(error.localizedDescription)")
         }
 

@@ -47,8 +47,20 @@ final class SecurityScopedBookmarkManager: Sendable {
 
     static let shared = SecurityScopedBookmarkManager()
 
+    struct OpenPanelCopy: Equatable {
+        let message: String
+        let prompt: String
+    }
+
     /// 每个 key 对应的会话状态(已恢复的 URL + 当前逻辑访问次数)
     private var sessions = SecurityScopedAccessSessions()
+
+    nonisolated static func openPanelCopy(language: AppLanguage) -> OpenPanelCopy {
+        OpenPanelCopy(
+            message: AppStrings.text(.homeAccessMessage, language: language),
+            prompt: AppStrings.text(.authorizeAccessPrompt, language: language)
+        )
+    }
 
     // MARK: - 查询
 
@@ -64,11 +76,12 @@ final class SecurityScopedBookmarkManager: Sendable {
     func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL? {
         return await withCheckedContinuation { continuation in
             let panel = NSOpenPanel()
+            let copy = Self.openPanelCopy(language: AppLanguageSettings.shared.resolvedLanguage)
             panel.canChooseDirectories = true
             panel.canChooseFiles = false
             panel.allowsMultipleSelection = false
-            panel.message = provider.openPanelMessage
-            panel.prompt = "授权访问"
+            panel.message = copy.message
+            panel.prompt = copy.prompt
             panel.showsHiddenFiles = true
             panel.treatsFilePackagesAsDirectories = true
 

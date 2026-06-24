@@ -26,7 +26,9 @@ final class StatusPopoverViewController: NSViewController {
     private let viewModel: TokenStatsViewModel
     private let nowProvider: () -> Date
     private let calendar: Calendar
+    private let languageSettings: AppLanguageSettings
     private var observerToken: TokenStatsViewModel.ObservationToken?
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var snapshot: CalendarHeatmapSnapshot?
     private var hoverText: String?
     private var currentTodayRefreshButtonSymbolName: String?
@@ -70,6 +72,10 @@ final class StatusPopoverViewController: NSViewController {
         todayRefreshButton.imagePosition == .imageOnly
     }
     var debugRefreshButtonToolTip: String? { todayRefreshButton.toolTip }
+    var debugRefreshButtonAccessibilityLabel: String? { todayRefreshButton.accessibilityLabel() }
+    var debugRefreshButtonImageAccessibilityDescription: String? {
+        todayRefreshButton.image?.accessibilityDescription
+    }
     var debugRefreshButtonActionName: String? {
         todayRefreshButton.action.map(NSStringFromSelector)
     }
@@ -192,18 +198,20 @@ final class StatusPopoverViewController: NSViewController {
     init(
         viewModel: TokenStatsViewModel,
         nowProvider: @escaping () -> Date = Date.init,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        languageSettings: AppLanguageSettings = .shared
     ) {
         self.viewModel = viewModel
         self.nowProvider = nowProvider
         self.calendar = calendar
+        self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
         preferredContentSize = Self.contentSize
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("StatusPopoverViewController 必须用 init(viewModel:) 构造")
+        fatalError("StatusPopoverViewController 必须用指定初始化方法构造")
     }
 
     override func loadView() {
@@ -217,12 +225,18 @@ final class StatusPopoverViewController: NSViewController {
         observerToken = viewModel.observe { [weak self] _ in
             self?.render()
         }
+        languageSettingsObserverToken = languageSettings.observe { [weak self] in
+            self?.render()
+        }
     }
 
     deinit {
         MainActor.assumeIsolated {
             if let observerToken {
                 viewModel.removeObserver(observerToken)
+            }
+            if let languageSettingsObserverToken {
+                languageSettings.removeObserver(languageSettingsObserverToken)
             }
         }
     }
@@ -316,12 +330,9 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     private func setupSummaryCards() {
-        let cards = [
-            SummaryMetricCardView(title: "本月", style: .neutral),
-            SummaryMetricCardView(title: "本周", style: .neutral),
-            SummaryMetricCardView(title: "今日", style: .neutral),
-            SummaryMetricCardView(title: "日均", style: .neutral),
-        ]
+        let cards = summaryTitles().map { title in
+            SummaryMetricCardView(title: title, style: .neutral)
+        }
         summaryCards = cards
         for card in cards {
             summaryStack.addArrangedSubview(card)
@@ -335,7 +346,7 @@ final class StatusPopoverViewController: NSViewController {
         todayRefreshButton.isBordered = false
         todayRefreshButton.bezelStyle = .smallSquare
         todayRefreshButton.contentTintColor = .secondaryLabelColor
-        todayRefreshButton.toolTip = "立即刷新"
+        todayRefreshButton.toolTip = AppStrings.text(.refreshNow, language: languageSettings.resolvedLanguage)
         todayRefreshButton.target = self
         todayRefreshButton.action = #selector(refreshTodayStats(_:))
         todayRefreshButton.setButtonType(.momentaryChange)
@@ -359,14 +370,24 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     private func setRefreshButtonLoading(_ isLoading: Bool) {
+        let language = languageSettings.resolvedLanguage
         let symbolName = isLoading
             ? Self.todayRefreshButtonLoadingSymbolName
             : Self.todayRefreshButtonDefaultSymbolName
-        setRefreshButtonSymbol(symbolName, accessibilityDescription: isLoading ? "正在刷新" : "立即刷新")
+        setRefreshButtonSymbol(
+            symbolName,
+            accessibilityDescription: isLoading
+                ? AppStrings.text(.refreshInProgress, language: language)
+                : AppStrings.text(.refreshNow, language: language)
+        )
 
         todayRefreshButton.isEnabled = !isLoading
-        todayRefreshButton.toolTip = isLoading ? "正在刷新" : "立即刷新"
-        todayRefreshButton.setAccessibilityLabel(isLoading ? "正在刷新本日 token 消耗" : "刷新本日 token 消耗")
+        todayRefreshButton.toolTip = isLoading
+            ? AppStrings.text(.refreshInProgress, language: language)
+            : AppStrings.text(.refreshNow, language: language)
+        todayRefreshButton.setAccessibilityLabel(isLoading
+            ? AppStrings.text(.refreshingTodayAccessibility, language: language)
+            : AppStrings.text(.refreshTodayAccessibility, language: language))
     }
 
     private func setRefreshButtonSymbol(_ symbolName: String, accessibilityDescription: String) {
@@ -383,16 +404,18 @@ final class StatusPopoverViewController: NSViewController {
 
     private func render() {
         let now = nowProvider()
+        let language = languageSettings.resolvedLanguage
         let snapshot = CalendarHeatmapBuilder.build(
             states: viewModel.states,
             month: now,
             now: now,
-            calendar: calendar
+            calendar: calendar,
+            language: language
         )
         self.snapshot = snapshot
 
-        applySummary(snapshot.summary)
-        applyTodayDescription(todayTokens: snapshot.summary.todayTokens)
+        applySummary(snapshot.summary, language: language)
+        applyTodayDescription(todayTokens: snapshot.summary.todayTokens, language: language)
         applyHoverText()
         applyRefreshButtonLoadingState()
         collectionView.reloadData()
@@ -403,7 +426,23 @@ final class StatusPopoverViewController: NSViewController {
         applyHoverText()
     }
 
-    private func applySummary(_ summary: CalendarHeatmapSummary) {
+    private func summaryTitles() -> [String] {
+        let language = languageSettings.resolvedLanguage
+        return [
+            AppStrings.text(.popoverMonth, language: language),
+            AppStrings.text(.popoverWeek, language: language),
+            AppStrings.text(.popoverToday, language: language),
+            AppStrings.text(.popoverDailyAverage, language: language),
+        ]
+    }
+
+    private func applySummary(_ summary: CalendarHeatmapSummary, language: AppLanguage) {
+        let titles = [
+            AppStrings.text(.popoverMonth, language: language),
+            AppStrings.text(.popoverWeek, language: language),
+            AppStrings.text(.popoverToday, language: language),
+            AppStrings.text(.popoverDailyAverage, language: language),
+        ]
         let values = [
             summary.monthTokens,
             summary.weekTokens,
@@ -411,13 +450,16 @@ final class StatusPopoverViewController: NSViewController {
             summary.averageDailyTokens,
         ].map(CompactNumberFormatter.format)
 
-        for (card, value) in zip(summaryCards, values) {
-            card.configure(value: value)
+        for (card, titleAndValue) in zip(summaryCards, zip(titles, values)) {
+            card.configure(title: titleAndValue.0, value: titleAndValue.1)
         }
     }
 
-    private func applyTodayDescription(todayTokens: Int) {
-        todayDescriptionLabel.stringValue = StatusPopoverDailyTokenDescription.text(forTodayTokens: todayTokens)
+    private func applyTodayDescription(todayTokens: Int, language: AppLanguage) {
+        todayDescriptionLabel.stringValue = StatusPopoverDailyTokenDescription.text(
+            forTodayTokens: todayTokens,
+            language: language
+        )
     }
 
     private func applyHoverText() {
@@ -438,21 +480,21 @@ final class StatusPopoverViewController: NSViewController {
 enum StatusPopoverDailyTokenDescription {
     /// 按状态栏图标相同阈值生成一句轻量描述。
     /// - Parameter total: 本日跨 provider token 总量,负数会按 0 处理。
-    /// - Returns: 可直接展示在 popover 顶部的中文文案。
-    static func text(forTodayTokens total: Int) -> String {
+    /// - Returns: 可直接展示在 popover 顶部的本地化文案。
+    static func text(forTodayTokens total: Int, language: AppLanguage = .zhHans) -> String {
         switch max(0, total) {
         case 0:
-            return "本日还没有消耗 token 哦～"
+            return AppStrings.text(.popoverNoTodayTokens, language: language)
         case ..<100_000:
-            return "本日 token 消耗很克制～"
+            return AppStrings.text(.popoverLowTodayTokens, language: language)
         case ..<3_300_000:
-            return "本日 token 消耗正在加速～"
+            return AppStrings.text(.popoverMediumTodayTokens, language: language)
         case ..<5_000_000:
-            return "本日 token 消耗有点上头～"
+            return AppStrings.text(.popoverHighTodayTokens, language: language)
         case ..<6_700_000:
-            return "本日 token 消耗火力全开～"
+            return AppStrings.text(.popoverVeryHighTodayTokens, language: language)
         default:
-            return "本日 token 消耗爆表～"
+            return AppStrings.text(.popoverExtremeTodayTokens, language: language)
         }
     }
 }
@@ -538,7 +580,8 @@ private final class SummaryMetricCardView: NSView {
         updateCardColors()
     }
 
-    func configure(value: String) {
+    func configure(title: String, value: String) {
+        titleLabel.stringValue = title
         valueLabel.stringValue = value
         toolTip = "\(titleLabel.stringValue) \(value) tokens"
     }

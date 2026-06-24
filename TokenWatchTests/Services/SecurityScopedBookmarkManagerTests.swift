@@ -20,4 +20,12 @@ struct SecurityScopedBookmarkManagerTests {
         #expect(sessions.release(forKey: key) == url)
         #expect(sessions.retainExisting(forKey: key) == nil)
     }
+
+    @Test("授权面板文案按当前语言生成")
+    func openPanelCopyUsesCurrentLanguage() {
+        #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .zhHans).message == "TokenWatch 想访问用户目录")
+        #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .zhHans).prompt == "授权访问")
+        #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .en).message == "TokenWatch wants to access your home folder")
+        #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .en).prompt == "Authorize")
+    }
 }

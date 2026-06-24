@@ -57,12 +57,14 @@ enum CalendarHeatmapBuilder {
     ///   - month: 窗口终点所在日期;保留旧参数名以兼容现有调用点。
     ///   - now: 当前时间,用于防止生成未来日期。
     ///   - calendar: 调用方指定的日历配置,包含时区与 firstWeekday。
+    ///   - language: 快照中文案使用的语言。
     /// - Returns: 可直接渲染的近 22 周热力图快照。
     static func build(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         month: Date,
         now: Date,
-        calendar: Calendar
+        calendar: Calendar,
+        language: AppLanguage = .zhHans
     ) -> CalendarHeatmapSnapshot {
         let today = calendar.startOfDay(for: now)
         let requestedEnd = calendar.startOfDay(for: month)
@@ -126,8 +128,8 @@ enum CalendarHeatmapBuilder {
 
         return CalendarHeatmapSnapshot(
             monthKey: rangeKey,
-            monthTitle: "最近 22 周",
-            weekdaySymbols: weekdaySymbols(firstWeekday: calendar.firstWeekday),
+            monthTitle: AppStrings.text(.heatmapRecent22Weeks, language: language),
+            weekdaySymbols: weekdaySymbols(firstWeekday: calendar.firstWeekday, language: language),
             cells: cells,
             summary: summary(states: states, now: now, calendar: calendar),
             monthTotalTokens: monthTotalTokens,
@@ -229,8 +231,14 @@ enum CalendarHeatmapBuilder {
         return dates
     }
 
-    private static func weekdaySymbols(firstWeekday: Int) -> [String] {
-        let symbols = ["日", "一", "二", "三", "四", "五", "六"]
+    private static func weekdaySymbols(firstWeekday: Int, language: AppLanguage) -> [String] {
+        let symbols: [String]
+        switch language {
+        case .zhHans:
+            symbols = ["日", "一", "二", "三", "四", "五", "六"]
+        case .en:
+            symbols = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        }
         let startIndex = max(0, min(6, firstWeekday - 1))
         return Array(symbols[startIndex...]) + Array(symbols[..<startIndex])
     }

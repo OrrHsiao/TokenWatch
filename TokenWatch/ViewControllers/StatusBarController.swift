@@ -15,18 +15,20 @@ final class StatusBarController {
 
     private let viewModel: TokenStatsViewModel
     private let autoRefreshSettings: AutoRefreshSettings
+    private let languageSettings: AppLanguageSettings
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private let statusMenu = NSMenu()
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var autoRefreshSettingsObserverToken: AutoRefreshSettings.ObservationToken?
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var popoverCloseObserver: NSObjectProtocol?
     private var popoverLocalEventMonitor: Any?
     private var popoverGlobalEventMonitor: Any?
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
 
-    /// 单 label 双行展示:富文本第一行=数字(Bold 10pt),第二行="Tokens"(6pt)
+    /// 单 label 双行展示:富文本第一行=数字(Bold 10pt),第二行=本地化单位(6pt)
     /// 用 paragraphStyle 控制行高,避免行间距过大撑高整体
     private let titleLabel = NSTextField(labelWithString: "")
 
@@ -44,10 +46,21 @@ final class StatusBarController {
     var debugRefreshTimerInterval: TimeInterval? {
         refreshTimer?.timeInterval
     }
+    var debugStatusMenuItemTitles: [String] {
+        statusMenu.items.filter { !$0.isSeparatorItem }.map(\.title)
+    }
+    var debugTitlePlainString: String {
+        titleLabel.attributedStringValue.string
+    }
 
-    init(viewModel: TokenStatsViewModel, autoRefreshSettings: AutoRefreshSettings = .shared) {
+    init(
+        viewModel: TokenStatsViewModel,
+        autoRefreshSettings: AutoRefreshSettings = .shared,
+        languageSettings: AppLanguageSettings = .shared
+    ) {
         self.viewModel = viewModel
         self.autoRefreshSettings = autoRefreshSettings
+        self.languageSettings = languageSettings
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         configureButton()
@@ -55,6 +68,7 @@ final class StatusBarController {
         installMenu()
         subscribeToViewModel()
         subscribeToAutoRefreshSettings()
+        subscribeToLanguageSettings()
         startRefreshTimer()
         // 立即按当前 ViewModel 状态画一次,避免空标题闪现
         renderTitle()
@@ -75,6 +89,9 @@ final class StatusBarController {
             if let token = autoRefreshSettingsObserverToken {
                 autoRefreshSettings.removeObserver(token)
             }
+            if let token = languageSettingsObserverToken {
+                languageSettings.removeObserver(token)
+            }
             removePopoverDismissMonitors()
         }
     }
@@ -92,6 +109,10 @@ final class StatusBarController {
         if let token = autoRefreshSettingsObserverToken {
             autoRefreshSettings.removeObserver(token)
             autoRefreshSettingsObserverToken = nil
+        }
+        if let token = languageSettingsObserverToken {
+            languageSettings.removeObserver(token)
+            languageSettingsObserverToken = nil
         }
         if let token = popoverCloseObserver {
             NotificationCenter.default.removeObserver(token)
@@ -144,7 +165,10 @@ final class StatusBarController {
     }
 
     private func configurePopover() {
-        let contentViewController = StatusPopoverViewController(viewModel: viewModel)
+        let contentViewController = StatusPopoverViewController(
+            viewModel: viewModel,
+            languageSettings: languageSettings
+        )
         contentViewController.preferredContentSize = StatusBarPopoverLayout.contentSize
 
         popover.behavior = .transient
@@ -162,9 +186,11 @@ final class StatusBarController {
         }
     }
 
-    /// 拼装两行富文本:数字加粗,"Tokens" 字号小一号
+    /// 拼装两行富文本:数字加粗,单位字号小一号
     /// 两行 paragraphStyle 设置 maximumLineHeight 把行高压紧,使两行总高接近图标高度(18pt)
     private func makeAttributedTitle(primary: String) -> NSAttributedString {
+        let language = languageSettings.resolvedLanguage
+        let unit = AppStrings.text(.statusBarTokenUnit, language: language)
         let primaryParagraph = NSMutableParagraphStyle()
         primaryParagraph.alignment = .center
         primaryParagraph.maximumLineHeight = 10
@@ -184,7 +210,7 @@ final class StatusBarController {
             ]
         )
         result.append(NSAttributedString(
-            string: "\nTokens",
+            string: "\n\(unit)",
             attributes: [
                 .font: NSFont.systemFont(ofSize: 7),
                 .foregroundColor: NSColor.labelColor,
@@ -195,8 +221,9 @@ final class StatusBarController {
     }
 
     private func installMenu() {
+        let language = languageSettings.resolvedLanguage
         let openItem = NSMenuItem(
-            title: "打开 TokenWatch",
+            title: AppStrings.text(.statusMenuOpen, language: language),
             action: #selector(openMainWindow),
             keyEquivalent: "0"
         )
@@ -204,7 +231,7 @@ final class StatusBarController {
         statusMenu.addItem(openItem)
 
         let refreshItem = NSMenuItem(
-            title: "立即刷新",
+            title: AppStrings.text(.refreshNow, language: language),
             action: #selector(refreshNow),
             keyEquivalent: "r"
         )
@@ -214,7 +241,7 @@ final class StatusBarController {
         statusMenu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(
-            title: "退出 TokenWatch",
+            title: AppStrings.text(.statusMenuQuit, language: language),
             action: #selector(quitApp),
             keyEquivalent: "q"
         )
@@ -238,6 +265,27 @@ final class StatusBarController {
         autoRefreshSettingsObserverToken = autoRefreshSettings.observe { [weak self] in
             self?.restartRefreshTimer()
         }
+    }
+
+    private func subscribeToLanguageSettings() {
+        languageSettingsObserverToken = languageSettings.observe { [weak self] in
+            self?.updateLocalizedText()
+        }
+    }
+
+    private func updateLocalizedText() {
+        updateMenuTitles()
+        renderTitle()
+    }
+
+    private func updateMenuTitles() {
+        let language = languageSettings.resolvedLanguage
+        let nonSeparatorItems = statusMenu.items.filter { !$0.isSeparatorItem }
+        guard nonSeparatorItems.count >= 3 else { return }
+
+        nonSeparatorItems[0].title = AppStrings.text(.statusMenuOpen, language: language)
+        nonSeparatorItems[1].title = AppStrings.text(.refreshNow, language: language)
+        nonSeparatorItems[2].title = AppStrings.text(.statusMenuQuit, language: language)
     }
 
     private func startRefreshTimer() {

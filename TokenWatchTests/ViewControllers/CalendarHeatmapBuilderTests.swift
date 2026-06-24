@@ -49,6 +49,30 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.dayCells.first?.dateKey == "2026-01-18")
     }
 
+    @Test("英文标题和星期符号按 firstWeekday 本地化")
+    func englishTitleAndWeekdaySymbolsRespectCalendarFirstWeekday() {
+        let mondayCalendar = utcCalendar(firstWeekday: 2)
+        let mondaySnapshot = CalendarHeatmapBuilder.build(
+            states: [:],
+            month: date(2026, 6, 17, calendar: mondayCalendar),
+            now: date(2026, 6, 17, calendar: mondayCalendar),
+            calendar: mondayCalendar,
+            language: .en
+        )
+        #expect(mondaySnapshot.monthTitle == "Last 22 Weeks")
+        #expect(mondaySnapshot.weekdaySymbols == ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+
+        let sundayCalendar = utcCalendar(firstWeekday: 1)
+        let sundaySnapshot = CalendarHeatmapBuilder.build(
+            states: [:],
+            month: date(2026, 6, 17, calendar: sundayCalendar),
+            now: date(2026, 6, 17, calendar: sundayCalendar),
+            calendar: sundayCalendar,
+            language: .en
+        )
+        #expect(sundaySnapshot.weekdaySymbols == ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])
+    }
+
     @Test("快照、cell、day 支持等值比较和稳定 identity")
     func exposesStableIdentityAndEquatableModels() {
         let calendar = utcCalendar(firstWeekday: 1)
