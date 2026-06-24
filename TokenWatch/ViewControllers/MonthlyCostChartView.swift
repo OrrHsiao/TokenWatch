@@ -106,7 +106,12 @@ final class MonthlyCostChartView: NSView {
             onHoverTextChange?(nil)
             return
         }
-        var hoverText = "\(bucket.monthLabel) · \(formatCurrency(bucket.totalCost))"
+        let periodLabel = MonthlyBarChartStyle.hoverPeriodLabel(
+            for: bucket.monthKey,
+            fallback: bucket.monthLabel,
+            language: language
+        )
+        var hoverText = "\(periodLabel) · \(formatCurrency(bucket.totalCost))"
         let modelText = bucket.modelSegments
             .filter { $0.totalCost > 0 }
             .map { "\($0.modelName) \(formatCurrency($0.totalCost))" }

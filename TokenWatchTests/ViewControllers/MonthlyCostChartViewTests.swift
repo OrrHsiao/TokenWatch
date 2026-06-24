@@ -151,6 +151,22 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("英文配置下费用悬停文案不使用旧 snapshot 月份标签")
+    func englishCostHoverTextDerivesPeriodFromCurrentLanguage() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(monthKeys: ["2026-06"], monthLabels: ["6月"], costs: [12.5])
+        var hoverTexts: [String?] = []
+        view.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        view.configure(with: snapshot, language: .en)
+        view.debugSimulateHover(monthKey: "2026-06")
+
+        #expect(hoverTexts == ["2026 Jun · $12.50"])
+    }
+
+    @MainActor
     @Test("debug 高度与渲染使用相同的稳定 clamp 值")
     func debugHeightsUseClampedFiniteValues() {
         let view = MonthlyCostChartView()

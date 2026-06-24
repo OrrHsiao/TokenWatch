@@ -151,6 +151,22 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("英文配置下悬停文案不使用旧 snapshot 月份标签")
+    func englishHoverTextDerivesPeriodFromCurrentLanguage() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(monthKeys: ["2026-06"], monthLabels: ["6月"], tokens: [1_234_567])
+        var hoverTexts: [String?] = []
+        view.onHoverTextChange = { text in
+            hoverTexts.append(text)
+        }
+
+        view.configure(with: snapshot, language: .en)
+        view.debugSimulateHover(monthKey: "2026-06")
+
+        #expect(hoverTexts == ["2026 Jun · 1.2M"])
+    }
+
+    @MainActor
     @Test("配置 snapshot 后保留每月模型段供堆叠柱渲染")
     func configureKeepsMonthlyModelSegmentsForStackedBars() {
         let view = MonthlyTokenChartView()

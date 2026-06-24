@@ -55,6 +55,20 @@ enum MonthlyBarChartStyle {
         }
     }
 
+    static func hoverPeriodLabel(
+        for monthKey: String,
+        fallback: String,
+        language: AppLanguage = .zhHans
+    ) -> String {
+        switch language {
+        case .zhHans:
+            return fallback
+        case .en:
+            return monthAxisLabel(for: monthKey, language: language)
+                .replacingOccurrences(of: "\n", with: " ")
+        }
+    }
+
     static func tokenAxisLabel(for value: Double) -> String {
         let tokens = max(0, Int(value.rounded()))
         if tokens < 1_000 {
@@ -211,7 +225,12 @@ final class MonthlyTokenChartView: NSView {
             onHoverTextChange?(nil)
             return
         }
-        var hoverText = "\(bucket.monthLabel) · \(CompactNumberFormatter.formatMillions(bucket.totalTokens))"
+        let periodLabel = MonthlyBarChartStyle.hoverPeriodLabel(
+            for: bucket.monthKey,
+            fallback: bucket.monthLabel,
+            language: language
+        )
+        var hoverText = "\(periodLabel) · \(CompactNumberFormatter.formatMillions(bucket.totalTokens))"
         let modelText = bucket.modelSegments
             .map { "\($0.modelName) \(CompactNumberFormatter.formatMillions($0.totalTokens))" }
             .joined(separator: ", ")
