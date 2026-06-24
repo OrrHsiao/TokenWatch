@@ -627,20 +627,16 @@ private let splitViewController = NSSplitViewController()
 private let detailContainerViewController = NSViewController()
 private let sidebarViewController: ProviderSidebarViewController
 private let settingsViewController: SettingsViewController
-private let totalStatsViewController: TotalStatsViewController
-private let monthlyStatsViewController: MonthlyStatsViewController
-private let recentThirtyDaysStatsViewController: MonthlyStatsViewController
-private let todayStatsViewController: MonthlyStatsViewController
+private let totalStatsViewController = TotalStatsViewController()
+private let monthlyStatsViewController = MonthlyStatsViewController()
+private let recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days)
+private let todayStatsViewController = MonthlyStatsViewController(period: .today)
 private var languageObserverToken: AppLanguageSettings.ObservationToken?
 
 init(languageSettings: AppLanguageSettings = .shared) {
     self.languageSettings = languageSettings
     self.sidebarViewController = ProviderSidebarViewController(languageSettings: languageSettings)
     self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
-    self.totalStatsViewController = TotalStatsViewController(languageSettings: languageSettings)
-    self.monthlyStatsViewController = MonthlyStatsViewController(languageSettings: languageSettings)
-    self.recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days, languageSettings: languageSettings)
-    self.todayStatsViewController = MonthlyStatsViewController(period: .today, languageSettings: languageSettings)
     super.init(nibName: nil, bundle: nil)
 }
 
@@ -648,13 +644,11 @@ required init?(coder: NSCoder) {
     self.languageSettings = .shared
     self.sidebarViewController = ProviderSidebarViewController(languageSettings: .shared)
     self.settingsViewController = SettingsViewController(languageSettings: .shared)
-    self.totalStatsViewController = TotalStatsViewController(languageSettings: .shared)
-    self.monthlyStatsViewController = MonthlyStatsViewController(languageSettings: .shared)
-    self.recentThirtyDaysStatsViewController = MonthlyStatsViewController(period: .recent30Days, languageSettings: .shared)
-    self.todayStatsViewController = MonthlyStatsViewController(period: .today, languageSettings: .shared)
     super.init(coder: coder)
 }
 ```
+
+Task 3 and Task 4 add language injection to `TotalStatsViewController` and `MonthlyStatsViewController`; Task 2 must not call those future initializer overloads yet.
 
 Add language observation in `viewDidLoad`:
 
