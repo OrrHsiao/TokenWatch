@@ -55,7 +55,22 @@ The app may display local project paths from the agent logs because those paths 
 
 ## Install
 
-There is not a packaged release yet. For now, build from source:
+Download the latest packaged app from the [GitHub Releases page](https://github.com/OrrHsiao/TokenWatch/releases):
+
+1. Download `TokenWatch-macOS-universal.zip` from the latest release.
+2. Unzip the archive.
+3. Move `TokenWatch.app` to `/Applications`.
+4. Open TokenWatch and authorize access to your user directory when prompted.
+
+If macOS says `TokenWatch.app is damaged and can't be opened. You should move it to the Trash.`, confirm that the app came from the official TokenWatch release page, then remove the quarantine attribute from your local copy:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/TokenWatch.app
+```
+
+Then open TokenWatch again.
+
+To build from source instead:
 
 1. Clone the repository.
 2. Open `TokenWatch.xcodeproj` in Xcode.

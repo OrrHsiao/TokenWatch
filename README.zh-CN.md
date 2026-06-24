@@ -55,7 +55,22 @@ TokenWatch 被设计为只在本地运行的工具。
 
 ## 安装
 
-目前还没有打包发布版本。现在请从源码构建：
+推荐从 [GitHub Releases 页面](https://github.com/OrrHsiao/TokenWatch/releases) 下载最新安装包：
+
+1. 在最新 release 中下载 `TokenWatch-macOS-universal.zip`。
+2. 解压压缩包。
+3. 将 `TokenWatch.app` 移动到 `/Applications`。
+4. 打开 TokenWatch，并在提示时授权访问你的用户目录。
+
+如果 macOS 提示 `TokenWatch.app 已损坏，无法打开。你应该将它移到废纸篓。`，请先确认应用来自官方 TokenWatch release 页面，然后对本地应用移除 quarantine 属性：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/TokenWatch.app
+```
+
+之后重新打开 TokenWatch 即可。
+
+如果你想从源码构建：
 
 1. Clone 本仓库。
 2. 用 Xcode 打开 `TokenWatch.xcodeproj`。
