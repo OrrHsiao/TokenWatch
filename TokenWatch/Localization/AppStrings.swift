@@ -61,6 +61,8 @@ enum AppStringKey: CaseIterable, Sendable {
     case heatmapRecent22Weeks
     case chartTokenAccessibility
     case chartCostAccessibility
+    case chartTokenAccessibilitySuffix
+    case chartCostAccessibilitySuffix
     case statusBarTokenUnit
     case homeAccessMessage
     case authorizeAccessPrompt
@@ -149,6 +151,8 @@ enum AppStrings {
         .heatmapRecent22Weeks: "最近 22 周",
         .chartTokenAccessibility: "最近 12 个月 token 柱状图",
         .chartCostAccessibility: "最近 12 个月费用柱状图",
+        .chartTokenAccessibilitySuffix: "token 柱状图",
+        .chartCostAccessibilitySuffix: "费用柱状图",
         .statusBarTokenUnit: "Tokens",
         .homeAccessMessage: "TokenWatch 想访问用户目录",
         .authorizeAccessPrompt: "授权访问",
@@ -217,6 +221,8 @@ enum AppStrings {
         .heatmapRecent22Weeks: "Last 22 Weeks",
         .chartTokenAccessibility: "Last 12 months token bar chart",
         .chartCostAccessibility: "Last 12 months cost bar chart",
+        .chartTokenAccessibilitySuffix: "token bar chart",
+        .chartCostAccessibilitySuffix: "cost bar chart",
         .statusBarTokenUnit: "Tokens",
         .homeAccessMessage: "TokenWatch wants to access your home folder",
         .authorizeAccessPrompt: "Authorize",

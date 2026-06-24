@@ -459,6 +459,34 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-06")?.modelSegments.map(\.percentage) == [0.50, 0.20, 0.12, 0.08, 0.10])
     }
 
+    @Test("英文 Other 模型和溢出 Other 使用不同内部身份")
+    func englishOtherModelDoesNotCollideWithOverflowSegment() throws {
+        let calendar = utcCalendar()
+        let stats = makeStats(byMonth: [
+            "2026-06": makeSummary(total: 4_500, modelBreakdown: [
+                "a": 1_000,
+                "Other": 900,
+                "b": 800,
+                "c": 700,
+                "d": 600,
+                "e": 500,
+            ]),
+        ])
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [.claude: .init(stats: stats, isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar,
+            language: .en
+        )
+        let segments = try #require(snapshot.bucket("2026-06")?.modelSegments)
+
+        #expect(segments.map(\.modelName) == ["a", "Other", "b", "c", "Other"])
+        #expect(Set(segments.map(\.id)).count == segments.count)
+        #expect(segments.first { $0.id == "Other" && !$0.isOverflow }?.totalTokens == 900)
+        #expect(segments.first { $0.id == MonthlyTokenModelSegment.overflowID && $0.isOverflow }?.totalTokens == 1_100)
+    }
+
     @Test("每个月模型段同时包含费用拆分")
     func monthlyModelSegmentsIncludeCostBreakdown() {
         let calendar = utcCalendar()

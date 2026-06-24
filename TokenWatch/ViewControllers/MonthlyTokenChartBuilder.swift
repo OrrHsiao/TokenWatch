@@ -11,19 +11,13 @@ enum UsageStatsPeriod: Sendable, Equatable {
     }
 
     func title(language: AppLanguage) -> String {
-        switch (self, language) {
-        case (.recent12Months, .zhHans):
-            return "最近 12 个月"
-        case (.recent30Days, .zhHans):
-            return "最近 30 天"
-        case (.today, .zhHans):
-            return "本日"
-        case (.recent12Months, .en):
-            return "Last 12 Months"
-        case (.recent30Days, .en):
-            return "Last 30 Days"
-        case (.today, .en):
-            return "Today"
+        switch self {
+        case .recent12Months:
+            return AppStrings.text(.sidebarRecent12Months, language: language)
+        case .recent30Days:
+            return AppStrings.text(.sidebarRecent30Days, language: language)
+        case .today:
+            return AppStrings.text(.sidebarToday, language: language)
         }
     }
 
@@ -51,6 +45,14 @@ enum UsageStatsPeriod: Sendable, Equatable {
         case .en:
             return "\(title(language: language)) \(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
         }
+    }
+
+    func tokenChartAccessibilityLabel(language: AppLanguage) -> String {
+        "\(title(language: language)) \(AppStrings.text(.chartTokenAccessibilitySuffix, language: language))"
+    }
+
+    func costChartAccessibilityLabel(language: AppLanguage) -> String {
+        "\(title(language: language)) \(AppStrings.text(.chartCostAccessibilitySuffix, language: language))"
     }
 
     fileprivate var bucketCount: Int {
@@ -206,23 +208,29 @@ struct UsageShareSlice: Sendable, Equatable, Identifiable {
 
 /// 单月柱状图中某个模型的 token 分段。
 struct MonthlyTokenModelSegment: Sendable, Equatable, Identifiable {
+    static let overflowID = "__tokenwatch_other__"
+
+    let id: String
     let modelName: String
     let totalTokens: Int
     let totalCost: Double
     let percentage: Double
-
-    var id: String { modelName }
+    let isOverflow: Bool
 
     init(
+        id: String? = nil,
         modelName: String,
         totalTokens: Int,
         totalCost: Double = 0,
-        percentage: Double
+        percentage: Double,
+        isOverflow: Bool = false
     ) {
+        self.id = id ?? modelName
         self.modelName = modelName
         self.totalTokens = totalTokens
         self.totalCost = totalCost
         self.percentage = percentage
+        self.isOverflow = isOverflow
     }
 }
 
@@ -264,6 +272,12 @@ struct MonthlyTokenBucket: Sendable, Equatable, Identifiable {
 /// 将多 provider 状态构建为指定时间窗口的 token 柱状图快照。
 enum MonthlyTokenChartBuilder {
     private static let maxModelSegmentCount = 5
+
+    private struct ModelSegmentLegendEntry {
+        let id: String
+        let modelName: String
+        let isOverflow: Bool
+    }
 
     /// 构建包含 `now` 所在桶、按指定窗口向前回溯的 token 快照。
     /// - Parameters:
@@ -331,8 +345,10 @@ enum MonthlyTokenChartBuilder {
 
         let maxMonthlyTokens = totals.values.max() ?? 0
         let maxMonthlyCost = costs.values.max() ?? 0
-        let otherModelSegmentName = AppStrings.text(.shareOther, language: language)
-        let modelSegmentLegendNames = buildModelSegmentLegendNames(modelTotals, otherModelSegmentName: otherModelSegmentName)
+        let modelSegmentLegendEntries = buildModelSegmentLegendEntries(
+            modelTotals,
+            otherModelSegmentName: AppStrings.text(.shareOther, language: language)
+        )
         let buckets = bucketStarts.map { bucketStart in
             let key = period.bucketKey(for: bucketStart, calendar: calendar)
             let totalTokens = totals[key, default: 0]
@@ -356,8 +372,7 @@ enum MonthlyTokenChartBuilder {
                     modelTotalsByBucket[key, default: [:]],
                     costs: modelCostsByBucket[key, default: [:]],
                     monthTotalTokens: totalTokens,
-                    legendModelNames: modelSegmentLegendNames,
-                    otherModelSegmentName: otherModelSegmentName
+                    legendEntries: modelSegmentLegendEntries
                 )
             )
         }
@@ -399,17 +414,16 @@ enum MonthlyTokenChartBuilder {
         _ totals: [String: Int],
         costs: [String: Double],
         monthTotalTokens: Int,
-        legendModelNames: [String],
-        otherModelSegmentName: String
+        legendEntries: [ModelSegmentLegendEntry]
     ) -> [MonthlyTokenModelSegment] {
-        guard monthTotalTokens > 0, !legendModelNames.isEmpty else { return [] }
-        let leadingModelNames = legendModelNames.filter { $0 != otherModelSegmentName }
+        guard monthTotalTokens > 0, !legendEntries.isEmpty else { return [] }
+        let leadingModelNames = legendEntries.filter { !$0.isOverflow }.map(\.modelName)
         let leadingModelNameSet = Set(leadingModelNames)
 
-        return legendModelNames.compactMap { modelName in
+        return legendEntries.compactMap { entry in
             let totalTokens: Int
             let totalCost: Double
-            if modelName == otherModelSegmentName {
+            if entry.isOverflow {
                 totalTokens = totals.reduce(0) { partialResult, entry in
                     guard !leadingModelNameSet.contains(entry.key), entry.value > 0 else {
                         return partialResult
@@ -423,16 +437,18 @@ enum MonthlyTokenChartBuilder {
                     return partialResult + entry.value
                 }
             } else {
-                totalTokens = totals[modelName, default: 0]
-                totalCost = costs[modelName, default: 0]
+                totalTokens = totals[entry.modelName, default: 0]
+                totalCost = costs[entry.modelName, default: 0]
             }
 
             guard totalTokens > 0 else { return nil }
             return MonthlyTokenModelSegment(
-                modelName: modelName,
+                id: entry.id,
+                modelName: entry.modelName,
                 totalTokens: totalTokens,
                 totalCost: totalCost,
-                percentage: Double(totalTokens) / Double(monthTotalTokens)
+                percentage: Double(totalTokens) / Double(monthTotalTokens),
+                isOverflow: entry.isOverflow
             )
         }
     }
@@ -459,10 +475,10 @@ enum MonthlyTokenChartBuilder {
         }
     }
 
-    private static func buildModelSegmentLegendNames(
+    private static func buildModelSegmentLegendEntries(
         _ totals: [String: Int],
         otherModelSegmentName: String
-    ) -> [String] {
+    ) -> [ModelSegmentLegendEntry] {
         let sortedNames = totals
             .filter { $0.value > 0 }
             .sorted { lhs, rhs in
@@ -473,7 +489,19 @@ enum MonthlyTokenChartBuilder {
             }
             .map(\.key)
 
-        guard sortedNames.count > maxModelSegmentCount else { return sortedNames }
-        return Array(sortedNames.prefix(maxModelSegmentCount - 1)) + [otherModelSegmentName]
+        let visibleNames = sortedNames.count > maxModelSegmentCount
+            ? Array(sortedNames.prefix(maxModelSegmentCount - 1))
+            : sortedNames
+        var entries = visibleNames.map {
+            ModelSegmentLegendEntry(id: $0, modelName: $0, isOverflow: false)
+        }
+        if sortedNames.count > maxModelSegmentCount {
+            entries.append(ModelSegmentLegendEntry(
+                id: MonthlyTokenModelSegment.overflowID,
+                modelName: otherModelSegmentName,
+                isOverflow: true
+            ))
+        }
+        return entries
     }
 }

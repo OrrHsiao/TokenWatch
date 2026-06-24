@@ -7,6 +7,7 @@ final class MonthlyCostChartView: NSView {
     private let chartHost = NSHostingView(rootView: AnyView(MonthlyCostBarChartContent(
         buckets: [],
         language: .zhHans,
+        accessibilityLabelText: UsageStatsPeriod.recent12Months.costChartAccessibilityLabel(language: .zhHans),
         onHoverMonthKeyChange: { _ in }
     )))
     private var buckets: [MonthlyTokenBucket] = []
@@ -16,6 +17,8 @@ final class MonthlyCostChartView: NSView {
     private(set) var debugModelSegmentLabelsByMonth: [String: [String]] = [:]
     private(set) var debugModelSegmentCostsByMonth: [String: [Double]] = [:]
     private(set) var debugModelSegmentColorsByMonth: [String: [String: NSColor]] = [:]
+    private(set) var debugAccessibilityLabel = UsageStatsPeriod.recent12Months
+        .costChartAccessibilityLabel(language: .zhHans)
     var onHoverTextChange: ((String?) -> Void)?
     private var language: AppLanguage = .zhHans
 
@@ -50,8 +53,13 @@ final class MonthlyCostChartView: NSView {
     }
 
     /// 用新的 snapshot 替换费用图表内容。
-    func configure(with snapshot: MonthlyTokenChartSnapshot, language: AppLanguage = .zhHans) {
+    func configure(
+        with snapshot: MonthlyTokenChartSnapshot,
+        period: UsageStatsPeriod = .recent12Months,
+        language: AppLanguage = .zhHans
+    ) {
         self.language = language
+        debugAccessibilityLabel = period.costChartAccessibilityLabel(language: language)
         buckets = snapshot.monthBuckets
         debugNormalizedHeights = snapshot.monthBuckets.map { clampNormalizedCostHeight($0.normalizedCostHeight) }
         debugMonthLabels = snapshot.monthBuckets.map(\.monthLabel)
@@ -70,6 +78,7 @@ final class MonthlyCostChartView: NSView {
         chartHost.rootView = AnyView(MonthlyCostBarChartContent(
             buckets: snapshot.monthBuckets,
             language: language,
+            accessibilityLabelText: debugAccessibilityLabel,
             onHoverMonthKeyChange: { [weak self] monthKey in
                 self?.updateHoverText(monthKey: monthKey)
             }
@@ -135,6 +144,7 @@ private func clampNormalizedCostHeight(_ value: Double) -> Double {
 private struct MonthlyCostBarChartContent: View {
     let buckets: [MonthlyTokenBucket]
     let language: AppLanguage
+    let accessibilityLabelText: String
     let onHoverMonthKeyChange: (String?) -> Void
 
     private var maxCost: Double {
@@ -164,7 +174,7 @@ private struct MonthlyCostBarChartContent: View {
                             x: .value(axisValueName, bucket.monthKey),
                             y: .value("USD", segment.totalCost)
                         )
-                        .foregroundStyle(by: .value("模型", segment.modelName))
+                        .foregroundStyle(MonthlyBarChartStyle.modelSwiftUIColor(for: segment))
                         .opacity(bucket.isCurrentMonth ? 1 : 0.74)
                         .cornerRadius(4)
                         .accessibilityLabel(accessibilityLabel)
@@ -174,10 +184,6 @@ private struct MonthlyCostBarChartContent: View {
             }
         }
         .chartLegend(position: .bottom, alignment: .trailing, spacing: 8)
-        .chartForegroundStyleScale(
-            domain: MonthlyBarChartStyle.modelNames(in: buckets),
-            mapping: { modelName in MonthlyBarChartStyle.modelSwiftUIColor(for: modelName) }
-        )
         .chartYScale(domain: 0...maxCost)
         .chartXAxis {
             AxisMarks(values: buckets.map(\.monthKey)) { value in
@@ -208,7 +214,7 @@ private struct MonthlyCostBarChartContent: View {
         }
         .padding(.top, 8)
         .frame(minHeight: 220)
-        .accessibilityLabel(AppStrings.text(.chartCostAccessibility, language: language))
+        .accessibilityLabel(accessibilityLabelText)
     }
 
     private var axisValueName: String {

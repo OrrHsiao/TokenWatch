@@ -417,8 +417,8 @@ final class MonthlyStatsViewController: NSViewController {
             calendar: calendar,
             language: language
         )
-        chartView.configure(with: snapshot, language: language)
-        costChartView.configure(with: snapshot, language: language)
+        chartView.configure(with: snapshot, period: period, language: language)
+        costChartView.configure(with: snapshot, period: period, language: language)
         toolSharePieView.configure(slices: snapshot.toolShareSlices, language: language)
         modelSharePieView.configure(slices: snapshot.modelShareSlices, language: language)
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)

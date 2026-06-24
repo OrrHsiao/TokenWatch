@@ -40,6 +40,21 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("费用图 accessibility 文案跟随时间窗口")
+    func costAccessibilityLabelUsesConfiguredPeriod() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshot(
+            monthKeys: ["2026-06-20"],
+            monthLabels: ["6/20"],
+            costs: [12.5]
+        )
+
+        view.configure(with: snapshot, period: .recent30Days, language: .en)
+
+        #expect(view.debugAccessibilityLabel == "Last 30 Days cost bar chart")
+    }
+
+    @MainActor
     @Test("费用纵轴标签不显示小数")
     func costYAxisLabelsUseWholeCurrencyValues() {
         let view = MonthlyCostChartView()
@@ -238,6 +253,19 @@ struct MonthlyCostChartViewTests {
     }
 
     @MainActor
+    @Test("费用图真实 Other 模型不使用溢出分段灰色")
+    func realOtherCostModelDoesNotUseOverflowGrayColor() {
+        let view = MonthlyCostChartView()
+        let snapshot = makeSnapshotWithOtherCollision()
+
+        view.configure(with: snapshot, language: .en)
+
+        let colors = view.debugModelSegmentColorsByMonth["2026-06"]
+        #expect(colors?["Other"] != NSColor.systemGray)
+        #expect(colors?[MonthlyTokenModelSegment.overflowID] == NSColor.systemGray)
+    }
+
+    @MainActor
     @Test("鼠标划过分段费用月份时回传该月模型费用明细")
     func hoveringStackedCostMonthBarEmitsModelBreakdownText() {
         let view = MonthlyCostChartView()
@@ -408,6 +436,49 @@ struct MonthlyCostChartViewTests {
             totalCost: 0,
             maxMonthlyTokens: 0,
             maxMonthlyCost: 0,
+            toolShareSlices: [],
+            modelShareSlices: [],
+            loadedProviderCount: 1,
+            loadingProviderCount: 0,
+            unauthorizedProviderCount: 0,
+            errorMessages: []
+        )
+    }
+
+    private func makeSnapshotWithOtherCollision() -> MonthlyTokenChartSnapshot {
+        let bucket = MonthlyTokenBucket(
+            id: "2026-06",
+            monthKey: "2026-06",
+            monthLabel: "6月",
+            totalTokens: 0,
+            totalCost: 20.0,
+            normalizedHeight: 0,
+            normalizedCostHeight: 1,
+            isCurrentMonth: true,
+            modelSegments: [
+                MonthlyTokenModelSegment(
+                    id: "Other",
+                    modelName: "Other",
+                    totalTokens: 900,
+                    totalCost: 9.0,
+                    percentage: 0.45
+                ),
+                MonthlyTokenModelSegment(
+                    id: MonthlyTokenModelSegment.overflowID,
+                    modelName: "Other",
+                    totalTokens: 1_100,
+                    totalCost: 11.0,
+                    percentage: 0.55,
+                    isOverflow: true
+                ),
+            ]
+        )
+        return MonthlyTokenChartSnapshot(
+            monthBuckets: [bucket],
+            totalTokens: 0,
+            totalCost: 20.0,
+            maxMonthlyTokens: 0,
+            maxMonthlyCost: 20.0,
             toolShareSlices: [],
             modelShareSlices: [],
             loadedProviderCount: 1,
