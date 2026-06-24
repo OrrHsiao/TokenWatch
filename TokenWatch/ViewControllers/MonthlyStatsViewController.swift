@@ -3,12 +3,18 @@ import AppKit
 /// 跨 provider 的时间窗口 token 消耗页面。
 final class MonthlyStatsViewController: NSViewController {
     private static let compactBarChartWidth: CGFloat = 520
+    private static let refreshButtonSize: CGFloat = 20
+    private static let refreshButtonSpacing: CGFloat = 8
+    private static let refreshButtonDefaultSymbolName = "arrow.clockwise"
+    private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
+    private static let partialLoadingStatusText = "部分数据仍在加载"
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let statusLabel = NSTextField(labelWithString: "")
+    private let partialLoadingStatusLabel = NSTextField(labelWithString: "")
     private let tokenChartTitleLabel = NSTextField(labelWithString: "Token 用量")
     private let costChartTitleLabel = NSTextField(labelWithString: "费用")
     private let tokenChartHoverLabel = NSTextField(labelWithString: "")
@@ -19,8 +25,11 @@ final class MonthlyStatsViewController: NSViewController {
     private let modelSharePieView = UsageSharePieChartView(title: "模型占比")
     private let period: UsageStatsPeriod
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
+    private let refreshAction: @MainActor () async -> Void
+    private let refreshButton = RefreshIconButton()
     private let nowProvider: () -> Date
     private let calendar: Calendar
+    private var currentRefreshButtonSymbolName: String?
     private var tokenHoverLabelTrailingConstraint: NSLayoutConstraint?
     private var tokenTitleRowTrailingConstraint: NSLayoutConstraint?
     private var costHoverLabelTrailingConstraint: NSLayoutConstraint?
@@ -31,11 +40,17 @@ final class MonthlyStatsViewController: NSViewController {
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
             (NSApp.delegate as? AppDelegate)?.viewModel.states ?? [:]
         },
+        refreshAction: @escaping @MainActor () async -> Void = {
+            if let viewModel = (NSApp.delegate as? AppDelegate)?.viewModel {
+                await viewModel.loadAllStats()
+            }
+        },
         nowProvider: @escaping () -> Date = Date.init,
         calendar: Calendar = .current
     ) {
         self.period = period
         self.stateProvider = stateProvider
+        self.refreshAction = refreshAction
         self.nowProvider = nowProvider
         self.calendar = calendar
         super.init(nibName: nil, bundle: nil)
@@ -50,6 +65,49 @@ final class MonthlyStatsViewController: NSViewController {
 
     var debugCostChartHoverText: String {
         costChartHoverLabel.stringValue
+    }
+
+    var debugStatusText: String {
+        if !partialLoadingStatusLabel.isHidden {
+            return partialLoadingStatusLabel.stringValue
+        }
+        return statusLabel.stringValue
+    }
+
+    var debugRefreshButtonTitle: String {
+        refreshButton.title
+    }
+
+    var debugRefreshButtonSymbolName: String? {
+        refreshButton.image == nil ? nil : currentRefreshButtonSymbolName
+    }
+
+    var debugRefreshButtonUsesImageOnly: Bool {
+        refreshButton.imagePosition == .imageOnly
+    }
+
+    var debugRefreshButtonToolTip: String? {
+        refreshButton.toolTip
+    }
+
+    var debugRefreshButtonActionName: String? {
+        refreshButton.action.map(NSStringFromSelector)
+    }
+
+    var debugRefreshButtonCornerRadius: CGFloat {
+        refreshButton.debugCornerRadius
+    }
+
+    var debugRefreshButtonHasBackground: Bool {
+        refreshButton.debugHasBackground
+    }
+
+    var debugRefreshButtonIsEnabled: Bool {
+        refreshButton.isEnabled
+    }
+
+    var debugRefreshButtonFrameInView: NSRect {
+        refreshButton.convert(refreshButton.bounds, to: view)
     }
 
     var debugTokenHoverLabelTrailingAlignsWithTokenChart: Bool {
@@ -68,6 +126,14 @@ final class MonthlyStatsViewController: NSViewController {
 
     func debugSimulateCostChartHover(monthKey: String?) {
         costChartView.debugSimulateHover(monthKey: monthKey)
+    }
+
+    func debugSetRefreshButtonHovering(_ isHovering: Bool) {
+        refreshButton.debugSetHovering(isHovering)
+    }
+
+    func debugClickRefreshButton() {
+        refreshButton.performClick(nil)
     }
 
     required init?(coder: NSCoder) {
@@ -100,6 +166,15 @@ final class MonthlyStatsViewController: NSViewController {
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.maximumNumberOfLines = 0
         statusLabel.lineBreakMode = .byWordWrapping
+        partialLoadingStatusLabel.font = .systemFont(ofSize: 12)
+        partialLoadingStatusLabel.textColor = .secondaryLabelColor
+        partialLoadingStatusLabel.alignment = .right
+        partialLoadingStatusLabel.maximumNumberOfLines = 1
+        partialLoadingStatusLabel.lineBreakMode = .byTruncatingTail
+        partialLoadingStatusLabel.isHidden = true
+        partialLoadingStatusLabel.setContentHuggingPriority(.required, for: .horizontal)
+        partialLoadingStatusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        partialLoadingStatusLabel.translatesAutoresizingMaskIntoConstraints = false
         configureChartTitle(tokenChartTitleLabel)
         configureChartTitle(costChartTitleLabel)
         configureChartHoverLabel(tokenChartHoverLabel)
@@ -137,6 +212,15 @@ final class MonthlyStatsViewController: NSViewController {
         headerStack.alignment = .firstBaseline
         headerStack.distribution = .gravityAreas
         headerStack.spacing = 16
+        headerStack.translatesAutoresizingMaskIntoConstraints = false
+
+        configureRefreshButton()
+
+        let headerView = NSView()
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(headerStack)
+        headerView.addSubview(refreshButton)
+        headerView.addSubview(partialLoadingStatusLabel)
 
         let tokenChartSection = makeChartSection(
             titleLabel: tokenChartTitleLabel,
@@ -161,7 +245,7 @@ final class MonthlyStatsViewController: NSViewController {
         pieChartsStack.spacing = 18
         pieChartsStack.setContentHuggingPriority(.required, for: .horizontal)
 
-        let contentStack = NSStackView(views: [headerStack, tokenChartSection.stack, costChartSection.stack, pieChartsStack, statusLabel])
+        let contentStack = NSStackView(views: [headerView, tokenChartSection.stack, costChartSection.stack, pieChartsStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -194,6 +278,26 @@ final class MonthlyStatsViewController: NSViewController {
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 32),
             contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
+            headerView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            headerView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
+            headerStack.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
+            headerStack.topAnchor.constraint(equalTo: headerView.topAnchor),
+            headerStack.bottomAnchor.constraint(equalTo: headerView.bottomAnchor),
+            headerStack.trailingAnchor.constraint(
+                lessThanOrEqualTo: refreshButton.leadingAnchor,
+                constant: -Self.refreshButtonSpacing
+            ),
+            refreshButton.topAnchor.constraint(equalTo: headerView.topAnchor),
+            refreshButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
+            refreshButton.widthAnchor.constraint(equalToConstant: Self.refreshButtonSize),
+            refreshButton.heightAnchor.constraint(equalToConstant: Self.refreshButtonSize),
+            partialLoadingStatusLabel.topAnchor.constraint(equalTo: refreshButton.bottomAnchor, constant: 6),
+            partialLoadingStatusLabel.trailingAnchor.constraint(equalTo: refreshButton.trailingAnchor),
+            partialLoadingStatusLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: headerStack.trailingAnchor,
+                constant: Self.refreshButtonSpacing
+            ),
+            partialLoadingStatusLabel.bottomAnchor.constraint(lessThanOrEqualTo: headerView.bottomAnchor),
             tokenChartSection.stack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             tokenChartSection.stack.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             chartView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
@@ -207,6 +311,23 @@ final class MonthlyStatsViewController: NSViewController {
             modelSharePieView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
+    }
+
+    private func configureRefreshButton() {
+        refreshButton.title = ""
+        refreshButton.imagePosition = .imageOnly
+        refreshButton.imageScaling = .scaleProportionallyDown
+        refreshButton.isBordered = false
+        refreshButton.bezelStyle = .smallSquare
+        refreshButton.contentTintColor = .secondaryLabelColor
+        refreshButton.toolTip = "立即刷新"
+        refreshButton.target = self
+        refreshButton.action = #selector(refreshStats(_:))
+        refreshButton.setButtonType(.momentaryChange)
+        refreshButton.setContentHuggingPriority(.required, for: .horizontal)
+        refreshButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        refreshButton.translatesAutoresizingMaskIntoConstraints = false
+        setRefreshButtonLoading(false)
     }
 
     private func configureChartTitle(_ label: NSTextField) {
@@ -287,8 +408,59 @@ final class MonthlyStatsViewController: NSViewController {
         modelSharePieView.configure(slices: snapshot.modelShareSlices)
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
-        statusLabel.stringValue = statusText(for: snapshot, totalProviderCount: states.count)
-        statusLabel.isHidden = statusLabel.stringValue.isEmpty
+        applyStatusText(statusText(for: snapshot, totalProviderCount: states.count))
+        applyRefreshButtonLoadingState(states: states)
+    }
+
+    private func applyStatusText(_ text: String) {
+        if text == Self.partialLoadingStatusText {
+            partialLoadingStatusLabel.stringValue = text
+            partialLoadingStatusLabel.isHidden = false
+            statusLabel.stringValue = ""
+            statusLabel.isHidden = true
+            return
+        }
+
+        partialLoadingStatusLabel.stringValue = ""
+        partialLoadingStatusLabel.isHidden = true
+        statusLabel.stringValue = text
+        statusLabel.isHidden = text.isEmpty
+    }
+
+    @objc private func refreshStats(_ sender: Any?) {
+        setRefreshButtonLoading(true)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await refreshAction()
+            applyRefreshButtonLoadingState(states: stateProvider())
+        }
+    }
+
+    private func applyRefreshButtonLoadingState(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
+        setRefreshButtonLoading(states.values.contains { $0.isLoading })
+    }
+
+    private func setRefreshButtonLoading(_ isLoading: Bool) {
+        let symbolName = isLoading
+            ? Self.refreshButtonLoadingSymbolName
+            : Self.refreshButtonDefaultSymbolName
+        setRefreshButtonSymbol(symbolName, accessibilityDescription: isLoading ? "正在刷新" : "立即刷新")
+
+        refreshButton.isEnabled = !isLoading
+        refreshButton.toolTip = isLoading ? "正在刷新" : "立即刷新"
+        refreshButton.setAccessibilityLabel(isLoading ? "正在刷新用量数据" : "刷新用量数据")
+    }
+
+    private func setRefreshButtonSymbol(_ symbolName: String, accessibilityDescription: String) {
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: accessibilityDescription
+        )?.withSymbolConfiguration(symbolConfig)
+        image?.isTemplate = true
+
+        refreshButton.image = image
+        currentRefreshButtonSymbolName = image == nil ? nil : symbolName
     }
 
     private func updateTokenChartHoverText(_ text: String?) {
@@ -319,7 +491,7 @@ final class MonthlyStatsViewController: NSViewController {
             return period.emptyDataText
         }
         if snapshot.loadingProviderCount > 0 {
-            return "部分数据仍在加载"
+            return Self.partialLoadingStatusText
         }
         if let errorMessage = snapshot.errorMessages.first {
             return errorMessage

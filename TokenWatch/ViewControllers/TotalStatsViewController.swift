@@ -4,6 +4,11 @@ import AppKit
 final class TotalStatsViewController: NSViewController {
     private static let contentWidth: CGFloat = 520
     private static let horizontalInset: CGFloat = 32
+    private static let refreshButtonSize: CGFloat = 20
+    private static let refreshButtonSpacing: CGFloat = 8
+    private static let refreshButtonDefaultSymbolName = "arrow.clockwise"
+    private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
+    private static let partialLoadingStatusText = "部分数据仍在加载"
 
     private let titleLabel = NSTextField(labelWithString: "总计")
     private let subtitleLabel = NSTextField(labelWithString: "跨 provider 全量汇总")
@@ -13,16 +18,26 @@ final class TotalStatsViewController: NSViewController {
     private let modelRowsStack = NSStackView()
     private let emptyModelLabel = NSTextField(labelWithString: "暂无模型数据")
     private let statusLabel = NSTextField(labelWithString: "")
+    private let partialLoadingStatusLabel = NSTextField(labelWithString: "")
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
+    private let refreshAction: @MainActor () async -> Void
+    private let refreshButton = RefreshIconButton()
+    private var currentRefreshButtonSymbolName: String?
     private var modelRowLabels: [String] = []
     private var modelRowValueTexts: [String] = []
 
     init(
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
             (NSApp.delegate as? AppDelegate)?.viewModel.states ?? [:]
+        },
+        refreshAction: @escaping @MainActor () async -> Void = {
+            if let viewModel = (NSApp.delegate as? AppDelegate)?.viewModel {
+                await viewModel.loadAllStats()
+            }
         }
     ) {
         self.stateProvider = stateProvider
+        self.refreshAction = refreshAction
         super.init(nibName: nil, bundle: nil)
         self.title = "总计"
     }
@@ -32,7 +47,54 @@ final class TotalStatsViewController: NSViewController {
     }
 
     var debugStatusText: String {
-        statusLabel.stringValue
+        if !partialLoadingStatusLabel.isHidden {
+            return partialLoadingStatusLabel.stringValue
+        }
+        return statusLabel.stringValue
+    }
+
+    var debugRefreshButtonTitle: String {
+        refreshButton.title
+    }
+
+    var debugRefreshButtonSymbolName: String? {
+        refreshButton.image == nil ? nil : currentRefreshButtonSymbolName
+    }
+
+    var debugRefreshButtonUsesImageOnly: Bool {
+        refreshButton.imagePosition == .imageOnly
+    }
+
+    var debugRefreshButtonToolTip: String? {
+        refreshButton.toolTip
+    }
+
+    var debugRefreshButtonActionName: String? {
+        refreshButton.action.map(NSStringFromSelector)
+    }
+
+    var debugRefreshButtonCornerRadius: CGFloat {
+        refreshButton.debugCornerRadius
+    }
+
+    var debugRefreshButtonHasBackground: Bool {
+        refreshButton.debugHasBackground
+    }
+
+    var debugRefreshButtonIsEnabled: Bool {
+        refreshButton.isEnabled
+    }
+
+    var debugRefreshButtonFrameInView: NSRect {
+        refreshButton.convert(refreshButton.bounds, to: view)
+    }
+
+    func debugSetRefreshButtonHovering(_ isHovering: Bool) {
+        refreshButton.debugSetHovering(isHovering)
+    }
+
+    func debugClickRefreshButton() {
+        refreshButton.performClick(nil)
     }
 
     var debugModelRowLabels: [String] {
@@ -67,10 +129,10 @@ final class TotalStatsViewController: NSViewController {
         subtitleLabel.font = .systemFont(ofSize: 13)
         subtitleLabel.textColor = .secondaryLabelColor
         totalLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
-        totalLabel.alignment = .right
+        totalLabel.alignment = .natural
         costLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
         costLabel.textColor = .secondaryLabelColor
-        costLabel.alignment = .right
+        costLabel.alignment = .natural
         modelSectionTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         modelSectionTitleLabel.alignment = .left
         emptyModelLabel.font = .systemFont(ofSize: 12)
@@ -79,24 +141,38 @@ final class TotalStatsViewController: NSViewController {
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.maximumNumberOfLines = 0
         statusLabel.lineBreakMode = .byWordWrapping
+        partialLoadingStatusLabel.font = .systemFont(ofSize: 12)
+        partialLoadingStatusLabel.textColor = .secondaryLabelColor
+        partialLoadingStatusLabel.alignment = .right
+        partialLoadingStatusLabel.maximumNumberOfLines = 1
+        partialLoadingStatusLabel.lineBreakMode = .byTruncatingTail
+        partialLoadingStatusLabel.isHidden = true
+        partialLoadingStatusLabel.setContentHuggingPriority(.required, for: .horizontal)
+        partialLoadingStatusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        partialLoadingStatusLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
         headerTextStack.orientation = .vertical
         headerTextStack.alignment = .leading
         headerTextStack.spacing = 4
+        headerTextStack.translatesAutoresizingMaskIntoConstraints = false
 
         let summaryStack = NSStackView(views: [totalLabel, costLabel])
         summaryStack.orientation = .vertical
-        summaryStack.alignment = .trailing
+        summaryStack.alignment = .leading
         summaryStack.distribution = .fill
         summaryStack.spacing = 4
+        summaryStack.setContentHuggingPriority(.required, for: .horizontal)
+        summaryStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let headerStack = NSStackView(views: [headerTextStack, summaryStack])
-        headerStack.orientation = .horizontal
-        headerStack.alignment = .firstBaseline
-        headerStack.distribution = .gravityAreas
-        headerStack.spacing = 16
-        headerStack.setContentHuggingPriority(.required, for: .horizontal)
+        configureRefreshButton()
+
+        let headerView = NSView()
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(headerTextStack)
+        headerView.addSubview(summaryStack)
+        headerView.addSubview(refreshButton)
+        headerView.addSubview(partialLoadingStatusLabel)
 
         modelRowsStack.orientation = .vertical
         modelRowsStack.alignment = .width
@@ -110,7 +186,7 @@ final class TotalStatsViewController: NSViewController {
         modelSectionStack.alignment = .leading
         modelSectionStack.spacing = 10
 
-        let contentStack = NSStackView(views: [headerStack, modelSectionStack, statusLabel])
+        let contentStack = NSStackView(views: [headerView, modelSectionStack, statusLabel])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -145,8 +221,28 @@ final class TotalStatsViewController: NSViewController {
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Self.horizontalInset),
             contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: Self.horizontalInset),
             contentStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -Self.horizontalInset),
-            headerStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
-            headerStack.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            headerView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            headerView.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            headerTextStack.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
+            headerTextStack.topAnchor.constraint(equalTo: headerView.topAnchor),
+            headerTextStack.bottomAnchor.constraint(equalTo: headerView.bottomAnchor),
+            summaryStack.leadingAnchor.constraint(equalTo: subtitleLabel.trailingAnchor, constant: 16),
+            summaryStack.topAnchor.constraint(equalTo: headerView.topAnchor),
+            refreshButton.topAnchor.constraint(equalTo: headerView.topAnchor),
+            refreshButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
+            refreshButton.leadingAnchor.constraint(
+                greaterThanOrEqualTo: summaryStack.trailingAnchor,
+                constant: Self.refreshButtonSpacing
+            ),
+            refreshButton.widthAnchor.constraint(equalToConstant: Self.refreshButtonSize),
+            refreshButton.heightAnchor.constraint(equalToConstant: Self.refreshButtonSize),
+            partialLoadingStatusLabel.topAnchor.constraint(equalTo: refreshButton.bottomAnchor, constant: 6),
+            partialLoadingStatusLabel.trailingAnchor.constraint(equalTo: refreshButton.trailingAnchor),
+            partialLoadingStatusLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: summaryStack.trailingAnchor,
+                constant: Self.refreshButtonSpacing
+            ),
+            partialLoadingStatusLabel.bottomAnchor.constraint(lessThanOrEqualTo: headerView.bottomAnchor),
             modelSectionStack.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             modelSectionStack.widthAnchor.constraint(equalToConstant: Self.contentWidth),
             modelSectionTitleLabel.leadingAnchor.constraint(equalTo: modelSectionStack.leadingAnchor),
@@ -155,6 +251,23 @@ final class TotalStatsViewController: NSViewController {
             emptyModelLabel.leadingAnchor.constraint(equalTo: modelSectionStack.leadingAnchor),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
+    }
+
+    private func configureRefreshButton() {
+        refreshButton.title = ""
+        refreshButton.imagePosition = .imageOnly
+        refreshButton.imageScaling = .scaleProportionallyDown
+        refreshButton.isBordered = false
+        refreshButton.bezelStyle = .smallSquare
+        refreshButton.contentTintColor = .secondaryLabelColor
+        refreshButton.toolTip = "立即刷新"
+        refreshButton.target = self
+        refreshButton.action = #selector(refreshStats(_:))
+        refreshButton.setButtonType(.momentaryChange)
+        refreshButton.setContentHuggingPriority(.required, for: .horizontal)
+        refreshButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        refreshButton.translatesAutoresizingMaskIntoConstraints = false
+        setRefreshButtonLoading(false)
     }
 
     private func bindNotifications() {
@@ -177,8 +290,59 @@ final class TotalStatsViewController: NSViewController {
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
         rebuildModelRows(snapshot.modelRows)
-        statusLabel.stringValue = statusText(for: snapshot, totalProviderCount: states.count)
-        statusLabel.isHidden = statusLabel.stringValue.isEmpty
+        applyStatusText(statusText(for: snapshot, totalProviderCount: states.count))
+        applyRefreshButtonLoadingState(states: states)
+    }
+
+    private func applyStatusText(_ text: String) {
+        if text == Self.partialLoadingStatusText {
+            partialLoadingStatusLabel.stringValue = text
+            partialLoadingStatusLabel.isHidden = false
+            statusLabel.stringValue = ""
+            statusLabel.isHidden = true
+            return
+        }
+
+        partialLoadingStatusLabel.stringValue = ""
+        partialLoadingStatusLabel.isHidden = true
+        statusLabel.stringValue = text
+        statusLabel.isHidden = text.isEmpty
+    }
+
+    @objc private func refreshStats(_ sender: Any?) {
+        setRefreshButtonLoading(true)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await refreshAction()
+            applyRefreshButtonLoadingState(states: stateProvider())
+        }
+    }
+
+    private func applyRefreshButtonLoadingState(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
+        setRefreshButtonLoading(states.values.contains { $0.isLoading })
+    }
+
+    private func setRefreshButtonLoading(_ isLoading: Bool) {
+        let symbolName = isLoading
+            ? Self.refreshButtonLoadingSymbolName
+            : Self.refreshButtonDefaultSymbolName
+        setRefreshButtonSymbol(symbolName, accessibilityDescription: isLoading ? "正在刷新" : "立即刷新")
+
+        refreshButton.isEnabled = !isLoading
+        refreshButton.toolTip = isLoading ? "正在刷新" : "立即刷新"
+        refreshButton.setAccessibilityLabel(isLoading ? "正在刷新总计数据" : "刷新总计数据")
+    }
+
+    private func setRefreshButtonSymbol(_ symbolName: String, accessibilityDescription: String) {
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: accessibilityDescription
+        )?.withSymbolConfiguration(symbolConfig)
+        image?.isTemplate = true
+
+        refreshButton.image = image
+        currentRefreshButtonSymbolName = image == nil ? nil : symbolName
     }
 
     private func rebuildModelRows(_ rows: [TotalStatsModelRow]) {
@@ -263,7 +427,7 @@ final class TotalStatsViewController: NSViewController {
             return "总计暂无 token 数据"
         }
         if snapshot.loadingProviderCount > 0 {
-            return "部分数据仍在加载"
+            return Self.partialLoadingStatusText
         }
         if let errorMessage = snapshot.errorMessages.first {
             return errorMessage

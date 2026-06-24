@@ -87,8 +87,8 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("总 token 和总费用使用最近十二个月页的右对齐数值样式")
-    func summaryMetricsUseRecentMonthsValueStyle() throws {
+    @Test("总 token 和总费用位于标题右侧并左对齐")
+    func summaryMetricsAlignLeadingAtTitleTrailingSide() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [
@@ -130,23 +130,97 @@ struct TotalStatsViewControllerTests {
         let expectedTopY = viewController.view.bounds.maxY - 32
         let totalFrame = totalLabel.frame(in: viewController.view)
         let costFrame = costLabel.frame(in: viewController.view)
+        let totalAlignmentFrame = totalLabel.alignmentFrame(in: viewController.view)
+        let costAlignmentFrame = costLabel.alignmentFrame(in: viewController.view)
+        let headerTextTrailingX = max(
+            titleLabel.alignmentFrame(in: viewController.view).maxX,
+            subtitleLabel.alignmentFrame(in: viewController.view).maxX
+        )
 
         #expect(titleLabel.font == .systemFont(ofSize: 22, weight: .semibold))
         #expect(subtitleLabel.textColor == .secondaryLabelColor)
-        #expect(totalLabel.alignment == .right)
-        #expect(costLabel.alignment == .right)
+        #expect(totalLabel.alignment == .natural)
+        #expect(costLabel.alignment == .natural)
         #expect(costLabel.textColor == .secondaryLabelColor)
-        #expect(abs(totalFrame.maxX - costFrame.maxX) <= 1)
         #expect(abs(titleLabel.frame(in: viewController.view).minX - 32) <= 2)
         #expect(abs(titleLabel.frame(in: viewController.view).maxY - expectedTopY) <= 1)
-        #expect(totalFrame.midY < titleLabel.frame(in: viewController.view).maxY)
-        #expect(totalFrame.midY > subtitleLabel.frame(in: viewController.view).minY)
+        #expect(abs(totalAlignmentFrame.minX - (headerTextTrailingX + 16)) <= 1)
+        #expect(abs(totalAlignmentFrame.minX - costAlignmentFrame.minX) <= 1)
+        #expect(abs(totalFrame.midY - titleLabel.frame(in: viewController.view).midY) <= 6)
+        #expect(abs(costFrame.midY - subtitleLabel.frame(in: viewController.view).midY) <= 6)
         #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
         #expect(abs(modelNameLabel.frame(in: viewController.view).minX - 32) <= 2)
     }
 
     @MainActor
-    @Test("部分数据加载中时总 token 和总费用保持最近十二个月页的紧凑间距")
+    @Test("右上角展示与状态栏弹窗一致的刷新按钮")
+    func headerShowsPopoverStyleRefreshButton() throws {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [.claude: .init(stats: makeStats(total: 1_200_000), isLoading: false, errorMessage: nil, needsAuthorization: false)]
+            }
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let expectedTopY = viewController.view.bounds.maxY - 32
+        let refreshFrame = viewController.debugRefreshButtonFrameInView
+
+        #expect(viewController.debugRefreshButtonTitle == "")
+        #expect(viewController.debugRefreshButtonSymbolName == "arrow.clockwise")
+        #expect(viewController.debugRefreshButtonUsesImageOnly)
+        #expect(viewController.debugRefreshButtonToolTip == "立即刷新")
+        #expect(viewController.debugRefreshButtonActionName == "refreshStats:")
+        #expect(viewController.debugRefreshButtonCornerRadius == 6)
+        #expect(!viewController.debugRefreshButtonHasBackground)
+        #expect(abs(refreshFrame.maxX - 552) <= 2)
+        #expect(abs(refreshFrame.maxY - expectedTopY) <= 4)
+
+        viewController.debugSetRefreshButtonHovering(true)
+        #expect(viewController.debugRefreshButtonHasBackground)
+
+        viewController.debugSetRefreshButtonHovering(false)
+        #expect(!viewController.debugRefreshButtonHasBackground)
+    }
+
+    @MainActor
+    @Test("刷新按钮 loading 时禁用并显示同步图标")
+    func refreshButtonShowsLoadingState() {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [.claude: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false)]
+            }
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(!viewController.debugRefreshButtonIsEnabled)
+        #expect(viewController.debugRefreshButtonSymbolName == "arrow.triangle.2.circlepath")
+        #expect(viewController.debugRefreshButtonToolTip == "正在刷新")
+    }
+
+    @MainActor
+    @Test("点击刷新按钮调用总计页刷新动作")
+    func refreshButtonRunsRefreshAction() async {
+        var refreshCount = 0
+        let viewController = TotalStatsViewController(
+            stateProvider: { [:] },
+            refreshAction: {
+                refreshCount += 1
+            }
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.debugClickRefreshButton()
+        await Task.yield()
+
+        #expect(refreshCount == 1)
+    }
+
+    @MainActor
+    @Test("部分数据加载中提示展示在刷新按钮下方且总计指标保持紧凑")
     func keepsSummaryMetricsCompactWhilePartiallyLoading() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
@@ -178,11 +252,19 @@ struct TotalStatsViewControllerTests {
         let labels = viewController.view.allDescendants(ofType: NSTextField.self)
         let totalLabel = try #require(labels.first { $0.stringValue == "1.2M" })
         let costLabel = try #require(labels.first { $0.stringValue == "$12.50" })
+        let statusLabel = try #require(labels.first { $0.stringValue == "部分数据仍在加载" })
+        let modelSectionTitleLabel = try #require(labels.first { $0.stringValue == "模型消耗" })
         let totalFrame = totalLabel.frame(in: viewController.view)
         let costFrame = costLabel.frame(in: viewController.view)
+        let statusFrame = statusLabel.frame(in: viewController.view)
+        let refreshFrame = viewController.debugRefreshButtonFrameInView
+        let modelSectionTitleFrame = modelSectionTitleLabel.frame(in: viewController.view)
         let valueDistance = totalFrame.minY - costFrame.minY
 
         #expect(viewController.debugStatusText == "部分数据仍在加载")
+        #expect(abs(statusFrame.maxX - refreshFrame.maxX) <= 2)
+        #expect(statusFrame.maxY <= refreshFrame.minY - 2)
+        #expect(statusFrame.minY > modelSectionTitleFrame.maxY)
         #expect(valueDistance <= 28)
     }
 
@@ -311,5 +393,12 @@ private extension NSView {
 
     func frame(in rootView: NSView) -> NSRect {
         convert(bounds, to: rootView)
+    }
+
+    func alignmentFrame(in rootView: NSView) -> NSRect {
+        guard let superview else {
+            return alignmentRect(forFrame: frame)
+        }
+        return superview.convert(alignmentRect(forFrame: frame), to: rootView)
     }
 }

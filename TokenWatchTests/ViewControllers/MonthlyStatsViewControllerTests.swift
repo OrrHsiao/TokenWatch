@@ -326,6 +326,135 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("三个时间窗口页右上角展示与总计页一致的刷新按钮")
+    func headerShowsTotalPageStyleRefreshButtonForEveryPeriod() throws {
+        let calendar = utcCalendar()
+        for period in [UsageStatsPeriod.recent12Months, .recent30Days, .today] {
+            let viewController = MonthlyStatsViewController(
+                period: period,
+                stateProvider: {
+                    [.claude: .init(
+                        stats: makeStats(for: period),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    )]
+                },
+                nowProvider: { date(2026, 6, 20, calendar: calendar) },
+                calendar: calendar
+            )
+
+            viewController.loadViewIfNeeded()
+            viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+            viewController.view.layoutSubtreeIfNeeded()
+
+            let expectedTopY = viewController.view.bounds.maxY - 32
+            let refreshFrame = viewController.debugRefreshButtonFrameInView
+
+            #expect(viewController.debugRefreshButtonTitle == "")
+            #expect(viewController.debugRefreshButtonSymbolName == "arrow.clockwise")
+            #expect(viewController.debugRefreshButtonUsesImageOnly)
+            #expect(viewController.debugRefreshButtonToolTip == "立即刷新")
+            #expect(viewController.debugRefreshButtonActionName == "refreshStats:")
+            #expect(viewController.debugRefreshButtonCornerRadius == 6)
+            #expect(!viewController.debugRefreshButtonHasBackground)
+            #expect(abs(refreshFrame.maxX - 552) <= 2)
+            #expect(abs(refreshFrame.maxY - expectedTopY) <= 4)
+
+            viewController.debugSetRefreshButtonHovering(true)
+            #expect(viewController.debugRefreshButtonHasBackground)
+
+            viewController.debugSetRefreshButtonHovering(false)
+            #expect(!viewController.debugRefreshButtonHasBackground)
+        }
+    }
+
+    @MainActor
+    @Test("三个时间窗口页部分加载提示展示在刷新按钮下方")
+    func partialLoadingStatusAppearsBelowRefreshButtonForEveryPeriod() throws {
+        let calendar = utcCalendar()
+        for period in [UsageStatsPeriod.recent12Months, .recent30Days, .today] {
+            let viewController = MonthlyStatsViewController(
+                period: period,
+                stateProvider: {
+                    [
+                        .claude: .init(
+                            stats: makeStats(for: period),
+                            isLoading: false,
+                            errorMessage: nil,
+                            needsAuthorization: false
+                        ),
+                        .codex: .init(
+                            stats: nil,
+                            isLoading: true,
+                            errorMessage: nil,
+                            needsAuthorization: false
+                        ),
+                    ]
+                },
+                nowProvider: { date(2026, 6, 20, calendar: calendar) },
+                calendar: calendar
+            )
+
+            viewController.loadViewIfNeeded()
+            viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+            viewController.view.layoutSubtreeIfNeeded()
+
+            let labels = viewController.view.allDescendants(ofType: NSTextField.self)
+            let statusLabel = try #require(labels.first { $0.stringValue == "部分数据仍在加载" })
+            let tokenChartTitleLabel = try #require(labels.first { $0.stringValue == "Token 用量" })
+            let statusFrame = statusLabel.frame(in: viewController.view)
+            let refreshFrame = viewController.debugRefreshButtonFrameInView
+            let tokenChartTitleFrame = tokenChartTitleLabel.frame(in: viewController.view)
+
+            #expect(viewController.debugStatusText == "部分数据仍在加载")
+            #expect(abs(statusFrame.maxX - refreshFrame.maxX) <= 2)
+            #expect(statusFrame.maxY <= refreshFrame.minY - 2)
+            #expect(statusFrame.minY > tokenChartTitleFrame.maxY)
+        }
+    }
+
+    @MainActor
+    @Test("时间窗口页刷新按钮 loading 时禁用并显示同步图标")
+    func refreshButtonShowsLoadingState() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: {
+                [.claude: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false)]
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(!viewController.debugRefreshButtonIsEnabled)
+        #expect(viewController.debugRefreshButtonSymbolName == "arrow.triangle.2.circlepath")
+        #expect(viewController.debugRefreshButtonToolTip == "正在刷新")
+    }
+
+    @MainActor
+    @Test("点击时间窗口页刷新按钮调用刷新动作")
+    func refreshButtonRunsRefreshAction() async {
+        var refreshCount = 0
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            stateProvider: { [:] },
+            refreshAction: {
+                refreshCount += 1
+            },
+            nowProvider: { date(2026, 6, 20, calendar: calendar) },
+            calendar: calendar
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.debugClickRefreshButton()
+        await Task.yield()
+
+        #expect(refreshCount == 1)
+    }
+
+    @MainActor
     @Test("token 有数据但费用为零时仍展示费用图")
     func rendersCostChartWhenCostIsZero() throws {
         let calendar = utcCalendar()
@@ -531,6 +660,31 @@ struct MonthlyStatsViewControllerTests {
             dataSourceCount: 1
         )
     }
+
+    private func makeStats(for period: UsageStatsPeriod) -> AggregatedStats {
+        switch period {
+        case .recent12Months:
+            return makeStats(
+                byMonth: [
+                    "2026-06": makeSummary(total: 500_000, cost: 2.5, modelBreakdown: ["claude-sonnet": 500_000])
+                ]
+            )
+        case .recent30Days:
+            return makeStats(
+                byDay: [
+                    "2026-06-20": makeSummary(total: 500_000, cost: 2.5, modelBreakdown: ["claude-sonnet": 500_000])
+                ],
+                byMonth: [:]
+            )
+        case .today:
+            return makeStats(
+                byHour: [
+                    "2026-06-20T09": makeSummary(total: 500_000, cost: 2.5, modelBreakdown: ["claude-sonnet": 500_000])
+                ],
+                byMonth: [:]
+            )
+        }
+    }
 }
 
 private extension NSView {
@@ -555,5 +709,9 @@ private extension NSView {
         allDescendants(ofType: NSStackView.self)
             .filter { $0.toolTip != nil }
             .map { row in row.convert(row.bounds, to: targetView).maxX }
+    }
+
+    func frame(in rootView: NSView) -> NSRect {
+        convert(bounds, to: rootView)
     }
 }
