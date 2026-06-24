@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub Release tag to upload the asset to
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: macOS Release Build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Build Release App
+        run: |
+          xcodebuild \
+            -project TokenWatch.xcodeproj \
+            -scheme TokenWatch \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/TokenWatchDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            ARCHS="arm64 x86_64" \
+            build
+
+      - name: Verify Universal Binary
+        run: |
+          APP_BINARY="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/TokenWatch.app/Contents/MacOS/TokenWatch"
+          ARCHS="$(lipo -archs "$APP_BINARY")"
+          echo "Built architectures: $ARCHS"
+          case " $ARCHS " in
+            *" arm64 "*) ;;
+            *) echo "Missing arm64 architecture"; exit 1 ;;
+          esac
+          case " $ARCHS " in
+            *" x86_64 "*) ;;
+            *) echo "Missing x86_64 architecture"; exit 1 ;;
+          esac
+
+      - name: Package App
+        run: |
+          APP_PATH="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/TokenWatch.app"
+          test -d "$APP_PATH"
+          ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/TokenWatch-macOS-universal.zip"
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TokenWatch-macOS-universal
+          path: ${{ runner.temp }}/TokenWatch-macOS-universal.zip
+          if-no-files-found: error
+
+      - name: Resolve Release Tag
+        id: release-tag
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Asset to GitHub Release
+        if: steps.release-tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ steps.release-tag.outputs.tag }}" "$RUNNER_TEMP/TokenWatch-macOS-universal.zip" --repo "$GITHUB_REPOSITORY" --clobber
