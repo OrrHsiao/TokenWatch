@@ -17,6 +17,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case settingsAuthorize
     case settingsRefreshAllData
     case settingsAutoRefreshInterval
+    case settingsLaunchAtLogin
     case settingsLanguage
     case autoRefreshSeconds30
     case autoRefreshMinute1
@@ -108,6 +109,7 @@ enum AppStrings {
         .settingsAuthorize: "去授权",
         .settingsRefreshAllData: "刷新全部数据",
         .settingsAutoRefreshInterval: "自动刷新间隔",
+        .settingsLaunchAtLogin: "开机自启动",
         .settingsLanguage: "语言",
         .autoRefreshSeconds30: "30 秒",
         .autoRefreshMinute1: "1 分钟",
@@ -176,6 +178,7 @@ enum AppStrings {
         .settingsAuthorize: "前往授權",
         .settingsRefreshAllData: "重新整理全部資料",
         .settingsAutoRefreshInterval: "自動重新整理間隔",
+        .settingsLaunchAtLogin: "開機自動啟動",
         .settingsLanguage: "語言",
         .autoRefreshSeconds30: "30 秒",
         .autoRefreshMinute1: "1 分鐘",
@@ -244,6 +247,7 @@ enum AppStrings {
         .settingsAuthorize: "許可",
         .settingsRefreshAllData: "すべてのデータを更新",
         .settingsAutoRefreshInterval: "自動更新間隔",
+        .settingsLaunchAtLogin: "ログイン時に起動",
         .settingsLanguage: "言語",
         .autoRefreshSeconds30: "30秒",
         .autoRefreshMinute1: "1分",
@@ -312,6 +316,7 @@ enum AppStrings {
         .settingsAuthorize: "허용",
         .settingsRefreshAllData: "모든 데이터 새로고침",
         .settingsAutoRefreshInterval: "자동 새로고침 간격",
+        .settingsLaunchAtLogin: "로그인 시 실행",
         .settingsLanguage: "언어",
         .autoRefreshSeconds30: "30초",
         .autoRefreshMinute1: "1분",
@@ -380,6 +385,7 @@ enum AppStrings {
         .settingsAuthorize: "Autorizar",
         .settingsRefreshAllData: "Actualizar todos los datos",
         .settingsAutoRefreshInterval: "Intervalo de actualización automática",
+        .settingsLaunchAtLogin: "Iniciar al iniciar sesión",
         .settingsLanguage: "Idioma",
         .autoRefreshSeconds30: "30 segundos",
         .autoRefreshMinute1: "1 minuto",
@@ -448,6 +454,7 @@ enum AppStrings {
         .settingsAuthorize: "Autorisieren",
         .settingsRefreshAllData: "Alle Daten aktualisieren",
         .settingsAutoRefreshInterval: "Intervall für Auto-Aktualisierung",
+        .settingsLaunchAtLogin: "Beim Anmelden starten",
         .settingsLanguage: "Sprache",
         .autoRefreshSeconds30: "30 Sekunden",
         .autoRefreshMinute1: "1 Minute",
@@ -516,6 +523,7 @@ enum AppStrings {
         .settingsAuthorize: "Autoriser",
         .settingsRefreshAllData: "Actualiser toutes les données",
         .settingsAutoRefreshInterval: "Intervalle d'actualisation auto",
+        .settingsLaunchAtLogin: "Lancer à l’ouverture de session",
         .settingsLanguage: "Langue",
         .autoRefreshSeconds30: "30 secondes",
         .autoRefreshMinute1: "1 minute",
@@ -584,6 +592,7 @@ enum AppStrings {
         .settingsAuthorize: "Autorizar",
         .settingsRefreshAllData: "Atualizar todos os dados",
         .settingsAutoRefreshInterval: "Intervalo de atualização automática",
+        .settingsLaunchAtLogin: "Iniciar ao entrar",
         .settingsLanguage: "Idioma",
         .autoRefreshSeconds30: "30 segundos",
         .autoRefreshMinute1: "1 minuto",
@@ -652,6 +661,7 @@ enum AppStrings {
         .settingsAuthorize: "Autorizza",
         .settingsRefreshAllData: "Aggiorna tutti i dati",
         .settingsAutoRefreshInterval: "Intervallo di aggiornamento automatico",
+        .settingsLaunchAtLogin: "Avvia all'accesso",
         .settingsLanguage: "Lingua",
         .autoRefreshSeconds30: "30 secondi",
         .autoRefreshMinute1: "1 minuto",
@@ -720,6 +730,7 @@ enum AppStrings {
         .settingsAuthorize: "Autoriseren",
         .settingsRefreshAllData: "Alle gegevens verversen",
         .settingsAutoRefreshInterval: "Interval voor automatisch verversen",
+        .settingsLaunchAtLogin: "Start bij inloggen",
         .settingsLanguage: "Taal",
         .autoRefreshSeconds30: "30 seconden",
         .autoRefreshMinute1: "1 minuut",
@@ -788,6 +799,7 @@ enum AppStrings {
         .settingsAuthorize: "Autoryzuj",
         .settingsRefreshAllData: "Odśwież wszystkie dane",
         .settingsAutoRefreshInterval: "Interwał auto odświeżania",
+        .settingsLaunchAtLogin: "Uruchamiaj przy logowaniu",
         .settingsLanguage: "Język",
         .autoRefreshSeconds30: "30 sekund",
         .autoRefreshMinute1: "1 minuta",
@@ -856,6 +868,7 @@ enum AppStrings {
         .settingsAuthorize: "Authorize",
         .settingsRefreshAllData: "Refresh All Data",
         .settingsAutoRefreshInterval: "Auto Refresh Interval",
+        .settingsLaunchAtLogin: "Launch at Login",
         .settingsLanguage: "Language",
         .autoRefreshSeconds30: "30 seconds",
         .autoRefreshMinute1: "1 minute",

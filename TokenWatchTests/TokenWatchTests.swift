@@ -302,6 +302,64 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func settingsShowsLaunchAtLoginSwitch() throws {
+        let loginItemSettings = FakeLoginItemSettings(isEnabled: true)
+        let settingsViewController = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: loginItemSettings,
+            languageSettings: zhHansLanguageSettings()
+        )
+        settingsViewController.loadViewIfNeeded()
+
+        let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("开机自启动"))
+
+        let launchAtLoginSwitch = try #require(settingsViewController.view.switchControl(identifier: "LaunchAtLoginSwitch"))
+        #expect(launchAtLoginSwitch.state == .on)
+    }
+
+    @MainActor
+    @Test func togglingLaunchAtLoginSwitchUpdatesLoginItemSetting() throws {
+        let loginItemSettings = FakeLoginItemSettings(isEnabled: false)
+        let settingsViewController = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: loginItemSettings,
+            languageSettings: zhHansLanguageSettings()
+        )
+        settingsViewController.loadViewIfNeeded()
+
+        let launchAtLoginSwitch = try #require(settingsViewController.view.switchControl(identifier: "LaunchAtLoginSwitch"))
+        launchAtLoginSwitch.state = .on
+        _ = launchAtLoginSwitch.sendAction(launchAtLoginSwitch.action, to: launchAtLoginSwitch.target)
+        #expect(loginItemSettings.requestedStates == [true])
+        #expect(launchAtLoginSwitch.state == .on)
+
+        launchAtLoginSwitch.state = .off
+        _ = launchAtLoginSwitch.sendAction(launchAtLoginSwitch.action, to: launchAtLoginSwitch.target)
+        #expect(loginItemSettings.requestedStates == [true, false])
+        #expect(launchAtLoginSwitch.state == .off)
+    }
+
+    @MainActor
+    @Test func failedLaunchAtLoginToggleRestoresActualState() throws {
+        let loginItemSettings = FakeLoginItemSettings(isEnabled: false)
+        loginItemSettings.errorToThrow = FakeLoginItemSettings.ToggleError.failed
+        let settingsViewController = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: loginItemSettings,
+            languageSettings: zhHansLanguageSettings()
+        )
+        settingsViewController.loadViewIfNeeded()
+
+        let launchAtLoginSwitch = try #require(settingsViewController.view.switchControl(identifier: "LaunchAtLoginSwitch"))
+        launchAtLoginSwitch.state = .on
+        _ = launchAtLoginSwitch.sendAction(launchAtLoginSwitch.action, to: launchAtLoginSwitch.target)
+
+        #expect(loginItemSettings.requestedStates == [true])
+        #expect(launchAtLoginSwitch.state == .off)
+    }
+
+    @MainActor
     @Test func changingAutoRefreshIntervalPersistsSelection() throws {
         try withTemporaryDefaults { defaults in
             let settingsViewController = SettingsViewController(
@@ -430,6 +488,35 @@ private extension NSView {
         allDescendants(ofType: NSPopUpButton.self).first {
             $0.identifier?.rawValue == identifier
         }
+    }
+
+    func switchControl(identifier: String) -> NSSwitch? {
+        allDescendants(ofType: NSSwitch.self).first {
+            $0.identifier?.rawValue == identifier
+        }
+    }
+}
+
+@MainActor
+private final class FakeLoginItemSettings: LoginItemSettingsControlling {
+    enum ToggleError: Error {
+        case failed
+    }
+
+    private(set) var requestedStates: [Bool] = []
+    var errorToThrow: Error?
+    var isEnabled: Bool
+
+    init(isEnabled: Bool) {
+        self.isEnabled = isEnabled
+    }
+
+    func setEnabled(_ enabled: Bool) throws {
+        requestedStates.append(enabled)
+        if let errorToThrow {
+            throw errorToThrow
+        }
+        isEnabled = enabled
     }
 }
 
