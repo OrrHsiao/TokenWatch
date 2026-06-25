@@ -421,9 +421,12 @@ final class SettingsViewController: NSViewController {
     private let refreshButton = NSButton(title: "刷新全部数据", target: nil, action: nil)
     private let autoRefreshIntervalLabel = NSTextField(labelWithString: "自动刷新间隔")
     private let autoRefreshIntervalPopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let launchAtLoginLabel = NSTextField(labelWithString: "开机自启动")
+    private let launchAtLoginSwitch = NSSwitch(frame: .zero)
     private let languageLabel = NSTextField(labelWithString: "语言")
     private let languagePopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
     private let isAuthorized: @MainActor () -> Bool
+    private let loginItemSettings: LoginItemSettingsControlling
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
@@ -434,8 +437,10 @@ final class SettingsViewController: NSViewController {
 
     init(isAuthorized: @escaping @MainActor () -> Bool = {
         SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
-    }, autoRefreshSettings: AutoRefreshSettings = .shared, languageSettings: AppLanguageSettings = .shared) {
+    }, loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
+       autoRefreshSettings: AutoRefreshSettings = .shared, languageSettings: AppLanguageSettings = .shared) {
         self.isAuthorized = isAuthorized
+        self.loginItemSettings = loginItemSettings
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
@@ -454,7 +459,7 @@ final class SettingsViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 280))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 320))
     }
 
     override func viewDidLoad() {
@@ -467,6 +472,7 @@ final class SettingsViewController: NSViewController {
     override func viewWillAppear() {
         super.viewWillAppear()
         renderAuthorizationState()
+        renderLaunchAtLoginState()
     }
 
     private func setupSubviews() {
@@ -484,6 +490,11 @@ final class SettingsViewController: NSViewController {
         autoRefreshIntervalPopUpButton.identifier = NSUserInterfaceItemIdentifier("AutoRefreshIntervalPopUpButton")
         autoRefreshIntervalPopUpButton.target = self
         autoRefreshIntervalPopUpButton.action = #selector(autoRefreshIntervalChanged)
+
+        launchAtLoginLabel.font = .systemFont(ofSize: 13)
+        launchAtLoginSwitch.identifier = NSUserInterfaceItemIdentifier("LaunchAtLoginSwitch")
+        launchAtLoginSwitch.target = self
+        launchAtLoginSwitch.action = #selector(launchAtLoginSwitchChanged)
 
         languageLabel.font = .systemFont(ofSize: 13)
         languagePopUpButton.identifier = NSUserInterfaceItemIdentifier("LanguagePreferencePopUpButton")
@@ -511,6 +522,11 @@ final class SettingsViewController: NSViewController {
         autoRefreshIntervalStack.alignment = .centerY
         autoRefreshIntervalStack.spacing = 8
 
+        let launchAtLoginStack = NSStackView(views: [launchAtLoginLabel, launchAtLoginSwitch])
+        launchAtLoginStack.orientation = .horizontal
+        launchAtLoginStack.alignment = .centerY
+        launchAtLoginStack.spacing = 8
+
         let languageStack = NSStackView(views: [languageLabel, languagePopUpButton])
         languageStack.orientation = .horizontal
         languageStack.alignment = .centerY
@@ -526,6 +542,7 @@ final class SettingsViewController: NSViewController {
             descriptionLabel,
             authorizationStack,
             autoRefreshIntervalStack,
+            launchAtLoginStack,
             languageStack,
             buttonStack,
         ])
@@ -554,6 +571,10 @@ final class SettingsViewController: NSViewController {
         }
     }
 
+    private func renderLaunchAtLoginState() {
+        launchAtLoginSwitch.state = loginItemSettings.isEnabled ? .on : .off
+    }
+
     @objc private func autoRefreshIntervalChanged() {
         let selectedIndex = autoRefreshIntervalPopUpButton.indexOfSelectedItem
         guard AutoRefreshIntervalOption.allCases.indices.contains(selectedIndex) else { return }
@@ -564,6 +585,16 @@ final class SettingsViewController: NSViewController {
         let selectedIndex = languagePopUpButton.indexOfSelectedItem
         guard AppLanguagePreference.allCases.indices.contains(selectedIndex) else { return }
         languageSettings.selectedPreference = AppLanguagePreference.allCases[selectedIndex]
+    }
+
+    @objc private func launchAtLoginSwitchChanged() {
+        let shouldEnable = launchAtLoginSwitch.state == .on
+        do {
+            try loginItemSettings.setEnabled(shouldEnable)
+        } catch {
+            NSLog("TokenWatch failed to update launch-at-login setting: \(error)")
+        }
+        renderLaunchAtLoginState()
     }
 
     @objc private func authorizationActionButtonClicked() {
@@ -592,10 +623,12 @@ final class SettingsViewController: NSViewController {
         authorizationTitleLabel.stringValue = AppStrings.text(.settingsAuthorizationTitle, language: language)
         refreshButton.title = AppStrings.text(.settingsRefreshAllData, language: language)
         autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
+        launchAtLoginLabel.stringValue = AppStrings.text(.settingsLaunchAtLogin, language: language)
         languageLabel.stringValue = AppStrings.text(.settingsLanguage, language: language)
         reloadAutoRefreshIntervalPopUp(language: language)
         reloadLanguagePopUp(language: language)
         renderAuthorizationState()
+        renderLaunchAtLoginState()
     }
 
     private func subscribeToLanguageSettings() {
