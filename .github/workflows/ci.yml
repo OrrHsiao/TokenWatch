@@ -5,9 +5,43 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  XCODE_PROJECT: TokenWatch.xcodeproj
+  XCODE_SCHEME: TokenWatch
 
 jobs:
-  test:
+  debug-build:
+    name: macOS Debug Build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Build Debug App
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/TokenWatchDebugDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  unit-tests:
     name: macOS Unit Tests
     runs-on: macos-latest
 
@@ -21,10 +55,72 @@ jobs:
       - name: Run Unit Tests
         run: |
           xcodebuild \
-            -project TokenWatch.xcodeproj \
-            -scheme TokenWatch \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
             -destination 'platform=macOS' \
             -only-testing:TokenWatchTests \
             -derivedDataPath "$RUNNER_TEMP/TokenWatchDerivedData" \
             test
 
+  ui-tests:
+    name: macOS UI Tests
+    runs-on: macos-latest
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Run UI Tests
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -destination 'platform=macOS' \
+            -only-testing:TokenWatchUITests \
+            -derivedDataPath "$RUNNER_TEMP/TokenWatchUIDerivedData" \
+            test
+
+  release-dry-run:
+    name: macOS Release Dry Run
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Build Release App
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/TokenWatchReleaseDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            ARCHS="arm64 x86_64" \
+            build
+
+      - name: Verify Release App
+        run: |
+          APP_PATH="$RUNNER_TEMP/TokenWatchReleaseDerivedData/Build/Products/Release/TokenWatch.app"
+          APP_BINARY="$APP_PATH/Contents/MacOS/TokenWatch"
+          test -d "$APP_PATH"
+          test -x "$APP_BINARY"
+          ARCHS="$(lipo -archs "$APP_BINARY")"
+          echo "Built architectures: $ARCHS"
+          case " $ARCHS " in
+            *" arm64 "*) ;;
+            *) echo "Missing arm64 architecture"; exit 1 ;;
+          esac
+          case " $ARCHS " in
+            *" x86_64 "*) ;;
+            *) echo "Missing x86_64 architecture"; exit 1 ;;
+          esac
