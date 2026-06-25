@@ -114,6 +114,12 @@ class ViewController: NSViewController {
         selectedContent = .settings
     }
 
+    /// 响应主菜单设置入口,同步选中侧边栏设置项并展示设置页。
+    @objc func showSettingsFromMainMenu(_ sender: Any?) {
+        sidebarViewController.selectSettings()
+        showSettings()
+    }
+
     private func showTotal() {
         guard selectedContent != .total else { return }
         installDetailViewController(totalStatsViewController)
@@ -277,6 +283,16 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         loadViewIfNeeded()
         guard let row = items.firstIndex(where: {
             if case .total = $0 { return true }
+            return false
+        }) else { return }
+        tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        tableView.scrollRowToVisible(row)
+    }
+
+    func selectSettings() {
+        loadViewIfNeeded()
+        guard let row = items.firstIndex(where: {
+            if case .settings = $0 { return true }
             return false
         }) else { return }
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)

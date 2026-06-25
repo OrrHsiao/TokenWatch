@@ -20,8 +20,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 状态栏控制器,长驻 menu bar 显示当日 token 数
     /// 在 didFinishLaunching 时创建,terminate 时 stop() 释放 Timer + 摘掉 status item
     private var statusBarController: StatusBarController?
+    private var mainMenuController: AppMainMenuController?
+
+    private let languageSettings: AppLanguageSettings
+
+    override init() {
+        self.languageSettings = .shared
+        super.init()
+    }
+
+    init(languageSettings: AppLanguageSettings) {
+        self.languageSettings = languageSettings
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        mainMenuController = AppMainMenuController(actionTarget: self, languageSettings: languageSettings)
+        mainMenuController?.start()
+
         // 先建状态栏(订阅 ViewModel),再异步加载,确保首次 onStateChange 能被状态栏接到
         statusBarController = StatusBarController(viewModel: viewModel)
 
@@ -53,12 +69,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 关停状态栏:释放 Timer、移除 observer、摘掉 status item
         statusBarController?.stop()
         statusBarController = nil
+        mainMenuController?.stop()
+        mainMenuController = nil
         // 停止所有 provider 的 Security-Scoped 访问，释放资源
         SecurityScopedBookmarkManager.shared.stopAccessingAll()
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return true
+    }
+
+    /// 打开主窗口,用于主菜单和其他全局入口复用。
+    @objc func openMainWindow(_ sender: Any?) {
+        _ = presentMainWindow()
+    }
+
+    /// 打开主窗口并切换到设置页。
+    @objc func showSettings(_ sender: Any?) {
+        presentMainWindow()?.showSettingsFromMainMenu(sender)
+    }
+
+    /// 立即重新加载所有 provider 的统计数据。
+    @objc func refreshNow(_ sender: Any?) {
+        Task { await viewModel.loadAllStats() }
+    }
+
+    private func presentMainWindow() -> ViewController? {
+        let target = NSApp.windows.first(where: { $0.contentViewController is ViewController })
+            ?? NSApp.mainWindow
+        guard let target else { return nil }
+
+        for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
+            switch action {
+            case .activateApplication:
+                NSApp.activate(ignoringOtherApps: true)
+            case .makeWindowKeyAndOrderFront:
+                target.makeKeyAndOrderFront(nil)
+            case .orderWindowFrontRegardless:
+                target.orderFrontRegardless()
+            }
+        }
+        return target.contentViewController as? ViewController
     }
 }
 

@@ -244,6 +244,18 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func mainMenuSettingsCommandShowsSettingsActions() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        viewController.showSettingsFromMainMenu(nil)
+
+        let buttonTitles = viewController.view.allDescendants(ofType: NSButton.self).map(\.title)
+        #expect(buttonTitles.contains("去授权") || buttonTitles.contains("已授权"))
+        #expect(buttonTitles.contains("刷新全部数据"))
+    }
+
+    @MainActor
     @Test func settingsAuthorizationRowReflectsExistingAuthorization() throws {
         let settingsViewController = SettingsViewController(
             isAuthorized: { true },
