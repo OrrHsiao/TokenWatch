@@ -46,10 +46,12 @@ enum MonthlyBarChartStyle {
             return monthKey
         }
         switch language {
-        case .zhHans:
-            return "\(year)年\n\(month)月"
-        case .en:
-            return "\(year)\n\(UsageStatsPeriod.englishShortMonthName(for: month))"
+        case .zhHans, .zhHant, .ja:
+            return "\(year)年\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
+        case .ko:
+            return "\(year)년\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
+        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
+            return "\(year)\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
         }
     }
 
@@ -59,9 +61,9 @@ enum MonthlyBarChartStyle {
         language: AppLanguage = .zhHans
     ) -> String {
         switch language {
-        case .zhHans:
+        case .zhHans, .zhHant, .ja, .ko:
             return fallback
-        case .en:
+        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
             return monthAxisLabel(for: monthKey, language: language)
                 .replacingOccurrences(of: "\n", with: " ")
         }
@@ -318,12 +320,7 @@ private struct MonthlyTokenBarChartContent: View {
     }
 
     private var axisValueName: String {
-        switch language {
-        case .zhHans:
-            return "月份"
-        case .en:
-            return "Period"
-        }
+        language.periodAxisValueName
     }
 
     private func accessibilityLabel(for bucket: MonthlyTokenBucket) -> String {

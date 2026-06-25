@@ -232,12 +232,17 @@ enum CalendarHeatmapBuilder {
     }
 
     private static func weekdaySymbols(firstWeekday: Int, language: AppLanguage) -> [String] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: language.localeIdentifier)
         let symbols: [String]
         switch language {
-        case .zhHans:
-            symbols = ["日", "一", "二", "三", "四", "五", "六"]
-        case .en:
-            symbols = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        case .zhHans, .zhHant, .ja, .ko:
+            symbols = formatter.veryShortStandaloneWeekdaySymbols ?? []
+        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
+            symbols = formatter.shortStandaloneWeekdaySymbols ?? []
+        }
+        guard symbols.count == 7 else {
+            return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         }
         let startIndex = max(0, min(6, firstWeekday - 1))
         return Array(symbols[startIndex...]) + Array(symbols[..<startIndex])

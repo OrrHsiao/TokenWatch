@@ -40,6 +40,17 @@ struct MonthlyTokenChartViewTests {
     }
 
     @MainActor
+    @Test("新增语言下月份横轴使用本地化缩写")
+    func addedLanguageXAxisLabelsUseLocalizedShortMonthNames() {
+        let view = MonthlyTokenChartView()
+        let snapshot = makeSnapshot(monthKeys: ["2026-06"], monthLabels: ["jun"], tokens: [100])
+
+        view.configure(with: snapshot, language: .es)
+
+        #expect(view.debugXAxisLabels == ["2026\njun"])
+    }
+
+    @MainActor
     @Test("Token 图 accessibility 文案跟随时间窗口")
     func tokenAccessibilityLabelUsesConfiguredPeriod() {
         let view = MonthlyTokenChartView()

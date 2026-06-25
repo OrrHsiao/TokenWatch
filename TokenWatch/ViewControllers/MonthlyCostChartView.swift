@@ -218,12 +218,7 @@ private struct MonthlyCostBarChartContent: View {
     }
 
     private var axisValueName: String {
-        switch language {
-        case .zhHans:
-            return "月份"
-        case .en:
-            return "Period"
-        }
+        language.periodAxisValueName
     }
 
     private func accessibilityLabel(for bucket: MonthlyTokenBucket) -> String {

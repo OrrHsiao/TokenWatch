@@ -317,7 +317,21 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            #expect(popUpButton.itemTitles == ["跟随系统", "中文", "English"])
+            #expect(popUpButton.itemTitles == [
+                "跟随系统",
+                "简体中文",
+                "繁體中文",
+                "English",
+                "日本語",
+                "한국어",
+                "Español",
+                "Deutsch",
+                "Français",
+                "Português (Brasil)",
+                "Italiano",
+                "Nederlands",
+                "Polski",
+            ])
             #expect(popUpButton.titleOfSelectedItem == "跟随系统")
         }
     }
@@ -341,7 +355,21 @@ struct TokenWatchTests {
             #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
             #expect(labels.contains("Settings"))
             #expect(labels.contains("Language"))
-            #expect(popUpButton.itemTitles == ["System", "Chinese", "English"])
+            #expect(popUpButton.itemTitles == [
+                "System",
+                "简体中文",
+                "繁體中文",
+                "English",
+                "日本語",
+                "한국어",
+                "Español",
+                "Deutsch",
+                "Français",
+                "Português (Brasil)",
+                "Italiano",
+                "Nederlands",
+                "Polski",
+            ])
             #expect(popUpButton.titleOfSelectedItem == "English")
         }
     }

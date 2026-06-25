@@ -73,6 +73,20 @@ struct CalendarHeatmapBuilderTests {
         #expect(sundaySnapshot.weekdaySymbols == ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])
     }
 
+    @Test("新增语言的星期符号按 firstWeekday 本地化")
+    func addedLanguageWeekdaySymbolsRespectCalendarFirstWeekday() {
+        let mondayCalendar = utcCalendar(firstWeekday: 2)
+        let snapshot = CalendarHeatmapBuilder.build(
+            states: [:],
+            month: date(2026, 6, 17, calendar: mondayCalendar),
+            now: date(2026, 6, 17, calendar: mondayCalendar),
+            calendar: mondayCalendar,
+            language: .es
+        )
+
+        #expect(snapshot.weekdaySymbols == ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"])
+    }
+
     @Test("快照、cell、day 支持等值比较和稳定 identity")
     func exposesStableIdentityAndEquatableModels() {
         let calendar = utcCalendar(firstWeekday: 1)

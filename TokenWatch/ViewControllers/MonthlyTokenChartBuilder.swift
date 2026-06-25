@@ -27,9 +27,9 @@ enum UsageStatsPeriod: Sendable, Equatable {
 
     func emptyDataText(language: AppLanguage) -> String {
         switch language {
-        case .zhHans:
+        case .zhHans, .zhHant, .ja, .ko:
             return "\(title(language: language))\(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
-        case .en:
+        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
             return "\(title(language: language)) \(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
         }
     }
@@ -106,21 +106,20 @@ enum UsageStatsPeriod: Sendable, Equatable {
         switch self {
         case .recent12Months:
             let month = calendar.component(.month, from: date)
-            switch language {
-            case .zhHans:
-                return "\(month)月"
-            case .en:
-                return Self.englishShortMonthName(for: month)
-            }
+            return Self.shortMonthName(for: month, language: language)
         case .recent30Days:
             let components = calendar.dateComponents([.month, .day], from: date)
             return "\(components.month ?? 0)/\(components.day ?? 0)"
         case .today:
             let hour = calendar.component(.hour, from: date)
             switch language {
-            case .zhHans:
+            case .zhHans, .zhHant:
                 return "\(hour)时"
-            case .en:
+            case .ja:
+                return "\(hour)時"
+            case .ko:
+                return "\(hour)시"
+            case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
                 return "\(hour)"
             }
         }
@@ -164,8 +163,15 @@ enum UsageStatsPeriod: Sendable, Equatable {
     }
 
     static func englishShortMonthName(for month: Int) -> String {
-        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        shortMonthName(for: month, language: .en)
+    }
+
+    static func shortMonthName(for month: Int, language: AppLanguage) -> String {
         guard (1...12).contains(month) else { return "\(month)" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: language.localeIdentifier)
+        let names = formatter.shortMonthSymbols ?? []
+        guard names.indices.contains(month - 1) else { return "\(month)" }
         return names[month - 1]
     }
 }
