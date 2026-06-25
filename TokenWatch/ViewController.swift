@@ -217,6 +217,21 @@ private enum ProviderSidebarItem {
             return AppStrings.text(.sidebarSettings, language: language)
         }
     }
+
+    var symbolName: String {
+        switch self {
+        case .total:
+            return "chart.bar.xaxis"
+        case .monthly:
+            return "calendar"
+        case .recentThirtyDays:
+            return "clock"
+        case .today:
+            return "sun.max"
+        case .settings:
+            return "gearshape"
+        }
+    }
 }
 
 /// 原生侧边栏列表,负责展示汇总页面并发出选择事件。
@@ -224,6 +239,7 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
 
     private static let columnIdentifier = NSUserInterfaceItemIdentifier("ProviderColumn")
     private static let cellIdentifier = NSUserInterfaceItemIdentifier("ProviderSidebarCell")
+    private static let iconSymbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
 
     private let items: [ProviderSidebarItem]
     private let languageSettings: AppLanguageSettings
@@ -312,7 +328,10 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         let item = items[row]
         let cell = tableView.makeView(withIdentifier: Self.cellIdentifier, owner: self) as? NSTableCellView
             ?? makeCellView()
-        cell.textField?.stringValue = item.title(language: languageSettings.resolvedLanguage)
+        let title = item.title(language: languageSettings.resolvedLanguage)
+        cell.textField?.stringValue = title
+        cell.imageView?.image = symbolImage(for: item, accessibilityDescription: title)
+        cell.imageView?.identifier = NSUserInterfaceItemIdentifier("SidebarIcon.\(item.symbolName)")
         return cell
     }
 
@@ -337,21 +356,42 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         let cell = NSTableCellView(frame: .zero)
         cell.identifier = Self.cellIdentifier
 
+        let imageView = NSImageView(frame: .zero)
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.imageScaling = .scaleProportionallyDown
+        imageView.setContentHuggingPriority(.required, for: .horizontal)
+        imageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+
         let textField = NSTextField(labelWithString: "")
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.font = .systemFont(ofSize: 13)
         textField.lineBreakMode = .byTruncatingTail
 
+        cell.addSubview(imageView)
         cell.addSubview(textField)
+        cell.imageView = imageView
         cell.textField = textField
 
         NSLayoutConstraint.activate([
-            textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
+            imageView.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
+            imageView.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 16),
+            imageView.heightAnchor.constraint(equalToConstant: 16),
+            textField.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 8),
             textField.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -8),
             textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
         ])
 
         return cell
+    }
+
+    private func symbolImage(for item: ProviderSidebarItem, accessibilityDescription: String) -> NSImage? {
+        let image = NSImage(
+            systemSymbolName: item.symbolName,
+            accessibilityDescription: accessibilityDescription
+        )?.withSymbolConfiguration(Self.iconSymbolConfiguration)
+        image?.isTemplate = true
+        return image
     }
 }
 

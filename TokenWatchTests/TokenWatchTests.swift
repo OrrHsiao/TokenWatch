@@ -143,6 +143,27 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func sidebarRowsUseSFSymbolIcons() throws {
+        let viewController = ViewController()
+        viewController.loadViewIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+        let displayedIconIdentifiers = (0..<sidebar.numberOfRows).compactMap { row in
+            let cell = sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView
+            #expect(cell?.imageView?.image != nil)
+            return cell?.imageView?.identifier?.rawValue
+        }
+
+        #expect(displayedIconIdentifiers == [
+            "SidebarIcon.chart.bar.xaxis",
+            "SidebarIcon.calendar",
+            "SidebarIcon.clock",
+            "SidebarIcon.sun.max",
+            "SidebarIcon.gearshape",
+        ])
+    }
+
+    @MainActor
     @Test func initialSelectionShowsTotalStatsPage() throws {
         let viewController = ViewController()
         viewController.loadViewIfNeeded()
