@@ -9,7 +9,6 @@ final class MonthlyStatsViewController: NSViewController {
     private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
 
     private let titleLabel = NSTextField(labelWithString: "")
-    private let subtitleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let statusLabel = NSTextField(labelWithString: "")
@@ -167,8 +166,6 @@ final class MonthlyStatsViewController: NSViewController {
 
     private func setupSubviews() {
         titleLabel.font = .systemFont(ofSize: 22, weight: .semibold)
-        subtitleLabel.font = .systemFont(ofSize: 13)
-        subtitleLabel.textColor = .secondaryLabelColor
         totalLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
         costLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
         costLabel.textColor = .secondaryLabelColor
@@ -207,7 +204,7 @@ final class MonthlyStatsViewController: NSViewController {
             self?.updateCostChartHoverText(text)
         }
 
-        let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
+        let headerTextStack = NSStackView(views: [titleLabel])
         headerTextStack.orientation = .vertical
         headerTextStack.alignment = .leading
         headerTextStack.spacing = 4
@@ -431,7 +428,6 @@ final class MonthlyStatsViewController: NSViewController {
     private func applyLocalizedText() {
         title = period.title(language: language)
         titleLabel.stringValue = period.title(language: language)
-        subtitleLabel.stringValue = period.subtitle(language: language)
         tokenChartTitleLabel.stringValue = AppStrings.text(.chartTokenUsage, language: language)
         costChartTitleLabel.stringValue = AppStrings.text(.chartCost, language: language)
         toolSharePieView.setTitle(AppStrings.text(.shareTool, language: language))

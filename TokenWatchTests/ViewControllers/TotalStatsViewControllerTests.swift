@@ -46,7 +46,7 @@ struct TotalStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("总计"))
-        #expect(labels.contains("跨 provider 全量汇总"))
+        #expect(!labels.contains("跨 provider 全量汇总"))
         #expect(!labels.contains("总 token"))
         #expect(!labels.contains("总费用"))
         #expect(labels.contains("模型消耗"))
@@ -72,7 +72,7 @@ struct TotalStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("Total"))
-        #expect(labels.contains("All-time summary across providers"))
+        #expect(!labels.contains("All-time summary across providers"))
         #expect(labels.contains("Model Usage"))
         #expect(viewController.debugStatusText == "No total token data")
         #expect(viewController.debugRefreshButtonToolTip == "Refresh Now")
@@ -146,7 +146,6 @@ struct TotalStatsViewControllerTests {
         let totalLabel = try #require(labels.first { $0.stringValue == "2.0M" })
         let costLabel = try #require(labels.first { $0.stringValue == "$16.75" })
         let titleLabel = try #require(labels.first { $0.stringValue == "总计" })
-        let subtitleLabel = try #require(labels.first { $0.stringValue == "跨 provider 全量汇总" })
         let modelSectionTitleLabel = try #require(labels.first { $0.stringValue == "模型消耗" })
         let modelNameLabel = try #require(labels.first { $0.stringValue == "claude-sonnet" })
         let expectedTopY = viewController.view.bounds.maxY - 32
@@ -154,13 +153,10 @@ struct TotalStatsViewControllerTests {
         let costFrame = costLabel.frame(in: viewController.view)
         let totalAlignmentFrame = totalLabel.alignmentFrame(in: viewController.view)
         let costAlignmentFrame = costLabel.alignmentFrame(in: viewController.view)
-        let headerTextTrailingX = max(
-            titleLabel.alignmentFrame(in: viewController.view).maxX,
-            subtitleLabel.alignmentFrame(in: viewController.view).maxX
-        )
+        let headerTextTrailingX = titleLabel.alignmentFrame(in: viewController.view).maxX
 
         #expect(titleLabel.font == .systemFont(ofSize: 22, weight: .semibold))
-        #expect(subtitleLabel.textColor == .secondaryLabelColor)
+        #expect(!labels.contains { $0.stringValue == "跨 provider 全量汇总" })
         #expect(totalLabel.alignment == .natural)
         #expect(costLabel.alignment == .natural)
         #expect(costLabel.textColor == .secondaryLabelColor)
@@ -169,7 +165,7 @@ struct TotalStatsViewControllerTests {
         #expect(abs(totalAlignmentFrame.minX - (headerTextTrailingX + 16)) <= 1)
         #expect(abs(totalAlignmentFrame.minX - costAlignmentFrame.minX) <= 1)
         #expect(abs(totalFrame.midY - titleLabel.frame(in: viewController.view).midY) <= 6)
-        #expect(abs(costFrame.midY - subtitleLabel.frame(in: viewController.view).midY) <= 6)
+        #expect(costFrame.minY < totalFrame.minY)
         #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
         #expect(abs(modelNameLabel.frame(in: viewController.view).minX - 32) <= 2)
     }

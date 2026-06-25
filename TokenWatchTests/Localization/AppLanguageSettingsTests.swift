@@ -102,6 +102,14 @@ struct AppLanguageSettingsTests {
         }
     }
 
+    @Test("已移除页面副标题文案 key")
+    func removedPageSubtitleKeysAreNotLocalized() {
+        let keyNames = Set(AppStringKey.allCases.map { String(describing: $0) })
+
+        #expect(!keyNames.contains("totalSubtitle"))
+        #expect(!keyNames.contains("periodSubtitleSuffix"))
+    }
+
     @Test("缺失中英文文案时回落到 key 名称")
     func missingStringsFallBackToKeyName() {
         #expect(

@@ -99,7 +99,7 @@ struct MonthlyTokenChartBuilderTests {
         )
 
         #expect(UsageStatsPeriod.recent12Months.title(language: .en) == "Last 12 Months")
-        #expect(UsageStatsPeriod.recent30Days.subtitle(language: .en) == "Last 30 Days, Summary across providers")
+        #expect(UsageStatsPeriod.recent30Days.title(language: .en) == "Last 30 Days")
         #expect(UsageStatsPeriod.today.emptyDataText(language: .en) == "Today has no token data")
         #expect(snapshot.monthBuckets[9].monthLabel == "9")
     }

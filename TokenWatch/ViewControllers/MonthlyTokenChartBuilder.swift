@@ -21,19 +21,6 @@ enum UsageStatsPeriod: Sendable, Equatable {
         }
     }
 
-    var subtitle: String {
-        subtitle(language: .zhHans)
-    }
-
-    func subtitle(language: AppLanguage) -> String {
-        switch language {
-        case .zhHans:
-            return "\(title(language: language)),\(AppStrings.text(.periodSubtitleSuffix, language: language))"
-        case .en:
-            return "\(title(language: language)), \(AppStrings.text(.periodSubtitleSuffix, language: language))"
-        }
-    }
-
     var emptyDataText: String {
         emptyDataText(language: .zhHans)
     }

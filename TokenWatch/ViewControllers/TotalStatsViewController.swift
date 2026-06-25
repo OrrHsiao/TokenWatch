@@ -10,7 +10,6 @@ final class TotalStatsViewController: NSViewController {
     private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
 
     private let titleLabel = NSTextField(labelWithString: "")
-    private let subtitleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
     private let costLabel = NSTextField(labelWithString: "$0.00")
     private let modelSectionTitleLabel = NSTextField(labelWithString: "")
@@ -138,8 +137,6 @@ final class TotalStatsViewController: NSViewController {
 
     private func setupSubviews() {
         titleLabel.font = .systemFont(ofSize: 22, weight: .semibold)
-        subtitleLabel.font = .systemFont(ofSize: 13)
-        subtitleLabel.textColor = .secondaryLabelColor
         totalLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
         totalLabel.alignment = .natural
         costLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .medium)
@@ -163,7 +160,7 @@ final class TotalStatsViewController: NSViewController {
         partialLoadingStatusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         partialLoadingStatusLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let headerTextStack = NSStackView(views: [titleLabel, subtitleLabel])
+        let headerTextStack = NSStackView(views: [titleLabel])
         headerTextStack.orientation = .vertical
         headerTextStack.alignment = .leading
         headerTextStack.spacing = 4
@@ -238,7 +235,7 @@ final class TotalStatsViewController: NSViewController {
             headerTextStack.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
             headerTextStack.topAnchor.constraint(equalTo: headerView.topAnchor),
             headerTextStack.bottomAnchor.constraint(equalTo: headerView.bottomAnchor),
-            summaryStack.leadingAnchor.constraint(equalTo: subtitleLabel.trailingAnchor, constant: 16),
+            summaryStack.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 16),
             summaryStack.topAnchor.constraint(equalTo: headerView.topAnchor),
             refreshButton.topAnchor.constraint(equalTo: headerView.topAnchor),
             refreshButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
@@ -313,7 +310,6 @@ final class TotalStatsViewController: NSViewController {
     private func applyLocalizedText() {
         title = AppStrings.text(.sidebarTotal, language: language)
         titleLabel.stringValue = AppStrings.text(.sidebarTotal, language: language)
-        subtitleLabel.stringValue = AppStrings.text(.totalSubtitle, language: language)
         modelSectionTitleLabel.stringValue = AppStrings.text(.totalModelUsage, language: language)
         emptyModelLabel.stringValue = AppStrings.text(.totalEmptyModels, language: language)
         setRefreshButtonLoading(!refreshButton.isEnabled)

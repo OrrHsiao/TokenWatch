@@ -33,7 +33,7 @@ struct MonthlyStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 12 个月"))
-        #expect(labels.contains("最近 12 个月,跨 provider 汇总"))
+        #expect(!labels.contains("最近 12 个月,跨 provider 汇总"))
         #expect(labels.contains("Token 用量"))
         #expect(labels.contains("费用"))
         #expect(labels.contains("1.2M"))
@@ -76,7 +76,7 @@ struct MonthlyStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("Last 30 Days"))
-        #expect(labels.contains("Last 30 Days, Summary across providers"))
+        #expect(!labels.contains("Last 30 Days, Summary across providers"))
         #expect(labels.contains("Token Usage"))
         #expect(labels.contains("Cost"))
         #expect(labels.contains("Tool Share"))
@@ -146,7 +146,7 @@ struct MonthlyStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 30 天"))
-        #expect(labels.contains("最近 30 天,跨 provider 汇总"))
+        #expect(!labels.contains("最近 30 天,跨 provider 汇总"))
         #expect(labels.contains("0.5M"))
         #expect(labels.contains("$2.50"))
 
@@ -196,7 +196,7 @@ struct MonthlyStatsViewControllerTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("本日"))
-        #expect(labels.contains("本日,跨 provider 汇总"))
+        #expect(!labels.contains("本日,跨 provider 汇总"))
         #expect(labels.contains("0.4M"))
         #expect(labels.contains("$1.50"))
 

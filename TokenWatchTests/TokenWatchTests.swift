@@ -177,7 +177,7 @@ struct TokenWatchTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 12 个月"))
-        #expect(labels.contains("最近 12 个月,跨 provider 汇总"))
+        #expect(!labels.contains("最近 12 个月,跨 provider 汇总"))
         #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 
@@ -191,7 +191,7 @@ struct TokenWatchTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 30 天"))
-        #expect(labels.contains("最近 30 天,跨 provider 汇总"))
+        #expect(!labels.contains("最近 30 天,跨 provider 汇总"))
         #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 
@@ -205,7 +205,7 @@ struct TokenWatchTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("本日"))
-        #expect(labels.contains("本日,跨 provider 汇总"))
+        #expect(!labels.contains("本日,跨 provider 汇总"))
         #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 

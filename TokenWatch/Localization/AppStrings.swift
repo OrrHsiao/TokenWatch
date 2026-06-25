@@ -23,7 +23,6 @@ enum AppStringKey: CaseIterable, Sendable {
     case autoRefreshMinutes5
     case autoRefreshMinutes15
     case autoRefreshDisabled
-    case totalSubtitle
     case totalModelUsage
     case totalEmptyModels
     case statusLoadingUsage
@@ -36,7 +35,6 @@ enum AppStringKey: CaseIterable, Sendable {
     case shareModel
     case shareEmpty
     case shareOther
-    case periodSubtitleSuffix
     case periodNoTokenDataSuffix
     case statusMenuOpen
     case refreshNow
@@ -113,7 +111,6 @@ enum AppStrings {
         .autoRefreshMinutes5: "5 分钟",
         .autoRefreshMinutes15: "15 分钟",
         .autoRefreshDisabled: "关闭自动刷新",
-        .totalSubtitle: "跨 provider 全量汇总",
         .totalModelUsage: "模型消耗",
         .totalEmptyModels: "暂无模型数据",
         .statusLoadingUsage: "正在加载用量数据...",
@@ -126,7 +123,6 @@ enum AppStrings {
         .shareModel: "模型占比",
         .shareEmpty: "暂无数据",
         .shareOther: "其他",
-        .periodSubtitleSuffix: "跨 provider 汇总",
         .periodNoTokenDataSuffix: "暂无 token 数据",
         .statusMenuOpen: "打开 TokenWatch",
         .refreshNow: "立即刷新",
@@ -183,7 +179,6 @@ enum AppStrings {
         .autoRefreshMinutes5: "5 minutes",
         .autoRefreshMinutes15: "15 minutes",
         .autoRefreshDisabled: "Disable Auto Refresh",
-        .totalSubtitle: "All-time summary across providers",
         .totalModelUsage: "Model Usage",
         .totalEmptyModels: "No model data",
         .statusLoadingUsage: "Loading usage data...",
@@ -196,7 +191,6 @@ enum AppStrings {
         .shareModel: "Model Share",
         .shareEmpty: "No data",
         .shareOther: "Other",
-        .periodSubtitleSuffix: "Summary across providers",
         .periodNoTokenDataSuffix: "has no token data",
         .statusMenuOpen: "Open TokenWatch",
         .refreshNow: "Refresh Now",
