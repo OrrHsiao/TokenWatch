@@ -26,7 +26,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -139,7 +140,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -189,7 +191,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -210,7 +213,7 @@ struct MonthlyStatsViewControllerTests {
     @MainActor
     @Test("两个柱状图使用一致配色")
     func barChartsUseMatchingColors() throws {
-        let viewController = MonthlyStatsViewController()
+        let viewController = MonthlyStatsViewController(languageSettings: zhHansLanguageSettings())
 
         viewController.loadViewIfNeeded()
 
@@ -246,7 +249,8 @@ struct MonthlyStatsViewControllerTests {
                 ]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -266,7 +270,8 @@ struct MonthlyStatsViewControllerTests {
                 [.claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true)]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -287,7 +292,8 @@ struct MonthlyStatsViewControllerTests {
                 ]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -305,7 +311,8 @@ struct MonthlyStatsViewControllerTests {
                 [.claude: .init(stats: nil, isLoading: false, errorMessage: "Claude 失败", needsAuthorization: false)]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -328,7 +335,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -354,7 +362,8 @@ struct MonthlyStatsViewControllerTests {
                 ]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -380,7 +389,8 @@ struct MonthlyStatsViewControllerTests {
                 ]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -408,7 +418,8 @@ struct MonthlyStatsViewControllerTests {
                     )]
                 },
                 nowProvider: { date(2026, 6, 20, calendar: calendar) },
-                calendar: calendar
+                calendar: calendar,
+                languageSettings: zhHansLanguageSettings()
             )
 
             viewController.loadViewIfNeeded()
@@ -455,7 +466,8 @@ struct MonthlyStatsViewControllerTests {
                     ]
                 },
                 nowProvider: { date(2026, 6, 20, calendar: calendar) },
-                calendar: calendar
+                calendar: calendar,
+                languageSettings: zhHansLanguageSettings()
             )
 
             viewController.loadViewIfNeeded()
@@ -485,7 +497,8 @@ struct MonthlyStatsViewControllerTests {
                 [.claude: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false)]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -506,7 +519,8 @@ struct MonthlyStatsViewControllerTests {
                 refreshCount += 1
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -530,7 +544,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -554,7 +569,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -587,7 +603,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -642,7 +659,8 @@ struct MonthlyStatsViewControllerTests {
                 )]
             },
             nowProvider: { date(2026, 6, 20, calendar: calendar) },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -680,6 +698,11 @@ struct MonthlyStatsViewControllerTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    @MainActor
+    private func zhHansLanguageSettings() -> AppLanguageSettings {
+        AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
     }
 
     private func makeSummary(

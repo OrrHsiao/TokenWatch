@@ -39,7 +39,8 @@ struct TotalStatsViewControllerTests {
                         needsAuthorization: false
                     ),
                 ]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -98,7 +99,8 @@ struct TotalStatsViewControllerTests {
                         needsAuthorization: false
                     ),
                 ]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -135,7 +137,8 @@ struct TotalStatsViewControllerTests {
                         needsAuthorization: false
                     ),
                 ]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -176,7 +179,8 @@ struct TotalStatsViewControllerTests {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [.claude: .init(stats: makeStats(total: 1_200_000), isLoading: false, errorMessage: nil, needsAuthorization: false)]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -204,7 +208,8 @@ struct TotalStatsViewControllerTests {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [.claude: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false)]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -255,7 +260,8 @@ struct TotalStatsViewControllerTests {
                         needsAuthorization: false
                     ),
                 ]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -287,7 +293,8 @@ struct TotalStatsViewControllerTests {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [.claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true)]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -304,7 +311,8 @@ struct TotalStatsViewControllerTests {
                     .claude: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false),
                     .codex: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: false),
                 ]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -318,7 +326,8 @@ struct TotalStatsViewControllerTests {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [.claude: .init(stats: makeStats(total: 0), isLoading: false, errorMessage: nil, needsAuthorization: false)]
-            }
+            },
+            languageSettings: zhHansLanguageSettings()
         )
 
         viewController.loadViewIfNeeded()
@@ -402,6 +411,11 @@ struct TotalStatsViewControllerTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    @MainActor
+    private func zhHansLanguageSettings() -> AppLanguageSettings {
+        AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
     }
 }
 

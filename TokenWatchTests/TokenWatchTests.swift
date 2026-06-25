@@ -118,7 +118,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func mainWindowUsesNativeSidebarSplitLayout() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let splitView = try #require(viewController.view.firstDescendant(ofType: NSSplitView.self))
@@ -128,7 +128,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func sidebarListsAggregatePagesAndSettingsOnly() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -144,7 +144,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func sidebarRowsUseSFSymbolIcons() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -165,7 +165,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func initialSelectionShowsTotalStatsPage() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
@@ -176,7 +176,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func selectingTotalShowsTotalStatsPage() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -190,7 +190,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func selectingMonthlyShowsMonthlyChartPage() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -204,7 +204,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func selectingRecentThirtyDaysShowsDailyChartPage() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -218,7 +218,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func selectingTodayShowsTodayChartPage() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -232,7 +232,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func selectingSettingsShowsSettingsActions() throws {
-        let viewController = ViewController()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
@@ -245,7 +245,10 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func settingsAuthorizationRowReflectsExistingAuthorization() throws {
-        let settingsViewController = SettingsViewController(isAuthorized: { true })
+        let settingsViewController = SettingsViewController(
+            isAuthorized: { true },
+            languageSettings: zhHansLanguageSettings()
+        )
         settingsViewController.loadViewIfNeeded()
 
         let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
@@ -262,7 +265,10 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func settingsAuthorizationRowUsesHorizontalSettingLayout() throws {
-        let settingsViewController = SettingsViewController(isAuthorized: { false })
+        let settingsViewController = SettingsViewController(
+            isAuthorized: { false },
+            languageSettings: zhHansLanguageSettings()
+        )
         settingsViewController.loadViewIfNeeded()
 
         let permissionStack = try #require(settingsViewController.view.allDescendants(ofType: NSStackView.self).first { stack in
@@ -279,7 +285,11 @@ struct TokenWatchTests {
     @MainActor
     @Test func settingsShowsAutoRefreshIntervalMenu() throws {
         try withTemporaryDefaults { defaults in
-            let settingsViewController = SettingsViewController(isAuthorized: { false }, defaults: defaults)
+            let settingsViewController = SettingsViewController(
+                isAuthorized: { false },
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: zhHansLanguageSettings(defaults: defaults)
+            )
             settingsViewController.loadViewIfNeeded()
 
             let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
@@ -294,7 +304,11 @@ struct TokenWatchTests {
     @MainActor
     @Test func changingAutoRefreshIntervalPersistsSelection() throws {
         try withTemporaryDefaults { defaults in
-            let settingsViewController = SettingsViewController(isAuthorized: { false }, defaults: defaults)
+            let settingsViewController = SettingsViewController(
+                isAuthorized: { false },
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: zhHansLanguageSettings(defaults: defaults)
+            )
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
@@ -424,4 +438,10 @@ private func withTemporaryDefaults(_ body: (UserDefaults) throws -> Void) rethro
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
     try body(defaults)
+}
+
+@MainActor
+private func zhHansLanguageSettings(defaults: UserDefaults? = nil) -> AppLanguageSettings {
+    let defaults = defaults ?? UserDefaults(suiteName: "TokenWatchTests.Language.\(UUID().uuidString)")!
+    return AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
 }
