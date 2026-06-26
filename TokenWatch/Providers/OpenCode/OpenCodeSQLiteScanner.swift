@@ -11,19 +11,34 @@ struct OpenCodeMessageRow: Sendable {
     let directory: String          // session.directory(cwd 兜底)
 }
 
-enum OpenCodeScannerError: Error, CustomStringConvertible {
+enum OpenCodeScannerError: AppLocalizedError, CustomStringConvertible {
     case databaseNotFound(URL)
     case openFailed(code: Int32, message: String)
     case queryFailed(code: Int32, message: String)
 
     var description: String {
+        localizedDescription(language: .zhHans)
+    }
+
+    func localizedDescription(language: AppLanguage) -> String {
         switch self {
         case .databaseNotFound(let url):
-            return "opencode.db 不存在: \(url.path)"
+            return String(
+                format: AppStrings.text(.errorOpenCodeDatabaseNotFoundFormat, language: language),
+                url.path
+            )
         case .openFailed(let code, let msg):
-            return "无法打开 opencode.db (SQLite code=\(code)): \(msg)"
+            return String(
+                format: AppStrings.text(.errorOpenCodeDatabaseOpenFailedFormat, language: language),
+                Int(code),
+                msg
+            )
         case .queryFailed(let code, let msg):
-            return "查询 opencode.db 失败 (SQLite code=\(code)): \(msg)"
+            return String(
+                format: AppStrings.text(.errorOpenCodeDatabaseQueryFailedFormat, language: language),
+                Int(code),
+                msg
+            )
         }
     }
 }
@@ -61,7 +76,8 @@ final class OpenCodeSQLiteScanner: Sendable {
     func scanAll(in rootURL: URL) throws -> [OpenCodeMessageRow] {
         let dbURL = rootURL.appendingPathComponent("opencode.db")
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
-            throw OpenCodeScannerError.databaseNotFound(dbURL)
+            logger.info("opencode.db 不存在,跳过 opencode 数据源: \(dbURL.path)")
+            return []
         }
 
         var db: OpaquePointer?

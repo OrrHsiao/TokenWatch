@@ -1,5 +1,10 @@
 import Foundation
 
+/// 支持按应用内语言生成错误详情的错误类型。
+protocol AppLocalizedError: Error {
+    func localizedDescription(language: AppLanguage) -> String
+}
+
 enum AppStringKey: CaseIterable, Sendable {
     case languageSystem
     case languageChinese
@@ -76,6 +81,9 @@ enum AppStringKey: CaseIterable, Sendable {
     case authorizeAccessPrompt
     case errorCannotAccessHome
     case errorLoadFailedPrefix
+    case errorOpenCodeDatabaseNotFoundFormat
+    case errorOpenCodeDatabaseOpenFailedFormat
+    case errorOpenCodeDatabaseQueryFailedFormat
 }
 
 enum AppStrings {
@@ -177,6 +185,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "授权访问",
         .errorCannotAccessHome: "无法访问用户目录,请重新授权",
         .errorLoadFailedPrefix: "数据加载失败",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db 不存在: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "无法打开 opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "查询 opencode.db 失败 (SQLite code=%d): %@",
     ]
 
     private static let zhHant: [AppStringKey: String] = [
@@ -255,6 +266,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "授權存取",
         .errorCannotAccessHome: "無法存取使用者目錄,請重新授權",
         .errorLoadFailedPrefix: "資料載入失敗",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db 不存在: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "無法開啟 opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "查詢 opencode.db 失敗 (SQLite code=%d): %@",
     ]
 
     private static let ja: [AppStringKey: String] = [
@@ -333,6 +347,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "許可",
         .errorCannotAccessHome: "ホームフォルダにアクセスできません。再度許可してください",
         .errorLoadFailedPrefix: "データの読み込みに失敗しました",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db が見つかりません: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "opencode.db を開けません (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "opencode.db のクエリに失敗しました (SQLite code=%d): %@",
     ]
 
     private static let ko: [AppStringKey: String] = [
@@ -411,6 +428,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "허용",
         .errorCannotAccessHome: "홈 폴더에 접근할 수 없습니다. 다시 허용하세요",
         .errorLoadFailedPrefix: "데이터 불러오기 실패",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db를 찾을 수 없습니다: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "opencode.db를 열 수 없습니다 (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "opencode.db 쿼리 실패 (SQLite code=%d): %@",
     ]
 
     private static let es: [AppStringKey: String] = [
@@ -489,6 +509,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autorizar",
         .errorCannotAccessHome: "No se puede acceder a la carpeta de inicio. Autoriza de nuevo",
         .errorLoadFailedPrefix: "Error al cargar datos",
+        .errorOpenCodeDatabaseNotFoundFormat: "No se encontró opencode.db: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "No se pudo abrir opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Error al consultar opencode.db (SQLite code=%d): %@",
     ]
 
     private static let de: [AppStringKey: String] = [
@@ -567,6 +590,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autorisieren",
         .errorCannotAccessHome: "Home-Ordner kann nicht geöffnet werden. Bitte erneut autorisieren",
         .errorLoadFailedPrefix: "Daten konnten nicht geladen werden",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db wurde nicht gefunden: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "opencode.db konnte nicht geöffnet werden (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Abfrage von opencode.db fehlgeschlagen (SQLite code=%d): %@",
     ]
 
     private static let fr: [AppStringKey: String] = [
@@ -645,6 +671,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autoriser",
         .errorCannotAccessHome: "Impossible d'accéder au dossier personnel. Veuillez autoriser à nouveau",
         .errorLoadFailedPrefix: "Échec du chargement des données",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db introuvable : %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "Impossible d'ouvrir opencode.db (SQLite code=%d) : %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Échec de la requête opencode.db (SQLite code=%d) : %@",
     ]
 
     private static let ptBR: [AppStringKey: String] = [
@@ -723,6 +752,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autorizar",
         .errorCannotAccessHome: "Não foi possível acessar a pasta inicial. Autorize novamente",
         .errorLoadFailedPrefix: "Falha ao carregar dados",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db não encontrado: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "Não foi possível abrir opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Falha ao consultar opencode.db (SQLite code=%d): %@",
     ]
 
     private static let it: [AppStringKey: String] = [
@@ -801,6 +833,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autorizza",
         .errorCannotAccessHome: "Impossibile accedere alla cartella home. Autorizza di nuovo",
         .errorLoadFailedPrefix: "Caricamento dati non riuscito",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db non trovato: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "Impossibile aprire opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Query di opencode.db non riuscita (SQLite code=%d): %@",
     ]
 
     private static let nl: [AppStringKey: String] = [
@@ -879,6 +914,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autoriseren",
         .errorCannotAccessHome: "Kan de thuismap niet openen. Autoriseer opnieuw",
         .errorLoadFailedPrefix: "Gegevens laden mislukt",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db niet gevonden: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "Kan opencode.db niet openen (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Query op opencode.db mislukt (SQLite code=%d): %@",
     ]
 
     private static let pl: [AppStringKey: String] = [
@@ -957,6 +995,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Autoryzuj",
         .errorCannotAccessHome: "Nie można uzyskać dostępu do folderu domowego. Autoryzuj ponownie",
         .errorLoadFailedPrefix: "Nie udało się załadować danych",
+        .errorOpenCodeDatabaseNotFoundFormat: "Nie znaleziono opencode.db: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "Nie można otworzyć opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Zapytanie opencode.db nie powiodło się (SQLite code=%d): %@",
     ]
 
     private static let en: [AppStringKey: String] = [
@@ -1035,6 +1076,9 @@ enum AppStrings {
         .authorizeAccessPrompt: "Authorize",
         .errorCannotAccessHome: "Cannot access home folder. Please authorize again",
         .errorLoadFailedPrefix: "Data load failed",
+        .errorOpenCodeDatabaseNotFoundFormat: "opencode.db not found: %@",
+        .errorOpenCodeDatabaseOpenFailedFormat: "Could not open opencode.db (SQLite code=%d): %@",
+        .errorOpenCodeDatabaseQueryFailedFormat: "Could not query opencode.db (SQLite code=%d): %@",
     ]
 
     private static let localizedTables: [AppLanguage: [AppStringKey: String]] = [

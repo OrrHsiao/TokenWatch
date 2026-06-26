@@ -84,6 +84,19 @@ struct TokenStatsViewModelObserverTests {
         #expect(TokenStatsViewModel.loadFailedMessage(error: error, language: .zhHans) == "数据加载失败: disk read failed")
         #expect(TokenStatsViewModel.loadFailedMessage(error: error, language: .en) == "Data load failed: disk read failed")
     }
+
+    @Test func openCodeScannerErrorsUseAppLanguage() {
+        let error = OpenCodeScannerError.openFailed(code: 14, message: "unable to open database file")
+
+        #expect(
+            TokenStatsViewModel.loadFailedMessage(error: error, language: .zhHans)
+            == "数据加载失败: 无法打开 opencode.db (SQLite code=14): unable to open database file"
+        )
+        #expect(
+            TokenStatsViewModel.loadFailedMessage(error: error, language: .en)
+            == "Data load failed: Could not open opencode.db (SQLite code=14): unable to open database file"
+        )
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
