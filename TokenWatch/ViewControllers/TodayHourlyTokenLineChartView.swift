@@ -13,16 +13,27 @@ final class TodayHourlyTokenLineChartView: NSView {
         accessibilityLabelText: UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .zhHans),
         onHoverMonthKeyChange: { _ in }
     )))
+    private let hoverLabel = NSTextField(labelWithString: "")
     private var buckets: [MonthlyTokenBucket] = []
     private var language: AppLanguage = .zhHans
+    private var hoverLabelTopConstraint: NSLayoutConstraint?
+    private var hoverLabelTrailingConstraint: NSLayoutConstraint?
 
     private(set) var debugNormalizedHeights: [Double] = []
     private(set) var debugXAxisLabels: [String] = []
     private(set) var debugAccessibilityLabel = UsageStatsPeriod.today
         .tokenChartAccessibilityLabel(language: .zhHans)
-    var onHoverTextChange: ((String?) -> Void)?
 
     var debugPointCount: Int { buckets.count }
+    var debugHoverText: String { hoverLabel.stringValue }
+    var debugHoverLabelTopAlignsWithChartView: Bool {
+        hoverLabelTopConstraint?.isActive == true
+            && hoverLabelTopConstraint?.constant == 0
+    }
+    var debugHoverLabelTrailingAlignsWithChartView: Bool {
+        hoverLabelTrailingConstraint?.isActive == true
+            && hoverLabelTrailingConstraint?.constant == 0
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -38,6 +49,7 @@ final class TodayHourlyTokenLineChartView: NSView {
     func configure(with snapshot: MonthlyTokenChartSnapshot, language: AppLanguage = .zhHans) {
         self.language = language
         buckets = snapshot.monthBuckets
+        hoverLabel.stringValue = ""
         debugNormalizedHeights = snapshot.monthBuckets.map { clampHourlyNormalizedHeight($0.normalizedHeight) }
         debugXAxisLabels = Self.visibleAxisHourIndexes.compactMap { index in
             guard snapshot.monthBuckets.indices.contains(index) else { return nil }
@@ -72,18 +84,34 @@ final class TodayHourlyTokenLineChartView: NSView {
 
         chartHost.translatesAutoresizingMaskIntoConstraints = false
         addSubview(chartHost)
+        hoverLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        hoverLabel.textColor = .secondaryLabelColor
+        hoverLabel.alignment = .right
+        hoverLabel.lineBreakMode = .byTruncatingMiddle
+        hoverLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        hoverLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(hoverLabel)
+
+        let hoverLabelTopConstraint = hoverLabel.topAnchor.constraint(equalTo: topAnchor)
+        let hoverLabelTrailingConstraint = hoverLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        self.hoverLabelTopConstraint = hoverLabelTopConstraint
+        self.hoverLabelTrailingConstraint = hoverLabelTrailingConstraint
+
         NSLayoutConstraint.activate([
             chartHost.leadingAnchor.constraint(equalTo: leadingAnchor),
             chartHost.trailingAnchor.constraint(equalTo: trailingAnchor),
             chartHost.topAnchor.constraint(equalTo: topAnchor),
             chartHost.bottomAnchor.constraint(equalTo: bottomAnchor),
+            hoverLabelTopConstraint,
+            hoverLabelTrailingConstraint,
+            hoverLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
         ])
     }
 
     private func updateHoverText(monthKey: String?) {
         guard let monthKey,
               let bucket = buckets.first(where: { $0.monthKey == monthKey }) else {
-            onHoverTextChange?(nil)
+            hoverLabel.stringValue = ""
             return
         }
         let periodLabel = MonthlyBarChartStyle.hoverPeriodLabel(
@@ -91,7 +119,7 @@ final class TodayHourlyTokenLineChartView: NSView {
             fallback: bucket.monthLabel,
             language: language
         )
-        onHoverTextChange?("\(periodLabel) · \(CompactNumberFormatter.formatMillions(bucket.totalTokens))")
+        hoverLabel.stringValue = "\(periodLabel) · \(CompactNumberFormatter.formatMillions(bucket.totalTokens))"
     }
 }
 

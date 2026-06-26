@@ -32,31 +32,40 @@ struct TodayHourlyTokenLineChartViewTests {
         #expect(view.debugNormalizedHeights.allSatisfy { $0 == 0 })
     }
 
-    @Test("鼠标划过小时点时回传该小时 token 文案")
-    func hoveringHourEmitsTokenUsageText() {
+    @Test("鼠标划过小时点时更新折线图自己的 hover 文案")
+    func hoveringHourUpdatesOwnHoverText() {
         let view = TodayHourlyTokenLineChartView()
         let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24), override: [9: 1_234_567])
-        var hoverTexts: [String?] = []
-        view.onHoverTextChange = { hoverTexts.append($0) }
 
         view.configure(with: snapshot)
         view.debugSimulateHover(monthKey: "2026-06-20T09")
-        view.debugSimulateHover(monthKey: nil)
 
-        #expect(hoverTexts == ["9时 · 1.2M", nil])
+        #expect(view.debugHoverText == "9时 · 1.2M")
+
+        view.debugSimulateHover(monthKey: nil)
+        #expect(view.debugHoverText == "")
     }
 
     @Test("英文 hover 小时标签不带中文时")
     func englishHoverTextUsesHourNumberOnly() {
         let view = TodayHourlyTokenLineChartView()
         let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24), override: [14: 250_000])
-        var hoverTexts: [String?] = []
-        view.onHoverTextChange = { hoverTexts.append($0) }
 
         view.configure(with: snapshot, language: .en)
         view.debugSimulateHover(monthKey: "2026-06-20T14")
 
-        #expect(hoverTexts == ["14 · 0.2M"])
+        #expect(view.debugHoverText == "14 · 0.2M")
+    }
+
+    @Test("hover label 对齐到折线图右上角")
+    func hoverLabelAlignsWithLineChartTopTrailingCorner() {
+        let view = TodayHourlyTokenLineChartView()
+        let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24))
+
+        view.configure(with: snapshot)
+
+        #expect(view.debugHoverLabelTopAlignsWithChartView)
+        #expect(view.debugHoverLabelTrailingAlignsWithChartView)
     }
 
     private func makeSnapshot(tokens: [Int], override: [Int: Int] = [:]) -> MonthlyTokenChartSnapshot {

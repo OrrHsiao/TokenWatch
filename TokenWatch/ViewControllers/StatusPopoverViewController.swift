@@ -92,6 +92,13 @@ final class StatusPopoverViewController: NSViewController {
     var debugHourlyLineChartView: TodayHourlyTokenLineChartView? { hourlyLineChartView }
     var debugHourlyLineChartPointCount: Int { hourlyLineChartView.debugPointCount }
     var debugHourlyLineChartXAxisLabels: [String] { hourlyLineChartView.debugXAxisLabels }
+    var debugHourlyLineChartHoverText: String { hourlyLineChartView.debugHoverText }
+    var debugHourlyLineChartHoverLabelTopAlignsWithLineChart: Bool {
+        hourlyLineChartView.debugHoverLabelTopAlignsWithChartView
+    }
+    var debugHourlyLineChartHoverLabelTrailingAlignsWithLineChart: Bool {
+        hourlyLineChartView.debugHoverLabelTrailingAlignsWithChartView
+    }
     var debugWeekdayLabelCount: Int { 0 }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
@@ -318,9 +325,6 @@ final class StatusPopoverViewController: NSViewController {
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
         hourlyLineChartView.translatesAutoresizingMaskIntoConstraints = false
-        hourlyLineChartView.onHoverTextChange = { [weak self] text in
-            self?.updateHoverText(text)
-        }
 
         todayDescriptionRow.addSubview(todayDescriptionLabel)
         todayDescriptionRow.addSubview(todayRefreshButton)

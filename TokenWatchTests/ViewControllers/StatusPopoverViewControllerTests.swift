@@ -240,17 +240,22 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugHoverText == "")
     }
 
-    @Test("折线图 hover 复用热力图 hover label")
-    func hourlyLineChartHoverUsesSharedHoverLabel() {
+    @Test("折线图 hover 使用独立右上角 label")
+    func hourlyLineChartHoverUsesIndependentTopTrailingLabel() {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
+        let heatmapHoverText = controller.debugHoverText
         controller.debugSimulateHourlyLineChartHover(monthKey: "2026-06-17T09")
 
-        #expect(controller.debugHoverText == "9时 · 0.0M")
+        #expect(controller.debugHoverText == heatmapHoverText)
+        #expect(controller.debugHourlyLineChartHoverText == "9时 · 0.0M")
+        #expect(controller.debugHourlyLineChartHoverLabelTopAlignsWithLineChart)
+        #expect(controller.debugHourlyLineChartHoverLabelTrailingAlignsWithLineChart)
 
         controller.debugSimulateHourlyLineChartHover(monthKey: nil)
-        #expect(controller.debugHoverText == "")
+        #expect(controller.debugHoverText == heatmapHoverText)
+        #expect(controller.debugHourlyLineChartHoverText == "")
     }
 
     @Test("cell 访问对越界索引做保护")
