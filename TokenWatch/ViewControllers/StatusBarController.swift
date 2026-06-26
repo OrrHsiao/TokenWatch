@@ -566,6 +566,7 @@ final class StatusBarController {
         for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
             switch action {
             case .activateApplication:
+                NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
             case .makeWindowKeyAndOrderFront:
                 target.makeKeyAndOrderFront(nil)

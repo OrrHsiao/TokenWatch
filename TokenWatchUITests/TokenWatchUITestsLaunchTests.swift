@@ -20,12 +20,10 @@ final class TokenWatchUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
-        app.launchSkippingInitialAuthorizationPrompt()
+        app.launchForUITesting()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Model Usage"].waitForExistence(timeout: 5))
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

@@ -10,41 +10,80 @@ import XCTest
 final class TokenWatchUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testLaunchShowsSidebarAndTotalPage() throws {
         let app = XCUIApplication()
-        app.launchSkippingInitialAuthorizationPrompt()
+        app.launchForUITesting()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
+        let sidebar = app.tables["MainSidebarTableView"]
+        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
+        XCTAssertTrue(sidebar.staticTexts["Total"].exists)
+        XCTAssertTrue(sidebar.staticTexts["Last 12 Months"].exists)
+        XCTAssertTrue(sidebar.staticTexts["Last 30 Days"].exists)
+        XCTAssertTrue(sidebar.staticTexts["Today"].exists)
+        XCTAssertTrue(sidebar.staticTexts["Settings"].exists)
+        XCTAssertTrue(app.staticTexts["Model Usage"].waitForExistence(timeout: 5))
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launchSkippingInitialAuthorizationPrompt()
-        }
+    func testSidebarNavigationShowsTimeWindowPages() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting()
+
+        let sidebar = app.tables["MainSidebarTableView"]
+        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
+
+        sidebar.staticTexts["Last 12 Months"].click()
+        XCTAssertTrue(app.staticTexts["Last 12 Months"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Token Usage"].exists)
+
+        sidebar.staticTexts["Last 30 Days"].click()
+        XCTAssertTrue(app.staticTexts["Last 30 Days"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Token Usage"].exists)
+
+        sidebar.staticTexts["Today"].click()
+        XCTAssertTrue(app.staticTexts["Today"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Token Usage"].exists)
+    }
+
+    @MainActor
+    func testSettingsPageExposesActionControls() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting()
+
+        let sidebar = app.tables["MainSidebarTableView"]
+        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
+        sidebar.staticTexts["Settings"].click()
+
+        XCTAssertTrue(app.staticTexts["General Access"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["AuthorizationActionButton"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["RefreshAllDataButton"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["AutoRefreshIntervalPopUpButton"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["LaunchAtLoginSwitch"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["LanguagePreferencePopUpButton"].exists)
     }
 }
 
 extension XCUIApplication {
-    func launchSkippingInitialAuthorizationPrompt() {
-        launchArguments += ["-TokenWatch.didPromptInitialHomeAuthorization", "YES"]
+    func launchForUITesting(languagePreference: String = "en") {
+        let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.TokenWatch")
+        if existingApp.state != .notRunning {
+            existingApp.terminate()
+            _ = existingApp.wait(for: .notRunning, timeout: 5)
+        }
+        if state != .notRunning {
+            terminate()
+            _ = wait(for: .notRunning, timeout: 5)
+        }
+        launchArguments += [
+            "-TokenWatch.didPromptInitialHomeAuthorization", "YES",
+            "-TokenWatch.languagePreference", languagePreference,
+            "-TokenWatch.openMainWindowOnLaunch", "YES",
+        ]
         launch()
     }
 }
