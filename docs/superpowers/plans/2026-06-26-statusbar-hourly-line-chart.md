@@ -91,7 +91,7 @@ struct TodayHourlyTokenLineChartViewTests {
         view.configure(with: snapshot, language: .en)
         view.debugSimulateHover(monthKey: "2026-06-20T14")
 
-        #expect(hoverTexts == ["14 · 250.0k"])
+        #expect(hoverTexts == ["14 · 0.2M"])
     }
 
     private func makeSnapshot(tokens: [Int], override: [Int: Int] = [:]) -> MonthlyTokenChartSnapshot {
@@ -430,7 +430,7 @@ Expected: PASS。
         controller.loadViewIfNeeded()
         controller.debugSimulateHourlyLineChartHover(monthKey: "2026-06-17T09")
 
-        #expect(controller.debugHoverText == "9时 · 0")
+        #expect(controller.debugHoverText == "9时 · 0.0M")
 
         controller.debugSimulateHourlyLineChartHover(monthKey: nil)
         #expect(controller.debugHoverText == "")
