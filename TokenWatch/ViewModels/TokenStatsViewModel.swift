@@ -45,7 +45,13 @@ final class TokenStatsViewModel: Sendable {
     }
 
     nonisolated static func loadFailedMessage(error: Error, language: AppLanguage) -> String {
-        "\(AppStrings.text(.errorLoadFailedPrefix, language: language)): \(error.localizedDescription)"
+        let detail: String
+        if let localizedError = error as? any AppLocalizedError {
+            detail = localizedError.localizedDescription(language: language)
+        } else {
+            detail = error.localizedDescription
+        }
+        return "\(AppStrings.text(.errorLoadFailedPrefix, language: language)): \(detail)"
     }
 
     /// 注册状态变更监听

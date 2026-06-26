@@ -46,18 +46,14 @@ struct OpenCodeSQLiteScannerTests {
 
     // MARK: - 错误路径
 
-    @Test("opencode.db 不存在 → databaseNotFound")
-    func missingDB() throws {
+    @Test("opencode.db 不存在时返回空数组,不抛错")
+    func missingDBReturnsEmptyRows() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        do {
-            _ = try scanner.scanAll(in: dir)
-            Issue.record("应抛错")
-        } catch let err as OpenCodeScannerError {
-            if case .databaseNotFound = err { return }
-            Issue.record("错类型不对: \(err)")
-        }
+        let rows = try scanner.scanAll(in: dir)
+
+        #expect(rows.isEmpty)
     }
 
     @Test("非合法 SQLite 文件 → openFailed")
