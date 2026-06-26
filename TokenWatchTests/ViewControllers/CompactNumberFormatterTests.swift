@@ -42,8 +42,8 @@ struct CompactNumberFormatterTests {
     }
 
     @Test func hoverTokensUseMillionsWithKFallback() {
-        #expect(CompactNumberFormatter.formatHoverTokens(-1) == "0k")
-        #expect(CompactNumberFormatter.formatHoverTokens(0) == "0k")
+        #expect(CompactNumberFormatter.formatHoverTokens(-1) == "0.0M")
+        #expect(CompactNumberFormatter.formatHoverTokens(0) == "0.0M")
         #expect(CompactNumberFormatter.formatHoverTokens(12_345) == "12.3k")
         #expect(CompactNumberFormatter.formatHoverTokens(99_999) == "99.9k")
         #expect(CompactNumberFormatter.formatHoverTokens(100_000) == "0.1M")

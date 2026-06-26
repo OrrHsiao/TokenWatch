@@ -45,14 +45,13 @@ enum CompactNumberFormatter {
         return "\(whole).\(frac)M"
     }
 
-    /// 把 hover 文案里的 token 总数压缩成 `M` 单位,不足 0.1M 时使用 `k`。
+    /// 把 hover 文案里的 token 总数压缩成 `M` 单位,0 保持 `M`,不足 0.1M 且非 0 时使用 `k`。
     /// - Parameter value: 整数 token 数,负数会被视为 0
     /// - Returns: 用于 hover label 的短字符串
     static func formatHoverTokens(_ value: Int) -> String {
         let safeValue = max(value, 0)
-        guard safeValue > 0 else { return "0k" }
 
-        if safeValue < 100_000 {
+        if safeValue > 0 && safeValue < 100_000 {
             let tenths = safeValue / 100
             let whole = tenths / 10
             let frac = tenths % 10

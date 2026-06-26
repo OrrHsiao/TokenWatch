@@ -249,7 +249,7 @@ struct StatusPopoverViewControllerTests {
         controller.debugSimulateHourlyLineChartHover(monthKey: "2026-06-17T09")
 
         #expect(controller.debugHoverText == heatmapHoverText)
-        #expect(controller.debugHourlyLineChartHoverText == "9时 · 0k")
+        #expect(controller.debugHourlyLineChartHoverText == "9时 · 0.0M")
         #expect(controller.debugHourlyLineChartHoverLabelTopAlignsWithLineChart)
         #expect(controller.debugHourlyLineChartHoverLabelTrailingAlignsWithLineChart)
 

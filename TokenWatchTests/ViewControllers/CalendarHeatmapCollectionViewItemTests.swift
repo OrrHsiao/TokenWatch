@@ -51,7 +51,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
         #expect(style.alpha < 1.0)
-        #expect(style.toolTip == "2026-06-20 · 0k")
+        #expect(style.toolTip == "2026-06-20 · 0.0M")
     }
 
     @Test("token tooltip 使用 M 单位且不足 0.1M 时回退到 k")
@@ -154,6 +154,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.configure(with: .day(day))
 
         #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.098, 0.118, 0.145, 1.0])
+        #expect(item.view.toolTip == "2026-06-10 · 0.0M")
     }
 
     @MainActor
