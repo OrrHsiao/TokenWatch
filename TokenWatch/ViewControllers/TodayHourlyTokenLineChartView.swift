@@ -26,6 +26,7 @@ final class TodayHourlyTokenLineChartView: NSView {
         .tokenChartAccessibilityLabel(language: .zhHans)
 
     var debugPointCount: Int { buckets.count }
+    var debugLineInterpolationMethodName: String { TodayHourlyLineChartRendering.interpolationMethodName }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugHoverLabelTopAlignsWithChartView: Bool {
         hoverLabelTopConstraint?.isActive == true
@@ -129,6 +130,11 @@ private func clampHourlyNormalizedHeight(_ value: Double) -> Double {
     return min(max(value, 0), 1)
 }
 
+private enum TodayHourlyLineChartRendering {
+    static let interpolationMethod: InterpolationMethod = .catmullRom
+    static let interpolationMethodName = "catmullRom"
+}
+
 private struct TodayHourlyTokenLineChartContent: View {
     let buckets: [MonthlyTokenBucket]
     let language: AppLanguage
@@ -147,6 +153,7 @@ private struct TodayHourlyTokenLineChartContent: View {
                     x: .value(axisValueName, bucket.monthKey),
                     y: .value("Tokens", Double(bucket.totalTokens))
                 )
+                .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
                 .foregroundStyle(Color(nsColor: .controlAccentColor))
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 .accessibilityLabel(accessibilityLabel(for: bucket))

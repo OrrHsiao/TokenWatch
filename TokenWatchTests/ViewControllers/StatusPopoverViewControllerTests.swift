@@ -170,14 +170,16 @@ struct StatusPopoverViewControllerTests {
     }
 
     @Test("本日小时折线图位于热力图下方并与热力图等宽")
-    func hourlyLineChartSitsBelowHeatmapAndMatchesWidth() {
+    func hourlyLineChartSitsBelowHeatmapAndMatchesWidth() throws {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
         controller.view.layoutSubtreeIfNeeded()
+        let hourlyLineChartView = try #require(controller.debugHourlyLineChartView)
 
         #expect(controller.debugHourlyLineChartSitsBelowCollectionView)
         #expect(controller.debugHourlyLineChartWidthMatchesCollectionView)
+        #expect(hourlyLineChartView.frame.height == 111)
         #expect(controller.debugHourlyLineChartBottomFitsInRootBounds)
     }
 

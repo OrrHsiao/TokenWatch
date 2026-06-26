@@ -4,7 +4,7 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 370, height: 318)
+    nonisolated static let contentSize = NSSize(width: 370, height: 355)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
     private static let todayDescriptionHeight: CGFloat = 20
@@ -23,7 +23,7 @@ final class StatusPopoverViewController: NSViewController {
         CalendarHeatmapCollectionViewItem.tileSize.width * CGFloat(gridColumnCount)
         + tileSpacing * CGFloat(gridColumnCount - 1)
     private static let hourlyLineChartTopSpacing: CGFloat = 14
-    private static let hourlyLineChartHeight: CGFloat = 74
+    private static let hourlyLineChartHeight: CGFloat = 111
 
     private let viewModel: TokenStatsViewModel
     private let nowProvider: () -> Date

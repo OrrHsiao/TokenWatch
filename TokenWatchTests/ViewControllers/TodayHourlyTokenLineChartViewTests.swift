@@ -18,6 +18,7 @@ struct TodayHourlyTokenLineChartViewTests {
         #expect(view.debugXAxisLabels == ["0", "6", "12", "18", "23"])
         #expect(view.debugNormalizedHeights.first == 0)
         #expect(view.debugNormalizedHeights.last == 1.0)
+        #expect(view.debugLineInterpolationMethodName == "catmullRom")
         #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
     }
 
@@ -103,7 +104,7 @@ struct TodayHourlyTokenLineChartViewTests {
 
     @Test("hover label 不覆盖 Charts 宿主绘制区域")
     func hoverLabelDoesNotOverlapChartHostDrawingArea() throws {
-        let view = TodayHourlyTokenLineChartView(frame: NSRect(x: 0, y: 0, width: 327, height: 74))
+        let view = TodayHourlyTokenLineChartView(frame: NSRect(x: 0, y: 0, width: 327, height: 111))
         let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24), override: [23: 1_234_567])
 
         view.configure(with: snapshot)
