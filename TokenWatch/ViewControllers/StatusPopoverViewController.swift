@@ -4,7 +4,7 @@ import AppKit
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 370, height: 236)
+    nonisolated static let contentSize = NSSize(width: 370, height: 318)
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
     private static let todayDescriptionHeight: CGFloat = 20
@@ -22,6 +22,8 @@ final class StatusPopoverViewController: NSViewController {
     private static let collectionWidth =
         CalendarHeatmapCollectionViewItem.tileSize.width * CGFloat(gridColumnCount)
         + tileSpacing * CGFloat(gridColumnCount - 1)
+    private static let hourlyLineChartTopSpacing: CGFloat = 14
+    private static let hourlyLineChartHeight: CGFloat = 74
 
     private let viewModel: TokenStatsViewModel
     private let nowProvider: () -> Date
@@ -40,6 +42,7 @@ final class StatusPopoverViewController: NSViewController {
     private let todayRefreshButton = RefreshIconButton()
     private let hoverLabel = NSTextField(labelWithString: "")
     private let collectionView = NSCollectionView()
+    private let hourlyLineChartView = TodayHourlyTokenLineChartView()
 
     struct DebugSummaryCard: Equatable {
         let title: String
@@ -86,6 +89,9 @@ final class StatusPopoverViewController: NSViewController {
     var debugRefreshButtonIsEnabled: Bool { todayRefreshButton.isEnabled }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
+    var debugHourlyLineChartView: TodayHourlyTokenLineChartView? { hourlyLineChartView }
+    var debugHourlyLineChartPointCount: Int { hourlyLineChartView.debugPointCount }
+    var debugHourlyLineChartXAxisLabels: [String] { hourlyLineChartView.debugXAxisLabels }
     var debugWeekdayLabelCount: Int { 0 }
     var debugCollectionItemCount: Int { snapshot?.cells.count ?? 0 }
     var debugCollectionHeight: CGFloat { Self.collectionHeight }
@@ -158,8 +164,34 @@ final class StatusPopoverViewController: NSViewController {
         return frameInRoot.minY >= Self.outerMargin
             && frameInRoot.maxY <= view.bounds.maxY - Self.outerMargin
     }
+    var debugHourlyLineChartSitsBelowCollectionView: Bool {
+        hasConstraint(
+            firstItem: hourlyLineChartView,
+            firstAttribute: .top,
+            secondItem: collectionView,
+            secondAttribute: .bottom,
+            constant: Self.hourlyLineChartTopSpacing
+        )
+    }
+    var debugHourlyLineChartWidthMatchesCollectionView: Bool {
+        hasConstraint(
+            firstItem: hourlyLineChartView,
+            firstAttribute: .width,
+            secondItem: collectionView,
+            secondAttribute: .width,
+            constant: 0
+        )
+    }
+    var debugHourlyLineChartBottomFitsInRootBounds: Bool {
+        let frameInRoot = hourlyLineChartView.convert(hourlyLineChartView.bounds, to: view)
+        return frameInRoot.minY >= Self.outerMargin
+            && frameInRoot.maxY <= view.bounds.maxY - Self.outerMargin
+    }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
     func debugUpdateHoverText(_ text: String?) { updateHoverText(text) }
+    func debugSimulateHourlyLineChartHover(monthKey: String?) {
+        hourlyLineChartView.debugSimulateHover(monthKey: monthKey)
+    }
     func debugSetRefreshButtonHovering(_ isHovering: Bool) {
         todayRefreshButton.debugSetHovering(isHovering)
     }
@@ -285,12 +317,18 @@ final class StatusPopoverViewController: NSViewController {
         )
         collectionView.translatesAutoresizingMaskIntoConstraints = false
 
+        hourlyLineChartView.translatesAutoresizingMaskIntoConstraints = false
+        hourlyLineChartView.onHoverTextChange = { [weak self] text in
+            self?.updateHoverText(text)
+        }
+
         todayDescriptionRow.addSubview(todayDescriptionLabel)
         todayDescriptionRow.addSubview(todayRefreshButton)
         view.addSubview(todayDescriptionRow)
         view.addSubview(summaryStack)
         view.addSubview(hoverLabel)
         view.addSubview(collectionView)
+        view.addSubview(hourlyLineChartView)
 
         NSLayoutConstraint.activate([
             todayDescriptionRow.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
@@ -328,6 +366,18 @@ final class StatusPopoverViewController: NSViewController {
             collectionView.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
             collectionView.heightAnchor.constraint(equalToConstant: Self.collectionHeight),
             collectionView.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -Self.outerMargin),
+
+            hourlyLineChartView.topAnchor.constraint(
+                equalTo: collectionView.bottomAnchor,
+                constant: Self.hourlyLineChartTopSpacing
+            ),
+            hourlyLineChartView.centerXAnchor.constraint(equalTo: collectionView.centerXAnchor),
+            hourlyLineChartView.widthAnchor.constraint(equalTo: collectionView.widthAnchor),
+            hourlyLineChartView.heightAnchor.constraint(equalToConstant: Self.hourlyLineChartHeight),
+            hourlyLineChartView.bottomAnchor.constraint(
+                lessThanOrEqualTo: view.bottomAnchor,
+                constant: -Self.outerMargin
+            ),
         ])
     }
 
@@ -415,6 +465,14 @@ final class StatusPopoverViewController: NSViewController {
             language: language
         )
         self.snapshot = snapshot
+        let hourlySnapshot = MonthlyTokenChartBuilder.build(
+            states: viewModel.states,
+            period: .today,
+            now: now,
+            calendar: calendar,
+            language: language
+        )
+        hourlyLineChartView.configure(with: hourlySnapshot, language: language)
 
         applySummary(snapshot.summary, language: language)
         applyTodayDescription(todayTokens: snapshot.summary.todayTokens, language: language)

@@ -26,6 +26,9 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionView != nil)
         #expect(controller.debugWeekdayLabelCount == 0)
         #expect(controller.debugCollectionItemCount == 154)
+        #expect(controller.debugHourlyLineChartView != nil)
+        #expect(controller.debugHourlyLineChartPointCount == 24)
+        #expect(controller.debugHourlyLineChartXAxisLabels == ["0", "6", "12", "18", "23"])
     }
 
     @Test("本日 token 文案右侧展示 SF Symbols 刷新按钮")
@@ -166,6 +169,18 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionView?.frame.width == 327)
     }
 
+    @Test("本日小时折线图位于热力图下方并与热力图等宽")
+    func hourlyLineChartSitsBelowHeatmapAndMatchesWidth() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        controller.view.layoutSubtreeIfNeeded()
+
+        #expect(controller.debugHourlyLineChartSitsBelowCollectionView)
+        #expect(controller.debugHourlyLineChartWidthMatchesCollectionView)
+        #expect(controller.debugHourlyLineChartBottomFitsInRootBounds)
+    }
+
     @Test("collection view 使用 GitHub 风格小方格布局")
     func collectionViewUsesGitHubStyleGridLayout() throws {
         let controller = makeController()
@@ -222,6 +237,19 @@ struct StatusPopoverViewControllerTests {
         controller.view.layoutSubtreeIfNeeded()
 
         #expect(controller.debugSummaryCards == defaultSummaryCards)
+        #expect(controller.debugHoverText == "")
+    }
+
+    @Test("折线图 hover 复用热力图 hover label")
+    func hourlyLineChartHoverUsesSharedHoverLabel() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        controller.debugSimulateHourlyLineChartHover(monthKey: "2026-06-17T09")
+
+        #expect(controller.debugHoverText == "9时 · 0.0M")
+
+        controller.debugSimulateHourlyLineChartHover(monthKey: nil)
         #expect(controller.debugHoverText == "")
     }
 
