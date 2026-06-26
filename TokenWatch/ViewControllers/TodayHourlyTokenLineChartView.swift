@@ -141,7 +141,7 @@ private enum TodayHourlyLineChartRendering {
     static let interpolationMethodName = "catmullRom"
     static let areaGradientScaleModeName = "dailyMaximum"
     static let areaGradientPeakOpacity = 0.8
-    static let areaGradientBaselineOpacity = 0.15
+    static let areaGradientBaselineOpacity = 0.05
     static var areaGradientColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
 
     static func areaGradientRoundedRGBAComponents(for appearanceName: NSAppearance.Name) -> [CGFloat]? {

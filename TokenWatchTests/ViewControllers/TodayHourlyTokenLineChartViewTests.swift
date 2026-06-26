@@ -21,7 +21,7 @@ struct TodayHourlyTokenLineChartViewTests {
         #expect(view.debugLineInterpolationMethodName == "catmullRom")
         #expect(view.debugAreaGradientScaleModeName == "dailyMaximum")
         #expect(view.debugAreaGradientPeakOpacity == 0.8)
-        #expect(view.debugAreaGradientBaselineOpacity == 0.15)
+        #expect(view.debugAreaGradientBaselineOpacity == 0.05)
         #expect(view.debugAreaGradientLightRGBAComponents == [0.129, 0.431, 0.224, 1.0])
         #expect(view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
     }
