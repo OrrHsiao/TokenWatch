@@ -40,4 +40,13 @@ struct CompactNumberFormatterTests {
         #expect(CompactNumberFormatter.format(-1) == "0")
         #expect(CompactNumberFormatter.format(-1_000_000) == "0")
     }
+
+    @Test func hoverTokensUseMillionsWithKFallback() {
+        #expect(CompactNumberFormatter.formatHoverTokens(-1) == "0k")
+        #expect(CompactNumberFormatter.formatHoverTokens(0) == "0k")
+        #expect(CompactNumberFormatter.formatHoverTokens(12_345) == "12.3k")
+        #expect(CompactNumberFormatter.formatHoverTokens(99_999) == "99.9k")
+        #expect(CompactNumberFormatter.formatHoverTokens(100_000) == "0.1M")
+        #expect(CompactNumberFormatter.formatHoverTokens(1_234_567) == "1.2M")
+    }
 }

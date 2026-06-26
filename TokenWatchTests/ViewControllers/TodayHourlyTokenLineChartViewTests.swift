@@ -57,6 +57,28 @@ struct TodayHourlyTokenLineChartViewTests {
         #expect(view.debugHoverText == "14 · 0.2M")
     }
 
+    @Test("不足 0.1M 的小时 hover 使用 k 单位")
+    func hoverTextBelowOneTenthMillionUsesThousands() {
+        let view = TodayHourlyTokenLineChartView()
+        let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24), override: [8: 99_999])
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06-20T08")
+
+        #expect(view.debugHoverText == "8时 · 99.9k")
+    }
+
+    @Test("小时 hover 在 0.1M 边界切换到 M 单位")
+    func hoverTextAtOneTenthMillionUsesMillions() {
+        let view = TodayHourlyTokenLineChartView()
+        let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24), override: [8: 100_000])
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06-20T08")
+
+        #expect(view.debugHoverText == "8时 · 0.1M")
+    }
+
     @Test("hover label 对齐到折线图右上角")
     func hoverLabelAlignsWithLineChartTopTrailingCorner() {
         let view = TodayHourlyTokenLineChartView()

@@ -120,7 +120,7 @@ final class TodayHourlyTokenLineChartView: NSView {
             fallback: bucket.monthLabel,
             language: language
         )
-        hoverLabel.stringValue = "\(periodLabel) · \(CompactNumberFormatter.formatMillions(bucket.totalTokens))"
+        hoverLabel.stringValue = "\(periodLabel) · \(CompactNumberFormatter.formatHoverTokens(bucket.totalTokens))"
     }
 }
 

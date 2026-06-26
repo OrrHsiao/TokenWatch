@@ -30,7 +30,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
         #expect(style.title == "")
-        #expect(style.toolTip == "2026-06-10 · 12,345 Tokens")
+        #expect(style.toolTip == "2026-06-10 · 12.3k")
         #expect(!style.isHidden)
         #expect(style.alpha == 1.0)
     }
@@ -51,11 +51,11 @@ struct CalendarHeatmapCollectionViewItemTests {
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
         #expect(style.alpha < 1.0)
-        #expect(style.toolTip == "2026-06-20 · 0 Tokens")
+        #expect(style.toolTip == "2026-06-20 · 0k")
     }
 
-    @Test("token tooltip 使用固定逗号分组")
-    func tokenTooltipUsesStableCommaGrouping() {
+    @Test("token tooltip 使用 M 单位且不足 0.1M 时回退到 k")
+    func tokenTooltipUsesMillionsWithKFallback() {
         let day = CalendarHeatmapDay(
             id: "2026-06-15",
             date: Date(timeIntervalSince1970: 0),
@@ -69,8 +69,35 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         let style = CalendarHeatmapCellStyle.make(for: .day(day))
 
-        #expect(style.toolTip == "2026-06-15 · 1,234,567 Tokens")
-        #expect(CalendarHeatmapCellStyle.make(for: .day(day), language: .en).toolTip == "2026-06-15 · 1,234,567 Tokens")
+        #expect(style.toolTip == "2026-06-15 · 1.2M")
+        #expect(CalendarHeatmapCellStyle.make(for: .day(day), language: .en).toolTip == "2026-06-15 · 1.2M")
+    }
+
+    @Test("token tooltip 在 0.1M 边界切换单位")
+    func tokenTooltipSwitchesUnitAtOneTenthMillion() {
+        let underThresholdDay = CalendarHeatmapDay(
+            id: "2026-06-15",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-15",
+            dayNumber: 15,
+            totalTokens: 99_999,
+            intensity: 4,
+            isToday: false,
+            isFuture: false
+        )
+        let thresholdDay = CalendarHeatmapDay(
+            id: "2026-06-16",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-16",
+            dayNumber: 16,
+            totalTokens: 100_000,
+            intensity: 4,
+            isToday: false,
+            isFuture: false
+        )
+
+        #expect(CalendarHeatmapCellStyle.make(for: .day(underThresholdDay)).toolTip == "2026-06-15 · 99.9k")
+        #expect(CalendarHeatmapCellStyle.make(for: .day(thresholdDay)).toolTip == "2026-06-16 · 0.1M")
     }
 
     @MainActor
@@ -150,7 +177,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.configure(with: .day(day))
 
         #expect(item.view.isHidden == false)
-        #expect(item.view.toolTip == "2026-06-10 · 12,345 Tokens")
+        #expect(item.view.toolTip == "2026-06-10 · 12.3k")
         #expect(item.view.alphaValue == 1.0)
     }
 
@@ -180,7 +207,7 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.debugSimulateMouseExited()
 
         #expect(hoverTexts.count == 2)
-        #expect(hoverTexts[0] == "2026-06-10 · 12,345 Tokens")
+        #expect(hoverTexts[0] == "2026-06-10 · 12.3k")
         #expect(hoverTexts[1] == nil)
     }
 

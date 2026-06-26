@@ -22,20 +22,12 @@ struct CalendarHeatmapCellStyle: Equatable {
         case .day(let day):
             return CalendarHeatmapCellStyle(
                 title: "",
-                toolTip: "\(day.dateKey) · \(formatTokens(day.totalTokens)) \(AppStrings.text(.statusBarTokenUnit, language: language))",
+                toolTip: "\(day.dateKey) · \(CompactNumberFormatter.formatHoverTokens(day.totalTokens))",
                 isHidden: false,
                 alpha: day.isFuture ? 0.45 : 1.0,
                 intensity: day.intensity
             )
         }
-    }
-
-    private static func formatTokens(_ value: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }
 
