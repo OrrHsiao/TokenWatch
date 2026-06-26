@@ -27,6 +27,12 @@ final class TodayHourlyTokenLineChartView: NSView {
 
     var debugPointCount: Int { buckets.count }
     var debugLineInterpolationMethodName: String { TodayHourlyLineChartRendering.interpolationMethodName }
+    var debugAreaGradientScaleModeName: String { TodayHourlyLineChartRendering.areaGradientScaleModeName }
+    var debugAreaGradientPeakOpacity: Double { TodayHourlyLineChartRendering.areaGradientPeakOpacity }
+    var debugAreaGradientBaselineOpacity: Double { TodayHourlyLineChartRendering.areaGradientBaselineOpacity }
+    var debugAreaGradientLightRGBAComponents: [CGFloat]? {
+        TodayHourlyLineChartRendering.areaGradientRoundedRGBAComponents(for: .aqua)
+    }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugHoverLabelTopAlignsWithChartView: Bool {
         hoverLabelTopConstraint?.isActive == true
@@ -133,6 +139,22 @@ private func clampHourlyNormalizedHeight(_ value: Double) -> Double {
 private enum TodayHourlyLineChartRendering {
     static let interpolationMethod: InterpolationMethod = .catmullRom
     static let interpolationMethodName = "catmullRom"
+    static let areaGradientScaleModeName = "dailyMaximum"
+    static let areaGradientPeakOpacity = 0.28
+    static let areaGradientBaselineOpacity = 0.0
+    static var areaGradientColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
+
+    static func areaGradientRoundedRGBAComponents(for appearanceName: NSAppearance.Name) -> [CGFloat]? {
+        guard let appearance = NSAppearance(named: appearanceName) else {
+            return nil
+        }
+
+        var components: [CGFloat]?
+        appearance.performAsCurrentDrawingAppearance {
+            components = areaGradientColor.cgColor.components
+        }
+        return components?.map { ($0 * 1_000).rounded() / 1_000 }
+    }
 }
 
 private struct TodayHourlyTokenLineChartContent: View {
@@ -148,6 +170,15 @@ private struct TodayHourlyTokenLineChartContent: View {
 
     var body: some View {
         Chart {
+            ForEach(buckets) { bucket in
+                AreaMark(
+                    x: .value(axisValueName, bucket.monthKey),
+                    y: .value("Tokens", Double(bucket.totalTokens))
+                )
+                .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
+                .foregroundStyle(areaGradient)
+            }
+
             ForEach(buckets) { bucket in
                 LineMark(
                     x: .value(axisValueName, bucket.monthKey),
@@ -202,6 +233,18 @@ private struct TodayHourlyTokenLineChartContent: View {
 
     private var axisValueName: String {
         language.periodAxisValueName
+    }
+
+    private var areaGradient: LinearGradient {
+        let color = Color(nsColor: TodayHourlyLineChartRendering.areaGradientColor)
+        return LinearGradient(
+            colors: [
+                color.opacity(TodayHourlyLineChartRendering.areaGradientPeakOpacity),
+                color.opacity(TodayHourlyLineChartRendering.areaGradientBaselineOpacity),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private func accessibilityLabel(for bucket: MonthlyTokenBucket) -> String {

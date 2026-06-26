@@ -162,7 +162,9 @@ private final class CalendarHeatmapCellView: NSView {
     }
 }
 
-private enum CalendarHeatmapGitHubPalette {
+enum CalendarHeatmapGitHubPalette {
+    static let maxIntensity = 4
+
     private static let lightColors = [
         color(red: 235, green: 237, blue: 240),
         color(red: 155, green: 233, blue: 168),
@@ -185,6 +187,10 @@ private enum CalendarHeatmapGitHubPalette {
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             return (isDark ? darkColors : lightColors)[clampedIntensity]
         }
+    }
+
+    static var maxIntensityColor: NSColor {
+        color(forIntensity: maxIntensity)
     }
 
     private static func color(red: CGFloat, green: CGFloat, blue: CGFloat) -> NSColor {
