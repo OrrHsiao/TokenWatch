@@ -12,6 +12,7 @@ import Cocoa
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let initialAuthorizationPromptedKey = "TokenWatch.didPromptInitialHomeAuthorization"
+    private static let openMainWindowOnLaunchKey = "TokenWatch.openMainWindowOnLaunch"
 
     /// ViewModel 实例,协调数据加载和统计计算
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
@@ -21,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 在 didFinishLaunching 时创建,terminate 时 stop() 释放 Timer + 摘掉 status item
     private var statusBarController: StatusBarController?
     private var mainMenuController: AppMainMenuController?
+    private var mainWindowController: NSWindowController?
 
     private let languageSettings: AppLanguageSettings
 
@@ -41,6 +43,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 先建状态栏(订阅 ViewModel),再异步加载,确保首次 onStateChange 能被状态栏接到
         statusBarController = StatusBarController(viewModel: viewModel)
 
+        if Self.shouldOpenMainWindowOnLaunch() {
+            _ = presentMainWindow()
+        }
+
         // 首次无授权时主动弹出用户目录授权;其余启动路径保持原有自动加载行为。
         Task { @MainActor in
             let coordinator = AppLaunchAuthorizationCoordinator(
@@ -48,7 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
                 },
                 hasPromptedInitialAuthorization: {
-                    UserDefaults.standard.bool(forKey: Self.initialAuthorizationPromptedKey)
+                    Self.hasPromptedInitialAuthorization()
                 },
                 markInitialAuthorizationPrompted: {
                     UserDefaults.standard.set(true, forKey: Self.initialAuthorizationPromptedKey)
@@ -95,13 +101,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func presentMainWindow() -> ViewController? {
-        let target = NSApp.windows.first(where: { $0.contentViewController is ViewController })
-            ?? NSApp.mainWindow
+        let target = existingMainWindow() ?? instantiateMainWindow()
         guard let target else { return nil }
 
         for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
             switch action {
             case .activateApplication:
+                NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
             case .makeWindowKeyAndOrderFront:
                 target.makeKeyAndOrderFront(nil)
@@ -110,6 +116,62 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return target.contentViewController as? ViewController
+    }
+
+    private func existingMainWindow() -> NSWindow? {
+        if let window = mainWindowController?.window {
+            return window
+        }
+
+        if let mainWindow = NSApp.mainWindow,
+           mainWindow.contentViewController is ViewController,
+           mainWindow.isVisible || mainWindow.isMiniaturized {
+            return mainWindow
+        }
+
+        return NSApp.windows.first {
+            $0.contentViewController is ViewController && ($0.isVisible || $0.isMiniaturized)
+        }
+    }
+
+    private func instantiateMainWindow() -> NSWindow? {
+        let windowController = MainWindowFactory.makeWindowController(languageSettings: languageSettings)
+        mainWindowController = windowController
+        windowController.showWindow(nil)
+        return windowController.window
+    }
+
+    private static func shouldOpenMainWindowOnLaunch() -> Bool {
+        UserDefaults.standard.bool(forKey: openMainWindowOnLaunchKey)
+            || ProcessInfo.processInfo.arguments.contains("-\(openMainWindowOnLaunchKey)")
+    }
+
+    private static func hasPromptedInitialAuthorization() -> Bool {
+        UserDefaults.standard.bool(forKey: initialAuthorizationPromptedKey)
+            || ProcessInfo.processInfo.arguments.contains("-\(initialAuthorizationPromptedKey)")
+    }
+}
+
+/// 构建主窗口。App 启动、主菜单和 UI 测试入口都走同一套窗口配置。
+@MainActor
+enum MainWindowFactory {
+    static let contentSize = NSSize(width: 900, height: 640)
+
+    static func makeWindowController(
+        languageSettings: AppLanguageSettings = .shared
+    ) -> NSWindowController {
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "TokenWatch"
+        window.isReleasedWhenClosed = false
+        window.contentViewController = ViewController(languageSettings: languageSettings)
+        window.setContentSize(contentSize)
+        window.center()
+        return NSWindowController(window: window)
     }
 }
 
