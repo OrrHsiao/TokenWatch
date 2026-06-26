@@ -117,6 +117,22 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func mainWindowFactoryBuildsVisibleMainWindowShape() throws {
+        let windowController = MainWindowFactory.makeWindowController(languageSettings: zhHansLanguageSettings())
+        let window = try #require(windowController.window)
+        defer { window.close() }
+
+        #expect(window.title == "TokenWatch")
+        #expect(window.styleMask.contains(.titled))
+        #expect(window.styleMask.contains(.closable))
+        #expect(window.styleMask.contains(.miniaturizable))
+        #expect(window.styleMask.contains(.resizable))
+        #expect(window.isReleasedWhenClosed == false)
+        #expect(window.contentViewController is ViewController)
+        #expect(window.contentView?.frame.size == MainWindowFactory.contentSize)
+    }
+
+    @MainActor
     @Test func mainWindowUsesNativeSidebarSplitLayout() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -160,6 +176,27 @@ struct TokenWatchTests {
             "SidebarIcon.clock",
             "SidebarIcon.sun.max",
             "SidebarIcon.gearshape",
+        ])
+    }
+
+    @MainActor
+    @Test func sidebarRowsExposeStableAccessibilityIdentifiers() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+        #expect(sidebar.accessibilityIdentifier() == "MainSidebarTableView")
+
+        let cellIdentifiers = (0..<sidebar.numberOfRows).compactMap { row in
+            (sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView)?
+                .accessibilityIdentifier()
+        }
+        #expect(cellIdentifiers == [
+            "SidebarRow.total",
+            "SidebarRow.monthly",
+            "SidebarRow.recent30Days",
+            "SidebarRow.today",
+            "SidebarRow.settings",
         ])
     }
 
@@ -417,6 +454,31 @@ struct TokenWatchTests {
                 "Polski",
             ])
             #expect(popUpButton.titleOfSelectedItem == "跟随系统")
+        }
+    }
+
+    @MainActor
+    @Test func settingsControlsExposeStableAccessibilityIdentifiers() throws {
+        try withTemporaryDefaults { defaults in
+            let settingsViewController = SettingsViewController(
+                isAuthorized: { false },
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: zhHansLanguageSettings(defaults: defaults)
+            )
+            settingsViewController.loadViewIfNeeded()
+
+            let buttons = settingsViewController.view.allDescendants(ofType: NSButton.self)
+            #expect(buttons.first { $0.title == "去授权" }?.accessibilityIdentifier() == "AuthorizationActionButton")
+            #expect(buttons.first { $0.title == "刷新全部数据" }?.accessibilityIdentifier() == "RefreshAllDataButton")
+
+            let autoRefreshPopUp = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
+            #expect(autoRefreshPopUp.accessibilityIdentifier() == "AutoRefreshIntervalPopUpButton")
+
+            let launchAtLoginSwitch = try #require(settingsViewController.view.switchControl(identifier: "LaunchAtLoginSwitch"))
+            #expect(launchAtLoginSwitch.accessibilityIdentifier() == "LaunchAtLoginSwitch")
+
+            let languagePopUp = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+            #expect(languagePopUp.accessibilityIdentifier() == "LanguagePreferencePopUpButton")
         }
     }
 

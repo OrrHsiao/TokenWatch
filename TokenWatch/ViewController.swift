@@ -238,6 +238,21 @@ private enum ProviderSidebarItem {
             return "gearshape"
         }
     }
+
+    var accessibilityIdentifierSuffix: String {
+        switch self {
+        case .total:
+            return "total"
+        case .monthly:
+            return "monthly"
+        case .recentThirtyDays:
+            return "recent30Days"
+        case .today:
+            return "today"
+        case .settings:
+            return "settings"
+        }
+    }
 }
 
 /// 原生侧边栏列表,负责展示汇总页面并发出选择事件。
@@ -309,6 +324,8 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
 
+        tableView.identifier = NSUserInterfaceItemIdentifier("MainSidebarTableView")
+        tableView.setAccessibilityIdentifier("MainSidebarTableView")
         tableView.headerView = nil
         tableView.style = .sourceList
         tableView.rowHeight = 28
@@ -348,6 +365,8 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
         cell.textField?.stringValue = title
         cell.imageView?.image = symbolImage(for: item, accessibilityDescription: title)
         cell.imageView?.identifier = NSUserInterfaceItemIdentifier("SidebarIcon.\(item.symbolName)")
+        cell.setAccessibilityIdentifier("SidebarRow.\(item.accessibilityIdentifierSuffix)")
+        cell.textField?.setAccessibilityIdentifier("SidebarRowTitle.\(item.accessibilityIdentifierSuffix)")
         return cell
     }
 
@@ -488,24 +507,31 @@ final class SettingsViewController: NSViewController {
         autoRefreshIntervalLabel.font = .systemFont(ofSize: 13)
 
         autoRefreshIntervalPopUpButton.identifier = NSUserInterfaceItemIdentifier("AutoRefreshIntervalPopUpButton")
+        autoRefreshIntervalPopUpButton.setAccessibilityIdentifier("AutoRefreshIntervalPopUpButton")
         autoRefreshIntervalPopUpButton.target = self
         autoRefreshIntervalPopUpButton.action = #selector(autoRefreshIntervalChanged)
 
         launchAtLoginLabel.font = .systemFont(ofSize: 13)
         launchAtLoginSwitch.identifier = NSUserInterfaceItemIdentifier("LaunchAtLoginSwitch")
+        launchAtLoginSwitch.setAccessibilityIdentifier("LaunchAtLoginSwitch")
         launchAtLoginSwitch.target = self
         launchAtLoginSwitch.action = #selector(launchAtLoginSwitchChanged)
 
         languageLabel.font = .systemFont(ofSize: 13)
         languagePopUpButton.identifier = NSUserInterfaceItemIdentifier("LanguagePreferencePopUpButton")
+        languagePopUpButton.setAccessibilityIdentifier("LanguagePreferencePopUpButton")
         languagePopUpButton.target = self
         languagePopUpButton.action = #selector(languagePreferenceChanged)
 
         authorizationActionButton.bezelStyle = .rounded
+        authorizationActionButton.identifier = NSUserInterfaceItemIdentifier("AuthorizationActionButton")
+        authorizationActionButton.setAccessibilityIdentifier("AuthorizationActionButton")
         authorizationActionButton.target = self
         authorizationActionButton.action = #selector(authorizationActionButtonClicked)
 
         refreshButton.bezelStyle = .rounded
+        refreshButton.identifier = NSUserInterfaceItemIdentifier("RefreshAllDataButton")
+        refreshButton.setAccessibilityIdentifier("RefreshAllDataButton")
         refreshButton.target = self
         refreshButton.action = #selector(refreshButtonClicked)
 
