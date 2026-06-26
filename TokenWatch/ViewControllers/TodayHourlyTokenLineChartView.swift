@@ -140,7 +140,7 @@ private enum TodayHourlyLineChartRendering {
     static let interpolationMethod: InterpolationMethod = .catmullRom
     static let interpolationMethodName = "catmullRom"
     static let areaGradientScaleModeName = "dailyMaximum"
-    static let areaGradientPeakOpacity = 0.28
+    static let areaGradientPeakOpacity = 0.55
     static let areaGradientBaselineOpacity = 0.0
     static var areaGradientColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
 
