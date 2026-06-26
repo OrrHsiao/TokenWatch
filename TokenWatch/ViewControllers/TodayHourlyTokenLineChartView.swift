@@ -5,6 +5,7 @@ import SwiftUI
 /// 状态栏 popover 专用的本日小时 token 折线图。
 final class TodayHourlyTokenLineChartView: NSView {
     private static let visibleAxisHourIndexes = [0, 6, 12, 18, 23]
+    private static let hoverLabelToChartSpacing: CGFloat = 1
 
     private let chartHost = NSHostingView(rootView: AnyView(TodayHourlyTokenLineChartContent(
         buckets: [],
@@ -100,7 +101,7 @@ final class TodayHourlyTokenLineChartView: NSView {
         NSLayoutConstraint.activate([
             chartHost.leadingAnchor.constraint(equalTo: leadingAnchor),
             chartHost.trailingAnchor.constraint(equalTo: trailingAnchor),
-            chartHost.topAnchor.constraint(equalTo: topAnchor),
+            chartHost.topAnchor.constraint(equalTo: hoverLabel.bottomAnchor, constant: Self.hoverLabelToChartSpacing),
             chartHost.bottomAnchor.constraint(equalTo: bottomAnchor),
             hoverLabelTopConstraint,
             hoverLabelTrailingConstraint,

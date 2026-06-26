@@ -68,6 +68,20 @@ struct TodayHourlyTokenLineChartViewTests {
         #expect(view.debugHoverLabelTrailingAlignsWithChartView)
     }
 
+    @Test("hover label 不覆盖 Charts 宿主绘制区域")
+    func hoverLabelDoesNotOverlapChartHostDrawingArea() throws {
+        let view = TodayHourlyTokenLineChartView(frame: NSRect(x: 0, y: 0, width: 327, height: 74))
+        let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24), override: [23: 1_234_567])
+
+        view.configure(with: snapshot)
+        view.debugSimulateHover(monthKey: "2026-06-20T23")
+        view.layoutSubtreeIfNeeded()
+
+        let chartHost = try #require(view.allDescendants(ofType: NSHostingView<AnyView>.self).first)
+        let hoverLabel = try #require(view.allDescendants(ofType: NSTextField.self).first)
+        #expect(chartHost.frame.maxY <= hoverLabel.frame.minY)
+    }
+
     private func makeSnapshot(tokens: [Int], override: [Int: Int] = [:]) -> MonthlyTokenChartSnapshot {
         let resolvedTokens = tokens.enumerated().map { index, total in
             override[index] ?? total
