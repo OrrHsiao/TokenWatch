@@ -8,6 +8,22 @@ final class TotalStatsViewController: NSViewController {
     private static let refreshButtonSpacing: CGFloat = 8
     private static let refreshButtonDefaultSymbolName = "arrow.clockwise"
     private static let refreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
+    private static let modelRankRowHeight: CGFloat = 28
+    private static let modelRankBarVerticalInset: CGFloat = 0
+    private static let modelRankTextInset: CGFloat = 12
+    private static let modelRankValueSpacing: CGFloat = 18
+    private static let modelRankValueColumnWidth: CGFloat = 96
+    private static let modelRankBarCornerRadius: CGFloat = 4
+    private static let modelRankMinimumBarFraction: CGFloat = 0.02
+    private static let modelRankBarAlpha: CGFloat = 0.55
+    private static let modelRankBarColors: [NSColor] = [
+        NSColor(calibratedRed: 0.72, green: 0.96, blue: 0.78, alpha: modelRankBarAlpha),
+        NSColor(calibratedRed: 1.00, green: 0.90, blue: 0.64, alpha: modelRankBarAlpha),
+        NSColor(calibratedRed: 1.00, green: 0.78, blue: 0.66, alpha: modelRankBarAlpha),
+        NSColor(calibratedRed: 0.86, green: 0.70, blue: 0.98, alpha: modelRankBarAlpha),
+        NSColor(calibratedRed: 0.80, green: 0.68, blue: 0.96, alpha: modelRankBarAlpha),
+        NSColor(calibratedRed: 0.68, green: 0.82, blue: 0.98, alpha: modelRankBarAlpha),
+    ]
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let totalLabel = NSTextField(labelWithString: "0.0M")
@@ -185,7 +201,7 @@ final class TotalStatsViewController: NSViewController {
 
         modelRowsStack.orientation = .vertical
         modelRowsStack.alignment = .width
-        modelRowsStack.spacing = 8
+        modelRowsStack.spacing = 4
         modelRowsStack.translatesAutoresizingMaskIntoConstraints = false
         modelSectionTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         emptyModelLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -388,44 +404,122 @@ final class TotalStatsViewController: NSViewController {
         emptyModelLabel.isHidden = !rows.isEmpty
         modelRowsStack.isHidden = rows.isEmpty
 
+        let maxTokens = rows.map(\.totalTokens).max() ?? 0
+        let totalModelTokens = rows.reduce(0) { $0 + $1.totalTokens }
         for (index, row) in rows.enumerated() {
-            modelRowsStack.addArrangedSubview(makeModelRow(row, tokenText: modelRowValueTexts[index]))
+            modelRowsStack.addArrangedSubview(
+                makeModelRow(
+                    row,
+                    tokenText: modelRowValueTexts[index],
+                    index: index,
+                    maxTokens: maxTokens,
+                    totalModelTokens: totalModelTokens
+                )
+            )
         }
     }
 
-    private func makeModelRow(_ row: TotalStatsModelRow, tokenText: String) -> NSView {
+    private func makeModelRow(
+        _ row: TotalStatsModelRow,
+        tokenText: String,
+        index: Int,
+        maxTokens: Int,
+        totalModelTokens: Int
+    ) -> NSView {
+        let barContainerView = NSView()
+        barContainerView.translatesAutoresizingMaskIntoConstraints = false
+        let percentageText = formatModelPercentage(tokens: row.totalTokens, totalTokens: totalModelTokens)
+
+        let barView = NSView()
+        barView.translatesAutoresizingMaskIntoConstraints = false
+        barView.wantsLayer = true
+        barView.layer?.cornerRadius = Self.modelRankBarCornerRadius
+        barView.layer?.backgroundColor = Self.modelRankBarColor(at: index).cgColor
+        barView.setAccessibilityIdentifier("TotalModelRankBar.\(index)")
+
         let nameLabel = NSTextField(labelWithString: row.modelName)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = .systemFont(ofSize: 12)
+        nameLabel.font = .systemFont(ofSize: 13, weight: .medium)
         nameLabel.lineBreakMode = .byTruncatingMiddle
         nameLabel.maximumNumberOfLines = 1
+        nameLabel.textColor = .labelColor
         nameLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        nameLabel.setAccessibilityIdentifier("TotalModelRankName.\(index)")
 
         let tokenLabel = NSTextField(labelWithString: tokenText)
         tokenLabel.translatesAutoresizingMaskIntoConstraints = false
-        tokenLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        tokenLabel.textColor = .secondaryLabelColor
+        tokenLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        tokenLabel.textColor = .labelColor
         tokenLabel.alignment = .right
         tokenLabel.setContentHuggingPriority(.required, for: .horizontal)
         tokenLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        tokenLabel.setAccessibilityIdentifier("TotalModelRankValue.\(index)")
+
+        let percentLabel = NSTextField(labelWithString: percentageText)
+        percentLabel.translatesAutoresizingMaskIntoConstraints = false
+        percentLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+        percentLabel.textColor = .secondaryLabelColor
+        percentLabel.alignment = .right
+        percentLabel.setContentHuggingPriority(.required, for: .horizontal)
+        percentLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        percentLabel.setAccessibilityIdentifier("TotalModelRankPercent.\(index)")
+
+        let valueStack = NSStackView(views: [tokenLabel, percentLabel])
+        valueStack.translatesAutoresizingMaskIntoConstraints = false
+        valueStack.orientation = .vertical
+        valueStack.alignment = .trailing
+        valueStack.distribution = .fill
+        valueStack.spacing = 1
+        valueStack.setContentHuggingPriority(.required, for: .horizontal)
+        valueStack.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let rowView = NSView()
         rowView.translatesAutoresizingMaskIntoConstraints = false
-        rowView.addSubview(nameLabel)
-        rowView.addSubview(tokenLabel)
-        rowView.toolTip = "\(row.modelName) · \(tokenText)"
+        rowView.setAccessibilityIdentifier("TotalModelRankRow.\(index)")
+        rowView.addSubview(barContainerView)
+        rowView.addSubview(valueStack)
+        rowView.toolTip = "\(row.modelName) · \(tokenText) · \(formatCurrency(row.totalCost))"
+
+        barContainerView.addSubview(barView)
+        barContainerView.addSubview(nameLabel)
 
         NSLayoutConstraint.activate([
-            nameLabel.leadingAnchor.constraint(equalTo: rowView.leadingAnchor),
-            nameLabel.topAnchor.constraint(equalTo: rowView.topAnchor),
-            nameLabel.bottomAnchor.constraint(equalTo: rowView.bottomAnchor),
-            tokenLabel.leadingAnchor.constraint(greaterThanOrEqualTo: nameLabel.trailingAnchor, constant: 12),
-            tokenLabel.trailingAnchor.constraint(equalTo: rowView.trailingAnchor),
-            tokenLabel.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
-            tokenLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 72),
+            rowView.heightAnchor.constraint(equalToConstant: Self.modelRankRowHeight),
+            barContainerView.leadingAnchor.constraint(equalTo: rowView.leadingAnchor),
+            barContainerView.topAnchor.constraint(equalTo: rowView.topAnchor),
+            barContainerView.bottomAnchor.constraint(equalTo: rowView.bottomAnchor),
+            barContainerView.trailingAnchor.constraint(
+                equalTo: valueStack.leadingAnchor,
+                constant: -Self.modelRankValueSpacing
+            ),
+            barView.leadingAnchor.constraint(equalTo: barContainerView.leadingAnchor),
+            barView.topAnchor.constraint(equalTo: barContainerView.topAnchor, constant: Self.modelRankBarVerticalInset),
+            barView.bottomAnchor.constraint(equalTo: barContainerView.bottomAnchor, constant: -Self.modelRankBarVerticalInset),
+            barView.widthAnchor.constraint(
+                equalTo: barContainerView.widthAnchor,
+                multiplier: modelRankBarFraction(tokens: row.totalTokens, maxTokens: maxTokens)
+            ),
+            nameLabel.leadingAnchor.constraint(
+                equalTo: barContainerView.leadingAnchor,
+                constant: Self.modelRankTextInset
+            ),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: barContainerView.trailingAnchor),
+            nameLabel.centerYAnchor.constraint(equalTo: barContainerView.centerYAnchor),
+            valueStack.trailingAnchor.constraint(equalTo: rowView.trailingAnchor),
+            valueStack.centerYAnchor.constraint(equalTo: rowView.centerYAnchor),
+            valueStack.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.modelRankValueColumnWidth),
         ])
         return rowView
+    }
+
+    private static func modelRankBarColor(at index: Int) -> NSColor {
+        modelRankBarColors[index % modelRankBarColors.count]
+    }
+
+    private func modelRankBarFraction(tokens: Int, maxTokens: Int) -> CGFloat {
+        guard maxTokens > 0 else { return Self.modelRankMinimumBarFraction }
+        return max(Self.modelRankMinimumBarFraction, min(1, CGFloat(tokens) / CGFloat(maxTokens)))
     }
 
     private func formatCurrency(_ value: Double) -> String {
@@ -433,14 +527,34 @@ final class TotalStatsViewController: NSViewController {
     }
 
     private func formatModelRowValue(_ row: TotalStatsModelRow) -> String {
-        "\(formatModelTokens(row.totalTokens)) · \(formatCurrency(row.totalCost))"
+        formatModelTokens(row.totalTokens)
+    }
+
+    private func formatModelPercentage(tokens: Int, totalTokens: Int) -> String {
+        guard totalTokens > 0 else { return "0%" }
+        let percentage = Double(tokens) / Double(totalTokens) * 100
+        if tokens > 0 && percentage < 0.1 {
+            return "<0.1%"
+        }
+        let rounded = (percentage * 10).rounded() / 10
+        if rounded.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(format: "%.0f%%", rounded)
+        }
+        return String(format: "%.1f%%", rounded)
     }
 
     private func formatModelTokens(_ value: Int) -> String {
-        if value >= 100_000 {
-            return CompactNumberFormatter.formatMillions(value)
+        let digits = String(value)
+        guard digits.count > 3 else { return digits }
+
+        var chunks: [String] = []
+        var end = digits.endIndex
+        while end > digits.startIndex {
+            let start = digits.index(end, offsetBy: -3, limitedBy: digits.startIndex) ?? digits.startIndex
+            chunks.append(String(digits[start..<end]))
+            end = start
         }
-        return CompactNumberFormatter.format(value)
+        return chunks.reversed().joined(separator: ",")
     }
 
     private func statusText(for snapshot: TotalStatsSnapshot, totalProviderCount: Int) -> (text: String, isPartialLoading: Bool) {

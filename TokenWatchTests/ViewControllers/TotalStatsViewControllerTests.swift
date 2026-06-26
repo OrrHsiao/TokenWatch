@@ -54,7 +54,10 @@ struct TotalStatsViewControllerTests {
         #expect(labels.contains("2.0M"))
         #expect(labels.contains("$16.75"))
         #expect(viewController.debugModelRowLabels == ["claude-sonnet", "claude-haiku", "gpt-5"])
-        #expect(viewController.debugModelRowValueTexts == ["0.9M · $0.00", "0.6M · $0.00", "0.5M · $0.00"])
+        #expect(viewController.debugModelRowValueTexts == ["900,000", "600,000", "500,000"])
+        #expect(labels.contains("45%"))
+        #expect(labels.contains("30%"))
+        #expect(labels.contains("25%"))
     }
 
     @MainActor
@@ -80,18 +83,18 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
-    @Test("模型消耗行在 token 后展示费用并避免小用量显示为 0.0M")
-    func modelRowsShowCostAndCompactSmallTokenCounts() throws {
+    @Test("模型消耗行使用条形排名并展示完整 token 数")
+    func modelRowsRenderRankBarsWithFullTokenCounts() throws {
         let viewController = TotalStatsViewController(
             stateProvider: {
                 [
                     .claude: .init(
                         stats: makeStats(
-                            total: 125_000,
+                            total: 175_000,
                             cost: 1.83,
                             byModel: [
-                                "small-model": (tokens: 50_000, cost: 0.42),
-                                "tiny-model": (tokens: 900, cost: 0.01),
+                                "large-model": (tokens: 125_000, cost: 0.42),
+                                "small-model": (tokens: 50_000, cost: 0.01),
                             ]
                         ),
                         isLoading: false,
@@ -104,10 +107,85 @@ struct TotalStatsViewControllerTests {
         )
 
         viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+        viewController.view.layoutSubtreeIfNeeded()
 
-        #expect(viewController.debugModelRowLabels == ["small-model", "tiny-model"])
-        #expect(viewController.debugModelRowValueTexts == ["50.0k · $0.42", "900 · $0.01"])
-        #expect(!viewController.debugModelRowValueTexts.contains("0.0M"))
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        let firstBar = try viewController.view.descendantView(withIdentifier: "TotalModelRankBar.0")
+        let secondBar = try viewController.view.descendantView(withIdentifier: "TotalModelRankBar.1")
+        let firstRow = try viewController.view.descendantView(withIdentifier: "TotalModelRankRow.0")
+        let secondRow = try viewController.view.descendantView(withIdentifier: "TotalModelRankRow.1")
+        let firstTokenLabel = try viewController.view.descendantTextField(withIdentifier: "TotalModelRankValue.0")
+        let firstPercentLabel = try viewController.view.descendantTextField(withIdentifier: "TotalModelRankPercent.0")
+        let firstBarFrame = firstBar.frame(in: viewController.view)
+        let secondBarFrame = secondBar.frame(in: viewController.view)
+        let firstRowFrame = firstRow.frame(in: viewController.view)
+        let secondRowFrame = secondRow.frame(in: viewController.view)
+        let firstTokenFrame = firstTokenLabel.frame(in: viewController.view)
+        let firstPercentFrame = firstPercentLabel.frame(in: viewController.view)
+        let barVerticalGap = firstBarFrame.minY - secondBarFrame.maxY
+        let rowVerticalGap = firstRowFrame.minY - secondRowFrame.maxY
+
+        #expect(viewController.debugModelRowLabels == ["large-model", "small-model"])
+        #expect(viewController.debugModelRowValueTexts == ["125,000", "50,000"])
+        #expect(labels.contains("125,000"))
+        #expect(labels.contains("50,000"))
+        #expect(labels.contains("71.4%"))
+        #expect(labels.contains("28.6%"))
+        #expect(!labels.contains("0.1M · $0.42"))
+        #expect(!labels.contains("50.0k · $0.01"))
+        #expect(firstBar.wantsLayer)
+        #expect(firstBar.layer?.backgroundColor != nil)
+        let firstBarAlpha = try #require(firstBar.layer?.backgroundColor?.alpha)
+        #expect(firstBarAlpha < 1)
+        #expect(firstBarAlpha > 0.4)
+        #expect(firstBarFrame.width > secondBarFrame.width)
+        #expect(abs((secondBarFrame.width / firstBarFrame.width) - 0.4) < 0.08)
+        #expect(abs(firstBarFrame.height - firstRowFrame.height) <= 1)
+        #expect(abs(secondBarFrame.height - secondRowFrame.height) <= 1)
+        #expect(abs(barVerticalGap - rowVerticalGap) <= 1)
+        #expect(barVerticalGap <= 4.5)
+        #expect(abs(firstPercentFrame.maxX - firstTokenFrame.maxX) <= 1)
+        #expect(firstPercentFrame.maxY <= firstTokenFrame.minY + 2)
+        #expect(firstRow.toolTip == "large-model · 125,000 · $0.42")
+    }
+
+    @MainActor
+    @Test("非零极小模型占比显示为小于 0.1% 且使用短条")
+    func nonZeroTinyModelShareShowsLessThanPointOnePercent() throws {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeStats(
+                            total: 1_000_001,
+                            byModel: [
+                                "large-model": 1_000_000,
+                                "tiny-model": 1,
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(NSSize(width: 800, height: 600))
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let largeBar = try viewController.view.descendantView(withIdentifier: "TotalModelRankBar.0")
+        let tinyBar = try viewController.view.descendantView(withIdentifier: "TotalModelRankBar.1")
+        let tinyPercentLabel = try viewController.view.descendantTextField(withIdentifier: "TotalModelRankPercent.1")
+        let largeBarFrame = largeBar.frame(in: viewController.view)
+        let tinyBarFrame = tinyBar.frame(in: viewController.view)
+
+        #expect(viewController.debugModelRowLabels == ["large-model", "tiny-model"])
+        #expect(tinyPercentLabel.stringValue == "<0.1%")
+        #expect(abs((tinyBarFrame.width / largeBarFrame.width) - 0.02) < 0.005)
     }
 
     @MainActor
@@ -151,9 +229,12 @@ struct TotalStatsViewControllerTests {
         let titleLabel = try #require(labels.first { $0.stringValue == "总计" })
         let modelSectionTitleLabel = try #require(labels.first { $0.stringValue == "模型消耗" })
         let modelNameLabel = try #require(labels.first { $0.stringValue == "claude-sonnet" })
+        let firstModelBar = try viewController.view.descendantView(withIdentifier: "TotalModelRankBar.0")
         let expectedTopY = viewController.view.bounds.maxY - 32
         let totalFrame = totalLabel.frame(in: viewController.view)
         let costFrame = costLabel.frame(in: viewController.view)
+        let firstModelBarFrame = firstModelBar.frame(in: viewController.view)
+        let modelNameFrame = modelNameLabel.frame(in: viewController.view)
         let totalAlignmentFrame = totalLabel.alignmentFrame(in: viewController.view)
         let costAlignmentFrame = costLabel.alignmentFrame(in: viewController.view)
         let headerTextTrailingX = titleLabel.alignmentFrame(in: viewController.view).maxX
@@ -170,7 +251,8 @@ struct TotalStatsViewControllerTests {
         #expect(abs(totalFrame.midY - titleLabel.frame(in: viewController.view).midY) <= 6)
         #expect(costFrame.minY < totalFrame.minY)
         #expect(abs(modelSectionTitleLabel.frame(in: viewController.view).minX - 32) <= 2)
-        #expect(abs(modelNameLabel.frame(in: viewController.view).minX - 32) <= 2)
+        #expect(abs(firstModelBarFrame.minX - 32) <= 2)
+        #expect(abs(modelNameFrame.minX - (firstModelBarFrame.minX + 12)) <= 2)
     }
 
     @MainActor
@@ -434,5 +516,17 @@ private extension NSView {
             return alignmentRect(forFrame: frame)
         }
         return superview.convert(alignmentRect(forFrame: frame), to: rootView)
+    }
+
+    func descendantView(withIdentifier identifier: String) throws -> NSView {
+        try #require(allDescendants(ofType: NSView.self).first {
+            $0.accessibilityIdentifier() == identifier
+        })
+    }
+
+    func descendantTextField(withIdentifier identifier: String) throws -> NSTextField {
+        try #require(allDescendants(ofType: NSTextField.self).first {
+            $0.accessibilityIdentifier() == identifier
+        })
     }
 }
