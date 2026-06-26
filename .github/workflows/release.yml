@@ -63,7 +63,7 @@ jobs:
           ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/TokenWatch-macOS-universal.zip"
 
       - name: Upload Release Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: TokenWatch-macOS-universal
           path: ${{ runner.temp }}/TokenWatch-macOS-universal.zip
