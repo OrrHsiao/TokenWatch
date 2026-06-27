@@ -55,11 +55,11 @@ struct TokenWatchTodayLineWidgetView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(TokenWatchWidgetCopy.text(.today, languageIdentifier: snapshot.languageIdentifier))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: layout == .expanded ? 12 : 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Text(TokenWatchWidgetCompactNumberFormatter.format(snapshot.todayLine.totalTokens))
-                    .font(.system(size: layout == .compact ? 22 : 24, weight: .bold))
+                    .font(.system(size: layout == .expanded ? 24 : 22, weight: .bold))
                     .monospacedDigit()
                     .lineLimit(1)
             }
@@ -129,13 +129,13 @@ struct TokenWatchTodayLineWidgetView: View {
                 }
             }
         }
-        .frame(minHeight: chartHeight)
+        .frame(height: chartHeight)
         .accessibilityLabel(TokenWatchWidgetCopy.text(.todayLineDisplayName, languageIdentifier: snapshot.languageIdentifier))
     }
 
     private var footer: some View {
         HStack {
-            Text("\(TokenWatchWidgetCopy.text(.dailyAverage, languageIdentifier: snapshot.languageIdentifier)) \(TokenWatchWidgetCompactNumberFormatter.format(snapshot.todayLine.maxHourlyTokens))")
+            Text("\(TokenWatchWidgetCopy.text(.peakHour, languageIdentifier: snapshot.languageIdentifier)) \(TokenWatchWidgetCompactNumberFormatter.format(snapshot.todayLine.maxHourlyTokens))")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
             Spacer()
@@ -193,7 +193,7 @@ struct TokenWatchTodayLineWidgetView: View {
         case .compact:
             return 12
         case .chart:
-            return 14
+            return 12
         case .expanded:
             return 16
         }
@@ -204,7 +204,7 @@ struct TokenWatchTodayLineWidgetView: View {
         case .compact:
             return 8
         case .chart:
-            return 10
+            return 8
         case .expanded:
             return 12
         }
@@ -215,7 +215,7 @@ struct TokenWatchTodayLineWidgetView: View {
         case .compact:
             return 58
         case .chart:
-            return 92
+            return 72
         case .expanded:
             return 150
         }

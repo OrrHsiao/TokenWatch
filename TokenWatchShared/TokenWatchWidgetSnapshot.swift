@@ -206,6 +206,7 @@ enum TokenWatchWidgetCopyKey: Hashable, Sendable {
     case week
     case today
     case dailyAverage
+    case peakHour
     case updated
     case openAppToAuthorize
     case waitingForRefresh
@@ -240,6 +241,7 @@ enum TokenWatchWidgetCopy {
         .week: "本周",
         .today: "今日",
         .dailyAverage: "日均",
+        .peakHour: "峰值小时",
         .updated: "更新于",
         .openAppToAuthorize: "打开 TokenWatch 完成授权",
         .waitingForRefresh: "等待 TokenWatch 刷新",
@@ -256,6 +258,7 @@ enum TokenWatchWidgetCopy {
         .week: "本週",
         .today: "今日",
         .dailyAverage: "日均",
+        .peakHour: "峰值小時",
         .updated: "更新於",
         .openAppToAuthorize: "開啟 TokenWatch 完成授權",
         .waitingForRefresh: "等待 TokenWatch 重新整理",
@@ -272,6 +275,7 @@ enum TokenWatchWidgetCopy {
         .week: "Week",
         .today: "Today",
         .dailyAverage: "Daily Avg",
+        .peakHour: "Peak Hour",
         .updated: "Updated",
         .openAppToAuthorize: "Open TokenWatch to authorize",
         .waitingForRefresh: "Waiting for TokenWatch to refresh",
