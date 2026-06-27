@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AAB000000000000000000004 /* TokenWatchWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AAB000000000000000000001 /* TokenWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		AAA3581B2FDD7BFD0018086B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,23 +25,74 @@
 			remoteGlobalIDString = AAA358092FDD7BFB0018086B;
 			remoteInfo = TokenWatch;
 		};
+		AAB000000000000000000012 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AAA358022FDD7BFB0018086B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AAB000000000000000000008;
+			remoteInfo = TokenWatchWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AAB000000000000000000014 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AAB000000000000000000004 /* TokenWatchWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		AAA3580A2FDD7BFB0018086B /* TokenWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TokenWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AAA3581A2FDD7BFD0018086B /* TokenWatchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TokenWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AAA358242FDD7BFD0018086B /* TokenWatchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TokenWatchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAB000000000000000000001 /* TokenWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TokenWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AAB000000000000000000015 /* Exceptions for "TokenWatch" folder in "TokenWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				TokenWatch.entitlements,
+			);
+			target = AAA358092FDD7BFB0018086B /* TokenWatch */;
+		};
+		AAB000000000000000000016 /* Exceptions for "TokenWatchWidgets" folder in "TokenWatchWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				TokenWatchWidgets.entitlements,
+			);
+			target = AAB000000000000000000008 /* TokenWatchWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AAA3580C2FDD7BFB0018086B /* TokenWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AAB000000000000000000015 /* Exceptions for "TokenWatch" folder in "TokenWatch" target */,
+			);
 			path = TokenWatch;
 			sourceTree = "<group>";
 		};
 		AAB000000000000000000002 /* TokenWatchShared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TokenWatchShared;
+			sourceTree = "<group>";
+		};
+		AAB000000000000000000003 /* TokenWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AAB000000000000000000016 /* Exceptions for "TokenWatchWidgets" folder in "TokenWatchWidgets" target */,
+			);
+			path = TokenWatchWidgets;
 			sourceTree = "<group>";
 		};
 		AAA3581D2FDD7BFD0018086B /* TokenWatchTests */ = {
@@ -74,6 +129,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AAB000000000000000000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -82,6 +144,7 @@
 			children = (
 				AAA3580C2FDD7BFB0018086B /* TokenWatch */,
 				AAB000000000000000000002 /* TokenWatchShared */,
+				AAB000000000000000000003 /* TokenWatchWidgets */,
 				AAA3581D2FDD7BFD0018086B /* TokenWatchTests */,
 				AAA358272FDD7BFD0018086B /* TokenWatchUITests */,
 				AAA3580B2FDD7BFB0018086B /* Products */,
@@ -94,6 +157,7 @@
 				AAA3580A2FDD7BFB0018086B /* TokenWatch.app */,
 				AAA3581A2FDD7BFD0018086B /* TokenWatchTests.xctest */,
 				AAA358242FDD7BFD0018086B /* TokenWatchUITests.xctest */,
+				AAB000000000000000000001 /* TokenWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,10 +172,12 @@
 				AAA358062FDD7BFB0018086B /* Sources */,
 				AAA358072FDD7BFB0018086B /* Frameworks */,
 				AAA358082FDD7BFB0018086B /* Resources */,
+				AAB000000000000000000014 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AAB000000000000000000013 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AAA3580C2FDD7BFB0018086B /* TokenWatch */,
@@ -170,6 +236,29 @@
 			productReference = AAA358242FDD7BFD0018086B /* TokenWatchUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		AAB000000000000000000008 /* TokenWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AAB000000000000000000009 /* Build configuration list for PBXNativeTarget "TokenWatchWidgets" */;
+			buildPhases = (
+				AAB000000000000000000005 /* Sources */,
+				AAB000000000000000000006 /* Frameworks */,
+				AAB000000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AAB000000000000000000002 /* TokenWatchShared */,
+				AAB000000000000000000003 /* TokenWatchWidgets */,
+			);
+			name = TokenWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = TokenWatchWidgets;
+			productReference = AAB000000000000000000001 /* TokenWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -191,6 +280,9 @@
 						CreatedOnToolsVersion = 26.5;
 						TestTargetID = AAA358092FDD7BFB0018086B;
 					};
+					AAB000000000000000000008 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 				};
 			};
 			buildConfigurationList = AAA358052FDD7BFB0018086B /* Build configuration list for PBXProject "TokenWatch" */;
@@ -210,6 +302,7 @@
 				AAA358092FDD7BFB0018086B /* TokenWatch */,
 				AAA358192FDD7BFD0018086B /* TokenWatchTests */,
 				AAA358232FDD7BFD0018086B /* TokenWatchUITests */,
+				AAB000000000000000000008 /* TokenWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -230,6 +323,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AAA358222FDD7BFD0018086B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AAB000000000000000000007 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -260,6 +360,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AAB000000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -272,6 +379,11 @@
 			isa = PBXTargetDependency;
 			target = AAA358092FDD7BFB0018086B /* TokenWatch */;
 			targetProxy = AAA358252FDD7BFD0018086B /* PBXContainerItemProxy */;
+		};
+		AAB000000000000000000013 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AAB000000000000000000008 /* TokenWatchWidgets */;
+			targetProxy = AAB000000000000000000012 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -399,6 +511,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TokenWatch/TokenWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -431,6 +544,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TokenWatch/TokenWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -534,6 +648,60 @@
 			};
 			name = Release;
 		};
+		AAB000000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TokenWatchWidgets/TokenWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TokenWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.TokenWatch.TokenWatchWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		AAB000000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TokenWatchWidgets/TokenWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TokenWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.TokenWatch.TokenWatchWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -569,6 +737,15 @@
 			buildConfigurations = (
 				AAA358352FDD7BFD0018086B /* Debug */,
 				AAA358362FDD7BFD0018086B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AAB000000000000000000009 /* Build configuration list for PBXNativeTarget "TokenWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAB000000000000000000010 /* Debug */,
+				AAB000000000000000000011 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
