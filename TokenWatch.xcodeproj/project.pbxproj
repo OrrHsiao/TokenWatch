@@ -35,6 +35,11 @@
 			path = TokenWatch;
 			sourceTree = "<group>";
 		};
+		AAB000000000000000000002 /* TokenWatchShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TokenWatchShared;
+			sourceTree = "<group>";
+		};
 		AAA3581D2FDD7BFD0018086B /* TokenWatchTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TokenWatchTests;
@@ -76,6 +81,7 @@
 			isa = PBXGroup;
 			children = (
 				AAA3580C2FDD7BFB0018086B /* TokenWatch */,
+				AAB000000000000000000002 /* TokenWatchShared */,
 				AAA3581D2FDD7BFD0018086B /* TokenWatchTests */,
 				AAA358272FDD7BFD0018086B /* TokenWatchUITests */,
 				AAA3580B2FDD7BFB0018086B /* Products */,
@@ -109,6 +115,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				AAA3580C2FDD7BFB0018086B /* TokenWatch */,
+				AAB000000000000000000002 /* TokenWatchShared */,
 			);
 			name = TokenWatch;
 			packageProductDependencies = (
