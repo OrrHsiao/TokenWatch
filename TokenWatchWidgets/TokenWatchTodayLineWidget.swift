@@ -4,14 +4,15 @@ import WidgetKit
 
 struct TokenWatchTodayLineWidget: Widget {
     private let kind = "TokenWatchTodayLineWidget"
+    private let galleryLanguageIdentifier = TokenWatchWidgetCopy.preferredLanguageIdentifier()
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TokenWatchWidgetTimelineProvider()) { entry in
             TokenWatchTodayLineWidgetView(snapshot: entry.snapshot)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName(TokenWatchWidgetCopy.text(.todayLineDisplayName, languageIdentifier: "zh-Hans"))
-        .description(TokenWatchWidgetCopy.text(.todayLineDescription, languageIdentifier: "zh-Hans"))
+        .configurationDisplayName(TokenWatchWidgetCopy.text(.todayLineDisplayName, languageIdentifier: galleryLanguageIdentifier))
+        .description(TokenWatchWidgetCopy.text(.todayLineDescription, languageIdentifier: galleryLanguageIdentifier))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
@@ -36,6 +37,8 @@ struct TokenWatchTodayLineWidgetView: View {
                 statusView(.openAppToAuthorize)
             case .empty:
                 statusView(.noTokenData)
+            case .waitingForRefresh:
+                statusView(.waitingForRefresh)
             }
         }
         .padding(widgetPadding)

@@ -34,6 +34,20 @@ struct TokenWatchWidgetSnapshotTests {
         #expect(snapshot.todayLine.buckets.allSatisfy { $0.totalTokens == 0 })
     }
 
+    @Test("空快照可以表达等待刷新状态")
+    func emptySnapshotCanRepresentWaitingForRefresh() {
+        let snapshot = TokenWatchWidgetSnapshot.empty(
+            generatedAt: Date(timeIntervalSince1970: 1_779_811_200),
+            languageIdentifier: "en",
+            status: .waitingForRefresh
+        )
+
+        #expect(snapshot.status == .waitingForRefresh)
+        #expect(TokenWatchWidgetCopy.text(.waitingForRefresh, languageIdentifier: snapshot.languageIdentifier) == "Waiting for TokenWatch to refresh")
+        #expect(snapshot.heatmap.cells.count == 154)
+        #expect(snapshot.todayLine.buckets.count == 24)
+    }
+
     @Test("快照支持 Codable 往返")
     func snapshotSupportsCodableRoundTrip() throws {
         let snapshot = TokenWatchWidgetSnapshot.sample(
@@ -68,6 +82,14 @@ struct TokenWatchWidgetSnapshotTests {
         #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "fr") == "Open TokenWatch to authorize")
         #expect(TokenWatchWidgetCopy.text(.today, languageIdentifier: "zh-Hans") == "今日")
         #expect(TokenWatchWidgetCopy.text(.today, languageIdentifier: "en") == "Today")
+    }
+
+    @Test("Widget gallery 文案语言使用系统首选语言")
+    func widgetGalleryCopyUsesPreferredLanguage() {
+        #expect(TokenWatchWidgetCopy.preferredLanguageIdentifier(from: ["en-US", "zh-Hans"]) == "en-US")
+        #expect(TokenWatchWidgetCopy.preferredLanguageIdentifier(from: ["zh-Hant-TW"]) == "zh-Hant-TW")
+        #expect(TokenWatchWidgetCopy.preferredLanguageIdentifier(from: []) == "en")
+        #expect(TokenWatchWidgetCopy.text(.tokenHeatmapDisplayName, languageIdentifier: "en-US") == "Token Heatmap")
     }
 
     @Test("Widget 尺寸映射到稳定布局")

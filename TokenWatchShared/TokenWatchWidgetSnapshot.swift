@@ -4,6 +4,7 @@ enum TokenWatchWidgetDataStatus: String, Codable, Equatable, Sendable {
     case ready
     case needsAuthorization
     case empty
+    case waitingForRefresh
 }
 
 struct TokenWatchWidgetSnapshot: Codable, Equatable, Sendable {
@@ -219,6 +220,10 @@ enum TokenWatchWidgetCopyKey: Hashable, Sendable {
 }
 
 enum TokenWatchWidgetCopy {
+    static func preferredLanguageIdentifier(from preferredLanguages: [String] = Locale.preferredLanguages) -> String {
+        preferredLanguages.first ?? "en"
+    }
+
     static func text(_ key: TokenWatchWidgetCopyKey, languageIdentifier: String) -> String {
         let normalized = languageIdentifier
             .replacingOccurrences(of: "_", with: "-")

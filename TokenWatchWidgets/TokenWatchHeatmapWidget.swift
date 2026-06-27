@@ -3,14 +3,15 @@ import WidgetKit
 
 struct TokenWatchHeatmapWidget: Widget {
     private let kind = "TokenWatchHeatmapWidget"
+    private let galleryLanguageIdentifier = TokenWatchWidgetCopy.preferredLanguageIdentifier()
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TokenWatchWidgetTimelineProvider()) { entry in
             TokenWatchHeatmapWidgetView(snapshot: entry.snapshot)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName(TokenWatchWidgetCopy.text(.tokenHeatmapDisplayName, languageIdentifier: "zh-Hans"))
-        .description(TokenWatchWidgetCopy.text(.tokenHeatmapDescription, languageIdentifier: "zh-Hans"))
+        .configurationDisplayName(TokenWatchWidgetCopy.text(.tokenHeatmapDisplayName, languageIdentifier: galleryLanguageIdentifier))
+        .description(TokenWatchWidgetCopy.text(.tokenHeatmapDescription, languageIdentifier: galleryLanguageIdentifier))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
@@ -35,6 +36,8 @@ struct TokenWatchHeatmapWidgetView: View {
                 statusView(.openAppToAuthorize)
             case .empty:
                 statusView(.noTokenData)
+            case .waitingForRefresh:
+                statusView(.waitingForRefresh)
             }
         }
         .padding(widgetPadding)
