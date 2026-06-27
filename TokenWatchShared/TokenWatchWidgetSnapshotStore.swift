@@ -14,14 +14,14 @@ struct TokenWatchWidgetSnapshotStore {
 
     init(
         fileManager: FileManager = .default,
-        containerURLProvider: @escaping () -> URL? = {
-            FileManager.default.containerURL(
+        containerURLProvider: (() -> URL?)? = nil
+    ) {
+        self.fileManager = fileManager
+        self.containerURLProvider = containerURLProvider ?? {
+            fileManager.containerURL(
                 forSecurityApplicationGroupIdentifier: TokenWatchWidgetSnapshotStore.appGroupIdentifier
             )
         }
-    ) {
-        self.fileManager = fileManager
-        self.containerURLProvider = containerURLProvider
     }
 
     func read() -> TokenWatchWidgetSnapshot? {
@@ -47,12 +47,16 @@ struct TokenWatchWidgetSnapshotStore {
         let data = try encoder.encode(snapshot)
         let temporaryURL = directoryURL.appendingPathComponent("latest-\(UUID().uuidString).json")
 
-        try data.write(to: temporaryURL, options: .atomic)
-        if fileManager.fileExists(atPath: fileURL.path) {
-            _ = try fileManager.replaceItemAt(fileURL, withItemAt: temporaryURL)
-        } else {
-            try fileManager.moveItem(at: temporaryURL, to: fileURL)
+        var didCommitTemporaryFile = false
+        defer {
+            if !didCommitTemporaryFile && fileManager.fileExists(atPath: temporaryURL.path) {
+                try? fileManager.removeItem(at: temporaryURL)
+            }
         }
+
+        try data.write(to: temporaryURL, options: .atomic)
+        try commitTemporarySnapshot(at: temporaryURL, to: fileURL)
+        didCommitTemporaryFile = true
     }
 
     func snapshotFileURL() throws -> URL {
@@ -63,5 +67,17 @@ struct TokenWatchWidgetSnapshotStore {
         return containerURL
             .appendingPathComponent(Self.snapshotsDirectoryName, isDirectory: true)
             .appendingPathComponent(Self.latestSnapshotFileName)
+    }
+
+    private func commitTemporarySnapshot(at temporaryURL: URL, to fileURL: URL) throws {
+        do {
+            _ = try fileManager.replaceItemAt(fileURL, withItemAt: temporaryURL)
+        } catch {
+            do {
+                try fileManager.moveItem(at: temporaryURL, to: fileURL)
+            } catch {
+                _ = try fileManager.replaceItemAt(fileURL, withItemAt: temporaryURL)
+            }
+        }
     }
 }
