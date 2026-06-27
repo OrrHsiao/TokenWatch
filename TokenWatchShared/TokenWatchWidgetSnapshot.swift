@@ -219,26 +219,68 @@ enum TokenWatchWidgetCopyKey: Hashable, Sendable {
 
 enum TokenWatchWidgetCopy {
     static func text(_ key: TokenWatchWidgetCopyKey, languageIdentifier: String) -> String {
-        let normalized = languageIdentifier.lowercased()
-        if normalized.hasPrefix("zh-hant") { return zhHant[key] ?? en[key] ?? String(describing: key) }
+        let normalized = languageIdentifier
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
+        if isTraditionalChinese(normalized) { return zhHant[key] ?? en[key] ?? String(describing: key) }
         if normalized.hasPrefix("zh") { return zhHans[key] ?? en[key] ?? String(describing: key) }
         return en[key] ?? String(describing: key)
     }
 
+    private static func isTraditionalChinese(_ normalizedLanguageIdentifier: String) -> Bool {
+        normalizedLanguageIdentifier.hasPrefix("zh-hant")
+            || normalizedLanguageIdentifier.hasPrefix("zh-tw")
+            || normalizedLanguageIdentifier.hasPrefix("zh-hk")
+            || normalizedLanguageIdentifier.hasPrefix("zh-mo")
+    }
+
     private static let zhHans: [TokenWatchWidgetCopyKey: String] = [
-        .recent22Weeks: "最近 22 周", .month: "本月", .week: "本周", .today: "今日", .dailyAverage: "日均", .updated: "更新于",
-        .openAppToAuthorize: "打开 TokenWatch 完成授权", .waitingForRefresh: "等待 TokenWatch 刷新", .noTokenData: "暂无 token 数据", .dataMayBeStale: "数据可能不是最新",
-        .tokenHeatmapDisplayName: "Token 热力图", .tokenHeatmapDescription: "查看最近 22 周 token 用量热力图。", .todayLineDisplayName: "今日 Token", .todayLineDescription: "查看今日每小时 token 用量趋势。",
+        .recent22Weeks: "最近 22 周",
+        .month: "本月",
+        .week: "本周",
+        .today: "今日",
+        .dailyAverage: "日均",
+        .updated: "更新于",
+        .openAppToAuthorize: "打开 TokenWatch 完成授权",
+        .waitingForRefresh: "等待 TokenWatch 刷新",
+        .noTokenData: "暂无 token 数据",
+        .dataMayBeStale: "数据可能不是最新",
+        .tokenHeatmapDisplayName: "Token 热力图",
+        .tokenHeatmapDescription: "查看最近 22 周 token 用量热力图。",
+        .todayLineDisplayName: "今日 Token",
+        .todayLineDescription: "查看今日每小时 token 用量趋势。",
     ]
     private static let zhHant: [TokenWatchWidgetCopyKey: String] = [
-        .recent22Weeks: "最近 22 週", .month: "本月", .week: "本週", .today: "今日", .dailyAverage: "日均", .updated: "更新於",
-        .openAppToAuthorize: "開啟 TokenWatch 完成授權", .waitingForRefresh: "等待 TokenWatch 重新整理", .noTokenData: "暫無 token 資料", .dataMayBeStale: "資料可能不是最新",
-        .tokenHeatmapDisplayName: "Token 熱力圖", .tokenHeatmapDescription: "查看最近 22 週 token 用量熱力圖。", .todayLineDisplayName: "今日 Token", .todayLineDescription: "查看今日每小時 token 用量趨勢。",
+        .recent22Weeks: "最近 22 週",
+        .month: "本月",
+        .week: "本週",
+        .today: "今日",
+        .dailyAverage: "日均",
+        .updated: "更新於",
+        .openAppToAuthorize: "開啟 TokenWatch 完成授權",
+        .waitingForRefresh: "等待 TokenWatch 重新整理",
+        .noTokenData: "暫無 token 資料",
+        .dataMayBeStale: "資料可能不是最新",
+        .tokenHeatmapDisplayName: "Token 熱力圖",
+        .tokenHeatmapDescription: "查看最近 22 週 token 用量熱力圖。",
+        .todayLineDisplayName: "今日 Token",
+        .todayLineDescription: "查看今日每小時 token 用量趨勢。",
     ]
     private static let en: [TokenWatchWidgetCopyKey: String] = [
-        .recent22Weeks: "Recent 22 Weeks", .month: "Month", .week: "Week", .today: "Today", .dailyAverage: "Daily Avg", .updated: "Updated",
-        .openAppToAuthorize: "Open TokenWatch to authorize", .waitingForRefresh: "Waiting for TokenWatch to refresh", .noTokenData: "No token data", .dataMayBeStale: "Data may be stale",
-        .tokenHeatmapDisplayName: "Token Heatmap", .tokenHeatmapDescription: "See token usage over the recent 22 weeks.", .todayLineDisplayName: "Today Tokens", .todayLineDescription: "See today's hourly token usage trend.",
+        .recent22Weeks: "Recent 22 Weeks",
+        .month: "Month",
+        .week: "Week",
+        .today: "Today",
+        .dailyAverage: "Daily Avg",
+        .updated: "Updated",
+        .openAppToAuthorize: "Open TokenWatch to authorize",
+        .waitingForRefresh: "Waiting for TokenWatch to refresh",
+        .noTokenData: "No token data",
+        .dataMayBeStale: "Data may be stale",
+        .tokenHeatmapDisplayName: "Token Heatmap",
+        .tokenHeatmapDescription: "See token usage over the recent 22 weeks.",
+        .todayLineDisplayName: "Today Tokens",
+        .todayLineDescription: "See today's hourly token usage trend.",
     ]
 }
 

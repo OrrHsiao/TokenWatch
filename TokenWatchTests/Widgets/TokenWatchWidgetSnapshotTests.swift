@@ -34,6 +34,19 @@ struct TokenWatchWidgetSnapshotTests {
         #expect(snapshot.todayLine.buckets.allSatisfy { $0.totalTokens == 0 })
     }
 
+    @Test("快照支持 Codable 往返")
+    func snapshotSupportsCodableRoundTrip() throws {
+        let snapshot = TokenWatchWidgetSnapshot.sample(
+            generatedAt: Date(timeIntervalSince1970: 1_779_811_200),
+            languageIdentifier: "zh-Hans"
+        )
+
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(TokenWatchWidgetSnapshot.self, from: data)
+
+        #expect(decoded == snapshot)
+    }
+
     @Test("紧凑数字格式与状态栏格式一致")
     func compactFormatterMatchesStatusBarRules() {
         #expect(TokenWatchWidgetCompactNumberFormatter.format(0) == "0")
@@ -48,6 +61,10 @@ struct TokenWatchWidgetSnapshotTests {
     func widgetCopyUsesSnapshotLanguage() {
         #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "zh-Hans") == "打开 TokenWatch 完成授权")
         #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "zh-Hant") == "開啟 TokenWatch 完成授權")
+        #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "zh_Hant") == "開啟 TokenWatch 完成授權")
+        #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "zh-TW") == "開啟 TokenWatch 完成授權")
+        #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "zh-HK") == "開啟 TokenWatch 完成授權")
+        #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "zh-MO") == "開啟 TokenWatch 完成授權")
         #expect(TokenWatchWidgetCopy.text(.openAppToAuthorize, languageIdentifier: "fr") == "Open TokenWatch to authorize")
         #expect(TokenWatchWidgetCopy.text(.today, languageIdentifier: "zh-Hans") == "今日")
         #expect(TokenWatchWidgetCopy.text(.today, languageIdentifier: "en") == "Today")

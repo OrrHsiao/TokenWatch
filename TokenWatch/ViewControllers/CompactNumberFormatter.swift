@@ -13,51 +13,20 @@ enum CompactNumberFormatter {
     /// - Parameter value: 整数 token 数,负数会被视作 0
     /// - Returns: 状态栏可直接展示的字符串
     static func format(_ value: Int) -> String {
-        guard value > 0 else { return "0" }
-
-        if value < 1_000 {
-            return String(value)
-        }
-
-        if value < 1_000_000 {
-            // 1.0k ~ 999.9k:统一保留一位小数,向下截断到 0.1k
-            let tenths = value / 100              // value / 1_000 * 10
-            let whole = tenths / 10
-            let frac = tenths % 10
-            return "\(whole).\(frac)k"
-        }
-
-        // 1.0M+:保留一位小数,向下截断到 0.1M
-        let tenths = value / 100_000             // value / 1_000_000 * 10
-        let whole = tenths / 10
-        let frac = tenths % 10
-        return "\(whole).\(frac)M"
+        TokenWatchWidgetCompactNumberFormatter.format(value)
     }
 
     /// 把 token 总数统一换算成百万单位
     /// - Parameter value: 整数 token 数,负数会被视为 0
     /// - Returns: 使用 `M` 作为单位的字符串,用于最近 12 个月内容页
     static func formatMillions(_ value: Int) -> String {
-        let safeValue = max(value, 0)
-        let tenths = safeValue / 100_000
-        let whole = tenths / 10
-        let frac = tenths % 10
-        return "\(whole).\(frac)M"
+        TokenWatchWidgetCompactNumberFormatter.formatMillions(value)
     }
 
     /// 把 hover 文案里的 token 总数压缩成 `M` 单位,0 保持 `M`,不足 0.1M 且非 0 时使用 `k`。
     /// - Parameter value: 整数 token 数,负数会被视为 0
     /// - Returns: 用于 hover label 的短字符串
     static func formatHoverTokens(_ value: Int) -> String {
-        let safeValue = max(value, 0)
-
-        if safeValue > 0 && safeValue < 100_000 {
-            let tenths = safeValue / 100
-            let whole = tenths / 10
-            let frac = tenths % 10
-            return "\(whole).\(frac)k"
-        }
-
-        return formatMillions(safeValue)
+        TokenWatchWidgetCompactNumberFormatter.formatHoverTokens(value)
     }
 }
