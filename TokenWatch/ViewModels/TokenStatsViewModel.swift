@@ -44,6 +44,7 @@ final class TokenStatsViewModel: Sendable {
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
     private var widgetSnapshotPublishSuspensionDepth = 0
+    private var widgetSnapshotPublishPending = false
 
     init(
         languageSettings: AppLanguageSettings = .shared,
@@ -104,7 +105,7 @@ final class TokenStatsViewModel: Sendable {
         widgetSnapshotPublishSuspensionDepth += 1
         defer {
             widgetSnapshotPublishSuspensionDepth -= 1
-            publishWidgetSnapshotIfAllowed()
+            requestWidgetSnapshotPublish()
         }
 
         await withTaskGroup(of: Void.self) { group in
@@ -126,7 +127,7 @@ final class TokenStatsViewModel: Sendable {
         }
         defer {
             loadGate.leave(id)
-            publishWidgetSnapshotIfAllowed()
+            requestWidgetSnapshotPublish()
         }
 
         states[id]?.isLoading = true
@@ -186,10 +187,28 @@ final class TokenStatsViewModel: Sendable {
         notifyStateChange(id)
     }
 
+    private func requestWidgetSnapshotPublish() {
+        widgetSnapshotPublishPending = true
+        publishWidgetSnapshotIfAllowed()
+    }
+
     private func publishWidgetSnapshotIfAllowed() {
+        guard widgetSnapshotPublishPending else { return }
         guard widgetSnapshotPublishSuspensionDepth == 0 else { return }
+        guard states.values.allSatisfy({ !$0.isLoading }) else { return }
+        widgetSnapshotPublishPending = false
         widgetSnapshotPublisher.publish(states: states)
     }
+
+    #if DEBUG
+    func debugSetProviderState(_ id: ProviderID, state: ProviderState) {
+        states[id] = state
+    }
+
+    func debugRequestWidgetSnapshotPublish() {
+        requestWidgetSnapshotPublish()
+    }
+    #endif
 
     /// 将所有共享同一 bookmark key 的 provider 标记为已授权并通知 UI。
     /// 用户目录授权是跨 provider 共享的,所以在任一 Tab 授权成功后其它 Tab 不应继续显示授权按钮。

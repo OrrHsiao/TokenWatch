@@ -138,6 +138,43 @@ struct TokenStatsViewModelObserverTests {
         #expect(Set(publisher.lastStates?.keys.map { $0 } ?? []) == Set(ProviderRegistry.allProviders.map(\.id)))
         #expect(publisher.lastStates?.values.allSatisfy { $0.isLoading == false } == true)
     }
+
+    @Test func pendingWidgetSnapshotPublishWaitsForInFlightProviderState() {
+        let publisher = RecordingWidgetSnapshotPublisher()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: publisher,
+            bookmarkManager: NoBookmarkManager()
+        )
+
+        vm.debugSetProviderState(
+            .claude,
+            state: TokenStatsViewModel.ProviderState(
+                stats: nil,
+                isLoading: true,
+                errorMessage: nil,
+                needsAuthorization: false
+            )
+        )
+
+        vm.debugRequestWidgetSnapshotPublish()
+
+        #expect(publisher.publishCallCount == 0)
+
+        vm.debugSetProviderState(
+            .claude,
+            state: TokenStatsViewModel.ProviderState(
+                stats: nil,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: true
+            )
+        )
+
+        vm.debugRequestWidgetSnapshotPublish()
+
+        #expect(publisher.publishCallCount == 1)
+        #expect(publisher.lastStates?[.claude]?.isLoading == false)
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
