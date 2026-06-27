@@ -6,7 +6,7 @@ enum WidgetSnapshotBuilder {
 
     /// 构建小组件展示快照。
     /// - Parameters:
-    ///   - states: 各 provider 的统计状态。
+    ///   - states: ViewModel 中各 provider 的完整统计状态;缺失 known provider 时不会判定为全量未授权。
     ///   - now: 快照生成时间,同时作为热力图和今日折线窗口的当前时间。
     ///   - calendar: 用于稳定计算日期窗口、小时桶和当前日期的日历。
     ///   - language: 主 App 当前展示语言,Widget 会通过快照复用该语言。
@@ -17,15 +17,16 @@ enum WidgetSnapshotBuilder {
         calendar: Calendar,
         language: AppLanguage
     ) -> TokenWatchWidgetSnapshot {
+        let displayStates = displayStates(from: states)
         let heatmapSnapshot = CalendarHeatmapBuilder.build(
-            states: states,
+            states: displayStates,
             month: now,
             now: now,
             calendar: calendar,
             language: language
         )
         let todaySnapshot = MonthlyTokenChartBuilder.build(
-            states: states,
+            states: displayStates,
             period: .today,
             now: now,
             calendar: calendar,
@@ -33,6 +34,7 @@ enum WidgetSnapshotBuilder {
         )
         let status = dataStatus(
             states: states,
+            displayStates: displayStates,
             heatmapSnapshot: heatmapSnapshot,
             todaySnapshot: todaySnapshot
         )
@@ -63,13 +65,14 @@ enum WidgetSnapshotBuilder {
 
     private static func dataStatus(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
+        displayStates: [ProviderID: TokenStatsViewModel.ProviderState],
         heatmapSnapshot: CalendarHeatmapSnapshot,
         todaySnapshot: MonthlyTokenChartSnapshot
     ) -> TokenWatchWidgetDataStatus {
         if allKnownProvidersNeedAuthorization(states) {
             return .needsAuthorization
         }
-        guard states.values.contains(where: { $0.stats != nil }) else {
+        guard displayStates.values.contains(where: { $0.stats != nil }) else {
             return .empty
         }
         guard heatmapSnapshot.monthTotalTokens > 0 || todaySnapshot.totalTokens > 0 else {
@@ -81,11 +84,18 @@ enum WidgetSnapshotBuilder {
     private static func allKnownProvidersNeedAuthorization(
         _ states: [ProviderID: TokenStatsViewModel.ProviderState]
     ) -> Bool {
-        guard !states.isEmpty else { return false }
-        return ProviderID.allCases.allSatisfy { providerID in
+        let knownProviderIDs = ProviderRegistry.allProviders.map(\.id)
+        guard !knownProviderIDs.isEmpty else { return false }
+        return knownProviderIDs.allSatisfy { providerID in
             guard let state = states[providerID] else { return false }
-            return state.needsAuthorization && state.stats == nil
+            return state.needsAuthorization
         }
+    }
+
+    private static func displayStates(
+        from states: [ProviderID: TokenStatsViewModel.ProviderState]
+    ) -> [ProviderID: TokenStatsViewModel.ProviderState] {
+        states.filter { !$0.value.needsAuthorization }
     }
 
     private static func widgetCell(_ cell: CalendarHeatmapCell) -> TokenWatchWidgetHeatmapCell {

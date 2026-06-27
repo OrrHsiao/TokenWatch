@@ -26,7 +26,15 @@ struct WidgetSnapshotBuilderTests {
                 errorMessage: nil,
                 needsAuthorization: false
             ),
-            .codex: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: true),
+            .codex: .init(
+                stats: makeStats(
+                    byHour: ["2026-06-17T14": makeSummary(total: 99_000)],
+                    byDay: ["2026-06-17": makeSummary(total: 99_000)]
+                ),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: true
+            ),
         ]
 
         let snapshot = WidgetSnapshotBuilder.build(
@@ -73,7 +81,7 @@ struct WidgetSnapshotBuilderTests {
     func buildsNeedsAuthorizationSnapshotWhenAllKnownProvidersNeedAuthorization() {
         let calendar = utcCalendar(firstWeekday: 2)
         let now = dateTime(2026, 6, 17, hour: 14, minute: 30, calendar: calendar)
-        let states = Dictionary(uniqueKeysWithValues: ProviderID.allCases.map {
+        let states = Dictionary(uniqueKeysWithValues: knownProviderIDs().map {
             ($0, TokenStatsViewModel.ProviderState(
                 stats: nil,
                 isLoading: false,
@@ -94,6 +102,41 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.heatmap.cells.count == 154)
         #expect(snapshot.heatmap.cells.allSatisfy { $0.totalTokens == 0 })
         #expect(snapshot.todayLine.buckets.count == 24)
+        #expect(snapshot.todayLine.buckets.allSatisfy { $0.totalTokens == 0 })
+    }
+
+    @Test("全部 provider 未授权但保留旧 stats 时不发布旧 token")
+    func ignoresStaleStatsWhenAllKnownProvidersNeedAuthorization() {
+        let calendar = utcCalendar(firstWeekday: 2)
+        let now = dateTime(2026, 6, 17, hour: 14, minute: 30, calendar: calendar)
+        let staleStats = makeStats(
+            byHour: ["2026-06-17T14": makeSummary(total: 8_000)],
+            byDay: ["2026-06-17": makeSummary(total: 8_000)]
+        )
+        let states = Dictionary(uniqueKeysWithValues: knownProviderIDs().map {
+            ($0, TokenStatsViewModel.ProviderState(
+                stats: staleStats,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: true
+            ))
+        })
+
+        let snapshot = WidgetSnapshotBuilder.build(
+            states: states,
+            now: now,
+            calendar: calendar,
+            language: .zhHans
+        )
+
+        #expect(snapshot.status == .needsAuthorization)
+        #expect(snapshot.heatmap.summary.monthTokens == 0)
+        #expect(snapshot.heatmap.summary.weekTokens == 0)
+        #expect(snapshot.heatmap.summary.todayTokens == 0)
+        #expect(snapshot.heatmap.maxDailyTokens == 0)
+        #expect(snapshot.heatmap.cells.allSatisfy { $0.totalTokens == 0 })
+        #expect(snapshot.todayLine.totalTokens == 0)
+        #expect(snapshot.todayLine.maxHourlyTokens == 0)
         #expect(snapshot.todayLine.buckets.allSatisfy { $0.totalTokens == 0 })
     }
 
@@ -201,8 +244,9 @@ struct WidgetSnapshotBuilderTests {
         byHour: [String: UsageSummary] = [:],
         byDay: [String: UsageSummary] = [:]
     ) -> AggregatedStats {
-        AggregatedStats(
-            overall: .zero,
+        let overallTotal = max(totalTokens(in: byHour), totalTokens(in: byDay))
+        return AggregatedStats(
+            overall: makeSummary(total: overallTotal),
             byHour: byHour,
             byDay: byDay,
             byWeek: [:],
@@ -212,6 +256,14 @@ struct WidgetSnapshotBuilderTests {
             byProject: [:],
             dataSourceCount: 1
         )
+    }
+
+    private func totalTokens(in summaries: [String: UsageSummary]) -> Int {
+        summaries.values.reduce(0) { $0 + $1.totalTokens }
+    }
+
+    private func knownProviderIDs() -> [ProviderID] {
+        ProviderRegistry.allProviders.map(\.id)
     }
 }
 
