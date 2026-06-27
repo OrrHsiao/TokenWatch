@@ -316,7 +316,7 @@ final class StatusBarController {
         if lastRenderedDayKey != todayKey {
             renderTitle()
         }
-        Task { await viewModel.loadAllStats() }
+        Task { await viewModel.loadAllStats(mode: .silentIfUnchanged) }
     }
 
     // MARK: - Render

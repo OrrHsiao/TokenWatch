@@ -1,10 +1,18 @@
 import Foundation
 import os.log
 
+/// 聚合用量条目的抽象边界,让 ViewModel 可以在测试中替换为计数实现。
+protocol UsageAggregating: Sendable {
+    /// 将解析后的用量条目聚合为多维统计。
+    /// - Parameter entries: 已去重的用量条目。
+    /// - Returns: 供 UI 展示的聚合统计。
+    func aggregate(_ entries: [ParsedUsageEntry]) -> AggregatedStats
+}
+
 /// Token 用量聚合器
 /// 将 ParsedUsageEntry 列表按多维度聚合为 AggregatedStats
 /// 参考 ccusage 的 daily/weekly/monthly/session 报告聚合逻辑
-final class UsageAggregator: Sendable {
+final class UsageAggregator: UsageAggregating {
 
     private let pricingEngine = PricingEngine()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "UsageAggregator")
@@ -18,12 +26,9 @@ final class UsageAggregator: Sendable {
             return .zero
         }
 
-        // 计算 unique 数据源数（session + agent 组合）
-        let uniqueFiles = Set(entries.map { entry in
-            "\(entry.sessionID)\(entry.agentId.map { "_\($0)" } ?? "")"
-        })
+        var uniqueFiles = Set<String>()
 
-        logger.info("开始聚合：\(entries.count) 条记录，\(uniqueFiles.count) 个数据源")
+        logger.info("开始聚合：\(entries.count) 条记录")
 
         // 性能优化：分组前预先复用一份 Calendar 实例
         // 避免每条 entry 在 keySelector 内重复访问 Calendar.current 的 thread-local 拷贝
@@ -39,97 +44,59 @@ final class UsageAggregator: Sendable {
         isoCalendar.firstWeekday = 2
         isoCalendar.minimumDaysInFirstWeek = 4
 
+        var overall = UsageSummaryAccumulator()
+        var overallByModel: [String: UsageSummaryAccumulator] = [:]
+        var byHour = UsageDimensionAccumulator()
+        var byDay = UsageDimensionAccumulator()
+        var byWeek = UsageDimensionAccumulator()
+        var byMonth = UsageDimensionAccumulator()
+        var bySession = UsageDimensionAccumulator()
+        var byModel = UsageDimensionAccumulator()
+        var byProject = UsageDimensionAccumulator()
+
+        for entry in entries {
+            uniqueFiles.insert("\(entry.sessionID)\(entry.agentId.map { "_\($0)" } ?? "")")
+
+            let cost = resolvedCost(for: entry)
+            overall.add(entry, cost: cost)
+            overallByModel[entry.model, default: UsageSummaryAccumulator()].add(entry, cost: cost)
+
+            byHour.add(key: hourKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
+            byDay.add(key: dayKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
+            byWeek.add(key: weekKey(from: entry.timestamp, calendar: isoCalendar), entry: entry, cost: cost)
+            byMonth.add(key: monthKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
+            bySession.add(key: entry.sessionID, entry: entry, cost: cost)
+            byModel.add(key: entry.model, entry: entry, cost: cost)
+            byProject.add(key: entry.cwd ?? "unknown", entry: entry, cost: cost)
+        }
+        logger.info("聚合完成：\(entries.count) 条记录，\(uniqueFiles.count) 个数据源")
+
         return AggregatedStats(
-            overall: aggregateEntries(entries),
-            byHour: groupAndAggregate(entries) { hourKey(from: $0.timestamp, calendar: calendar) },
-            byDay: groupAndAggregate(entries) { dayKey(from: $0.timestamp, calendar: calendar) },
-            byWeek: groupAndAggregate(entries) { weekKey(from: $0.timestamp, calendar: isoCalendar) },
-            byMonth: groupAndAggregate(entries) { monthKey(from: $0.timestamp, calendar: calendar) },
-            bySession: groupAndAggregate(entries) { $0.sessionID },
-            byModel: groupAndAggregate(entries) { $0.model },
-            byProject: groupAndAggregate(entries) { $0.cwd ?? "unknown" },
+            overall: overall.makeSummary(modelBreakdown: overallByModel.makeSummaries()),
+            byHour: byHour.makeSummaries(),
+            byDay: byDay.makeSummaries(),
+            byWeek: byWeek.makeSummaries(),
+            byMonth: byMonth.makeSummaries(),
+            bySession: bySession.makeSummaries(),
+            byModel: byModel.makeSummaries(),
+            byProject: byProject.makeSummaries(),
             dataSourceCount: uniqueFiles.count
         )
     }
 
     // MARK: - Private Aggregation
 
-    /// 聚合一组条目为 UsageSummary，内含按模型细分
-    private func aggregateEntries(_ entries: [ParsedUsageEntry]) -> UsageSummary {
-        var totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheCreation = 0
-        var totalReasoning = 0
-        var totalCost = 0.0
-        var modelBreakdown: [String: UsageSummary] = [:]
-
-        let byModel = Dictionary(grouping: entries, by: { $0.model })
-
-        for (model, modelEntries) in byModel {
-            var mInput = 0, mOutput = 0, mCacheRead = 0, mCacheCreation = 0
-            var mReasoning = 0
-            var mCost = 0.0
-
-            for entry in modelEntries {
-                mInput += entry.usage.inputTokens
-                mOutput += entry.usage.outputTokens
-                mCacheRead += entry.usage.cacheReadInputTokens
-                // cache_creation_input_tokens 与 ephemeral_5m/1h 是总分关系
-                // 由 TokenUsage.totalCacheCreationTokens 统一处理，避免 double-count
-                mCacheCreation += entry.usage.totalCacheCreationTokens
-                mReasoning += entry.usage.reasoningTokens
-
-                // Cost fallback:PricingEngine 查不到模型(常见于 opencode 上游小众模型)
-                // 时退回到数据源自带 cost(opencode 的 message.data.cost)
-                let (engineCost, pricing) = pricingEngine.calculateCost(
-                    usage: entry.usage,
-                    model: entry.model
-                )
-                if pricing == nil, let upstream = entry.upstreamCost, upstream > 0 {
-                    mCost += upstream
-                } else {
-                    mCost += engineCost
-                }
-            }
-
-            totalInput += mInput
-            totalOutput += mOutput
-            totalCacheRead += mCacheRead
-            totalCacheCreation += mCacheCreation
-            totalReasoning += mReasoning
-            totalCost += mCost
-
-            modelBreakdown[model] = UsageSummary(
-                inputTokens: mInput,
-                outputTokens: mOutput,
-                cacheReadTokens: mCacheRead,
-                cacheCreationTokens: mCacheCreation,
-                reasoningTokens: mReasoning,
-                totalTokens: mInput + mOutput + mCacheRead + mCacheCreation + mReasoning,
-                cost: mCost,
-                entryCount: modelEntries.count,
-                modelBreakdown: [:]
-            )
-        }
-
-        return UsageSummary(
-            inputTokens: totalInput,
-            outputTokens: totalOutput,
-            cacheReadTokens: totalCacheRead,
-            cacheCreationTokens: totalCacheCreation,
-            reasoningTokens: totalReasoning,
-            totalTokens: totalInput + totalOutput + totalCacheRead + totalCacheCreation + totalReasoning,
-            cost: totalCost,
-            entryCount: entries.count,
-            modelBreakdown: modelBreakdown
+    private func resolvedCost(for entry: ParsedUsageEntry) -> Double {
+        // Cost fallback:PricingEngine 查不到模型(常见于 opencode 上游小众模型)
+        // 时退回到数据源自带 cost(opencode 的 message.data.cost)
+        let (engineCost, pricing) = pricingEngine.calculateCost(
+            usage: entry.usage,
+            model: entry.model
         )
-    }
-
-    /// 按 key 分组后聚合
-    private func groupAndAggregate(
-        _ entries: [ParsedUsageEntry],
-        keySelector: (ParsedUsageEntry) -> String
-    ) -> [String: UsageSummary] {
-        let grouped = Dictionary(grouping: entries, by: keySelector)
-        return grouped.mapValues { aggregateEntries($0) }
+        if pricing == nil, let upstream = entry.upstreamCost, upstream > 0 {
+            return upstream
+        }
+        return engineCost
     }
 
     // MARK: - Date Helpers
@@ -183,5 +150,68 @@ final class UsageAggregator: Sendable {
             return "unknown"
         }
         return String(format: "%04d-%02d-%02dT%02d", year, month, day, hour)
+    }
+}
+
+private struct UsageSummaryAccumulator {
+    private(set) var inputTokens = 0
+    private(set) var outputTokens = 0
+    private(set) var cacheReadTokens = 0
+    private(set) var cacheCreationTokens = 0
+    private(set) var reasoningTokens = 0
+    private(set) var cost = 0.0
+    private(set) var entryCount = 0
+
+    mutating func add(_ entry: ParsedUsageEntry, cost entryCost: Double) {
+        inputTokens += entry.usage.inputTokens
+        outputTokens += entry.usage.outputTokens
+        cacheReadTokens += entry.usage.cacheReadInputTokens
+        // cache_creation_input_tokens 与 ephemeral_5m/1h 是总分关系
+        // 由 TokenUsage.totalCacheCreationTokens 统一处理，避免 double-count
+        cacheCreationTokens += entry.usage.totalCacheCreationTokens
+        reasoningTokens += entry.usage.reasoningTokens
+        cost += entryCost
+        entryCount += 1
+    }
+
+    func makeSummary(modelBreakdown: [String: UsageSummary] = [:]) -> UsageSummary {
+        UsageSummary(
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            cacheReadTokens: cacheReadTokens,
+            cacheCreationTokens: cacheCreationTokens,
+            reasoningTokens: reasoningTokens,
+            totalTokens: inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens + reasoningTokens,
+            cost: cost,
+            entryCount: entryCount,
+            modelBreakdown: modelBreakdown
+        )
+    }
+}
+
+private struct UsageDimensionAccumulator {
+    private var totals: [String: UsageSummaryAccumulator] = [:]
+    private var modelTotals: [String: [String: UsageSummaryAccumulator]] = [:]
+
+    mutating func add(key: String, entry: ParsedUsageEntry, cost: Double) {
+        totals[key, default: UsageSummaryAccumulator()].add(entry, cost: cost)
+        modelTotals[key, default: [:]][entry.model, default: UsageSummaryAccumulator()].add(entry, cost: cost)
+    }
+
+    func makeSummaries() -> [String: UsageSummary] {
+        var summaries: [String: UsageSummary] = [:]
+        summaries.reserveCapacity(totals.count)
+        for (key, total) in totals {
+            summaries[key] = total.makeSummary(
+                modelBreakdown: modelTotals[key]?.makeSummaries() ?? [:]
+            )
+        }
+        return summaries
+    }
+}
+
+private extension Dictionary where Key == String, Value == UsageSummaryAccumulator {
+    func makeSummaries() -> [String: UsageSummary] {
+        mapValues { $0.makeSummary() }
     }
 }

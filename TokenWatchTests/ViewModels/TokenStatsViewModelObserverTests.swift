@@ -97,9 +97,187 @@ struct TokenStatsViewModelObserverTests {
             == "Data load failed: Could not open opencode.db (SQLite code=14): unable to open database file"
         )
     }
+
+    /// 静默刷新在数据未变化时不应重新聚合,也不应通知 UI 重绘。
+    @Test func silentRefreshSkipsAggregationAndNotificationWhenEntriesAreUnchanged() async throws {
+        let provider = StubUsageProvider(id: .claude)
+        let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        var received: [ProviderID] = []
+        _ = vm.observe { id in received.append(id) }
+
+        await vm.loadStats(for: .claude, mode: .silentIfUnchanged)
+
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(received == [.claude])
+
+        received.removeAll()
+        await vm.loadStats(for: .claude, mode: .silentIfUnchanged)
+
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(received.isEmpty)
+    }
+
+    /// cache creation 总量相同但 5m/1h 拆分变化时,计费会变化,静默刷新不能跳过聚合。
+    @Test func silentRefreshReloadsWhenCacheCreationSplitChanges() async throws {
+        let provider = MutableUsageProvider(
+            id: .claude,
+            usage: makeUsage(cacheCreation5m: 100, cacheCreation1h: 0)
+        )
+        let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        var received: [ProviderID] = []
+        _ = vm.observe { id in received.append(id) }
+
+        await vm.loadStats(for: .claude, mode: .silentIfUnchanged)
+        let firstCost = vm.states[.claude]?.stats?.overall.cost
+
+        received.removeAll()
+        provider.updateUsage(makeUsage(cacheCreation5m: 0, cacheCreation1h: 100))
+        await vm.loadStats(for: .claude, mode: .silentIfUnchanged)
+        let secondCost = vm.states[.claude]?.stats?.overall.cost
+
+        #expect(aggregator.aggregateCallCount == 2)
+        #expect(received == [.claude])
+        #expect(firstCost != secondCost)
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
     let description: String
     var errorDescription: String? { description }
+}
+
+private func makeUsage(cacheCreation5m: Int, cacheCreation1h: Int) -> TokenUsage {
+    TokenUsage(
+        inputTokens: 100,
+        cacheCreationInputTokens: cacheCreation5m + cacheCreation1h,
+        cacheReadInputTokens: 0,
+        outputTokens: 50,
+        serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+        serviceTier: "standard",
+        cacheCreation: CacheCreation(
+            ephemeral1hInputTokens: cacheCreation1h,
+            ephemeral5mInputTokens: cacheCreation5m
+        ),
+        inferenceGeo: "",
+        iterations: [],
+        speed: "standard"
+    )
+}
+
+private struct StubUsageProvider: UsageProvider {
+    let id: ProviderID
+    let displayName = "Stub Provider"
+    let bookmarkKey = "StubBookmark"
+    let defaultDirectoryPath = NSTemporaryDirectory()
+    let openPanelMessage = "Select a folder"
+    let hasCacheWriteDimension = true
+    let hasReasoningDimension = false
+
+    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
+        [makeEntry(id: id, usage: makeUsage(cacheCreation5m: 0, cacheCreation1h: 0))]
+    }
+}
+
+private final class MutableUsageProvider: UsageProvider, @unchecked Sendable {
+    let id: ProviderID
+    let displayName = "Mutable Provider"
+    let bookmarkKey = "MutableBookmark"
+    let defaultDirectoryPath = NSTemporaryDirectory()
+    let openPanelMessage = "Select a folder"
+    let hasCacheWriteDimension = true
+    let hasReasoningDimension = false
+
+    private let lock = NSLock()
+    private var usage: TokenUsage
+
+    init(id: ProviderID, usage: TokenUsage) {
+        self.id = id
+        self.usage = usage
+    }
+
+    func updateUsage(_ usage: TokenUsage) {
+        lock.lock()
+        self.usage = usage
+        lock.unlock()
+    }
+
+    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
+        lock.lock()
+        let usage = usage
+        lock.unlock()
+        return [makeEntry(id: id, usage: usage)]
+    }
+}
+
+private func makeEntry(id: ProviderID, usage: TokenUsage) -> ParsedUsageEntry {
+    ParsedUsageEntry(
+        recordUUID: "record-1",
+        messageId: "message-1",
+        requestId: nil,
+        sessionID: "session-1",
+        timestamp: Date(timeIntervalSince1970: 1_800_000_000),
+        model: "claude-sonnet-4-5",
+        cwd: "/test",
+        agentId: nil,
+        usage: usage,
+        isSubagent: false,
+        provider: id,
+        upstreamProviderID: nil,
+        upstreamCost: nil
+    )
+}
+
+@MainActor
+private final class StubBookmarkManager: BookmarkAccessManaging {
+    private let rootURL: URL
+
+    init(rootURL: URL) {
+        self.rootURL = rootURL
+    }
+
+    func hasBookmark(forKey key: String) -> Bool {
+        true
+    }
+
+    func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL? {
+        rootURL
+    }
+
+    func restoreBookmarkAndAccess(forKey key: String) -> URL? {
+        rootURL
+    }
+
+    func stopAccessing(forKey key: String) {}
+}
+
+private final class CountingUsageAggregator: UsageAggregating, @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var aggregateCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+
+    func aggregate(_ entries: [ParsedUsageEntry]) -> AggregatedStats {
+        lock.lock()
+        count += 1
+        lock.unlock()
+        return UsageAggregator().aggregate(entries)
+    }
 }

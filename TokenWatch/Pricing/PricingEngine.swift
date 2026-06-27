@@ -23,6 +23,47 @@ final class MissingPricingLogOnceGate: @unchecked Sendable {
     }
 }
 
+private enum CachedPricing: Sendable {
+    case hit(ModelPricing)
+    case miss
+
+    var pricing: ModelPricing? {
+        switch self {
+        case .hit(let pricing):
+            return pricing
+        case .miss:
+            return nil
+        }
+    }
+}
+
+private final class PricingLookupCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [String: CachedPricing] = [:]
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return values.count
+    }
+
+    func cachedValue(for normalizedModelID: String) -> CachedPricing? {
+        lock.lock()
+        defer { lock.unlock() }
+        return values[normalizedModelID]
+    }
+
+    func store(_ pricing: ModelPricing?, for normalizedModelID: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if let pricing {
+            values[normalizedModelID] = .hit(pricing)
+        } else {
+            values[normalizedModelID] = .miss
+        }
+    }
+}
+
 /// 定价计算引擎
 ///
 /// 参考 ccusage `cost.rs::calculate_cost_from_tokens` + `tiered_cost`：
@@ -64,6 +105,11 @@ struct PricingEngine: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "PricingEngine")
     private let missingPricingLogGate: MissingPricingLogOnceGate
+    private let pricingCache = PricingLookupCache()
+
+    var debugCachedPricingCount: Int {
+        pricingCache.count
+    }
 
     init(missingPricingLogGate: MissingPricingLogOnceGate = .shared) {
         self.missingPricingLogGate = missingPricingLogGate
@@ -131,8 +177,17 @@ struct PricingEngine: Sendable {
     /// - Returns: (成本 USD, 匹配到的定价条目)
     ///   如果模型无定价信息，返回 (0.0, nil)
     func calculateCost(usage: TokenUsage, model: String) -> (cost: Double, pricing: ModelPricing?) {
-        guard let pricing = PricingTable.pricing(for: model) else {
-            if missingPricingLogGate.shouldLogMiss(for: model) {
+        let normalizedModelID = model.lowercased()
+        let pricing: ModelPricing?
+        if let cached = pricingCache.cachedValue(for: normalizedModelID) {
+            pricing = cached.pricing
+        } else {
+            pricing = PricingTable.pricing(for: normalizedModelID)
+            pricingCache.store(pricing, for: normalizedModelID)
+        }
+
+        guard let pricing else {
+            if missingPricingLogGate.shouldLogMiss(for: normalizedModelID) {
                 logger.warning("未找到模型定价: \(model)，费用计为 $0.00")
             }
             return (0.0, nil)

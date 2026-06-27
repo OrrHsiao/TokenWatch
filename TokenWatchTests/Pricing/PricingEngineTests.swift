@@ -272,6 +272,29 @@ struct PricingEngineTests {
         #expect(abs(cost - 6.0) < 0.001)  // $1 + $5 = $6
     }
 
+    @Test("重复模型查找复用 PricingEngine 进程内缓存")
+    func repeatedModelLookupUsesPricingCache() {
+        let usage = TokenUsage(
+            inputTokens: 1_000,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 500,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        )
+        let engine = PricingEngine()
+
+        #expect(engine.debugCachedPricingCount == 0)
+        _ = engine.calculateCost(usage: usage, model: "Claude-Sonnet-4-5")
+        #expect(engine.debugCachedPricingCount == 1)
+        _ = engine.calculateCost(usage: usage, model: "claude-sonnet-4-5")
+        #expect(engine.debugCachedPricingCount == 1)
+    }
+
     // MARK: - 200k tier 阶梯定价
     //
     // 参考 ccusage `cost.rs::tiered_cost`：

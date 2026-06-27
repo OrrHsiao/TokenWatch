@@ -1,6 +1,25 @@
 import Foundation
 import AppKit
 
+/// ViewModel 需要的 Bookmark 访问能力。
+/// 生产实现仍由 `SecurityScopedBookmarkManager` 提供,测试可注入轻量 fake。
+@MainActor
+protocol BookmarkAccessManaging: Sendable {
+    /// 是否已保存指定 key 的 bookmark。
+    func hasBookmark(forKey key: String) -> Bool
+
+    /// 请求用户选择 provider 目录并保存 bookmark。
+    /// - Returns: 授权后的目录;取消时返回 nil。
+    func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL?
+
+    /// 恢复 bookmark 并开始 security-scoped 访问。
+    /// - Returns: 可访问目录;失败时返回 nil。
+    func restoreBookmarkAndAccess(forKey key: String) -> URL?
+
+    /// 停止一次对应 key 的 security-scoped 访问。
+    func stopAccessing(forKey key: String)
+}
+
 /// 记录当前进程内 security-scoped URL 的逻辑访问次数。
 /// 同一个 bookmark key 可能被多个 provider 并发复用,只有成对释放到 0 时才真正 stopAccessing。
 struct SecurityScopedAccessSessions: Sendable {
@@ -43,7 +62,7 @@ struct SecurityScopedAccessSessions: Sendable {
 /// 管理多个 Security-Scoped Bookmark 的创建、存储和恢复
 /// provider 可以共享同一个 bookmarkKey,因此同一 URL 的访问会做引用计数
 @MainActor
-final class SecurityScopedBookmarkManager: Sendable {
+final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
 
     static let shared = SecurityScopedBookmarkManager()
 

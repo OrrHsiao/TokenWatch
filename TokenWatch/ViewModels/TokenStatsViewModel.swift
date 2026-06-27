@@ -8,6 +8,14 @@ import os.log
 @MainActor
 final class TokenStatsViewModel: Sendable {
 
+    /// 刷新行为。
+    enum LoadMode: Sendable, Equatable {
+        /// 用户主动触发的刷新:发送 loading 状态通知。
+        case interactive
+        /// 后台定时刷新:数据未变化时不发送通知。
+        case silentIfUnchanged
+    }
+
     /// 单 provider 的 UI 状态
     struct ProviderState: Sendable {
         var stats: AggregatedStats?
@@ -27,15 +35,25 @@ final class TokenStatsViewModel: Sendable {
     /// 已注册的 observer。key 为 token,value 为 main-actor 隔离的回调
     private var observers: [ObservationToken: @MainActor (ProviderID) -> Void] = [:]
 
-    private let bookmarkManager = SecurityScopedBookmarkManager.shared
+    private let providers: [any UsageProvider]
+    private let bookmarkManager: any BookmarkAccessManaging
     private let languageSettings: AppLanguageSettings
-    private let aggregator = UsageAggregator()
+    private let aggregator: any UsageAggregating
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
+    private var entryFingerprints: [ProviderID: UsageEntriesFingerprint] = [:]
 
-    init(languageSettings: AppLanguageSettings = .shared) {
+    init(
+        languageSettings: AppLanguageSettings = .shared,
+        providers: [any UsageProvider] = ProviderRegistry.allProviders,
+        bookmarkManager: any BookmarkAccessManaging = SecurityScopedBookmarkManager.shared,
+        aggregator: any UsageAggregating = UsageAggregator()
+    ) {
         self.languageSettings = languageSettings
-        for provider in ProviderRegistry.allProviders {
+        self.providers = providers
+        self.bookmarkManager = bookmarkManager
+        self.aggregator = aggregator
+        for provider in providers {
             states[provider.id] = ProviderState()
         }
     }
@@ -82,46 +100,61 @@ final class TokenStatsViewModel: Sendable {
     /// 设计原因:Swift 6 region-based isolation checker 在 `withTaskGroup` 闭包中
     /// 显式标 `@MainActor [weak self]` 时会崩(编译器内部错误);
     /// 改为 `await self.loadStats(...)` 让 main actor 自动 hop,行为等价且 self 由 AppDelegate 持有不会循环引用。
-    func loadAllStats() async {
+    func loadAllStats(mode: LoadMode = .interactive) async {
         await withTaskGroup(of: Void.self) { group in
-            for provider in ProviderRegistry.allProviders {
+            for provider in providers {
                 let id = provider.id
                 group.addTask {
-                    await self.loadStats(for: id)
+                    await self.loadStats(for: id, mode: mode)
                 }
             }
         }
     }
 
     /// 加载指定 provider 的统计
-    func loadStats(for id: ProviderID) async {
-        guard let provider = ProviderRegistry.provider(for: id) else { return }
+    func loadStats(for id: ProviderID, mode: LoadMode = .interactive) async {
+        guard let provider = provider(for: id) else { return }
         guard loadGate.enter(id) else {
             logger.info("\(provider.displayName) 已在刷新中,跳过重复请求")
             return
         }
         defer { loadGate.leave(id) }
 
-        states[id]?.isLoading = true
-        states[id]?.errorMessage = nil
-        notifyStateChange(id)
+        let sendsLoadingNotifications = (mode == .interactive)
+        if sendsLoadingNotifications {
+            states[id]?.isLoading = true
+            states[id]?.errorMessage = nil
+            notifyStateChange(id)
+        }
 
         // Step 1: 检查 Bookmark
         if !bookmarkManager.hasBookmark(forKey: provider.bookmarkKey) {
+            let shouldNotify = states[id]?.needsAuthorization != true
+                || states[id]?.isLoading == true
+                || states[id]?.errorMessage != nil
             states[id]?.needsAuthorization = true
             states[id]?.isLoading = false
+            states[id]?.errorMessage = nil
             logger.info("\(provider.displayName) 未授权,需要用户操作")
-            notifyStateChange(id)
+            if sendsLoadingNotifications || shouldNotify {
+                notifyStateChange(id)
+            }
             return
         }
 
         // Step 2: 恢复 Bookmark
         guard let rootURL = bookmarkManager.restoreBookmarkAndAccess(forKey: provider.bookmarkKey) else {
-            states[id]?.errorMessage = Self.cannotAccessHomeMessage(language: languageSettings.resolvedLanguage)
+            let message = Self.cannotAccessHomeMessage(language: languageSettings.resolvedLanguage)
+            let shouldNotify = states[id]?.errorMessage != message
+                || states[id]?.needsAuthorization != true
+                || states[id]?.isLoading == true
+            states[id]?.errorMessage = message
             states[id]?.needsAuthorization = true
             states[id]?.isLoading = false
             logger.error("\(provider.displayName) Bookmark 恢复失败")
-            notifyStateChange(id)
+            if sendsLoadingNotifications || shouldNotify {
+                notifyStateChange(id)
+            }
             return
         }
         defer { bookmarkManager.stopAccessing(forKey: provider.bookmarkKey) }
@@ -131,39 +164,56 @@ final class TokenStatsViewModel: Sendable {
         let aggregator = self.aggregator
         let logger = self.logger
         let providerCopy = provider
+        let previousFingerprint = entryFingerprints[id]
+        let canReuseExistingStats = states[id]?.stats != nil && states[id]?.errorMessage == nil
 
-        let result: Result<AggregatedStats, Error> = await Task.detached(priority: .userInitiated) {
+        let result: Result<ProviderLoadResult, Error> = await Task.detached(priority: .userInitiated) {
             do {
                 let entries = try providerCopy.loadEntries(from: rootURL)
                 logger.info("\(providerCopy.displayName) 解析得 \(entries.count) 条记录")
+                let fingerprint = UsageEntriesFingerprint.make(from: entries)
+                if canReuseExistingStats, previousFingerprint == fingerprint {
+                    return .success(.unchanged(entryCount: entries.count))
+                }
                 let stats = aggregator.aggregate(entries)
-                return .success(stats)
+                return .success(.loaded(stats: stats, fingerprint: fingerprint, entryCount: entries.count))
             } catch {
                 return .failure(error)
             }
         }.value
 
         switch result {
-        case .success(let stats):
+        case .success(.loaded(let stats, let fingerprint, _)):
+            entryFingerprints[id] = fingerprint
             states[id]?.stats = stats
             states[id]?.needsAuthorization = false
             states[id]?.errorMessage = nil
+            states[id]?.isLoading = false
+            notifyStateChange(id)
+        case .success(.unchanged):
+            if sendsLoadingNotifications {
+                states[id]?.isLoading = false
+                notifyStateChange(id)
+            }
         case .failure(let error):
-            states[id]?.errorMessage = Self.loadFailedMessage(
+            let message = Self.loadFailedMessage(
                 error: error,
                 language: languageSettings.resolvedLanguage
             )
+            let shouldNotify = states[id]?.errorMessage != message || states[id]?.isLoading == true
+            states[id]?.errorMessage = message
             logger.error("\(provider.displayName) 加载失败: \(error.localizedDescription)")
+            states[id]?.isLoading = false
+            if sendsLoadingNotifications || shouldNotify {
+                notifyStateChange(id)
+            }
         }
-
-        states[id]?.isLoading = false
-        notifyStateChange(id)
     }
 
     /// 将所有共享同一 bookmark key 的 provider 标记为已授权并通知 UI。
     /// 用户目录授权是跨 provider 共享的,所以在任一 Tab 授权成功后其它 Tab 不应继续显示授权按钮。
     func markProvidersAuthorized(sharingBookmarkWith provider: any UsageProvider) {
-        for candidate in ProviderRegistry.allProviders where candidate.bookmarkKey == provider.bookmarkKey {
+        for candidate in providers where candidate.bookmarkKey == provider.bookmarkKey {
             states[candidate.id]?.needsAuthorization = false
             states[candidate.id]?.errorMessage = nil
             notifyStateChange(candidate.id)
@@ -174,7 +224,7 @@ final class TokenStatsViewModel: Sendable {
     /// - Returns: 用户完成授权并保存 bookmark 时返回 true;取消或 provider 不存在时返回 false
     @discardableResult
     func requestAuthorization(for id: ProviderID) async -> Bool {
-        guard let provider = ProviderRegistry.provider(for: id) else { return false }
+        guard let provider = provider(for: id) else { return false }
         if let _ = await bookmarkManager.promptUserToSelectDirectory(forProvider: provider) {
             markProvidersAuthorized(sharingBookmarkWith: provider)
             logger.info("\(provider.displayName) 用户授权成功")
@@ -185,6 +235,15 @@ final class TokenStatsViewModel: Sendable {
             return false
         }
     }
+
+    private func provider(for id: ProviderID) -> (any UsageProvider)? {
+        providers.first(where: { $0.id == id })
+    }
+}
+
+private enum ProviderLoadResult: Sendable {
+    case loaded(stats: AggregatedStats, fingerprint: UsageEntriesFingerprint, entryCount: Int)
+    case unchanged(entryCount: Int)
 }
 
 /// 跟踪正在刷新的 provider,避免定时刷新和手动刷新重叠触发重复全量解析。
@@ -197,5 +256,46 @@ struct ProviderLoadGate {
 
     mutating func leave(_ id: ProviderID) {
         activeProviderIDs.remove(id)
+    }
+}
+
+/// 用于判断 provider 本次解析结果是否与上次一致。
+///
+/// 指纹只在同一进程内比较,目标是跳过后台刷新中的重复聚合和 UI 通知;
+/// 不作为持久化校验和使用。
+struct UsageEntriesFingerprint: Equatable, Sendable {
+    private let count: Int
+    private let sum: Int
+    private let xor: Int
+
+    static func make(from entries: [ParsedUsageEntry]) -> UsageEntriesFingerprint {
+        var sum = 0
+        var xor = 0
+        for entry in entries {
+            var hasher = Hasher()
+            hasher.combine(entry.dedupKey)
+            hasher.combine(entry.sessionID)
+            hasher.combine(entry.timestamp?.timeIntervalSince1970)
+            hasher.combine(entry.model)
+            hasher.combine(entry.cwd)
+            hasher.combine(entry.agentId)
+            hasher.combine(entry.isSubagent)
+            hasher.combine(entry.provider)
+            hasher.combine(entry.upstreamProviderID)
+            hasher.combine(entry.upstreamCost)
+            hasher.combine(entry.usage.inputTokens)
+            hasher.combine(entry.usage.outputTokens)
+            hasher.combine(entry.usage.cacheReadInputTokens)
+            hasher.combine(entry.usage.totalCacheCreationTokens)
+            hasher.combine(entry.usage.cacheCreate5mTokens)
+            hasher.combine(entry.usage.cacheCreate1hTokens)
+            hasher.combine(entry.usage.reasoningTokens)
+            hasher.combine(entry.usage.speed)
+
+            let value = hasher.finalize()
+            sum &+= value
+            xor ^= value
+        }
+        return UsageEntriesFingerprint(count: entries.count, sum: sum, xor: xor)
     }
 }
