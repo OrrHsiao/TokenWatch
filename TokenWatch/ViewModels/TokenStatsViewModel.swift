@@ -1,6 +1,16 @@
 import Foundation
 import os.log
 
+@MainActor
+protocol SecurityScopedBookmarkManaging: AnyObject, Sendable {
+    func hasBookmark(forKey key: String) -> Bool
+    func restoreBookmarkAndAccess(forKey key: String) -> URL?
+    func stopAccessing(forKey key: String)
+    func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL?
+}
+
+extension SecurityScopedBookmarkManager: SecurityScopedBookmarkManaging {}
+
 /// 多 provider 用量统计 ViewModel
 ///
 /// 每个 provider 维护独立 ProviderState(stats / loading / error / 授权状态),
@@ -27,14 +37,22 @@ final class TokenStatsViewModel: Sendable {
     /// 已注册的 observer。key 为 token,value 为 main-actor 隔离的回调
     private var observers: [ObservationToken: @MainActor (ProviderID) -> Void] = [:]
 
-    private let bookmarkManager = SecurityScopedBookmarkManager.shared
+    private let bookmarkManager: any SecurityScopedBookmarkManaging
     private let languageSettings: AppLanguageSettings
+    private let widgetSnapshotPublisher: any WidgetSnapshotPublishing
     private let aggregator = UsageAggregator()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
+    private var widgetSnapshotPublishSuspensionDepth = 0
 
-    init(languageSettings: AppLanguageSettings = .shared) {
+    init(
+        languageSettings: AppLanguageSettings = .shared,
+        widgetSnapshotPublisher: any WidgetSnapshotPublishing = WidgetSnapshotPublisher.shared,
+        bookmarkManager: any SecurityScopedBookmarkManaging = SecurityScopedBookmarkManager.shared
+    ) {
         self.languageSettings = languageSettings
+        self.widgetSnapshotPublisher = widgetSnapshotPublisher
+        self.bookmarkManager = bookmarkManager
         for provider in ProviderRegistry.allProviders {
             states[provider.id] = ProviderState()
         }
@@ -83,6 +101,12 @@ final class TokenStatsViewModel: Sendable {
     /// 显式标 `@MainActor [weak self]` 时会崩(编译器内部错误);
     /// 改为 `await self.loadStats(...)` 让 main actor 自动 hop,行为等价且 self 由 AppDelegate 持有不会循环引用。
     func loadAllStats() async {
+        widgetSnapshotPublishSuspensionDepth += 1
+        defer {
+            widgetSnapshotPublishSuspensionDepth -= 1
+            publishWidgetSnapshotIfAllowed()
+        }
+
         await withTaskGroup(of: Void.self) { group in
             for provider in ProviderRegistry.allProviders {
                 let id = provider.id
@@ -100,7 +124,10 @@ final class TokenStatsViewModel: Sendable {
             logger.info("\(provider.displayName) 已在刷新中,跳过重复请求")
             return
         }
-        defer { loadGate.leave(id) }
+        defer {
+            loadGate.leave(id)
+            publishWidgetSnapshotIfAllowed()
+        }
 
         states[id]?.isLoading = true
         states[id]?.errorMessage = nil
@@ -157,6 +184,11 @@ final class TokenStatsViewModel: Sendable {
 
         states[id]?.isLoading = false
         notifyStateChange(id)
+    }
+
+    private func publishWidgetSnapshotIfAllowed() {
+        guard widgetSnapshotPublishSuspensionDepth == 0 else { return }
+        widgetSnapshotPublisher.publish(states: states)
     }
 
     /// 将所有共享同一 bookmark key 的 provider 标记为已授权并通知 UI。

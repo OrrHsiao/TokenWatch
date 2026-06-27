@@ -7,7 +7,10 @@ struct TokenStatsViewModelObserverTests {
 
     /// 多个 observer 都能收到通知
     @Test func multipleObserversAllReceiveNotification() async throws {
-        let vm = TokenStatsViewModel()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: RecordingWidgetSnapshotPublisher(),
+            bookmarkManager: NoBookmarkManager()
+        )
 
         var firstReceived: [ProviderID] = []
         var secondReceived: [ProviderID] = []
@@ -24,7 +27,10 @@ struct TokenStatsViewModelObserverTests {
 
     /// removeObserver 之后该 observer 不再收到
     @Test func removedObserverStopsReceiving() async throws {
-        let vm = TokenStatsViewModel()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: RecordingWidgetSnapshotPublisher(),
+            bookmarkManager: NoBookmarkManager()
+        )
 
         var received: [ProviderID] = []
         let token = vm.observe { id in received.append(id) }
@@ -38,7 +44,10 @@ struct TokenStatsViewModelObserverTests {
 
     /// 不同 observer 拿到的 token 不同(可独立移除)
     @Test func observeReturnsDistinctTokens() {
-        let vm = TokenStatsViewModel()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: RecordingWidgetSnapshotPublisher(),
+            bookmarkManager: NoBookmarkManager()
+        )
         let t1 = vm.observe { _ in }
         let t2 = vm.observe { _ in }
         #expect(t1 != t2)
@@ -46,7 +55,10 @@ struct TokenStatsViewModelObserverTests {
 
     /// 用户目录授权是共享的:任一 provider 授权成功后,同 key 的其它 provider 也应退出未授权态
     @Test func sharedBookmarkAuthorizationUpdatesAllProviders() {
-        let vm = TokenStatsViewModel()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: RecordingWidgetSnapshotPublisher(),
+            bookmarkManager: NoBookmarkManager()
+        )
         var received: [ProviderID] = []
         _ = vm.observe { id in received.append(id) }
 
@@ -97,9 +109,66 @@ struct TokenStatsViewModelObserverTests {
             == "Data load failed: Could not open opencode.db (SQLite code=14): unable to open database file"
         )
     }
+
+    @Test func loadStatsPublishesSnapshotAfterUnauthorizedRefreshSettles() async {
+        let publisher = RecordingWidgetSnapshotPublisher()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: publisher,
+            bookmarkManager: NoBookmarkManager()
+        )
+
+        await vm.loadStats(for: .claude)
+
+        #expect(publisher.publishCallCount == 1)
+        let claudeState = try? #require(publisher.lastStates?[.claude])
+        #expect(claudeState?.needsAuthorization == true)
+        #expect(claudeState?.isLoading == false)
+    }
+
+    @Test func loadAllStatsPublishesSingleSnapshotAfterAllProvidersSettle() async {
+        let publisher = RecordingWidgetSnapshotPublisher()
+        let vm = TokenStatsViewModel(
+            widgetSnapshotPublisher: publisher,
+            bookmarkManager: NoBookmarkManager()
+        )
+
+        await vm.loadAllStats()
+
+        #expect(publisher.publishCallCount == 1)
+        #expect(Set(publisher.lastStates?.keys.map { $0 } ?? []) == Set(ProviderRegistry.allProviders.map(\.id)))
+        #expect(publisher.lastStates?.values.allSatisfy { $0.isLoading == false } == true)
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
     let description: String
     var errorDescription: String? { description }
+}
+
+@MainActor
+private final class RecordingWidgetSnapshotPublisher: WidgetSnapshotPublishing {
+    private(set) var publishCallCount = 0
+    private(set) var lastStates: [ProviderID: TokenStatsViewModel.ProviderState]?
+
+    func publish(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
+        publishCallCount += 1
+        lastStates = states
+    }
+}
+
+@MainActor
+private final class NoBookmarkManager: SecurityScopedBookmarkManaging {
+    func hasBookmark(forKey key: String) -> Bool {
+        false
+    }
+
+    func restoreBookmarkAndAccess(forKey key: String) -> URL? {
+        nil
+    }
+
+    func stopAccessing(forKey key: String) {}
+
+    func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL? {
+        nil
+    }
 }
