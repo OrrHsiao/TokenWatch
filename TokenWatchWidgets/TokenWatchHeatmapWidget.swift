@@ -12,6 +12,7 @@ struct TokenWatchHeatmapWidget: Widget {
         .configurationDisplayName(TokenWatchWidgetCopy.text(.tokenHeatmapDisplayName, languageIdentifier: "zh-Hans"))
         .description(TokenWatchWidgetCopy.text(.tokenHeatmapDescription, languageIdentifier: "zh-Hans"))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
     }
 }
 
@@ -109,6 +110,7 @@ struct TokenWatchHeatmapWidgetView: View {
                     .frame(width: tileSize, height: tileSize)
                     .accessibilityLabel(cell.dateKey ?? "")
                     .accessibilityValue(TokenWatchWidgetCompactNumberFormatter.format(cell.totalTokens))
+                    .accessibilityHidden(cell.kind != .day)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -195,7 +197,7 @@ struct TokenWatchHeatmapWidgetView: View {
     private var tileSize: CGFloat {
         switch layout {
         case .compact:
-            return 5.3
+            return 4.6
         case .summary:
             return 8.4
         case .expanded:
@@ -206,7 +208,7 @@ struct TokenWatchHeatmapWidgetView: View {
     private var tileSpacing: CGFloat {
         switch layout {
         case .compact:
-            return 1.6
+            return 1.2
         case .summary:
             return 2.4
         case .expanded:
