@@ -125,6 +125,7 @@ final class TokenStatsViewModel: Sendable {
             return
         }
         defer { bookmarkManager.stopAccessing(forKey: provider.bookmarkKey) }
+        states[id]?.needsAuthorization = false
 
         // Step 3-5: 后台扫 + 解析 + 聚合
         let aggregator = self.aggregator

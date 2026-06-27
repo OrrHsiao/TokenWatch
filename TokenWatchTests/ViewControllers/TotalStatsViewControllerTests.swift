@@ -385,6 +385,28 @@ struct TotalStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("无 stats 且有错误时优先展示真实错误")
+    func showsErrorBeforeAuthorizationPromptWhenNoStatsAreLoaded() {
+        let viewController = TotalStatsViewController(
+            stateProvider: {
+                [
+                    .opencode: .init(
+                        stats: nil,
+                        isLoading: false,
+                        errorMessage: "opencode.db 读取失败",
+                        needsAuthorization: true
+                    ),
+                ]
+            },
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(viewController.debugStatusText == "opencode.db 读取失败")
+    }
+
+    @MainActor
     @Test("全部加载中时展示加载提示")
     func showsLoadingWhenAllProvidersAreLoading() {
         let viewController = TotalStatsViewController(

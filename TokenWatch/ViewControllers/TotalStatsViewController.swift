@@ -563,11 +563,11 @@ final class TotalStatsViewController: NSViewController {
             && snapshot.loadedProviderCount == 0 {
             return (AppStrings.text(.statusLoadingUsage, language: language), false)
         }
-        if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
-            return (AppStrings.text(.statusNeedsHomeAuthorization, language: language), false)
-        }
         if snapshot.loadedProviderCount == 0, let errorMessage = snapshot.errorMessages.first {
             return (errorMessage, false)
+        }
+        if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
+            return (AppStrings.text(.statusNeedsHomeAuthorization, language: language), false)
         }
         if snapshot.totalTokens == 0 {
             return (AppStrings.text(.statusTotalNoTokenData, language: language), false)
