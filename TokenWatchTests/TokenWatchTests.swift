@@ -113,7 +113,7 @@ struct TokenWatchTests {
         let windowController = try #require(storyboard.instantiateInitialController() as? NSWindowController)
         let contentSize = try #require(windowController.window?.contentView?.frame.size)
 
-        #expect(contentSize == NSSize(width: 900, height: 640))
+        #expect(contentSize == NSSize(width: 1180, height: 760))
     }
 
     @MainActor
@@ -133,151 +133,181 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func mainWindowUsesNativeSidebarSplitLayout() throws {
+    @Test func mainWindowUsesPencilDashboardLayout() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
-        let splitView = try #require(viewController.view.firstDescendant(ofType: NSSplitView.self))
-        #expect(splitView.isVertical)
-        #expect(splitView.arrangedSubviews.count == 2)
+        #expect(viewController.view.accessibilityIdentifier() == "DashboardRootView")
+        #expect(viewController.view.firstDescendant(ofType: NSSplitView.self) == nil)
+        #expect(viewController.view.firstDescendant(identifier: "DashboardSidebar") != nil)
+        #expect(viewController.view.firstDescendant(identifier: "DashboardMainContent") != nil)
     }
 
     @MainActor
-    @Test func sidebarListsAggregatePagesAndSettingsOnly() throws {
+    @Test func dashboardSidebarMatchesPencilNavigation() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        #expect(sidebar.style == .sourceList)
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("TokenWatch"))
+        #expect(labels.contains("本地 AI 用量监控"))
+        #expect(labels.contains("数据源"))
+        #expect(labels.contains("上次本地扫描"))
 
-        let displayedTitles = (0..<sidebar.numberOfRows).compactMap { row in
-            (sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView)?
-                .textField?
-                .stringValue
+        let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
+            guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
+            return button.title
         }
-        #expect(displayedTitles == ["总计", "最近 12 个月", "最近 30 天", "本日", "设置"])
+        #expect(navTitles == ["总览", "时间线", "会话", "模型", "项目", "设置"])
     }
 
     @MainActor
-    @Test func sidebarRowsUseSFSymbolIcons() throws {
+    @Test func dashboardDataSourcesShowAuthorizationIndicatorsOnly() throws {
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                    .codex: .init(stats: nil, isLoading: true, errorMessage: nil, needsAuthorization: true),
+                ]
+            },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(!labels.contains("已连接"))
+        #expect(!labels.contains("待授权"))
+        #expect(!labels.contains("刷新中"))
+
+        let claudeIndicator = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceStatus.claude"))
+        let codexIndicator = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceStatus.codex"))
+        let openCodeIndicator = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceStatus.opencode"))
+
+        #expect(claudeIndicator.accessibilityValue() as? String == "authorized")
+        #expect(codexIndicator.accessibilityValue() as? String == "unauthorized")
+        #expect(openCodeIndicator.accessibilityValue() as? String == "unauthorized")
+    }
+
+    @MainActor
+    @Test func dashboardHeaderMatchesPencilOverview() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        let displayedIconIdentifiers = (0..<sidebar.numberOfRows).compactMap { row in
-            let cell = sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView
-            #expect(cell?.imageView?.image != nil)
-            return cell?.imageView?.identifier?.rawValue
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("用量总览"))
+        #expect(labels.contains("汇总 Claude Code、Codex rollout 与 opencode SQLite 的本地记录"))
+
+        let controlTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
+            guard button.identifier?.rawValue.hasPrefix("DashboardRange.") == true
+                || button.identifier?.rawValue == "DashboardRefreshButton" else { return nil }
+            return button.title
         }
-
-        #expect(displayedIconIdentifiers == [
-            "SidebarIcon.chart.bar.xaxis",
-            "SidebarIcon.calendar",
-            "SidebarIcon.clock",
-            "SidebarIcon.sun.max",
-            "SidebarIcon.gearshape",
-        ])
+        #expect(controlTitles == ["当天", "7天", "30天", "全部", "刷新"])
     }
 
     @MainActor
-    @Test func sidebarRowsExposeStableAccessibilityIdentifiers() throws {
+    @Test func dashboardShowsPencilMetricCardsAndPanels() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        #expect(sidebar.accessibilityIdentifier() == "MainSidebarTableView")
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("总 Token"))
+        #expect(labels.contains("总费用"))
+        #expect(labels.contains("会话数"))
+        #expect(labels.contains("每小时 Token 与缓存命中率"))
+        #expect(labels.contains("模型消耗排行"))
+        #expect(labels.contains("来源占比"))
+        #expect(labels.contains("项目消耗"))
+        #expect(labels.contains("最近明细"))
+    }
 
-        let cellIdentifiers = (0..<sidebar.numberOfRows).compactMap { row in
-            (sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView)?
-                .accessibilityIdentifier()
+    @MainActor
+    @Test func dashboardTextUsesLeftAlignment() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view
+            .allDescendants(ofType: NSTextField.self)
+            .filter { !$0.stringValue.isEmpty && $0.stringValue != "T" }
+
+        #expect(!labels.isEmpty)
+        #expect(labels.allSatisfy { $0.alignment == .left })
+    }
+
+    @MainActor
+    @Test func dashboardSectionsStartAtLeadingEdges() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(identifier: "DashboardSidebar"))
+        let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
+        let overviewTitle = try #require(viewController.view.textField(stringValue: "用量总览"))
+        let overviewButton = try #require(viewController.view.button(identifier: "DashboardNav.overview"))
+
+        let sidebarFrame = sidebar.convert(sidebar.bounds, to: viewController.view)
+        let mainFrame = mainContent.convert(mainContent.bounds, to: viewController.view)
+        let titleFrame = overviewTitle.convert(overviewTitle.bounds, to: viewController.view)
+        let buttonFrame = overviewButton.convert(overviewButton.bounds, to: viewController.view)
+
+        #expect(buttonFrame.minX <= sidebarFrame.minX + 28)
+        #expect(titleFrame.minX <= mainFrame.minX + 48)
+    }
+
+    @MainActor
+    @Test func dashboardNavigationItemsUsePencilIconSpacing() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        for item in ["overview", "timeline", "sessions", "models", "projects", "settings"] {
+            let identifier = "DashboardNav.\(item)"
+            let button = try #require(viewController.view.button(identifier: identifier))
+            let icon = try #require(button.firstDescendant(identifier: "\(identifier).icon"))
+            let title = try #require(button.firstDescendant(identifier: "\(identifier).title"))
+
+            let iconFrame = icon.convert(icon.bounds, to: button)
+            let titleFrame = title.convert(title.bounds, to: button)
+
+            #expect(button.focusRingType == .none)
+            #expect(iconFrame.minX >= 12)
+            #expect(iconFrame.minX <= 16)
+            #expect(titleFrame.minX - iconFrame.maxX >= 8)
+            #expect(titleFrame.minX - iconFrame.maxX <= 12)
         }
-        #expect(cellIdentifiers == [
-            "SidebarRow.total",
-            "SidebarRow.monthly",
-            "SidebarRow.recent30Days",
-            "SidebarRow.today",
-            "SidebarRow.settings",
-        ])
     }
 
     @MainActor
-    @Test func initialSelectionShowsTotalStatsPage() throws {
+    @Test func dashboardAnalysisPanelsStartAtLeadingEdge() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
 
-        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(!labels.contains("总 token"))
-        #expect(!labels.contains("总费用"))
-        #expect(labels.contains("模型消耗"))
+        let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
+        let trendTitle = try #require(viewController.view.textField(stringValue: "每小时 Token 与缓存命中率"))
+
+        let mainFrame = mainContent.convert(mainContent.bounds, to: viewController.view)
+        let trendTitleFrame = trendTitle.convert(trendTitle.bounds, to: viewController.view)
+
+        #expect(trendTitleFrame.minX <= mainFrame.minX + 64)
     }
 
     @MainActor
-    @Test func selectingTotalShowsTotalStatsPage() throws {
+    @Test func dashboardRefreshButtonIsStableActionEntry() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
 
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 5), byExtendingSelection: false)
-
-        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(!labels.contains("总 token"))
-        #expect(!labels.contains("总费用"))
-        #expect(labels.contains("模型消耗"))
-    }
-
-    @MainActor
-    @Test func selectingMonthlyShowsMonthlyChartPage() throws {
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
-        viewController.loadViewIfNeeded()
-
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 4), byExtendingSelection: false)
-
-        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("最近 12 个月"))
-        #expect(!labels.contains("最近 12 个月,跨 provider 汇总"))
-        #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
-    }
-
-    @MainActor
-    @Test func selectingRecentThirtyDaysShowsDailyChartPage() throws {
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
-        viewController.loadViewIfNeeded()
-
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 3), byExtendingSelection: false)
-
-        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("最近 30 天"))
-        #expect(!labels.contains("最近 30 天,跨 provider 汇总"))
-        #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
-    }
-
-    @MainActor
-    @Test func selectingTodayShowsTodayChartPage() throws {
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
-        viewController.loadViewIfNeeded()
-
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 2), byExtendingSelection: false)
-
-        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("本日"))
-        #expect(!labels.contains("本日,跨 provider 汇总"))
-        #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
-    }
-
-    @MainActor
-    @Test func selectingSettingsShowsSettingsActions() throws {
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
-        viewController.loadViewIfNeeded()
-
-        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 1), byExtendingSelection: false)
-
-        let buttonTitles = viewController.view.allDescendants(ofType: NSButton.self).map(\.title)
-        #expect(buttonTitles.contains("去授权") || buttonTitles.contains("已授权"))
-        #expect(buttonTitles.contains("刷新全部数据"))
+        let refreshButton = try #require(viewController.view.button(identifier: "DashboardRefreshButton"))
+        #expect(refreshButton.title == "刷新")
+        #expect(refreshButton.action.map(NSStringFromSelector) == "refreshDashboard:")
+        #expect(refreshButton.image != nil)
     }
 
     @MainActor
@@ -521,21 +551,18 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func sidebarUsesEnglishTitlesWhenLanguageIsEnglish() throws {
+    @Test func dashboardKeepsPencilNavigationWhenLanguageIsEnglish() throws {
         try withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
             languageSettings.selectedPreference = .en
             let viewController = ViewController(languageSettings: languageSettings)
             viewController.loadViewIfNeeded()
 
-            let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-            let displayedTitles = (0..<sidebar.numberOfRows).compactMap { row in
-                (sidebar.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView)?
-                    .textField?
-                    .stringValue
+            let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
+                guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
+                return button.title
             }
-
-            #expect(displayedTitles == ["Total", "Last 12 Months", "Last 30 Days", "Today", "Settings"])
+            #expect(navTitles == ["总览", "时间线", "会话", "模型", "项目", "设置"])
         }
     }
 }
@@ -556,6 +583,30 @@ private extension NSView {
     func allDescendants<T: NSView>(ofType type: T.Type) -> [T] {
         let current = (self as? T).map { [$0] } ?? []
         return current + subviews.flatMap { $0.allDescendants(ofType: type) }
+    }
+
+    func firstDescendant(identifier: String) -> NSView? {
+        if accessibilityIdentifier() == identifier || self.identifier?.rawValue == identifier {
+            return self
+        }
+        for subview in subviews {
+            if let match = subview.firstDescendant(identifier: identifier) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    func button(identifier: String) -> NSButton? {
+        allDescendants(ofType: NSButton.self).first {
+            $0.identifier?.rawValue == identifier || $0.accessibilityIdentifier() == identifier
+        }
+    }
+
+    func textField(stringValue: String) -> NSTextField? {
+        allDescendants(ofType: NSTextField.self).first {
+            $0.stringValue == stringValue
+        }
     }
 
     func popUpButton(identifier: String) -> NSPopUpButton? {

@@ -7,27 +7,12 @@
 
 import Cocoa
 
-/// 主视图控制器 — 左侧原生侧边栏 + 右侧汇总详情容器。
+/// 主视图控制器 — 承载 Pencil 设计稿对应的深色 Dashboard 主界面。
 class ViewController: NSViewController {
 
-    private let splitViewController = NSSplitViewController()
-    private let detailContainerViewController = NSViewController()
     private let languageSettings: AppLanguageSettings
-    private let sidebarViewController: ProviderSidebarViewController
     private let settingsViewController: SettingsViewController
-    private lazy var totalStatsViewController = TotalStatsViewController(languageSettings: languageSettings)
-    private lazy var monthlyStatsViewController = MonthlyStatsViewController(languageSettings: languageSettings)
-    private lazy var recentThirtyDaysStatsViewController = MonthlyStatsViewController(
-        period: .recent30Days,
-        languageSettings: languageSettings
-    )
-    private lazy var todayStatsViewController = MonthlyStatsViewController(
-        period: .today,
-        languageSettings: languageSettings
-    )
-
-    private var currentDetailViewController: NSViewController?
-    private var selectedContent: SidebarContent?
+    private let dashboardViewController: DashboardViewController
 
     /// 通过 NSApp.delegate 获取与 AppDelegate 同一个 ViewModel 实例
     private var viewModel: TokenStatsViewModel? {
@@ -36,134 +21,62 @@ class ViewController: NSViewController {
 
     /// observer 凭证 — 用于 deinit 时取消订阅,避免 ViewModel 持有失效闭包
     private var observerToken: TokenStatsViewModel.ObservationToken?
-    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
 
     init(languageSettings: AppLanguageSettings = .shared) {
         self.languageSettings = languageSettings
-        self.sidebarViewController = ProviderSidebarViewController(languageSettings: languageSettings)
         self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
+        self.dashboardViewController = DashboardViewController(
+            settingsViewController: settingsViewController,
+            languageSettings: languageSettings
+        )
         super.init(nibName: nil, bundle: nil)
     }
 
     required init?(coder: NSCoder) {
         let languageSettings = AppLanguageSettings.shared
         self.languageSettings = languageSettings
-        self.sidebarViewController = ProviderSidebarViewController(languageSettings: languageSettings)
         self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
+        self.dashboardViewController = DashboardViewController(
+            settingsViewController: settingsViewController,
+            languageSettings: languageSettings
+        )
         super.init(coder: coder)
+    }
+
+    override func loadView() {
+        view = NSView(frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize))
+        view.wantsLayer = true
+        view.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
+        view.setAccessibilityIdentifier("DashboardRootView")
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        installSplitLayout()
+        installDashboard()
         bindViewModel()
-        bindLanguageSettings()
     }
 
-    /// 安装左右布局并选中总计页。
-    private func installSplitLayout() {
-        detailContainerViewController.view = NSView(frame: .zero)
-
-        sidebarViewController.onSelectTotal = { [weak self] in
-            self?.showTotal()
-        }
-        sidebarViewController.onSelectMonthly = { [weak self] in
-            self?.showMonthly()
-        }
-        sidebarViewController.onSelectRecentThirtyDays = { [weak self] in
-            self?.showRecentThirtyDays()
-        }
-        sidebarViewController.onSelectToday = { [weak self] in
-            self?.showToday()
-        }
-        sidebarViewController.onSelectSettings = { [weak self] in
-            self?.showSettings()
-        }
-
-        splitViewController.splitView.isVertical = true
-        splitViewController.addSplitViewItem(makeSidebarItem())
-        splitViewController.addSplitViewItem(NSSplitViewItem(viewController: detailContainerViewController))
-
-        addChild(splitViewController)
-        splitViewController.view.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(splitViewController.view)
+    /// 安装 Pencil Dashboard 根视图。
+    private func installDashboard() {
+        addChild(dashboardViewController)
+        dashboardViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(dashboardViewController.view)
 
         NSLayoutConstraint.activate([
-            splitViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            splitViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            splitViewController.view.topAnchor.constraint(equalTo: view.topAnchor),
-            splitViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            dashboardViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            dashboardViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            dashboardViewController.view.topAnchor.constraint(equalTo: view.topAnchor),
+            dashboardViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
-
-        sidebarViewController.selectTotal()
-        showTotal()
-    }
-
-    private func makeSidebarItem() -> NSSplitViewItem {
-        let item = NSSplitViewItem(sidebarWithViewController: sidebarViewController)
-        item.canCollapse = false
-        item.minimumThickness = 150
-        item.maximumThickness = 220
-        item.preferredThicknessFraction = 0.28
-        return item
-    }
-
-    private func showSettings() {
-        guard selectedContent != .settings else { return }
-        installDetailViewController(settingsViewController)
-        selectedContent = .settings
     }
 
     /// 响应主菜单设置入口,同步选中侧边栏设置项并展示设置页。
     @objc func showSettingsFromMainMenu(_ sender: Any?) {
-        sidebarViewController.selectSettings()
-        showSettings()
-    }
-
-    private func showTotal() {
-        guard selectedContent != .total else { return }
-        installDetailViewController(totalStatsViewController)
-        selectedContent = .total
-    }
-
-    private func showMonthly() {
-        guard selectedContent != .monthly else { return }
-        installDetailViewController(monthlyStatsViewController)
-        selectedContent = .monthly
-    }
-
-    private func showRecentThirtyDays() {
-        guard selectedContent != .recentThirtyDays else { return }
-        installDetailViewController(recentThirtyDaysStatsViewController)
-        selectedContent = .recentThirtyDays
-    }
-
-    private func showToday() {
-        guard selectedContent != .today else { return }
-        installDetailViewController(todayStatsViewController)
-        selectedContent = .today
-    }
-
-    private func installDetailViewController(_ viewController: NSViewController) {
-        currentDetailViewController?.view.removeFromSuperview()
-        currentDetailViewController?.removeFromParent()
-
-        detailContainerViewController.addChild(viewController)
-        viewController.view.translatesAutoresizingMaskIntoConstraints = false
-        detailContainerViewController.view.addSubview(viewController.view)
-
-        NSLayoutConstraint.activate([
-            viewController.view.leadingAnchor.constraint(equalTo: detailContainerViewController.view.leadingAnchor),
-            viewController.view.trailingAnchor.constraint(equalTo: detailContainerViewController.view.trailingAnchor),
-            viewController.view.topAnchor.constraint(equalTo: detailContainerViewController.view.topAnchor),
-            viewController.view.bottomAnchor.constraint(equalTo: detailContainerViewController.view.bottomAnchor),
-        ])
-
-        currentDetailViewController = viewController
+        dashboardViewController.showSettings()
     }
 
     /// 把 ViewModel 的状态变更回调多路复用到 Notification,
-    /// 汇总页面自行订阅并按需刷新。
+    /// Dashboard 与保留的统计页面自行订阅并按需刷新。
     private func bindViewModel() {
         observerToken = viewModel?.observe { providerID in
             NotificationCenter.default.post(
@@ -174,12 +87,6 @@ class ViewController: NSViewController {
         }
     }
 
-    private func bindLanguageSettings() {
-        languageSettingsObserverToken = languageSettings.observe { [weak self] in
-            self?.sidebarViewController.reloadLocalizedText()
-        }
-    }
-
     deinit {
         MainActor.assumeIsolated {
             if let token = observerToken {
@@ -187,19 +94,8 @@ class ViewController: NSViewController {
                 // 用 assumeIsolated 同步移除,避免 fire-and-forget Task 在销毁后仍 fire 闭包
                 (NSApp.delegate as? AppDelegate)?.viewModel.removeObserver(token)
             }
-            if let token = languageSettingsObserverToken {
-                languageSettings.removeObserver(token)
-            }
         }
     }
-}
-
-private enum SidebarContent: Equatable {
-    case total
-    case monthly
-    case recentThirtyDays
-    case today
-    case settings
 }
 
 private enum ProviderSidebarItem {

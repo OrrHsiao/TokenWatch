@@ -14,40 +14,52 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
-    func testLaunchShowsSidebarAndTotalPage() throws {
+    func testLaunchShowsPencilDashboardOverview() throws {
         let app = XCUIApplication()
         app.launchForUITesting()
 
         XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
-        let sidebar = app.tables["MainSidebarTableView"]
-        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
-        XCTAssertTrue(sidebar.staticTexts["Total"].exists)
-        XCTAssertTrue(sidebar.staticTexts["Last 12 Months"].exists)
-        XCTAssertTrue(sidebar.staticTexts["Last 30 Days"].exists)
-        XCTAssertTrue(sidebar.staticTexts["Today"].exists)
-        XCTAssertTrue(sidebar.staticTexts["Settings"].exists)
-        XCTAssertTrue(app.staticTexts["Model Usage"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["TokenWatch"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["本地 AI 用量监控"].exists)
+        XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["总 Token"].exists)
+        XCTAssertTrue(app.staticTexts["总费用"].exists)
+        XCTAssertTrue(app.staticTexts["会话数"].exists)
+        XCTAssertTrue(app.staticTexts["模型消耗排行"].exists)
+        XCTAssertTrue(app.staticTexts["最近明细"].exists)
     }
 
     @MainActor
-    func testSidebarNavigationShowsTimeWindowPages() throws {
+    func testDashboardAnalysisPanelsAreLeadingAligned() throws {
         let app = XCUIApplication()
         app.launchForUITesting()
 
-        let sidebar = app.tables["MainSidebarTableView"]
-        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
+        let overviewTitle = app.staticTexts["用量总览"]
+        XCTAssertTrue(overviewTitle.waitForExistence(timeout: 5))
 
-        sidebar.staticTexts["Last 12 Months"].click()
-        XCTAssertTrue(app.staticTexts["Last 12 Months"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Token Usage"].exists)
+        let trendTitle = app.staticTexts["每小时 Token 与缓存命中率"]
+        XCTAssertTrue(trendTitle.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(trendTitle.frame.minX, overviewTitle.frame.minX + 32)
+    }
 
-        sidebar.staticTexts["Last 30 Days"].click()
-        XCTAssertTrue(app.staticTexts["Last 30 Days"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Token Usage"].exists)
+    @MainActor
+    func testDashboardNavigationKeepsPencilSidebar() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting()
 
-        sidebar.staticTexts["Today"].click()
-        XCTAssertTrue(app.staticTexts["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Token Usage"].exists)
+        XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
+
+        let timelineButton = app.buttons["DashboardNav.timeline"]
+        XCTAssertTrue(timelineButton.waitForExistence(timeout: 5))
+        timelineButton.click()
+        XCTAssertTrue(app.staticTexts["每小时 Token 与缓存命中率"].waitForExistence(timeout: 5))
+
+        let modelsButton = app.buttons["DashboardNav.models"]
+        XCTAssertTrue(modelsButton.waitForExistence(timeout: 5))
+        modelsButton.click()
+        XCTAssertTrue(app.staticTexts["模型消耗排行"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["DashboardNav.settings"].exists)
     }
 
     @MainActor
@@ -55,11 +67,11 @@ final class TokenWatchUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchForUITesting()
 
-        let sidebar = app.tables["MainSidebarTableView"]
-        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
-        sidebar.staticTexts["Settings"].click()
+        let settingsButton = app.buttons["DashboardNav.settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.click()
 
-        XCTAssertTrue(app.staticTexts["General Access"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["通用访问权限"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["AuthorizationActionButton"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["RefreshAllDataButton"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["AutoRefreshIntervalPopUpButton"].exists)
@@ -69,7 +81,7 @@ final class TokenWatchUITests: XCTestCase {
 }
 
 extension XCUIApplication {
-    func launchForUITesting(languagePreference: String = "en") {
+    func launchForUITesting(languagePreference: String = "zh-Hans") {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.TokenWatch")
         if existingApp.state != .notRunning {
             existingApp.terminate()

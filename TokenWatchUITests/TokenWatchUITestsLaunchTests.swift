@@ -23,7 +23,7 @@ final class TokenWatchUITestsLaunchTests: XCTestCase {
         app.launchForUITesting()
 
         XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Model Usage"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"
