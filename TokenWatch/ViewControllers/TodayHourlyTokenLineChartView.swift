@@ -136,7 +136,7 @@ private func clampHourlyNormalizedHeight(_ value: Double) -> Double {
     return min(max(value, 0), 1)
 }
 
-private enum TodayHourlyLineChartRendering {
+enum TodayHourlyLineChartRendering {
     static let interpolationMethod: InterpolationMethod = .catmullRom
     static let interpolationMethodName = "catmullRom"
     static let areaGradientScaleModeName = "dailyMaximum"

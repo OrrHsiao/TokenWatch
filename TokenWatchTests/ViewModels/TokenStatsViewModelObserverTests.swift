@@ -98,6 +98,22 @@ struct TokenStatsViewModelObserverTests {
         )
     }
 
+    /// 成功完成本地刷新后记录刷新时间,供主界面展示“xx 分钟/小时前更新”。
+    @Test func successfulLocalRefreshRecordsRefreshTime() async throws {
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        let provider = StubUsageProvider(id: .claude)
+        let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            nowProvider: { now }
+        )
+
+        await vm.loadStats(for: .claude)
+
+        #expect(vm.states[.claude]?.lastRefreshedAt == now)
+    }
+
     /// 静默刷新在数据未变化时不应重新聚合,也不应通知 UI 重绘。
     @Test func silentRefreshSkipsAggregationAndNotificationWhenEntriesAreUnchanged() async throws {
         let provider = StubUsageProvider(id: .claude)

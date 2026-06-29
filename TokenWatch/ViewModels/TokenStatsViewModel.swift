@@ -22,6 +22,7 @@ final class TokenStatsViewModel: Sendable {
         var isLoading = false
         var errorMessage: String?
         var needsAuthorization = true
+        var lastRefreshedAt: Date?
     }
 
     /// 当前所有 provider 的状态(只读)
@@ -39,6 +40,7 @@ final class TokenStatsViewModel: Sendable {
     private let bookmarkManager: any BookmarkAccessManaging
     private let languageSettings: AppLanguageSettings
     private let aggregator: any UsageAggregating
+    private let nowProvider: @Sendable () -> Date
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
     private var entryFingerprints: [ProviderID: UsageEntriesFingerprint] = [:]
@@ -47,12 +49,14 @@ final class TokenStatsViewModel: Sendable {
         languageSettings: AppLanguageSettings = .shared,
         providers: [any UsageProvider] = ProviderRegistry.allProviders,
         bookmarkManager: any BookmarkAccessManaging = SecurityScopedBookmarkManager.shared,
-        aggregator: any UsageAggregating = UsageAggregator()
+        aggregator: any UsageAggregating = UsageAggregator(),
+        nowProvider: @escaping @Sendable () -> Date = Date.init
     ) {
         self.languageSettings = languageSettings
         self.providers = providers
         self.bookmarkManager = bookmarkManager
         self.aggregator = aggregator
+        self.nowProvider = nowProvider
         for provider in providers {
             states[provider.id] = ProviderState()
         }
@@ -188,9 +192,11 @@ final class TokenStatsViewModel: Sendable {
             states[id]?.stats = stats
             states[id]?.needsAuthorization = false
             states[id]?.errorMessage = nil
+            states[id]?.lastRefreshedAt = nowProvider()
             states[id]?.isLoading = false
             notifyStateChange(id)
         case .success(.unchanged):
+            states[id]?.lastRefreshedAt = nowProvider()
             if sendsLoadingNotifications {
                 states[id]?.isLoading = false
                 notifyStateChange(id)
@@ -202,6 +208,7 @@ final class TokenStatsViewModel: Sendable {
             )
             let shouldNotify = states[id]?.errorMessage != message || states[id]?.isLoading == true
             states[id]?.errorMessage = message
+            states[id]?.lastRefreshedAt = nowProvider()
             logger.error("\(provider.displayName) 加载失败: \(error.localizedDescription)")
             states[id]?.isLoading = false
             if sendsLoadingNotifications || shouldNotify {

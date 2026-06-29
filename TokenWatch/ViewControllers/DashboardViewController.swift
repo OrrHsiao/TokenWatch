@@ -1,4 +1,6 @@
 import AppKit
+import Charts
+import SwiftUI
 
 enum DashboardPalette {
     static let appBackground = NSColor(hex: 0x0B0F14)
@@ -427,6 +429,8 @@ final class DashboardViewController: NSViewController {
         controlsStack.orientation = .horizontal
         controlsStack.alignment = .centerY
         controlsStack.spacing = 10
+        controlsStack.identifier = NSUserInterfaceItemIdentifier("DashboardHeaderControls")
+        controlsStack.setAccessibilityIdentifier("DashboardHeaderControls")
         for range in DashboardRange.allCases {
             let button = makeRangeButton(range)
             rangeButtons[range] = button
@@ -435,14 +439,21 @@ final class DashboardViewController: NSViewController {
         configureRefreshButton()
         controlsStack.addArrangedSubview(refreshButton)
 
-        let header = NSStackView(views: [titleStack, controlsStack])
-        header.orientation = .horizontal
-        header.alignment = .centerY
-        header.distribution = .gravityAreas
-        header.spacing = 18
+        let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(titleStack)
+        header.addSubview(controlsStack)
+        titleStack.translatesAutoresizingMaskIntoConstraints = false
+        controlsStack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             header.heightAnchor.constraint(greaterThanOrEqualToConstant: 64),
+            titleStack.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            titleStack.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            titleStack.topAnchor.constraint(greaterThanOrEqualTo: header.topAnchor),
+            titleStack.bottomAnchor.constraint(lessThanOrEqualTo: header.bottomAnchor),
+            controlsStack.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            controlsStack.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            controlsStack.leadingAnchor.constraint(greaterThanOrEqualTo: titleStack.trailingAnchor, constant: 18),
         ])
         return header
     }
@@ -454,12 +465,16 @@ final class DashboardViewController: NSViewController {
         button.bezelStyle = .regularSquare
         button.isBordered = false
         button.font = .systemFont(ofSize: 12, weight: .semibold)
+        button.alignment = .center
         button.wantsLayer = true
         button.layer?.cornerRadius = 8
         button.layer?.borderWidth = 1
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
             button.heightAnchor.constraint(equalToConstant: 35),
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 64),
         ])
         return button
     }
@@ -472,9 +487,11 @@ final class DashboardViewController: NSViewController {
         refreshButton.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "刷新")
         refreshButton.image?.isTemplate = true
         refreshButton.imagePosition = .imageLeading
+        refreshButton.imageHugsTitle = true
         refreshButton.bezelStyle = .regularSquare
         refreshButton.isBordered = false
         refreshButton.font = .systemFont(ofSize: 12, weight: .semibold)
+        refreshButton.alignment = .center
         refreshButton.contentTintColor = DashboardPalette.primaryText
         refreshButton.wantsLayer = true
         refreshButton.layer?.cornerRadius = 8
@@ -482,8 +499,11 @@ final class DashboardViewController: NSViewController {
         refreshButton.layer?.borderColor = DashboardPalette.border.cgColor
         refreshButton.layer?.backgroundColor = DashboardPalette.panelBackground.cgColor
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
+        refreshButton.setContentHuggingPriority(.required, for: .horizontal)
+        refreshButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
             refreshButton.heightAnchor.constraint(equalToConstant: 35),
+            refreshButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 86),
         ])
     }
 
@@ -587,8 +607,8 @@ final class DashboardViewController: NSViewController {
     private func makeTrendPanel() -> NSView {
         trendView.translatesAutoresizingMaskIntoConstraints = false
         return makePanel(
-            title: "每小时 Token 与缓存命中率",
-            subtitle: "按小时展示 Token 总量及缓存命中率变化",
+            title: "Token 与缓存命中率趋势",
+            subtitle: "按所选时间范围展示 Token 总量及缓存命中率变化",
             content: trendView,
             minimumHeight: 230
         )
@@ -834,16 +854,14 @@ final class DashboardViewController: NSViewController {
     private func render() {
         let states = stateProvider()
         let totalSnapshot = TotalStatsBuilder.build(states: states)
-        let periodSnapshot = MonthlyTokenChartBuilder.build(
+        let rangeSnapshot = DashboardRangeSnapshot.build(
             states: states,
-            period: selectedRange.period,
+            range: selectedRange,
             now: nowProvider(),
             calendar: calendar,
             language: languageSettings.resolvedLanguage
         )
-        let summary = selectedRange == .all
-            ? DashboardUsageSummary.makeTotal(from: states)
-            : DashboardUsageSummary.makePeriod(from: periodSnapshot)
+        let summary = rangeSnapshot.summary
 
         totalTokenValueLabel.stringValue = CompactNumberFormatter.formatMillions(summary.totalTokens)
         totalTokenDetailLabel.stringValue = "输入 \(CompactNumberFormatter.formatMillions(summary.inputTokens)) / 输出 \(CompactNumberFormatter.formatMillions(summary.outputTokens)) / 缓存命中率 \(formatCacheHitRate(summary))"
@@ -851,23 +869,24 @@ final class DashboardViewController: NSViewController {
         totalCostDetailLabel.stringValue = "\(totalSnapshot.loadedProviderCount) 个来源已载入 / \(totalSnapshot.unauthorizedProviderCount) 个待授权 / \(totalSnapshot.loadingProviderCount) 个刷新中"
         sessionValueLabel.stringValue = formatInt(summary.entryCount)
         sessionDetailLabel.stringValue = "\(totalSnapshot.loadedProviderCount) 个来源，\(summary.projectCount) 个项目"
-        scanStatusBodyLabel.stringValue = totalSnapshot.loadingProviderCount > 0
-            ? "正在更新本地记录。不依赖任何网络 API。"
-            : "本地记录已就绪。不依赖任何网络 API。"
+        scanStatusBodyLabel.stringValue = scanStatusText(states: states)
 
         updateRangeButtons()
         updateNavigationSelection()
         setRefreshButtonLoading(states.values.contains { $0.isLoading })
         rebuildDataSourceRows(states: states)
-        trendView.configure(buckets: periodSnapshot.monthBuckets)
+        trendView.configure(
+            buckets: rangeSnapshot.trendBuckets,
+            language: languageSettings.resolvedLanguage
+        )
         rebuildModelRows(totalSnapshot.modelRows)
-        rebuildSourceLegend(periodSnapshot.toolShareSlices)
-        sourceDonutView.configure(slices: periodSnapshot.toolShareSlices)
+        rebuildSourceLegend(rangeSnapshot.toolShareSlices)
+        sourceDonutView.configure(slices: rangeSnapshot.toolShareSlices)
         rebuildProjectRows(summary.projects)
         rebuildDetailRows(summary.details)
         statusLabel.stringValue = statusText(
             totalSnapshot: totalSnapshot,
-            periodSnapshot: periodSnapshot,
+            rangeSnapshot: rangeSnapshot,
             totalProviderCount: states.count
         )
         statusLabel.isHidden = statusLabel.stringValue.isEmpty
@@ -903,7 +922,30 @@ final class DashboardViewController: NSViewController {
             accessibilityDescription: refreshButton.title
         )
         refreshButton.image?.isTemplate = true
+        refreshButton.imageHugsTitle = true
         refreshButton.contentTintColor = DashboardPalette.primaryText
+    }
+
+    private func scanStatusText(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> String {
+        if states.values.contains(where: { $0.isLoading }) {
+            return "正在更新本地记录。不依赖任何网络 API。"
+        }
+        guard let lastRefreshedAt = states.values.compactMap(\.lastRefreshedAt).max() else {
+            return "尚未完成本地扫描。不依赖任何网络 API。"
+        }
+        return "\(relativeRefreshDescription(since: lastRefreshedAt, now: nowProvider()))更新。不依赖任何网络 API。"
+    }
+
+    private func relativeRefreshDescription(since date: Date, now: Date) -> String {
+        let elapsedSeconds = max(0, now.timeIntervalSince(date))
+        let minutes = Int(elapsedSeconds / 60)
+        if minutes < 1 {
+            return "刚刚"
+        }
+        if minutes < 60 {
+            return "\(minutes) 分钟前"
+        }
+        return "\(max(1, Int(elapsedSeconds / 3_600))) 小时前"
     }
 
     private func rebuildDataSourceRows(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
@@ -920,18 +962,24 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeSourceStatusRow(providerID: ProviderID, title: String, isAuthorized: Bool) -> NSView {
+        let statusText = isAuthorized ? "已授权" : "未授权"
         let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: 12)
         label.textColor = DashboardPalette.secondaryText
+        label.toolTip = statusText
         let dot = DashboardDotView(
             color: isAuthorized ? DashboardPalette.green : DashboardPalette.statusInactive,
             accessibilityIdentifier: "DashboardDataSourceStatus.\(providerID.rawValue)",
             accessibilityValue: isAuthorized ? "authorized" : "unauthorized"
         )
+        dot.toolTip = statusText
         let row = NSStackView(views: [label, NSView(), dot])
         row.orientation = .horizontal
         row.alignment = .centerY
         row.spacing = 6
+        row.identifier = NSUserInterfaceItemIdentifier("DashboardDataSourceRow.\(providerID.rawValue)")
+        row.setAccessibilityIdentifier("DashboardDataSourceRow.\(providerID.rawValue)")
+        row.toolTip = statusText
         return row
     }
 
@@ -1059,11 +1107,16 @@ final class DashboardViewController: NSViewController {
             textField.alignment = .left
         }
         if let button = root as? NSButton {
-            button.alignment = .left
+            button.alignment = isHeaderControlButton(button) ? .center : .left
         }
         for subview in root.subviews {
             enforceLeftAlignedContent(in: subview)
         }
+    }
+
+    private func isHeaderControlButton(_ button: NSButton) -> Bool {
+        let identifier = button.identifier?.rawValue ?? button.accessibilityIdentifier()
+        return identifier.hasPrefix("DashboardRange.") || identifier == "DashboardRefreshButton"
     }
 
     private func fraction(_ value: Int, max maxValue: Int) -> CGFloat {
@@ -1095,7 +1148,7 @@ final class DashboardViewController: NSViewController {
 
     private func statusText(
         totalSnapshot: TotalStatsSnapshot,
-        periodSnapshot: MonthlyTokenChartSnapshot,
+        rangeSnapshot: DashboardRangeSnapshot,
         totalProviderCount: Int
     ) -> String {
         if totalProviderCount > 0
@@ -1106,10 +1159,10 @@ final class DashboardViewController: NSViewController {
         if totalSnapshot.loadedProviderCount == 0 && totalSnapshot.unauthorizedProviderCount > 0 {
             return AppStrings.text(.statusNeedsHomeAuthorization, language: languageSettings.resolvedLanguage)
         }
-        if let errorMessage = totalSnapshot.errorMessages.first ?? periodSnapshot.errorMessages.first {
+        if let errorMessage = totalSnapshot.errorMessages.first ?? rangeSnapshot.errorMessages.first {
             return errorMessage
         }
-        if totalSnapshot.totalTokens == 0 {
+        if rangeSnapshot.totalTokens == 0 {
             return AppStrings.text(.statusTotalNoTokenData, language: languageSettings.resolvedLanguage)
         }
         if totalSnapshot.loadingProviderCount > 0 {
@@ -1158,22 +1211,355 @@ private enum DashboardRange: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .day: return "当天"
-        case .sevenDays: return "7天"
-        case .month: return "30天"
+        case .day: return "当前"
+        case .sevenDays: return "7 天"
+        case .month: return "30 天"
         case .all: return "全部"
         }
     }
 
-    var period: UsageStatsPeriod {
+    var bucketCount: Int? {
+        switch self {
+        case .day: return 24
+        case .sevenDays: return 7
+        case .month: return 30
+        case .all:
+            return nil
+        }
+    }
+
+    func bucketStarts(now: Date, calendar: Calendar) -> [Date] {
         switch self {
         case .day:
-            return .today
+            let dayStart = calendar.startOfDay(for: now)
+            return (0..<24).compactMap {
+                calendar.date(byAdding: .hour, value: $0, to: dayStart)
+            }
         case .sevenDays, .month:
-            return .recent30Days
+            let today = calendar.startOfDay(for: now)
+            let count = bucketCount ?? 0
+            guard let start = calendar.date(byAdding: .day, value: -(count - 1), to: today) else {
+                return [today]
+            }
+            return (0..<count).compactMap {
+                calendar.date(byAdding: .day, value: $0, to: start)
+            }
         case .all:
-            return .recent12Months
+            return []
         }
+    }
+
+    func bucketKey(for date: Date, calendar: Calendar) -> String {
+        switch self {
+        case .day:
+            let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
+            return String(
+                format: "%04d-%02d-%02dT%02d",
+                components.year ?? 0,
+                components.month ?? 0,
+                components.day ?? 0,
+                components.hour ?? 0
+            )
+        case .sevenDays, .month:
+            return Self.dayKey(for: date, calendar: calendar)
+        case .all:
+            let components = calendar.dateComponents([.year, .month], from: date)
+            return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
+        }
+    }
+
+    func bucketLabel(for date: Date, calendar: Calendar, language: AppLanguage) -> String {
+        switch self {
+        case .day:
+            let hour = calendar.component(.hour, from: date)
+            switch language {
+            case .zhHans, .zhHant:
+                return "\(hour)时"
+            case .ja:
+                return "\(hour)時"
+            case .ko:
+                return "\(hour)시"
+            case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
+                return "\(hour)"
+            }
+        case .sevenDays, .month:
+            let components = calendar.dateComponents([.month, .day], from: date)
+            return "\(components.month ?? 0)/\(components.day ?? 0)"
+        case .all:
+            let components = calendar.dateComponents([.year, .month], from: date)
+            return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
+        }
+    }
+
+    func summary(in stats: AggregatedStats, for key: String) -> UsageSummary? {
+        switch self {
+        case .day:
+            return stats.byHour[key]
+        case .sevenDays, .month:
+            return stats.byDay[key]
+        case .all:
+            return stats.byMonth[key]
+        }
+    }
+
+    private static func dayKey(for date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(
+            format: "%04d-%02d-%02d",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0
+        )
+    }
+}
+
+private struct DashboardRangeSnapshot {
+    let summary: DashboardUsageSummary
+    let trendBuckets: [DashboardTrendBucket]
+    let toolShareSlices: [UsageShareSlice]
+    let totalTokens: Int
+    let loadedProviderCount: Int
+    let loadingProviderCount: Int
+    let unauthorizedProviderCount: Int
+    let errorMessages: [String]
+
+    static func build(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        range: DashboardRange,
+        now: Date,
+        calendar: Calendar,
+        language: AppLanguage
+    ) -> DashboardRangeSnapshot {
+        if range == .all {
+            return buildAll(states: states)
+        }
+        return buildWindow(
+            states: states,
+            range: range,
+            now: now,
+            calendar: calendar,
+            language: language
+        )
+    }
+
+    private static func buildWindow(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        range: DashboardRange,
+        now: Date,
+        calendar: Calendar,
+        language: AppLanguage
+    ) -> DashboardRangeSnapshot {
+        let bucketStarts = range.bucketStarts(now: now, calendar: calendar)
+        let bucketKeys = bucketStarts.map { range.bucketKey(for: $0, calendar: calendar) }
+        let currentKey = range.bucketKey(for: now, calendar: calendar)
+
+        var summaries = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, UsageSummary.zero) })
+        var toolTotals: [ProviderID: Int] = [:]
+        var modelTotals: [String: Int] = [:]
+        var loadedProviderCount = 0
+        var loadingProviderCount = 0
+        var unauthorizedProviderCount = 0
+        var errorMessages: [String] = []
+
+        for (providerID, state) in states {
+            if state.isLoading {
+                loadingProviderCount += 1
+            }
+            if state.needsAuthorization {
+                unauthorizedProviderCount += 1
+            }
+            if let errorMessage = state.errorMessage {
+                errorMessages.append(errorMessage)
+            }
+            guard let stats = state.stats else { continue }
+
+            loadedProviderCount += 1
+            var providerVisibleTokens = 0
+            for key in bucketKeys {
+                guard let summary = range.summary(in: stats, for: key) else { continue }
+                summaries[key, default: .zero] = summaries[key, default: .zero].merged(with: summary)
+                providerVisibleTokens += summary.totalTokens
+                for (model, modelSummary) in summary.modelBreakdown {
+                    modelTotals[model, default: 0] += modelSummary.totalTokens
+                }
+            }
+            if providerVisibleTokens > 0 {
+                toolTotals[providerID, default: 0] += providerVisibleTokens
+            }
+        }
+
+        let maxTokens = summaries.values.map(\.totalTokens).max() ?? 0
+        let bucketRows = zip(bucketStarts, bucketKeys).map { bucketStart, key in
+            let summary = summaries[key, default: .zero]
+            let label = range.bucketLabel(for: bucketStart, calendar: calendar, language: language)
+            return DashboardTrendBucket(
+                id: key,
+                key: key,
+                label: label,
+                totalTokens: summary.totalTokens,
+                cacheHitRate: cacheHitRate(summary),
+                normalizedHeight: maxTokens > 0 ? Double(summary.totalTokens) / Double(maxTokens) : 0,
+                isCurrent: key == currentKey
+            )
+        }
+        let orderedSummaries = bucketKeys.map { key in
+            (key: key, label: bucketRows.first(where: { $0.key == key })?.label ?? key, summary: summaries[key, default: .zero])
+        }
+        let summary = makeWindowSummary(
+            orderedSummaries: orderedSummaries,
+            modelTotals: modelTotals
+        )
+
+        return DashboardRangeSnapshot(
+            summary: summary,
+            trendBuckets: bucketRows,
+            toolShareSlices: makeToolShareSlices(toolTotals),
+            totalTokens: summary.totalTokens,
+            loadedProviderCount: loadedProviderCount,
+            loadingProviderCount: loadingProviderCount,
+            unauthorizedProviderCount: unauthorizedProviderCount,
+            errorMessages: errorMessages
+        )
+    }
+
+    private static func buildAll(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> DashboardRangeSnapshot {
+        var monthSummaries: [String: UsageSummary] = [:]
+        var toolTotals: [ProviderID: Int] = [:]
+        var loadedProviderCount = 0
+        var loadingProviderCount = 0
+        var unauthorizedProviderCount = 0
+        var errorMessages: [String] = []
+
+        for (providerID, state) in states {
+            if state.isLoading {
+                loadingProviderCount += 1
+            }
+            if state.needsAuthorization {
+                unauthorizedProviderCount += 1
+            }
+            if let errorMessage = state.errorMessage {
+                errorMessages.append(errorMessage)
+            }
+            guard let stats = state.stats else { continue }
+
+            loadedProviderCount += 1
+            if stats.overall.totalTokens > 0 {
+                toolTotals[providerID, default: 0] += stats.overall.totalTokens
+            }
+            for (month, summary) in stats.byMonth {
+                monthSummaries[month, default: .zero] = monthSummaries[month, default: .zero].merged(with: summary)
+            }
+        }
+
+        let sortedMonths = monthSummaries.keys.sorted()
+        let maxTokens = monthSummaries.values.map(\.totalTokens).max() ?? 0
+        let trendBuckets = sortedMonths.map { month in
+            let summary = monthSummaries[month, default: .zero]
+            return DashboardTrendBucket(
+                id: month,
+                key: month,
+                label: month,
+                totalTokens: summary.totalTokens,
+                cacheHitRate: cacheHitRate(summary),
+                normalizedHeight: maxTokens > 0 ? Double(summary.totalTokens) / Double(maxTokens) : 0,
+                isCurrent: sortedMonths.last == month
+            )
+        }
+        let summary = DashboardUsageSummary.makeTotal(from: states)
+
+        return DashboardRangeSnapshot(
+            summary: summary,
+            trendBuckets: trendBuckets,
+            toolShareSlices: makeToolShareSlices(toolTotals),
+            totalTokens: summary.totalTokens,
+            loadedProviderCount: loadedProviderCount,
+            loadingProviderCount: loadingProviderCount,
+            unauthorizedProviderCount: unauthorizedProviderCount,
+            errorMessages: errorMessages
+        )
+    }
+
+    private static func makeWindowSummary(
+        orderedSummaries: [(key: String, label: String, summary: UsageSummary)],
+        modelTotals: [String: Int]
+    ) -> DashboardUsageSummary {
+        let total = orderedSummaries.reduce(UsageSummary.zero) { partial, row in
+            partial.merged(with: row.summary)
+        }
+        let projects = modelTotals
+            .filter { $0.value > 0 }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value {
+                    return lhs.value > rhs.value
+                }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            .prefix(4)
+            .map { DashboardProjectRow(name: $0.key, tokens: $0.value) }
+        let details = orderedSummaries
+            .filter { $0.summary.totalTokens > 0 }
+            .reversed()
+            .prefix(5)
+            .map { row in
+                DashboardDetailRow(
+                    period: row.label,
+                    source: "汇总",
+                    project: "全部项目",
+                    model: topModelName(in: row.summary),
+                    tokens: row.summary.totalTokens,
+                    cost: row.summary.cost,
+                    percentage: total.totalTokens > 0 ? Double(row.summary.totalTokens) / Double(total.totalTokens) : 0
+                )
+            }
+
+        return DashboardUsageSummary(
+            inputTokens: total.inputTokens,
+            outputTokens: total.outputTokens,
+            cacheReadTokens: total.cacheReadTokens,
+            cacheCreationTokens: total.cacheCreationTokens,
+            reasoningTokens: total.reasoningTokens,
+            totalTokens: total.totalTokens,
+            cost: total.cost,
+            entryCount: total.entryCount,
+            projectCount: projects.count,
+            projects: projects,
+            details: details
+        )
+    }
+
+    private static func makeToolShareSlices(_ totals: [ProviderID: Int]) -> [UsageShareSlice] {
+        let totalTokens = totals.values.reduce(0, +)
+        guard totalTokens > 0 else { return [] }
+        return totals
+            .filter { $0.value > 0 }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value {
+                    return lhs.value > rhs.value
+                }
+                return providerName(lhs.key).localizedCaseInsensitiveCompare(providerName(rhs.key)) == .orderedAscending
+            }
+            .map { providerID, tokens in
+                UsageShareSlice(
+                    id: providerID.rawValue,
+                    label: providerName(providerID),
+                    totalTokens: tokens,
+                    percentage: Double(tokens) / Double(totalTokens)
+                )
+            }
+    }
+
+    private static func cacheHitRate(_ summary: UsageSummary) -> Double {
+        guard summary.totalTokens > 0 else { return 0 }
+        let cachedTokens = summary.cacheReadTokens + summary.cacheCreationTokens
+        return Double(cachedTokens) / Double(summary.totalTokens)
+    }
+
+    private static func topModelName(in summary: UsageSummary) -> String {
+        summary.modelBreakdown.max(by: { $0.value.totalTokens < $1.value.totalTokens })?.key ?? "全部模型"
+    }
+
+    private static func providerName(_ id: ProviderID) -> String {
+        ProviderRegistry.provider(for: id)?.displayName ?? id.rawValue
     }
 }
 
@@ -1240,41 +1626,6 @@ private struct DashboardUsageSummary {
             projectCount: projects.filter { $0.value.totalTokens > 0 }.count,
             projects: makeProjectRows(projects),
             details: details.sorted { $0.period > $1.period }
-        )
-    }
-
-    static func makePeriod(from snapshot: MonthlyTokenChartSnapshot) -> DashboardUsageSummary {
-        let modelProjects = snapshot.modelShareSlices.map {
-            DashboardProjectRow(name: $0.label, tokens: $0.totalTokens)
-        }
-        let details = snapshot.monthBuckets
-            .filter { $0.totalTokens > 0 }
-            .reversed()
-            .prefix(5)
-            .map { bucket in
-                DashboardDetailRow(
-                    period: bucket.monthLabel,
-                    source: "汇总",
-                    project: "全部项目",
-                    model: bucket.modelSegments.first?.modelName ?? "全部模型",
-                    tokens: bucket.totalTokens,
-                    cost: bucket.totalCost,
-                    percentage: snapshot.totalTokens > 0 ? Double(bucket.totalTokens) / Double(snapshot.totalTokens) : 0
-                )
-            }
-
-        return DashboardUsageSummary(
-            inputTokens: 0,
-            outputTokens: 0,
-            cacheReadTokens: 0,
-            cacheCreationTokens: 0,
-            reasoningTokens: 0,
-            totalTokens: snapshot.totalTokens,
-            cost: snapshot.totalCost,
-            entryCount: snapshot.monthBuckets.reduce(0) { $0 + ($1.totalTokens > 0 ? 1 : 0) },
-            projectCount: modelProjects.count,
-            projects: Array(modelProjects.prefix(4)),
-            details: Array(details)
         )
     }
 
@@ -1441,79 +1792,243 @@ private final class DashboardBarRowView: NSView {
     }
 }
 
-private final class DashboardTrendView: NSView {
-    private var buckets: [MonthlyTokenBucket] = []
+struct DashboardTrendBucket: Sendable, Equatable, Identifiable {
+    let id: String
+    let key: String
+    let label: String
+    let totalTokens: Int
+    let cacheHitRate: Double
+    let normalizedHeight: Double
+    let isCurrent: Bool
+}
+
+final class DashboardTrendView: NSView {
+    private static let hoverLabelToChartSpacing: CGFloat = 1
+
+    private let chartHost = NSHostingView(rootView: AnyView(DashboardTrendChartContent(
+        buckets: [],
+        language: .zhHans,
+        axisKeys: [],
+        onHoverBucketKeyChange: { _ in }
+    )))
+    private let hoverLabel = NSTextField(labelWithString: "")
+    private var buckets: [DashboardTrendBucket] = []
+    private var language: AppLanguage = .zhHans
+
+    var debugLineInterpolationMethodName: String {
+        TodayHourlyLineChartRendering.interpolationMethodName
+    }
+
+    var debugAreaGradientScaleModeName: String {
+        TodayHourlyLineChartRendering.areaGradientScaleModeName
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor(hex: 0x07101A).cgColor
+        setupView()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        wantsLayer = true
+        setupView()
     }
 
-    func configure(buckets: [MonthlyTokenBucket]) {
+    /// 用所选 Dashboard 范围的趋势桶替换折线图内容。
+    func configure(buckets: [DashboardTrendBucket], language: AppLanguage = .zhHans) {
         self.buckets = buckets
-        needsDisplay = true
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        guard !buckets.isEmpty, bounds.width > 28, bounds.height > 32 else { return }
-        let drawingRect = bounds.insetBy(dx: 12, dy: 14)
-        guard drawingRect.width.isFinite,
-              drawingRect.height.isFinite,
-              drawingRect.width > 0,
-              drawingRect.height > 0 else { return }
-        drawGrid(in: drawingRect)
-        drawTrend(in: drawingRect)
-    }
-
-    private func drawGrid(in rect: NSRect) {
-        DashboardPalette.subtleBorder.withAlphaComponent(0.55).setStroke()
-        let path = NSBezierPath()
-        for index in 0...3 {
-            let y = rect.minY + rect.height * CGFloat(index) / 3
-            path.move(to: NSPoint(x: rect.minX, y: y))
-            path.line(to: NSPoint(x: rect.maxX, y: y))
-        }
-        path.lineWidth = 1
-        path.stroke()
-    }
-
-    private func drawTrend(in rect: NSRect) {
-        let maxTokens = max(1, buckets.map(\.totalTokens).max() ?? 0)
-        let points = buckets.enumerated().map { index, bucket -> NSPoint in
-            let x = rect.minX + rect.width * CGFloat(index) / CGFloat(max(1, buckets.count - 1))
-            let normalized = CGFloat(bucket.totalTokens) / CGFloat(maxTokens)
-            let y = rect.minY + rect.height * normalized
-            return NSPoint(x: x, y: y)
-        }
-
-        let fillPath = NSBezierPath()
-        if let first = points.first {
-            fillPath.move(to: NSPoint(x: first.x, y: rect.minY))
-            for point in points {
-                fillPath.line(to: point)
+        self.language = language
+        hoverLabel.stringValue = ""
+        chartHost.rootView = AnyView(DashboardTrendChartContent(
+            buckets: buckets,
+            language: language,
+            axisKeys: Self.axisKeys(for: buckets),
+            onHoverBucketKeyChange: { [weak self] key in
+                self?.updateHoverText(bucketKey: key)
             }
-            if let last = points.last {
-                fillPath.line(to: NSPoint(x: last.x, y: rect.minY))
-            }
-            fillPath.close()
-            DashboardPalette.accent.withAlphaComponent(0.18).setFill()
-            fillPath.fill()
-        }
+        ))
+    }
 
-        let linePath = NSBezierPath()
-        for (index, point) in points.enumerated() {
-            index == 0 ? linePath.move(to: point) : linePath.line(to: point)
+    private func setupView() {
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+
+        chartHost.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(chartHost)
+
+        hoverLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        hoverLabel.textColor = DashboardPalette.secondaryText
+        hoverLabel.alignment = .right
+        hoverLabel.lineBreakMode = .byTruncatingMiddle
+        hoverLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        hoverLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(hoverLabel)
+
+        NSLayoutConstraint.activate([
+            chartHost.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chartHost.trailingAnchor.constraint(equalTo: trailingAnchor),
+            chartHost.topAnchor.constraint(equalTo: hoverLabel.bottomAnchor, constant: Self.hoverLabelToChartSpacing),
+            chartHost.bottomAnchor.constraint(equalTo: bottomAnchor),
+            hoverLabel.topAnchor.constraint(equalTo: topAnchor),
+            hoverLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
+            hoverLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 176),
+        ])
+    }
+
+    private func updateHoverText(bucketKey: String?) {
+        guard let bucketKey,
+              let bucket = buckets.first(where: { $0.key == bucketKey }) else {
+            hoverLabel.stringValue = ""
+            return
         }
-        DashboardPalette.accent.setStroke()
-        linePath.lineWidth = 2
-        linePath.stroke()
+        hoverLabel.stringValue = "\(bucket.label) · \(CompactNumberFormatter.formatHoverTokens(bucket.totalTokens)) · 缓存 \(Self.percentText(bucket.cacheHitRate))"
+    }
+
+    private static func axisKeys(for buckets: [DashboardTrendBucket]) -> [String] {
+        guard !buckets.isEmpty else { return [] }
+        let preferredIndexes: [Int]
+        switch buckets.count {
+        case 1...6:
+            preferredIndexes = Array(buckets.indices)
+        case 7:
+            preferredIndexes = [0, 3, 6]
+        case 24:
+            preferredIndexes = [0, 6, 12, 18, 23]
+        case 30:
+            preferredIndexes = [0, 6, 13, 20, 29]
+        default:
+            let lastIndex = buckets.count - 1
+            let step = max(1, lastIndex / 5)
+            preferredIndexes = stride(from: 0, through: lastIndex, by: step).map { $0 }
+        }
+        return preferredIndexes
+            .filter { buckets.indices.contains($0) }
+            .map { buckets[$0].key }
+    }
+
+    private static func percentText(_ value: Double) -> String {
+        guard value.isFinite else { return "0%" }
+        return String(format: "%.0f%%", min(max(value, 0), 1) * 100)
+    }
+}
+
+private struct DashboardTrendChartContent: View {
+    let buckets: [DashboardTrendBucket]
+    let language: AppLanguage
+    let axisKeys: [String]
+    let onHoverBucketKeyChange: (String?) -> Void
+
+    private var maxTokens: Double {
+        max(1, Double(buckets.map(\.totalTokens).max() ?? 0))
+    }
+
+    var body: some View {
+        Chart {
+            ForEach(buckets) { bucket in
+                AreaMark(
+                    x: .value(axisValueName, bucket.key),
+                    y: .value("Tokens", Double(bucket.totalTokens))
+                )
+                .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
+                .foregroundStyle(tokenAreaGradient)
+            }
+
+            ForEach(buckets) { bucket in
+                LineMark(
+                    x: .value(axisValueName, bucket.key),
+                    y: .value("Tokens", Double(bucket.totalTokens))
+                )
+                .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
+                .foregroundStyle(Color(nsColor: .controlAccentColor))
+                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+                LineMark(
+                    x: .value(axisValueName, bucket.key),
+                    y: .value("Cache", bucket.cacheHitRate * maxTokens)
+                )
+                .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
+                .foregroundStyle(Color(nsColor: DashboardPalette.purple))
+                .lineStyle(StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round, dash: [4, 4]))
+
+                if bucket.isCurrent {
+                    PointMark(
+                        x: .value(axisValueName, bucket.key),
+                        y: .value("Tokens", Double(bucket.totalTokens))
+                    )
+                    .foregroundStyle(Color(nsColor: .controlAccentColor))
+                    .symbolSize(22)
+                }
+            }
+        }
+        .chartLegend(.hidden)
+        .chartYScale(domain: 0...maxTokens)
+        .chartXAxis {
+            AxisMarks(values: axisKeys) { value in
+                AxisTick()
+                AxisValueLabel {
+                    if let key = value.as(String.self) {
+                        Text(MonthlyBarChartStyle.monthAxisLabel(for: key, language: language))
+                            .font(.system(size: 8))
+                    }
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine()
+                    .foregroundStyle(.secondary.opacity(0.16))
+                AxisTick()
+                if let tokens = value.as(Double.self) {
+                    AxisValueLabel(MonthlyBarChartStyle.tokenAxisLabel(for: tokens))
+                        .font(.system(size: 8))
+                }
+            }
+        }
+        .chartOverlay { proxy in
+            hoverOverlay(proxy: proxy)
+        }
+        .padding(.top, 4)
+    }
+
+    private var axisValueName: String {
+        language.periodAxisValueName
+    }
+
+    private var tokenAreaGradient: LinearGradient {
+        let color = Color(nsColor: TodayHourlyLineChartRendering.areaGradientColor)
+        return LinearGradient(
+            colors: [
+                color.opacity(TodayHourlyLineChartRendering.areaGradientPeakOpacity),
+                color.opacity(TodayHourlyLineChartRendering.areaGradientBaselineOpacity),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private func hoverOverlay(proxy: ChartProxy) -> some View {
+        GeometryReader { geometry in
+            Rectangle()
+                .fill(.clear)
+                .contentShape(Rectangle())
+                .onContinuousHover { phase in
+                    guard let plotFrame = proxy.plotFrame else {
+                        onHoverBucketKeyChange(nil)
+                        return
+                    }
+                    let frame = geometry[plotFrame]
+                    switch phase {
+                    case .active(let location):
+                        guard frame.contains(location) else {
+                            onHoverBucketKeyChange(nil)
+                            return
+                        }
+                        onHoverBucketKeyChange(proxy.value(atX: location.x - frame.origin.x, as: String.self))
+                    case .ended:
+                        onHoverBucketKeyChange(nil)
+                    }
+                }
+        }
     }
 }
 

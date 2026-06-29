@@ -166,7 +166,7 @@ enum MainWindowFactory {
             backing: .buffered,
             defer: false
         )
-        window.title = "TokenWatch"
+        window.title = ""
         window.isReleasedWhenClosed = false
         window.contentViewController = ViewController(languageSettings: languageSettings)
         window.setContentSize(contentSize)

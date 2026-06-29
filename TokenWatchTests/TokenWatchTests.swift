@@ -7,6 +7,7 @@
 
 import Testing
 import AppKit
+import SwiftUI
 @testable import TokenWatch
 
 struct TokenWatchTests {
@@ -114,6 +115,7 @@ struct TokenWatchTests {
         let contentSize = try #require(windowController.window?.contentView?.frame.size)
 
         #expect(contentSize == NSSize(width: 1180, height: 760))
+        #expect(windowController.window?.title == "")
     }
 
     @MainActor
@@ -122,7 +124,7 @@ struct TokenWatchTests {
         let window = try #require(windowController.window)
         defer { window.close() }
 
-        #expect(window.title == "TokenWatch")
+        #expect(window.title == "")
         #expect(window.styleMask.contains(.titled))
         #expect(window.styleMask.contains(.closable))
         #expect(window.styleMask.contains(.miniaturizable))
@@ -162,7 +164,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardDataSourcesShowAuthorizationIndicatorsOnly() throws {
+    @Test func dashboardDataSourcesShowAuthorizationIndicatorsAndHoverStatus() throws {
         let viewController = DashboardViewController(
             settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
             stateProvider: {
@@ -190,6 +192,38 @@ struct TokenWatchTests {
         #expect(claudeIndicator.accessibilityValue() as? String == "authorized")
         #expect(codexIndicator.accessibilityValue() as? String == "unauthorized")
         #expect(openCodeIndicator.accessibilityValue() as? String == "unauthorized")
+
+        let claudeRow = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceRow.claude"))
+        let codexRow = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceRow.codex"))
+        #expect(claudeRow.toolTip == "已授权")
+        #expect(codexRow.toolTip == "未授权")
+    }
+
+    @MainActor
+    @Test func dashboardScanStatusShowsRelativeLocalRefreshTime() throws {
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: nil,
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false,
+                        lastRefreshedAt: now.addingTimeInterval(-37 * 60)
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("37 分钟前更新。不依赖任何网络 API。"))
+        #expect(!labels.contains("本地记录已就绪。不依赖任何网络 API。"))
     }
 
     @MainActor
@@ -206,7 +240,34 @@ struct TokenWatchTests {
                 || button.identifier?.rawValue == "DashboardRefreshButton" else { return nil }
             return button.title
         }
-        #expect(controlTitles == ["当天", "7天", "30天", "全部", "刷新"])
+        #expect(controlTitles == ["当前", "7 天", "30 天", "全部", "刷新"])
+    }
+
+    @MainActor
+    @Test func dashboardRangeControlsAreCenteredPaddedAndRightAligned() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
+        let controls = try #require(viewController.view.firstDescendant(identifier: "DashboardHeaderControls"))
+        let controlButtons = viewController.view.allDescendants(ofType: NSButton.self).filter { button in
+            button.identifier?.rawValue.hasPrefix("DashboardRange.") == true
+                || button.identifier?.rawValue == "DashboardRefreshButton"
+        }
+
+        #expect(controlButtons.count == 5)
+        #expect(controlButtons.allSatisfy { $0.alignment == .center })
+
+        for button in controlButtons {
+            let titleWidth = (button.title as NSString).size(withAttributes: [.font: button.font as Any]).width
+            #expect(button.frame.width >= titleWidth + 24)
+        }
+
+        let mainFrame = mainContent.convert(mainContent.bounds, to: viewController.view)
+        let controlsFrame = controls.convert(controls.bounds, to: viewController.view)
+        #expect(abs(controlsFrame.maxX - (mainFrame.maxX - 28)) <= 1)
     }
 
     @MainActor
@@ -218,7 +279,7 @@ struct TokenWatchTests {
         #expect(labels.contains("总 Token"))
         #expect(labels.contains("总费用"))
         #expect(labels.contains("会话数"))
-        #expect(labels.contains("每小时 Token 与缓存命中率"))
+        #expect(labels.contains("Token 与缓存命中率趋势"))
         #expect(labels.contains("模型消耗排行"))
         #expect(labels.contains("来源占比"))
         #expect(labels.contains("项目消耗"))
@@ -291,12 +352,23 @@ struct TokenWatchTests {
         viewController.view.layoutSubtreeIfNeeded()
 
         let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
-        let trendTitle = try #require(viewController.view.textField(stringValue: "每小时 Token 与缓存命中率"))
+        let trendTitle = try #require(viewController.view.textField(stringValue: "Token 与缓存命中率趋势"))
 
         let mainFrame = mainContent.convert(mainContent.bounds, to: viewController.view)
         let trendTitleFrame = trendTitle.convert(trendTitle.bounds, to: viewController.view)
 
         #expect(trendTitleFrame.minX <= mainFrame.minX + 64)
+    }
+
+    @MainActor
+    @Test func dashboardTrendUsesStatusBarLineChartStyle() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        let trendView = try #require(viewController.view.firstDescendant(ofType: DashboardTrendView.self))
+        #expect(trendView.debugLineInterpolationMethodName == "catmullRom")
+        #expect(trendView.debugAreaGradientScaleModeName == "dailyMaximum")
+        #expect(trendView.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
     }
 
     @MainActor
@@ -308,6 +380,7 @@ struct TokenWatchTests {
         #expect(refreshButton.title == "刷新")
         #expect(refreshButton.action.map(NSStringFromSelector) == "refreshDashboard:")
         #expect(refreshButton.image != nil)
+        #expect(refreshButton.imageHugsTitle)
     }
 
     @MainActor
