@@ -240,7 +240,7 @@ struct TokenWatchTests {
                 || button.identifier?.rawValue == "DashboardRefreshButton" else { return nil }
             return button.title
         }
-        #expect(controlTitles == ["当前", "7 天", "30 天", "全部", "刷新"])
+        #expect(controlTitles == ["当天", "7天", "30天", "全部", "刷新"])
     }
 
     @MainActor
@@ -279,11 +279,39 @@ struct TokenWatchTests {
         #expect(labels.contains("总 Token"))
         #expect(labels.contains("总费用"))
         #expect(labels.contains("会话数"))
-        #expect(labels.contains("Token 与缓存命中率趋势"))
+        #expect(labels.contains("趋势"))
+        #expect(labels.contains("展示 Token 消耗与费用变化"))
+        #expect(!labels.contains("Token 与缓存命中率趋势"))
+        #expect(viewController.view.firstDescendant(identifier: "DashboardTrendLegend.token") != nil)
+        #expect(viewController.view.firstDescendant(identifier: "DashboardTrendLegend.cost") != nil)
         #expect(labels.contains("模型消耗排行"))
         #expect(labels.contains("来源占比"))
         #expect(labels.contains("项目消耗"))
         #expect(labels.contains("最近明细"))
+    }
+
+    @MainActor
+    @Test func dashboardTrendLegendAlignsWithDescription() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let description = try #require(viewController.view.textField(stringValue: "展示 Token 消耗与费用变化"))
+        let tokenLegend = try #require(viewController.view.firstDescendant(identifier: "DashboardTrendLegend.token"))
+        let costLegend = try #require(viewController.view.firstDescendant(identifier: "DashboardTrendLegend.cost"))
+
+        let descriptionFrame = description.convert(description.bounds, to: viewController.view)
+        let tokenLegendFrame = tokenLegend.convert(tokenLegend.bounds, to: viewController.view)
+        let costLegendFrame = costLegend.convert(costLegend.bounds, to: viewController.view)
+
+        #expect(tokenLegendFrame.width >= 74)
+        #expect(tokenLegendFrame.height >= 12)
+        #expect(costLegendFrame.width >= 34)
+        #expect(costLegendFrame.height >= 12)
+        #expect(abs(tokenLegendFrame.midY - descriptionFrame.midY) <= 1)
+        #expect(abs(costLegendFrame.midY - descriptionFrame.midY) <= 1)
+        #expect(costLegendFrame.minX > tokenLegendFrame.maxX)
     }
 
     @MainActor
@@ -352,7 +380,7 @@ struct TokenWatchTests {
         viewController.view.layoutSubtreeIfNeeded()
 
         let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
-        let trendTitle = try #require(viewController.view.textField(stringValue: "Token 与缓存命中率趋势"))
+        let trendTitle = try #require(viewController.view.textField(stringValue: "趋势"))
 
         let mainFrame = mainContent.convert(mainContent.bounds, to: viewController.view)
         let trendTitleFrame = trendTitle.convert(trendTitle.bounds, to: viewController.view)
@@ -368,7 +396,93 @@ struct TokenWatchTests {
         let trendView = try #require(viewController.view.firstDescendant(ofType: DashboardTrendView.self))
         #expect(trendView.debugLineInterpolationMethodName == "catmullRom")
         #expect(trendView.debugAreaGradientScaleModeName == "dailyMaximum")
+        #expect(trendView.debugAreaStackingModeName == "unstacked")
+        #expect(trendView.debugAreaLayerOrder == ["Token", "Cost"])
+        #expect(trendView.debugTrendSeriesKeys == ["Token", "Cost"])
+        #expect(trendView.debugChartLegendVisibilityName == "hidden")
+        #expect(trendView.debugTrendLegendPlacementName == "subtitleHeaderTrailing")
+        #expect(trendView.debugTrendLegendTitles == ["Token 消耗", "费用"])
+        #expect(trendView.debugTokenAreaGradientLightRGBAComponents == [0.353, 0.635, 1.0, 1.0])
+        #expect(trendView.debugCostAreaGradientLightRGBAComponents == [0.129, 0.431, 0.224, 1.0])
         #expect(trendView.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
+    }
+
+    @MainActor
+    @Test func dashboardTrendHoverShowsTokenAndCostInsteadOfCacheHitRate() throws {
+        let trendView = DashboardTrendView()
+        trendView.configure(buckets: [
+            DashboardTrendBucket(
+                id: "2026-06-20T14",
+                key: "2026-06-20T14",
+                label: "14时",
+                totalTokens: 1_720_000,
+                totalCost: 24.60,
+                normalizedHeight: 1,
+                normalizedCostHeight: 1,
+                isCurrent: true
+            ),
+        ])
+
+        trendView.debugSimulateHover(bucketKey: "2026-06-20T14")
+
+        #expect(trendView.debugHoverText == "14时 · 1.7M · 费用 $24.60")
+        #expect(!trendView.debugHoverText.contains("缓存"))
+    }
+
+    @MainActor
+    @Test func dashboardTrendBucketsFollowSelectedRangeGranularity() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeDashboardStats(
+                            byHour: [
+                                "2026-06-20T14": makeDashboardSummary(total: 120, cost: 1.25),
+                            ],
+                            byDay: [
+                                "2026-06-14": makeDashboardSummary(total: 40, cost: 0.40),
+                                "2026-06-20": makeDashboardSummary(total: 300, cost: 2.50),
+                            ],
+                            byMonth: [
+                                "2026-04": makeDashboardSummary(total: 90, cost: 0.90),
+                                "2026-05": makeDashboardSummary(total: 180, cost: 1.80),
+                                "2026-06": makeDashboardSummary(total: 300, cost: 2.50),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        let trendView = try #require(viewController.view.firstDescendant(ofType: DashboardTrendView.self))
+
+        #expect(trendView.debugBucketKeys == [
+            "2026-06-14", "2026-06-15", "2026-06-16", "2026-06-17",
+            "2026-06-18", "2026-06-19", "2026-06-20",
+        ])
+
+        try clickDashboardRange("day", in: viewController)
+        #expect(trendView.debugBucketKeys.first == "2026-06-20T00")
+        #expect(trendView.debugBucketKeys.last == "2026-06-20T23")
+        #expect(trendView.debugBucketKeys.count == 24)
+
+        try clickDashboardRange("month", in: viewController)
+        #expect(trendView.debugBucketKeys.first == "2026-05-22")
+        #expect(trendView.debugBucketKeys.last == "2026-06-20")
+        #expect(trendView.debugBucketKeys.count == 30)
+
+        try clickDashboardRange("all", in: viewController)
+        #expect(trendView.debugBucketKeys == ["2026-04", "2026-05", "2026-06"])
     }
 
     @MainActor
@@ -729,4 +843,84 @@ private func withTemporaryDefaults(_ body: (UserDefaults) throws -> Void) rethro
 private func zhHansLanguageSettings(defaults: UserDefaults? = nil) -> AppLanguageSettings {
     let defaults = defaults ?? UserDefaults(suiteName: "TokenWatchTests.Language.\(UUID().uuidString)")!
     return AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+}
+
+private func utcCalendar() -> Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+    calendar.firstWeekday = 2
+    return calendar
+}
+
+private func dateTime(
+    _ year: Int,
+    _ month: Int,
+    _ day: Int,
+    hour: Int,
+    minute: Int,
+    calendar: Calendar
+) -> Date {
+    calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+}
+
+@MainActor
+private func clickDashboardRange(_ rawValue: String, in viewController: DashboardViewController) throws {
+    let button = try #require(viewController.view.button(identifier: "DashboardRange.\(rawValue)"))
+    _ = button.sendAction(button.action, to: button.target)
+}
+
+private func makeDashboardStats(
+    byHour: [String: UsageSummary] = [:],
+    byDay: [String: UsageSummary] = [:],
+    byMonth: [String: UsageSummary] = [:]
+) -> AggregatedStats {
+    var overall = UsageSummary.zero
+    for summary in byMonth.values {
+        overall = mergeDashboardSummaries(overall, summary)
+    }
+    for summary in byDay.values {
+        overall = mergeDashboardSummaries(overall, summary)
+    }
+    for summary in byHour.values {
+        overall = mergeDashboardSummaries(overall, summary)
+    }
+    return AggregatedStats(
+        overall: overall,
+        byHour: byHour,
+        byDay: byDay,
+        byWeek: [:],
+        byMonth: byMonth,
+        bySession: [:],
+        byModel: [:],
+        byProject: [:],
+        dataSourceCount: 1
+    )
+}
+
+private func mergeDashboardSummaries(_ lhs: UsageSummary, _ rhs: UsageSummary) -> UsageSummary {
+    UsageSummary(
+        inputTokens: lhs.inputTokens + rhs.inputTokens,
+        outputTokens: lhs.outputTokens + rhs.outputTokens,
+        cacheReadTokens: lhs.cacheReadTokens + rhs.cacheReadTokens,
+        cacheCreationTokens: lhs.cacheCreationTokens + rhs.cacheCreationTokens,
+        reasoningTokens: lhs.reasoningTokens + rhs.reasoningTokens,
+        totalTokens: lhs.totalTokens + rhs.totalTokens,
+        cost: lhs.cost + rhs.cost,
+        entryCount: lhs.entryCount + rhs.entryCount,
+        modelBreakdown: [:]
+    )
+}
+
+private func makeDashboardSummary(total: Int, cost: Double = 0) -> UsageSummary {
+    UsageSummary(
+        inputTokens: total,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        reasoningTokens: 0,
+        totalTokens: total,
+        cost: cost,
+        entryCount: total > 0 ? 1 : 0,
+        modelBreakdown: [:]
+    )
 }

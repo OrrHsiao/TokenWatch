@@ -15,6 +15,7 @@ enum DashboardPalette {
     static let mutedText = NSColor(hex: 0x6B7280)
     static let accent = NSColor(hex: 0x5AA2FF)
     static let green = NSColor(hex: 0x5FE3A1)
+    static var costLine: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
     static let statusInactive = NSColor(hex: 0x4B5563)
     static let yellow = NSColor(hex: 0xF5C451)
     static let purple = NSColor(hex: 0xA78BFA)
@@ -276,6 +277,7 @@ final class DashboardViewController: NSViewController {
         overviewScrollView.borderType = .noBorder
         overviewScrollView.hasVerticalScroller = true
         overviewScrollView.autohidesScrollers = true
+        overviewScrollView.scrollerStyle = .overlay
         overviewScrollView.translatesAutoresizingMaskIntoConstraints = false
         overviewScrollView.documentView = overviewContentView
 
@@ -607,11 +609,52 @@ final class DashboardViewController: NSViewController {
     private func makeTrendPanel() -> NSView {
         trendView.translatesAutoresizingMaskIntoConstraints = false
         return makePanel(
-            title: "Token 与缓存命中率趋势",
-            subtitle: "按所选时间范围展示 Token 总量及缓存命中率变化",
+            title: "趋势",
+            subtitle: "展示 Token 消耗与费用变化",
             content: trendView,
-            minimumHeight: 230
+            minimumHeight: 230,
+            trailingHeaderContent: makeTrendLegendView()
         )
+    }
+
+    private func makeTrendLegendView() -> NSView {
+        let row = NSStackView(views: [
+            makeTrendLegendItem(
+                title: DashboardTrendRendering.tokenLegendTitle,
+                color: DashboardPalette.accent,
+                identifier: "DashboardTrendLegend.token"
+            ),
+            makeTrendLegendItem(
+                title: DashboardTrendRendering.costLegendTitle,
+                color: DashboardPalette.costLine,
+                identifier: "DashboardTrendLegend.cost"
+            ),
+        ])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 14
+        row.setContentHuggingPriority(.required, for: .horizontal)
+        row.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return row
+    }
+
+    private func makeTrendLegendItem(title: String, color: NSColor, identifier: String) -> NSView {
+        let dot = DashboardDotView(color: color)
+
+        let label = NSTextField(labelWithString: title)
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = DashboardPalette.secondaryText
+        label.alignment = .left
+        label.lineBreakMode = .byTruncatingTail
+
+        let item = NSStackView(views: [dot, label])
+        item.orientation = .horizontal
+        item.alignment = .centerY
+        item.spacing = 7
+        item.setAccessibilityIdentifier(identifier)
+        item.setContentHuggingPriority(.required, for: .horizontal)
+        item.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return item
     }
 
     private func makeModelRankPanel() -> NSView {
@@ -657,24 +700,54 @@ final class DashboardViewController: NSViewController {
         return makePanel(title: "项目消耗", subtitle: nil, content: projectRowsStack, minimumHeight: 232)
     }
 
-    private func makePanel(title: String, subtitle: String?, content: NSView, minimumHeight: CGFloat) -> NSView {
+    private func makePanel(
+        title: String,
+        subtitle: String?,
+        content: NSView,
+        minimumHeight: CGFloat,
+        trailingHeaderContent: NSView? = nil
+    ) -> NSView {
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
         titleLabel.textColor = .white
+        titleLabel.lineBreakMode = .byTruncatingTail
 
         var headerViews: [NSView] = [titleLabel]
+        var trailingAlignmentView: NSView = titleLabel
         if let subtitle {
             let subtitleLabel = NSTextField(labelWithString: subtitle)
             subtitleLabel.font = .systemFont(ofSize: 12)
             subtitleLabel.textColor = DashboardPalette.secondaryText
+            subtitleLabel.lineBreakMode = .byTruncatingTail
             headerViews.append(subtitleLabel)
+            trailingAlignmentView = subtitleLabel
         }
         let headerStack = NSStackView(views: headerViews)
         headerStack.orientation = .vertical
         headerStack.alignment = .leading
         headerStack.spacing = 3
 
-        let stack = NSStackView(views: [headerStack, content])
+        let headerView: NSView
+        if let trailingHeaderContent {
+            let headerContainer = NSView()
+            headerContainer.addSubview(headerStack)
+            headerContainer.addSubview(trailingHeaderContent)
+            headerStack.translatesAutoresizingMaskIntoConstraints = false
+            trailingHeaderContent.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                headerStack.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor),
+                headerStack.topAnchor.constraint(equalTo: headerContainer.topAnchor),
+                headerStack.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor),
+                headerStack.trailingAnchor.constraint(lessThanOrEqualTo: trailingHeaderContent.leadingAnchor, constant: -18),
+                trailingHeaderContent.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor),
+                trailingHeaderContent.centerYAnchor.constraint(equalTo: trailingAlignmentView.centerYAnchor),
+            ])
+            headerView = headerContainer
+        } else {
+            headerView = headerStack
+        }
+
+        let stack = NSStackView(views: [headerView, content])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
@@ -688,7 +761,7 @@ final class DashboardViewController: NSViewController {
             stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18),
             stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18),
-            headerStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            headerView.widthAnchor.constraint(equalTo: stack.widthAnchor),
             content.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         return panel
@@ -1211,9 +1284,9 @@ private enum DashboardRange: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .day: return "当前"
-        case .sevenDays: return "7 天"
-        case .month: return "30 天"
+        case .day: return "当天"
+        case .sevenDays: return "7天"
+        case .month: return "30天"
         case .all: return "全部"
         }
     }
@@ -1389,6 +1462,7 @@ private struct DashboardRangeSnapshot {
         }
 
         let maxTokens = summaries.values.map(\.totalTokens).max() ?? 0
+        let maxCost = summaries.values.map(\.cost).max() ?? 0
         let bucketRows = zip(bucketStarts, bucketKeys).map { bucketStart, key in
             let summary = summaries[key, default: .zero]
             let label = range.bucketLabel(for: bucketStart, calendar: calendar, language: language)
@@ -1397,8 +1471,9 @@ private struct DashboardRangeSnapshot {
                 key: key,
                 label: label,
                 totalTokens: summary.totalTokens,
-                cacheHitRate: cacheHitRate(summary),
+                totalCost: summary.cost,
                 normalizedHeight: maxTokens > 0 ? Double(summary.totalTokens) / Double(maxTokens) : 0,
+                normalizedCostHeight: maxCost > 0 ? summary.cost / maxCost : 0,
                 isCurrent: key == currentKey
             )
         }
@@ -1453,6 +1528,7 @@ private struct DashboardRangeSnapshot {
 
         let sortedMonths = monthSummaries.keys.sorted()
         let maxTokens = monthSummaries.values.map(\.totalTokens).max() ?? 0
+        let maxCost = monthSummaries.values.map(\.cost).max() ?? 0
         let trendBuckets = sortedMonths.map { month in
             let summary = monthSummaries[month, default: .zero]
             return DashboardTrendBucket(
@@ -1460,8 +1536,9 @@ private struct DashboardRangeSnapshot {
                 key: month,
                 label: month,
                 totalTokens: summary.totalTokens,
-                cacheHitRate: cacheHitRate(summary),
+                totalCost: summary.cost,
                 normalizedHeight: maxTokens > 0 ? Double(summary.totalTokens) / Double(maxTokens) : 0,
+                normalizedCostHeight: maxCost > 0 ? summary.cost / maxCost : 0,
                 isCurrent: sortedMonths.last == month
             )
         }
@@ -1546,12 +1623,6 @@ private struct DashboardRangeSnapshot {
                     percentage: Double(tokens) / Double(totalTokens)
                 )
             }
-    }
-
-    private static func cacheHitRate(_ summary: UsageSummary) -> Double {
-        guard summary.totalTokens > 0 else { return 0 }
-        let cachedTokens = summary.cacheReadTokens + summary.cacheCreationTokens
-        return Double(cachedTokens) / Double(summary.totalTokens)
     }
 
     private static func topModelName(in summary: UsageSummary) -> String {
@@ -1792,13 +1863,28 @@ private final class DashboardBarRowView: NSView {
     }
 }
 
+private enum DashboardTrendRendering {
+    static let tokenSeriesName = "Token"
+    static let costSeriesName = "Cost"
+    static let seriesKeys = [tokenSeriesName, costSeriesName]
+    static let tokenLegendTitle = "Token 消耗"
+    static let costLegendTitle = "费用"
+    static let trendLegendTitles = [tokenLegendTitle, costLegendTitle]
+    static let trendLegendPlacementName = "subtitleHeaderTrailing"
+    static let chartLegendVisibilityName = "hidden"
+    static let areaStacking: MarkStackingMethod = .unstacked
+    static let areaStackingModeName = "unstacked"
+    static let areaLayerOrder = seriesKeys
+}
+
 struct DashboardTrendBucket: Sendable, Equatable, Identifiable {
     let id: String
     let key: String
     let label: String
     let totalTokens: Int
-    let cacheHitRate: Double
+    let totalCost: Double
     let normalizedHeight: Double
+    let normalizedCostHeight: Double
     let isCurrent: Bool
 }
 
@@ -1815,12 +1901,52 @@ final class DashboardTrendView: NSView {
     private var buckets: [DashboardTrendBucket] = []
     private var language: AppLanguage = .zhHans
 
+    var debugBucketKeys: [String] {
+        buckets.map(\.key)
+    }
+
+    var debugHoverText: String {
+        hoverLabel.stringValue
+    }
+
     var debugLineInterpolationMethodName: String {
         TodayHourlyLineChartRendering.interpolationMethodName
     }
 
     var debugAreaGradientScaleModeName: String {
         TodayHourlyLineChartRendering.areaGradientScaleModeName
+    }
+
+    var debugAreaStackingModeName: String {
+        DashboardTrendRendering.areaStackingModeName
+    }
+
+    var debugAreaLayerOrder: [String] {
+        DashboardTrendRendering.areaLayerOrder
+    }
+
+    var debugTrendSeriesKeys: [String] {
+        DashboardTrendRendering.seriesKeys
+    }
+
+    var debugChartLegendVisibilityName: String {
+        DashboardTrendRendering.chartLegendVisibilityName
+    }
+
+    var debugTrendLegendPlacementName: String {
+        DashboardTrendRendering.trendLegendPlacementName
+    }
+
+    var debugTrendLegendTitles: [String] {
+        DashboardTrendRendering.trendLegendTitles
+    }
+
+    var debugTokenAreaGradientLightRGBAComponents: [CGFloat]? {
+        Self.roundedRGBAComponents(for: DashboardPalette.accent, appearanceName: .aqua)
+    }
+
+    var debugCostAreaGradientLightRGBAComponents: [CGFloat]? {
+        Self.roundedRGBAComponents(for: DashboardPalette.costLine, appearanceName: .aqua)
     }
 
     override init(frame frameRect: NSRect) {
@@ -1846,6 +1972,10 @@ final class DashboardTrendView: NSView {
                 self?.updateHoverText(bucketKey: key)
             }
         ))
+    }
+
+    func debugSimulateHover(bucketKey: String?) {
+        updateHoverText(bucketKey: bucketKey)
     }
 
     private func setupView() {
@@ -1881,7 +2011,7 @@ final class DashboardTrendView: NSView {
             hoverLabel.stringValue = ""
             return
         }
-        hoverLabel.stringValue = "\(bucket.label) · \(CompactNumberFormatter.formatHoverTokens(bucket.totalTokens)) · 缓存 \(Self.percentText(bucket.cacheHitRate))"
+        hoverLabel.stringValue = "\(bucket.label) · \(CompactNumberFormatter.formatHoverTokens(bucket.totalTokens)) · 费用 \(Self.costText(bucket.totalCost))"
     }
 
     private static func axisKeys(for buckets: [DashboardTrendBucket]) -> [String] {
@@ -1906,9 +2036,21 @@ final class DashboardTrendView: NSView {
             .map { buckets[$0].key }
     }
 
-    private static func percentText(_ value: Double) -> String {
-        guard value.isFinite else { return "0%" }
-        return String(format: "%.0f%%", min(max(value, 0), 1) * 100)
+    private static func costText(_ value: Double) -> String {
+        guard value.isFinite else { return "$0.00" }
+        return String(format: "$%.2f", max(0, value))
+    }
+
+    private static func roundedRGBAComponents(for color: NSColor, appearanceName: NSAppearance.Name) -> [CGFloat]? {
+        guard let appearance = NSAppearance(named: appearanceName) else {
+            return nil
+        }
+
+        var components: [CGFloat]?
+        appearance.performAsCurrentDrawingAppearance {
+            components = color.cgColor.components
+        }
+        return components?.map { ($0 * 1_000).rounded() / 1_000 }
     }
 }
 
@@ -1927,39 +2069,63 @@ private struct DashboardTrendChartContent: View {
             ForEach(buckets) { bucket in
                 AreaMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Tokens", Double(bucket.totalTokens))
+                    y: .value("Tokens", Double(bucket.totalTokens)),
+                    series: .value("Series", DashboardTrendRendering.tokenSeriesName),
+                    stacking: DashboardTrendRendering.areaStacking
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
                 .foregroundStyle(tokenAreaGradient)
+
+                AreaMark(
+                    x: .value(axisValueName, bucket.key),
+                    y: .value("Cost", bucket.normalizedCostHeight * maxTokens),
+                    series: .value("Series", DashboardTrendRendering.costSeriesName),
+                    stacking: DashboardTrendRendering.areaStacking
+                )
+                .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
+                .foregroundStyle(costAreaGradient)
             }
 
             ForEach(buckets) { bucket in
                 LineMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Tokens", Double(bucket.totalTokens))
+                    y: .value("Tokens", Double(bucket.totalTokens)),
+                    series: .value("Series", DashboardTrendRendering.tokenSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(Color(nsColor: .controlAccentColor))
+                .foregroundStyle(by: .value("图例", DashboardTrendRendering.tokenLegendTitle))
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
                 LineMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Cache", bucket.cacheHitRate * maxTokens)
+                    y: .value("Cost", bucket.normalizedCostHeight * maxTokens),
+                    series: .value("Series", DashboardTrendRendering.costSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(Color(nsColor: DashboardPalette.purple))
-                .lineStyle(StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round, dash: [4, 4]))
+                .foregroundStyle(by: .value("图例", DashboardTrendRendering.costLegendTitle))
+                .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
 
                 if bucket.isCurrent {
                     PointMark(
                         x: .value(axisValueName, bucket.key),
                         y: .value("Tokens", Double(bucket.totalTokens))
                     )
-                    .foregroundStyle(Color(nsColor: .controlAccentColor))
+                    .foregroundStyle(Color(nsColor: DashboardPalette.accent))
                     .symbolSize(22)
+
+                    PointMark(
+                        x: .value(axisValueName, bucket.key),
+                        y: .value("Cost", bucket.normalizedCostHeight * maxTokens)
+                    )
+                    .foregroundStyle(Color(nsColor: DashboardPalette.costLine))
+                    .symbolSize(18)
                 }
             }
         }
+        .chartForegroundStyleScale([
+            DashboardTrendRendering.tokenLegendTitle: Color(nsColor: DashboardPalette.accent),
+            DashboardTrendRendering.costLegendTitle: Color(nsColor: DashboardPalette.costLine),
+        ])
         .chartLegend(.hidden)
         .chartYScale(domain: 0...maxTokens)
         .chartXAxis {
@@ -1995,7 +2161,19 @@ private struct DashboardTrendChartContent: View {
     }
 
     private var tokenAreaGradient: LinearGradient {
-        let color = Color(nsColor: TodayHourlyLineChartRendering.areaGradientColor)
+        let color = Color(nsColor: DashboardPalette.accent)
+        return LinearGradient(
+            colors: [
+                color.opacity(TodayHourlyLineChartRendering.areaGradientPeakOpacity),
+                color.opacity(TodayHourlyLineChartRendering.areaGradientBaselineOpacity),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var costAreaGradient: LinearGradient {
+        let color = Color(nsColor: DashboardPalette.costLine)
         return LinearGradient(
             colors: [
                 color.opacity(TodayHourlyLineChartRendering.areaGradientPeakOpacity),
