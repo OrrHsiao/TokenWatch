@@ -211,6 +211,129 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("时间窗口页展示最近会话明细")
+    func rendersRecentSessionDetailsRows() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(
+                        byHour: ["2026-06-20T10": makeSummary(total: 150)],
+                        byMonth: [:]
+                    ),
+                    entries: [
+                        makeEntry(
+                            provider: .claude,
+                            sessionID: "session-1",
+                            timestamp: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+                            model: "claude-sonnet-4-5",
+                            input: 100,
+                            output: 50
+                        ),
+                    ],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let rowTexts = viewController.debugRecentSessionRowTexts
+        #expect(rowTexts.count == 1)
+        let rowText = try #require(rowTexts.first)
+        #expect(rowText.contains("session-1"))
+        #expect(rowText.contains("Claude"))
+        #expect(rowText.contains("claude-sonnet-4-5"))
+        #expect(rowText.contains("150"))
+    }
+
+    @MainActor
+    @Test("时间窗口页无最近会话时展示明细空状态")
+    func rendersRecentSessionDetailsEmptyState() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(
+                        byHour: ["2026-06-20T10": makeSummary(total: 0)],
+                        byMonth: [:]
+                    ),
+                    entries: [],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(viewController.debugRecentSessionRowTexts.isEmpty)
+        #expect(viewController.debugRecentSessionEmptyText == "当前筛选暂无会话明细")
+    }
+
+    @MainActor
+    @Test("最近七天明细按当前窗口展示并按最近会话排序")
+    func rendersRecentSevenDaysSessionDetailsInRecentOrder() throws {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .recent7Days,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(
+                        byDay: [
+                            "2026-06-14": makeSummary(total: 75),
+                            "2026-06-20": makeSummary(total: 150),
+                        ],
+                        byMonth: [:]
+                    ),
+                    entries: [
+                        makeEntry(
+                            provider: .claude,
+                            sessionID: "session-old",
+                            timestamp: dateTime(2026, 6, 14, hour: 9, minute: 0, calendar: calendar),
+                            model: "claude-haiku",
+                            input: 50,
+                            output: 25
+                        ),
+                        makeEntry(
+                            provider: .claude,
+                            sessionID: "session-new",
+                            timestamp: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+                            model: "claude-sonnet-4-5",
+                            input: 100,
+                            output: 50
+                        ),
+                    ],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let rowTexts = viewController.debugRecentSessionRowTexts
+        #expect(rowTexts.count == 2)
+        #expect(rowTexts[0].contains("session-new"))
+        #expect(rowTexts[1].contains("session-old"))
+    }
+
+    @MainActor
     @Test("两个柱状图使用一致配色")
     func barChartsUseMatchingColors() throws {
         let viewController = MonthlyStatsViewController(languageSettings: zhHansLanguageSettings())
@@ -693,6 +816,17 @@ struct MonthlyStatsViewControllerTests {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
+    private func dateTime(
+        _ year: Int,
+        _ month: Int,
+        _ day: Int,
+        hour: Int,
+        minute: Int,
+        calendar: Calendar
+    ) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+    }
+
     private func temporaryDefaults() -> UserDefaults {
         let suiteName = "MonthlyStatsViewControllerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -732,6 +866,52 @@ struct MonthlyStatsViewControllerTests {
                     modelBreakdown: [:]
                 )
             }
+        )
+    }
+
+    private func makeEntry(
+        provider: ProviderID,
+        sessionID: String,
+        timestamp: Date,
+        model: String,
+        input: Int,
+        output: Int
+    ) -> ParsedUsageEntry {
+        let suffix = [
+            provider.rawValue,
+            sessionID,
+            "\(timestamp.timeIntervalSince1970)",
+            model,
+            "\(input)",
+            "\(output)",
+        ].joined(separator: "-")
+
+        return ParsedUsageEntry(
+            recordUUID: "record-\(suffix)",
+            messageId: "message-\(suffix)",
+            requestId: nil,
+            sessionID: sessionID,
+            timestamp: timestamp,
+            model: model,
+            cwd: "/project",
+            agentId: nil,
+            usage: TokenUsage(
+                inputTokens: input,
+                cacheCreationInputTokens: 0,
+                cacheReadInputTokens: 0,
+                outputTokens: output,
+                reasoningTokens: 0,
+                serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+                serviceTier: "",
+                cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+                inferenceGeo: "",
+                iterations: [],
+                speed: ""
+            ),
+            isSubagent: false,
+            provider: provider,
+            upstreamProviderID: nil,
+            upstreamCost: nil
         )
     }
 

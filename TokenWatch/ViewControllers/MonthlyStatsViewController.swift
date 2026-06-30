@@ -21,6 +21,7 @@ final class MonthlyStatsViewController: NSViewController {
     private let costChartView = MonthlyCostChartView()
     private let toolSharePieView = UsageSharePieChartView(title: "工具占比")
     private let modelSharePieView = UsageSharePieChartView(title: "模型占比")
+    private let recentDetailsView = RecentSessionDetailsView()
     private let period: UsageStatsPeriod
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let refreshAction: @MainActor () async -> Void
@@ -73,6 +74,14 @@ final class MonthlyStatsViewController: NSViewController {
             return partialLoadingStatusLabel.stringValue
         }
         return statusLabel.stringValue
+    }
+
+    var debugRecentSessionRowTexts: [String] {
+        recentDetailsView.debugRowTexts
+    }
+
+    var debugRecentSessionEmptyText: String {
+        recentDetailsView.debugEmptyText
     }
 
     var debugRefreshButtonTitle: String {
@@ -195,6 +204,7 @@ final class MonthlyStatsViewController: NSViewController {
         costChartView.translatesAutoresizingMaskIntoConstraints = false
         toolSharePieView.translatesAutoresizingMaskIntoConstraints = false
         modelSharePieView.translatesAutoresizingMaskIntoConstraints = false
+        recentDetailsView.translatesAutoresizingMaskIntoConstraints = false
         chartView.setContentHuggingPriority(.required, for: .horizontal)
         costChartView.setContentHuggingPriority(.required, for: .horizontal)
         chartView.onHoverTextChange = { [weak self] text in
@@ -252,7 +262,14 @@ final class MonthlyStatsViewController: NSViewController {
         pieChartsStack.spacing = 18
         pieChartsStack.setContentHuggingPriority(.required, for: .horizontal)
 
-        let contentStack = NSStackView(views: [headerView, tokenChartSection.stack, costChartSection.stack, pieChartsStack, statusLabel])
+        let contentStack = NSStackView(views: [
+            headerView,
+            tokenChartSection.stack,
+            costChartSection.stack,
+            pieChartsStack,
+            recentDetailsView,
+            statusLabel,
+        ])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
@@ -316,6 +333,8 @@ final class MonthlyStatsViewController: NSViewController {
             pieChartsStack.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             toolSharePieView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             modelSharePieView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
+            recentDetailsView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            recentDetailsView.widthAnchor.constraint(equalToConstant: Self.compactBarChartWidth),
             statusLabel.widthAnchor.constraint(lessThanOrEqualTo: contentStack.widthAnchor),
         ])
     }
@@ -407,17 +426,25 @@ final class MonthlyStatsViewController: NSViewController {
     private func render() {
         applyLocalizedText()
         let states = stateProvider()
+        let now = nowProvider()
         let snapshot = MonthlyTokenChartBuilder.build(
             states: states,
             period: period,
-            now: nowProvider(),
+            now: now,
             calendar: calendar,
             language: language
+        )
+        let recentSnapshot = RecentSessionDetailsBuilder.build(
+            states: states,
+            period: period,
+            now: now,
+            calendar: calendar
         )
         chartView.configure(with: snapshot, period: period, language: language)
         costChartView.configure(with: snapshot, period: period, language: language)
         toolSharePieView.configure(slices: snapshot.toolShareSlices, language: language)
         modelSharePieView.configure(slices: snapshot.modelShareSlices, language: language)
+        recentDetailsView.configure(with: recentSnapshot, language: language)
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
         let status = statusText(for: snapshot, totalProviderCount: states.count)
