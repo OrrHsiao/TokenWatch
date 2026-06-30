@@ -3,22 +3,34 @@ import Charts
 import SwiftUI
 
 enum DashboardPalette {
-    static let appBackground = NSColor(hex: 0x0B0F14)
-    static let sidebarBackground = NSColor(hex: 0x05070A)
-    static let panelBackground = NSColor(hex: 0x151B23)
-    static let deepPanelBackground = NSColor(hex: 0x05070A)
-    static let scanCardBackground = NSColor(hex: 0x0D1117)
-    static let border = NSColor(hex: 0x2B3440)
-    static let subtleBorder = NSColor(hex: 0x223041)
-    static let primaryText = NSColor(hex: 0xF5F7FA)
-    static let secondaryText = NSColor(hex: 0x9CA3AF)
-    static let mutedText = NSColor(hex: 0x6B7280)
-    static let accent = NSColor(hex: 0x5AA2FF)
-    static let green = NSColor(hex: 0x5FE3A1)
-    static var costLine: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
-    static let statusInactive = NSColor(hex: 0x4B5563)
-    static let yellow = NSColor(hex: 0xF5C451)
-    static let purple = NSColor(hex: 0xA78BFA)
+    static let appBackground = dynamicColor(light: 0xF4F6FA, dark: 0x0B0F14)
+    static let sidebarBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
+    static let panelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x151B23)
+    static let deepPanelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
+    static let scanCardBackground = dynamicColor(light: 0xF8FAFC, dark: 0x0D1117)
+    static let border = dynamicColor(light: 0xD8DEE8, dark: 0x2B3440)
+    static let subtleBorder = dynamicColor(light: 0xE5E7EB, dark: 0x223041)
+    static let primaryText = dynamicColor(light: 0x111827, dark: 0xF5F7FA)
+    static let secondaryText = dynamicColor(light: 0x6B7280, dark: 0x9CA3AF)
+    static let mutedText = dynamicColor(light: 0x94A3B8, dark: 0x6B7280)
+    static let accent = dynamicColor(light: 0x2563EB, dark: 0x5AA2FF)
+    static let green = dynamicColor(light: 0x16A34A, dark: 0x5FE3A1)
+    static let costLine = dynamicColor(light: 0x16A34A, dark: 0x39D353)
+    static let statusInactive = dynamicColor(light: 0xDC2626, dark: 0x4B5563)
+    static let yellow = dynamicColor(light: 0xF59E0B, dark: 0xF5C451)
+    static let purple = dynamicColor(light: 0x8B5CF6, dark: 0xA78BFA)
+    static let navigationSelectedBackground = dynamicColor(light: 0xEAF2FF, dark: 0x182235)
+    static let navigationSelectedText = dynamicColor(light: 0x2563EB, dark: 0xFFFFFF)
+    static let rangeSelectedBackground = dynamicColor(light: 0x2563EB, dark: 0xF5F7FA)
+    static let rangeSelectedText = dynamicColor(light: 0xFFFFFF, dark: 0x0B0F14)
+    static let rangeSelectedBorder = dynamicColor(light: 0x2563EB, dark: 0x2B3440)
+
+    private static func dynamicColor(light: Int, dark: Int) -> NSColor {
+        NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return NSColor(hex: isDark ? dark : light)
+        }
+    }
 }
 
 private final class DashboardNavigationButton: NSButton {
@@ -330,7 +342,7 @@ final class DashboardViewController: NSViewController {
 
         let name = NSTextField(labelWithString: "TokenWatch")
         name.font = .systemFont(ofSize: 18, weight: .bold)
-        name.textColor = .white
+        name.textColor = DashboardPalette.primaryText
         let subtitle = NSTextField(labelWithString: "本地 AI 用量监控")
         subtitle.font = .systemFont(ofSize: 11, weight: .regular)
         subtitle.textColor = DashboardPalette.secondaryText
@@ -390,7 +402,7 @@ final class DashboardViewController: NSViewController {
     private func makeScanStatusView() -> NSView {
         let title = NSTextField(labelWithString: "上次本地扫描")
         title.font = .systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = .white
+        title.textColor = DashboardPalette.primaryText
 
         scanStatusBodyLabel.font = .systemFont(ofSize: 12)
         scanStatusBodyLabel.textColor = DashboardPalette.secondaryText
@@ -709,7 +721,7 @@ final class DashboardViewController: NSViewController {
     ) -> NSView {
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DashboardPalette.primaryText
         titleLabel.lineBreakMode = .byTruncatingTail
 
         var headerViews: [NSView] = [titleLabel]
@@ -770,7 +782,7 @@ final class DashboardViewController: NSViewController {
     private func makeDetailTable() -> NSView {
         let title = NSTextField(labelWithString: "最近明细")
         title.font = .systemFont(ofSize: 16, weight: .bold)
-        title.textColor = .white
+        title.textColor = DashboardPalette.primaryText
 
         let header = makeDetailRow(
             values: ["时间", "来源", "项目/会话", "模型", "Token", "费用", "占比"],
@@ -970,8 +982,10 @@ final class DashboardViewController: NSViewController {
         for item in DashboardNavigationItem.allCases {
             guard let button = navButtons[item] else { continue }
             let isSelected = item == selectedNavigationItem
-            button.layer?.backgroundColor = (isSelected ? NSColor(hex: 0x182235) : DashboardPalette.sidebarBackground).cgColor
-            let tintColor = isSelected ? NSColor.white : DashboardPalette.secondaryText
+            button.layer?.backgroundColor = (
+                isSelected ? DashboardPalette.navigationSelectedBackground : DashboardPalette.sidebarBackground
+            ).cgColor
+            let tintColor = isSelected ? DashboardPalette.navigationSelectedText : DashboardPalette.secondaryText
             button.contentTintColor = tintColor
             (button as? DashboardNavigationButton)?.setVisualTint(tintColor)
         }
@@ -981,9 +995,11 @@ final class DashboardViewController: NSViewController {
         for range in DashboardRange.allCases {
             guard let button = rangeButtons[range] else { continue }
             let isSelected = range == selectedRange
-            button.layer?.backgroundColor = (isSelected ? DashboardPalette.primaryText : DashboardPalette.panelBackground).cgColor
-            button.layer?.borderColor = DashboardPalette.border.cgColor
-            button.contentTintColor = isSelected ? DashboardPalette.appBackground : DashboardPalette.primaryText
+            button.layer?.backgroundColor = (
+                isSelected ? DashboardPalette.rangeSelectedBackground : DashboardPalette.panelBackground
+            ).cgColor
+            button.layer?.borderColor = (isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.border).cgColor
+            button.contentTintColor = isSelected ? DashboardPalette.rangeSelectedText : DashboardPalette.primaryText
         }
     }
 
@@ -2271,7 +2287,7 @@ private extension UsageSummary {
 private extension NSColor {
     convenience init(hex: Int) {
         self.init(
-            calibratedRed: CGFloat((hex >> 16) & 0xFF) / 255,
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
             green: CGFloat((hex >> 8) & 0xFF) / 255,
             blue: CGFloat(hex & 0xFF) / 255,
             alpha: 1

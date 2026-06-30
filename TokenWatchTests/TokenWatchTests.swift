@@ -402,9 +402,41 @@ struct TokenWatchTests {
         #expect(trendView.debugChartLegendVisibilityName == "hidden")
         #expect(trendView.debugTrendLegendPlacementName == "subtitleHeaderTrailing")
         #expect(trendView.debugTrendLegendTitles == ["Token 消耗", "费用"])
-        #expect(trendView.debugTokenAreaGradientLightRGBAComponents == [0.353, 0.635, 1.0, 1.0])
-        #expect(trendView.debugCostAreaGradientLightRGBAComponents == [0.129, 0.431, 0.224, 1.0])
+        #expect(trendView.debugTokenAreaGradientLightRGBAComponents == [0.145, 0.388, 0.922, 1.0])
+        #expect(trendView.debugCostAreaGradientLightRGBAComponents == [0.086, 0.639, 0.29, 1.0])
         #expect(trendView.allDescendants(ofType: NSHostingView<AnyView>.self).count == 1)
+    }
+
+    @MainActor
+    @Test func dashboardPaletteUsesPencilLightColorsInAquaAppearance() throws {
+        #expect(try rgbHex(DashboardPalette.appBackground, appearance: .aqua) == 0xF4F6FA)
+        #expect(try rgbHex(DashboardPalette.sidebarBackground, appearance: .aqua) == 0xFFFFFF)
+        #expect(try rgbHex(DashboardPalette.panelBackground, appearance: .aqua) == 0xFFFFFF)
+        #expect(try rgbHex(DashboardPalette.deepPanelBackground, appearance: .aqua) == 0xFFFFFF)
+        #expect(try rgbHex(DashboardPalette.scanCardBackground, appearance: .aqua) == 0xF8FAFC)
+        #expect(try rgbHex(DashboardPalette.border, appearance: .aqua) == 0xD8DEE8)
+        #expect(try rgbHex(DashboardPalette.primaryText, appearance: .aqua) == 0x111827)
+        #expect(try rgbHex(DashboardPalette.secondaryText, appearance: .aqua) == 0x6B7280)
+        #expect(try rgbHex(DashboardPalette.mutedText, appearance: .aqua) == 0x94A3B8)
+        #expect(try rgbHex(DashboardPalette.accent, appearance: .aqua) == 0x2563EB)
+        #expect(try rgbHex(DashboardPalette.green, appearance: .aqua) == 0x16A34A)
+        #expect(try rgbHex(DashboardPalette.costLine, appearance: .aqua) == 0x16A34A)
+        #expect(try rgbHex(DashboardPalette.statusInactive, appearance: .aqua) == 0xDC2626)
+    }
+
+    @MainActor
+    @Test func dashboardSelectedRangeButtonUsesReadableLightAccentStyle() throws {
+        let appearance = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        appearance.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+        let selectedButton = try #require(viewController.view.button(identifier: "DashboardRange.sevenDays"))
+        let backgroundColor = try #require(selectedButton.layer?.backgroundColor)
+        let tintColor = try #require(selectedButton.contentTintColor)
+
+        #expect(rgbHex(backgroundColor) == 0x2563EB)
+        #expect(try rgbHex(tintColor, appearance: .aqua) == 0xFFFFFF)
     }
 
     @MainActor
@@ -861,6 +893,32 @@ private func dateTime(
     calendar: Calendar
 ) -> Date {
     calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+}
+
+private func rgbHex(_ color: NSColor, appearance: NSAppearance.Name) throws -> Int {
+    let appearance = try #require(NSAppearance(named: appearance))
+    var components: [CGFloat]?
+    appearance.performAsCurrentDrawingAppearance {
+        components = color.cgColor.components
+    }
+    let rgba = try #require(components)
+    #expect(rgba.count >= 3)
+
+    return Int((rgba[0] * 255).rounded()) << 16
+        | Int((rgba[1] * 255).rounded()) << 8
+        | Int((rgba[2] * 255).rounded())
+}
+
+private func rgbHex(_ color: CGColor) -> Int {
+    let convertedColor = color.converted(
+        to: CGColorSpace(name: CGColorSpace.sRGB)!,
+        intent: .defaultIntent,
+        options: nil
+    ) ?? color
+    let components = convertedColor.components ?? [0, 0, 0, 1]
+    return Int((components[0] * 255).rounded()) << 16
+        | Int((components[1] * 255).rounded()) << 8
+        | Int((components[2] * 255).rounded())
 }
 
 @MainActor
