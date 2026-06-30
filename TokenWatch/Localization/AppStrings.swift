@@ -9,6 +9,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case languageSystem
     case languageChinese
     case languageEnglish
+    case appTagline
     case sidebarTotal
     case sidebarRecent12Months
     case sidebarRecent30Days
@@ -113,6 +114,7 @@ enum AppStrings {
         .languageSystem: "跟随系统",
         .languageChinese: "简体中文",
         .languageEnglish: "English",
+        .appTagline: "本地 AI 用量监控",
         .sidebarTotal: "总计",
         .sidebarRecent12Months: "最近 12 个月",
         .sidebarRecent30Days: "最近 30 天",
@@ -194,6 +196,7 @@ enum AppStrings {
         .languageSystem: "跟隨系統",
         .languageChinese: "簡體中文",
         .languageEnglish: "English",
+        .appTagline: "本地 AI 用量監控",
         .sidebarTotal: "總計",
         .sidebarRecent12Months: "最近 12 個月",
         .sidebarRecent30Days: "最近 30 天",
@@ -275,6 +278,7 @@ enum AppStrings {
         .languageSystem: "システムに従う",
         .languageChinese: "簡体字中国語",
         .languageEnglish: "英語",
+        .appTagline: "ローカル AI 使用量モニター",
         .sidebarTotal: "合計",
         .sidebarRecent12Months: "過去12か月",
         .sidebarRecent30Days: "過去30日",
@@ -356,6 +360,7 @@ enum AppStrings {
         .languageSystem: "시스템 설정",
         .languageChinese: "중국어 간체",
         .languageEnglish: "영어",
+        .appTagline: "로컬 AI 사용량 모니터",
         .sidebarTotal: "합계",
         .sidebarRecent12Months: "최근 12개월",
         .sidebarRecent30Days: "최근 30일",
@@ -437,6 +442,7 @@ enum AppStrings {
         .languageSystem: "Sistema",
         .languageChinese: "Chino simplificado",
         .languageEnglish: "Inglés",
+        .appTagline: "Monitor local de uso de IA",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "Últimos 12 meses",
         .sidebarRecent30Days: "Últimos 30 días",
@@ -518,6 +524,7 @@ enum AppStrings {
         .languageSystem: "System",
         .languageChinese: "Vereinfachtes Chinesisch",
         .languageEnglish: "Englisch",
+        .appTagline: "Lokaler KI-Nutzungsmonitor",
         .sidebarTotal: "Gesamt",
         .sidebarRecent12Months: "Letzte 12 Monate",
         .sidebarRecent30Days: "Letzte 30 Tage",
@@ -599,6 +606,7 @@ enum AppStrings {
         .languageSystem: "Système",
         .languageChinese: "Chinois simplifié",
         .languageEnglish: "Anglais",
+        .appTagline: "Suivi local de l'utilisation IA",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "12 derniers mois",
         .sidebarRecent30Days: "30 derniers jours",
@@ -680,6 +688,7 @@ enum AppStrings {
         .languageSystem: "Sistema",
         .languageChinese: "Chinês simplificado",
         .languageEnglish: "Inglês",
+        .appTagline: "Monitor local de uso de IA",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "Últimos 12 meses",
         .sidebarRecent30Days: "Últimos 30 dias",
@@ -761,6 +770,7 @@ enum AppStrings {
         .languageSystem: "Sistema",
         .languageChinese: "Cinese semplificato",
         .languageEnglish: "Inglese",
+        .appTagline: "Monitor locale dell'uso IA",
         .sidebarTotal: "Totale",
         .sidebarRecent12Months: "Ultimi 12 mesi",
         .sidebarRecent30Days: "Ultimi 30 giorni",
@@ -842,6 +852,7 @@ enum AppStrings {
         .languageSystem: "Systeem",
         .languageChinese: "Vereenvoudigd Chinees",
         .languageEnglish: "Engels",
+        .appTagline: "Lokale AI-gebruiksmonitor",
         .sidebarTotal: "Totaal",
         .sidebarRecent12Months: "Afgelopen 12 maanden",
         .sidebarRecent30Days: "Afgelopen 30 dagen",
@@ -923,6 +934,7 @@ enum AppStrings {
         .languageSystem: "System",
         .languageChinese: "Chiński uproszczony",
         .languageEnglish: "Angielski",
+        .appTagline: "Lokalny monitor użycia AI",
         .sidebarTotal: "Razem",
         .sidebarRecent12Months: "Ostatnie 12 miesięcy",
         .sidebarRecent30Days: "Ostatnie 30 dni",
@@ -1004,6 +1016,7 @@ enum AppStrings {
         .languageSystem: "System",
         .languageChinese: "Simplified Chinese",
         .languageEnglish: "English",
+        .appTagline: "Local AI Usage Monitor",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "Last 12 Months",
         .sidebarRecent30Days: "Last 30 Days",

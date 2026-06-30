@@ -33,6 +33,20 @@ enum DashboardPalette {
     }
 }
 
+@MainActor
+private enum AppLogoImage {
+    static let identifier = "AppLogo"
+
+    static func make() -> NSImage? {
+        guard let source = NSImage(named: NSImage.Name("AppIcon")) ?? NSApp.applicationIconImage else {
+            return nil
+        }
+        guard let image = source.copy() as? NSImage else { return nil }
+        image.isTemplate = false
+        return image
+    }
+}
+
 private final class DashboardNavigationButton: NSButton {
     private let iconView = NSImageView()
     private let titleTextField = NSTextField(labelWithString: "")
@@ -326,24 +340,23 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeBrandView() -> NSView {
-        let mark = NSTextField(labelWithString: "T")
-        mark.font = .monospacedSystemFont(ofSize: 16, weight: .bold)
-        mark.textColor = .white
-        mark.alignment = .center
-        mark.setAccessibilityIdentifier("DashboardBrandMark")
-
-        let markContainer = DashboardRoundedView(
-            backgroundColor: DashboardPalette.accent,
-            cornerRadius: 8
-        )
-        markContainer.translatesAutoresizingMaskIntoConstraints = false
-        markContainer.addSubview(mark)
-        mark.translatesAutoresizingMaskIntoConstraints = false
+        let logoView = NSImageView(frame: .zero)
+        logoView.translatesAutoresizingMaskIntoConstraints = false
+        logoView.image = AppLogoImage.make()
+        logoView.imageScaling = .scaleProportionallyUpOrDown
+        logoView.identifier = NSUserInterfaceItemIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
+        logoView.setAccessibilityIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
+        logoView.setAccessibilityLabel("TokenWatch")
+        logoView.setContentHuggingPriority(.required, for: .horizontal)
+        logoView.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let name = NSTextField(labelWithString: "TokenWatch")
         name.font = .systemFont(ofSize: 18, weight: .bold)
         name.textColor = DashboardPalette.primaryText
-        let subtitle = NSTextField(labelWithString: "本地 AI 用量监控")
+        let subtitle = NSTextField(labelWithString: AppStrings.text(
+            .appTagline,
+            language: languageSettings.resolvedLanguage
+        ))
         subtitle.font = .systemFont(ofSize: 11, weight: .regular)
         subtitle.textColor = DashboardPalette.secondaryText
 
@@ -352,15 +365,13 @@ final class DashboardViewController: NSViewController {
         textStack.alignment = .leading
         textStack.spacing = 2
 
-        let row = NSStackView(views: [markContainer, textStack])
+        let row = NSStackView(views: [logoView, textStack])
         row.orientation = .horizontal
         row.alignment = .centerY
         row.spacing = 12
         NSLayoutConstraint.activate([
-            markContainer.widthAnchor.constraint(equalToConstant: 34),
-            markContainer.heightAnchor.constraint(equalToConstant: 34),
-            mark.centerXAnchor.constraint(equalTo: markContainer.centerXAnchor),
-            mark.centerYAnchor.constraint(equalTo: markContainer.centerYAnchor),
+            logoView.widthAnchor.constraint(equalToConstant: 34),
+            logoView.heightAnchor.constraint(equalToConstant: 34),
         ])
         return row
     }
@@ -1191,8 +1202,7 @@ final class DashboardViewController: NSViewController {
 
     private func enforceLeftAlignedContent(in root: NSView) {
         root.userInterfaceLayoutDirection = .leftToRight
-        if let textField = root as? NSTextField,
-           textField.accessibilityIdentifier() != "DashboardBrandMark" {
+        if let textField = root as? NSTextField {
             textField.alignment = .left
         }
         if let button = root as? NSButton {

@@ -156,6 +156,12 @@ struct TokenWatchTests {
         #expect(labels.contains("数据源"))
         #expect(labels.contains("上次本地扫描"))
 
+        let brandIcon = try #require(viewController.view.allDescendants(ofType: NSImageView.self).first {
+            $0.identifier?.rawValue == "DashboardBrandIcon.AppLogo"
+        })
+        #expect(brandIcon.image != nil)
+        #expect(brandIcon.image?.isTemplate == false)
+
         let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
             guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
             return button.title
@@ -359,7 +365,7 @@ struct TokenWatchTests {
 
         let labels = viewController.view
             .allDescendants(ofType: NSTextField.self)
-            .filter { !$0.stringValue.isEmpty && $0.stringValue != "T" }
+            .filter { !$0.stringValue.isEmpty }
 
         #expect(!labels.isEmpty)
         #expect(labels.allSatisfy { $0.alignment == .left })
