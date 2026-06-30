@@ -19,6 +19,7 @@ final class TokenStatsViewModel: Sendable {
     /// 单 provider 的 UI 状态
     struct ProviderState: Sendable {
         var stats: AggregatedStats?
+        var entries: [ParsedUsageEntry]?
         var isLoading = false
         var errorMessage: String?
         var needsAuthorization = true
@@ -176,16 +177,17 @@ final class TokenStatsViewModel: Sendable {
                     return .success(.unchanged(entryCount: entries.count))
                 }
                 let stats = aggregator.aggregate(entries)
-                return .success(.loaded(stats: stats, fingerprint: fingerprint, entryCount: entries.count))
+                return .success(.loaded(stats: stats, entries: entries, fingerprint: fingerprint, entryCount: entries.count))
             } catch {
                 return .failure(error)
             }
         }.value
 
         switch result {
-        case .success(.loaded(let stats, let fingerprint, _)):
+        case .success(.loaded(let stats, let entries, let fingerprint, _)):
             entryFingerprints[id] = fingerprint
             states[id]?.stats = stats
+            states[id]?.entries = entries
             states[id]?.needsAuthorization = false
             states[id]?.errorMessage = nil
             states[id]?.isLoading = false
@@ -242,7 +244,7 @@ final class TokenStatsViewModel: Sendable {
 }
 
 private enum ProviderLoadResult: Sendable {
-    case loaded(stats: AggregatedStats, fingerprint: UsageEntriesFingerprint, entryCount: Int)
+    case loaded(stats: AggregatedStats, entries: [ParsedUsageEntry], fingerprint: UsageEntriesFingerprint, entryCount: Int)
     case unchanged(entryCount: Int)
 }
 

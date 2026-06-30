@@ -153,6 +153,62 @@ struct TokenStatsViewModelObserverTests {
         #expect(received == [.claude])
         #expect(firstCost != secondCost)
     }
+
+    @Test func successfulLoadStoresLatestEntries() async throws {
+        let provider = StubUsageProvider(id: .claude)
+        let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        await vm.loadStats(for: .claude)
+
+        #expect(vm.states[.claude]?.entries?.count == 1)
+        #expect(vm.states[.claude]?.entries?.first?.sessionID == "session-1")
+        #expect(vm.states[.claude]?.stats != nil)
+    }
+
+    @Test func unchangedRefreshKeepsExistingEntries() async throws {
+        let provider = StubUsageProvider(id: .claude)
+        let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        await vm.loadStats(for: .claude, mode: .silentIfUnchanged)
+        let firstEntries = vm.states[.claude]?.entries
+
+        await vm.loadStats(for: .claude, mode: .silentIfUnchanged)
+
+        #expect(vm.states[.claude]?.entries == firstEntries)
+        #expect(aggregator.aggregateCallCount == 1)
+    }
+
+    @Test func failedRefreshKeepsExistingEntries() async throws {
+        let provider = FailingAfterFirstLoadProvider(id: .claude)
+        let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        await vm.loadStats(for: .claude)
+        let firstEntries = vm.states[.claude]?.entries
+
+        provider.failNextLoad()
+        await vm.loadStats(for: .claude)
+
+        #expect(vm.states[.claude]?.entries == firstEntries)
+        #expect(vm.states[.claude]?.errorMessage != nil)
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
@@ -221,6 +277,45 @@ private final class MutableUsageProvider: UsageProvider, @unchecked Sendable {
         lock.unlock()
         return [makeEntry(id: id, usage: usage)]
     }
+}
+
+private final class FailingAfterFirstLoadProvider: UsageProvider, @unchecked Sendable {
+    let id: ProviderID
+    let displayName = "Failing Provider"
+    let bookmarkKey = "FailingBookmark"
+    let defaultDirectoryPath = NSTemporaryDirectory()
+    let openPanelMessage = "Select a folder"
+    let hasCacheWriteDimension = true
+    let hasReasoningDimension = false
+
+    private let lock = NSLock()
+    private var shouldFail = false
+
+    init(id: ProviderID) {
+        self.id = id
+    }
+
+    func failNextLoad() {
+        lock.lock()
+        shouldFail = true
+        lock.unlock()
+    }
+
+    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
+        lock.lock()
+        let fail = shouldFail
+        shouldFail = false
+        lock.unlock()
+
+        if fail {
+            throw StubLoadError()
+        }
+        return [makeEntry(id: id, usage: makeUsage(cacheCreation5m: 0, cacheCreation1h: 0))]
+    }
+}
+
+private struct StubLoadError: LocalizedError {
+    var errorDescription: String? { "stub load failed" }
 }
 
 private func makeEntry(id: ProviderID, usage: TokenUsage) -> ParsedUsageEntry {
