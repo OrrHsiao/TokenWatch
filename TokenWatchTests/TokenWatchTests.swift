@@ -155,7 +155,7 @@ struct TokenWatchTests {
                 .textField?
                 .stringValue
         }
-        #expect(displayedTitles == ["总计", "最近 12 个月", "最近 30 天", "本日", "设置"])
+        #expect(displayedTitles == ["总计", "最近 12 个月", "最近 7 天", "最近 30 天", "本日", "设置"])
     }
 
     @MainActor
@@ -173,6 +173,7 @@ struct TokenWatchTests {
         #expect(displayedIconIdentifiers == [
             "SidebarIcon.chart.bar.xaxis",
             "SidebarIcon.calendar",
+            "SidebarIcon.calendar.badge.clock",
             "SidebarIcon.clock",
             "SidebarIcon.sun.max",
             "SidebarIcon.gearshape",
@@ -194,6 +195,7 @@ struct TokenWatchTests {
         #expect(cellIdentifiers == [
             "SidebarRow.total",
             "SidebarRow.monthly",
+            "SidebarRow.recent7Days",
             "SidebarRow.recent30Days",
             "SidebarRow.today",
             "SidebarRow.settings",
@@ -217,7 +219,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 5), byExtendingSelection: false)
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 6), byExtendingSelection: false)
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(!labels.contains("总 token"))
@@ -231,11 +233,25 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
-        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 4), byExtendingSelection: false)
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 5), byExtendingSelection: false)
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("最近 12 个月"))
         #expect(!labels.contains("最近 12 个月,跨 provider 汇总"))
+        #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
+    }
+
+    @MainActor
+    @Test func selectingRecentSevenDaysShowsDailyChartPage() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(ofType: NSTableView.self))
+        sidebar.selectRowIndexes(IndexSet(integer: sidebar.numberOfRows - 4), byExtendingSelection: false)
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("最近 7 天"))
+        #expect(!labels.contains("最近 7 天,跨 provider 汇总"))
         #expect(viewController.view.firstDescendant(ofType: MonthlyTokenChartView.self) != nil)
     }
 
@@ -535,7 +551,7 @@ struct TokenWatchTests {
                     .stringValue
             }
 
-            #expect(displayedTitles == ["Total", "Last 12 Months", "Last 30 Days", "Today", "Settings"])
+            #expect(displayedTitles == ["Total", "Last 12 Months", "Last 7 Days", "Last 30 Days", "Today", "Settings"])
         }
     }
 }
