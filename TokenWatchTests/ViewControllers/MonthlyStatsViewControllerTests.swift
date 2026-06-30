@@ -761,6 +761,13 @@ struct MonthlyStatsViewControllerTests {
                     "2026-06": makeSummary(total: 500_000, cost: 2.5, modelBreakdown: ["claude-sonnet": 500_000])
                 ]
             )
+        case .recent7Days:
+            return makeStats(
+                byDay: [
+                    "2026-06-20": makeSummary(total: 500_000, cost: 2.5, modelBreakdown: ["claude-sonnet": 500_000])
+                ],
+                byMonth: [:]
+            )
         case .recent30Days:
             return makeStats(
                 byDay: [

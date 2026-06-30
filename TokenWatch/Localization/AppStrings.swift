@@ -11,6 +11,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case languageEnglish
     case sidebarTotal
     case sidebarRecent12Months
+    case sidebarRecent7Days
     case sidebarRecent30Days
     case sidebarToday
     case sidebarSettings
@@ -115,6 +116,7 @@ enum AppStrings {
         .languageEnglish: "English",
         .sidebarTotal: "总计",
         .sidebarRecent12Months: "最近 12 个月",
+        .sidebarRecent7Days: "最近 7 天",
         .sidebarRecent30Days: "最近 30 天",
         .sidebarToday: "本日",
         .sidebarSettings: "设置",
@@ -196,6 +198,7 @@ enum AppStrings {
         .languageEnglish: "English",
         .sidebarTotal: "總計",
         .sidebarRecent12Months: "最近 12 個月",
+        .sidebarRecent7Days: "最近 7 天",
         .sidebarRecent30Days: "最近 30 天",
         .sidebarToday: "今日",
         .sidebarSettings: "設定",
@@ -277,6 +280,7 @@ enum AppStrings {
         .languageEnglish: "英語",
         .sidebarTotal: "合計",
         .sidebarRecent12Months: "過去12か月",
+        .sidebarRecent7Days: "過去7日",
         .sidebarRecent30Days: "過去30日",
         .sidebarToday: "今日",
         .sidebarSettings: "設定",
@@ -358,6 +362,7 @@ enum AppStrings {
         .languageEnglish: "영어",
         .sidebarTotal: "합계",
         .sidebarRecent12Months: "최근 12개월",
+        .sidebarRecent7Days: "최근 7일",
         .sidebarRecent30Days: "최근 30일",
         .sidebarToday: "오늘",
         .sidebarSettings: "설정",
@@ -439,6 +444,7 @@ enum AppStrings {
         .languageEnglish: "Inglés",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "Últimos 12 meses",
+        .sidebarRecent7Days: "Últimos 7 días",
         .sidebarRecent30Days: "Últimos 30 días",
         .sidebarToday: "Hoy",
         .sidebarSettings: "Configuración",
@@ -520,6 +526,7 @@ enum AppStrings {
         .languageEnglish: "Englisch",
         .sidebarTotal: "Gesamt",
         .sidebarRecent12Months: "Letzte 12 Monate",
+        .sidebarRecent7Days: "Letzte 7 Tage",
         .sidebarRecent30Days: "Letzte 30 Tage",
         .sidebarToday: "Heute",
         .sidebarSettings: "Einstellungen",
@@ -601,6 +608,7 @@ enum AppStrings {
         .languageEnglish: "Anglais",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "12 derniers mois",
+        .sidebarRecent7Days: "7 derniers jours",
         .sidebarRecent30Days: "30 derniers jours",
         .sidebarToday: "Aujourd'hui",
         .sidebarSettings: "Paramètres",
@@ -682,6 +690,7 @@ enum AppStrings {
         .languageEnglish: "Inglês",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "Últimos 12 meses",
+        .sidebarRecent7Days: "Últimos 7 dias",
         .sidebarRecent30Days: "Últimos 30 dias",
         .sidebarToday: "Hoje",
         .sidebarSettings: "Configurações",
@@ -763,6 +772,7 @@ enum AppStrings {
         .languageEnglish: "Inglese",
         .sidebarTotal: "Totale",
         .sidebarRecent12Months: "Ultimi 12 mesi",
+        .sidebarRecent7Days: "Ultimi 7 giorni",
         .sidebarRecent30Days: "Ultimi 30 giorni",
         .sidebarToday: "Oggi",
         .sidebarSettings: "Impostazioni",
@@ -844,6 +854,7 @@ enum AppStrings {
         .languageEnglish: "Engels",
         .sidebarTotal: "Totaal",
         .sidebarRecent12Months: "Afgelopen 12 maanden",
+        .sidebarRecent7Days: "Afgelopen 7 dagen",
         .sidebarRecent30Days: "Afgelopen 30 dagen",
         .sidebarToday: "Vandaag",
         .sidebarSettings: "Instellingen",
@@ -925,6 +936,7 @@ enum AppStrings {
         .languageEnglish: "Angielski",
         .sidebarTotal: "Razem",
         .sidebarRecent12Months: "Ostatnie 12 miesięcy",
+        .sidebarRecent7Days: "Ostatnie 7 dni",
         .sidebarRecent30Days: "Ostatnie 30 dni",
         .sidebarToday: "Dzisiaj",
         .sidebarSettings: "Ustawienia",
@@ -1006,6 +1018,7 @@ enum AppStrings {
         .languageEnglish: "English",
         .sidebarTotal: "Total",
         .sidebarRecent12Months: "Last 12 Months",
+        .sidebarRecent7Days: "Last 7 Days",
         .sidebarRecent30Days: "Last 30 Days",
         .sidebarToday: "Today",
         .sidebarSettings: "Settings",
