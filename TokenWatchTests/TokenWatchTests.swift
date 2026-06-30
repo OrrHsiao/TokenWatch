@@ -562,6 +562,172 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardProjectPanelUsesSelectedRangeProjectsInsteadOfModels() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let stats = UsageAggregator().aggregate([
+            makeDashboardEntry(
+                sessionID: "s1",
+                date: dateTime(2026, 6, 20, hour: 9, minute: 0, calendar: calendar),
+                model: "model-alpha",
+                input: 700,
+                cwd: "/work/alpha-app"
+            ),
+            makeDashboardEntry(
+                sessionID: "s2",
+                date: dateTime(2026, 6, 19, hour: 10, minute: 0, calendar: calendar),
+                model: "model-beta",
+                input: 500,
+                cwd: "/work/beta-app"
+            ),
+            makeDashboardEntry(
+                sessionID: "legacy",
+                date: dateTime(2026, 6, 1, hour: 10, minute: 0, calendar: calendar),
+                model: "legacy-model",
+                input: 9_000,
+                cwd: "/work/legacy-app"
+            ),
+        ])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        #expect(projectPanelLabels.contains("alpha-app"))
+        #expect(projectPanelLabels.contains("beta-app"))
+        #expect(!projectPanelLabels.contains("model-alpha"))
+        #expect(!projectPanelLabels.contains("model-beta"))
+        #expect(!projectPanelLabels.contains("legacy-app"))
+    }
+
+    @MainActor
+    @Test func dashboardProjectPanelMergesProjectsWithSameDisplayName() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let stats = UsageAggregator().aggregate([
+            makeDashboardEntry(
+                sessionID: "s1",
+                date: dateTime(2026, 6, 20, hour: 9, minute: 0, calendar: calendar),
+                model: "model-alpha",
+                input: 700,
+                cwd: "/Users/orrhsiao/Desktop/Code/TokenWatch"
+            ),
+            makeDashboardEntry(
+                sessionID: "s2",
+                date: dateTime(2026, 6, 19, hour: 10, minute: 0, calendar: calendar),
+                model: "model-beta",
+                input: 500,
+                cwd: "/private/tmp/TokenWatch"
+            ),
+        ])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        var projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        #expect(projectPanelLabels.filter { $0 == "TokenWatch" }.count == 1)
+        #expect(projectPanelLabels.contains("1,200"))
+
+        try clickDashboardRange("all", in: viewController)
+        projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        #expect(projectPanelLabels.filter { $0 == "TokenWatch" }.count == 1)
+        #expect(projectPanelLabels.contains("1,200"))
+    }
+
+    @MainActor
+    @Test func dashboardProjectPanelNormalizesGeneratedWorkspacePaths() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let stats = UsageAggregator().aggregate([
+            makeDashboardEntry(
+                sessionID: "main",
+                date: dateTime(2026, 6, 20, hour: 9, minute: 0, calendar: calendar),
+                model: "model-alpha",
+                input: 700,
+                cwd: "/Users/orrhsiao/Desktop/Code/TokenWatch"
+            ),
+            makeDashboardEntry(
+                sessionID: "agent",
+                date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+                model: "model-beta",
+                input: 500,
+                cwd: "/Users/orrhsiao/Desktop/Code/TokenWatch/.claude/worktrees/agent-a43c08f58c97cbaed"
+            ),
+            makeDashboardEntry(
+                sessionID: "pencil",
+                date: dateTime(2026, 6, 20, hour: 11, minute: 0, calendar: calendar),
+                model: "model-gamma",
+                input: 4_000,
+                cwd: "/Users/orrhsiao/.pencil/documents/687dce51-3ca3-4a6a-86db-814dae59f68d"
+            ),
+            makeDashboardEntry(
+                sessionID: "temp",
+                date: dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar),
+                model: "model-delta",
+                input: 8_000,
+                cwd: "/var/folders/r_/g4y4wqs13sx3z39kb7gtyzpw0000gn/T"
+            ),
+        ])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        var projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        #expect(projectPanelLabels.filter { $0 == "TokenWatch" }.count == 1)
+        #expect(projectPanelLabels.contains("1,200"))
+        #expect(!projectPanelLabels.contains("agent-a43c08f58c97cbaed"))
+        #expect(!projectPanelLabels.contains("687dce51-3ca3-4a6a-86db-814dae59f68d"))
+        #expect(!projectPanelLabels.contains("T"))
+
+        try clickDashboardRange("all", in: viewController)
+        projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        #expect(projectPanelLabels.filter { $0 == "TokenWatch" }.count == 1)
+        #expect(projectPanelLabels.contains("1,200"))
+        #expect(!projectPanelLabels.contains("agent-a43c08f58c97cbaed"))
+        #expect(!projectPanelLabels.contains("687dce51-3ca3-4a6a-86db-814dae59f68d"))
+        #expect(!projectPanelLabels.contains("T"))
+    }
+
+    @MainActor
     @Test func dashboardRefreshButtonIsStableActionEntry() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -872,6 +1038,17 @@ private extension NSView {
         }
     }
 
+    func firstAncestor(where predicate: (NSView) -> Bool) -> NSView? {
+        var current = superview
+        while let view = current {
+            if predicate(view) {
+                return view
+            }
+            current = view.superview
+        }
+        return nil
+    }
+
     func popUpButton(identifier: String) -> NSPopUpButton? {
         allDescendants(ofType: NSPopUpButton.self).first {
             $0.identifier?.rawValue == identifier
@@ -997,6 +1174,53 @@ private func makeDashboardStats(
         byProject: [:],
         dataSourceCount: 1
     )
+}
+
+private func makeDashboardEntry(
+    sessionID: String,
+    date: Date,
+    model: String,
+    input: Int,
+    cwd: String
+) -> ParsedUsageEntry {
+    let id = UUID().uuidString
+    return ParsedUsageEntry(
+        recordUUID: id,
+        messageId: id,
+        requestId: nil,
+        sessionID: sessionID,
+        timestamp: date,
+        model: model,
+        cwd: cwd,
+        agentId: nil,
+        usage: TokenUsage(
+            inputTokens: input,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: 0,
+            reasoningTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            inferenceGeo: "",
+            iterations: [],
+            speed: "standard"
+        ),
+        isSubagent: false,
+        provider: .claude,
+        upstreamProviderID: nil,
+        upstreamCost: nil
+    )
+}
+
+@MainActor
+private func labels(inPanelTitled title: String, root: NSView) throws -> [String] {
+    let titleLabel = try #require(root.textField(stringValue: title))
+    let panel = try #require(titleLabel.firstAncestor { view in
+        guard let cornerRadius = view.layer?.cornerRadius else { return false }
+        return abs(cornerRadius - 8) < 0.1
+    })
+    return panel.allDescendants(ofType: NSTextField.self).map(\.stringValue)
 }
 
 private func mergeDashboardSummaries(_ lhs: UsageSummary, _ rhs: UsageSummary) -> UsageSummary {

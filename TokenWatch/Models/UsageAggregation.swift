@@ -1,7 +1,7 @@
 import Foundation
 
 /// 单次用量聚合结果
-/// 参考 ccusage 的 UsageSummary 设计，支持按模型细分
+/// 参考 ccusage 的 UsageSummary 设计，支持按模型和项目细分
 struct UsageSummary: Sendable {
     let inputTokens: Int
     let outputTokens: Int
@@ -12,6 +12,31 @@ struct UsageSummary: Sendable {
     let cost: Double             // USD
     let entryCount: Int          // 包含的 assistant 记录数
     let modelBreakdown: [String: UsageSummary]  // 按模型细分
+    let projectBreakdown: [String: UsageSummary]  // 按项目细分
+
+    init(
+        inputTokens: Int,
+        outputTokens: Int,
+        cacheReadTokens: Int,
+        cacheCreationTokens: Int,
+        reasoningTokens: Int,
+        totalTokens: Int,
+        cost: Double,
+        entryCount: Int,
+        modelBreakdown: [String: UsageSummary],
+        projectBreakdown: [String: UsageSummary] = [:]
+    ) {
+        self.inputTokens = inputTokens
+        self.outputTokens = outputTokens
+        self.cacheReadTokens = cacheReadTokens
+        self.cacheCreationTokens = cacheCreationTokens
+        self.reasoningTokens = reasoningTokens
+        self.totalTokens = totalTokens
+        self.cost = cost
+        self.entryCount = entryCount
+        self.modelBreakdown = modelBreakdown
+        self.projectBreakdown = projectBreakdown
+    }
 
     /// 创建空的聚合结果
     static var zero: UsageSummary {
@@ -20,7 +45,8 @@ struct UsageSummary: Sendable {
             cacheReadTokens: 0, cacheCreationTokens: 0,
             reasoningTokens: 0,
             totalTokens: 0, cost: 0, entryCount: 0,
-            modelBreakdown: [:]
+            modelBreakdown: [:],
+            projectBreakdown: [:]
         )
     }
 }

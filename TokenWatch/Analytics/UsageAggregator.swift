@@ -46,6 +46,7 @@ final class UsageAggregator: UsageAggregating {
 
         var overall = UsageSummaryAccumulator()
         var overallByModel: [String: UsageSummaryAccumulator] = [:]
+        var overallByProject: [String: UsageSummaryAccumulator] = [:]
         var byHour = UsageDimensionAccumulator()
         var byDay = UsageDimensionAccumulator()
         var byWeek = UsageDimensionAccumulator()
@@ -58,8 +59,10 @@ final class UsageAggregator: UsageAggregating {
             uniqueFiles.insert("\(entry.sessionID)\(entry.agentId.map { "_\($0)" } ?? "")")
 
             let cost = resolvedCost(for: entry)
+            let projectKey = entry.cwd ?? "unknown"
             overall.add(entry, cost: cost)
             overallByModel[entry.model, default: UsageSummaryAccumulator()].add(entry, cost: cost)
+            overallByProject[projectKey, default: UsageSummaryAccumulator()].add(entry, cost: cost)
 
             byHour.add(key: hourKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
             byDay.add(key: dayKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
@@ -67,12 +70,15 @@ final class UsageAggregator: UsageAggregating {
             byMonth.add(key: monthKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
             bySession.add(key: entry.sessionID, entry: entry, cost: cost)
             byModel.add(key: entry.model, entry: entry, cost: cost)
-            byProject.add(key: entry.cwd ?? "unknown", entry: entry, cost: cost)
+            byProject.add(key: projectKey, entry: entry, cost: cost)
         }
         logger.info("聚合完成：\(entries.count) 条记录，\(uniqueFiles.count) 个数据源")
 
         return AggregatedStats(
-            overall: overall.makeSummary(modelBreakdown: overallByModel.makeSummaries()),
+            overall: overall.makeSummary(
+                modelBreakdown: overallByModel.makeSummaries(),
+                projectBreakdown: overallByProject.makeSummaries()
+            ),
             byHour: byHour.makeSummaries(),
             byDay: byDay.makeSummaries(),
             byWeek: byWeek.makeSummaries(),
@@ -174,7 +180,10 @@ private struct UsageSummaryAccumulator {
         entryCount += 1
     }
 
-    func makeSummary(modelBreakdown: [String: UsageSummary] = [:]) -> UsageSummary {
+    func makeSummary(
+        modelBreakdown: [String: UsageSummary] = [:],
+        projectBreakdown: [String: UsageSummary] = [:]
+    ) -> UsageSummary {
         UsageSummary(
             inputTokens: inputTokens,
             outputTokens: outputTokens,
@@ -184,7 +193,8 @@ private struct UsageSummaryAccumulator {
             totalTokens: inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens + reasoningTokens,
             cost: cost,
             entryCount: entryCount,
-            modelBreakdown: modelBreakdown
+            modelBreakdown: modelBreakdown,
+            projectBreakdown: projectBreakdown
         )
     }
 }
@@ -192,10 +202,13 @@ private struct UsageSummaryAccumulator {
 private struct UsageDimensionAccumulator {
     private var totals: [String: UsageSummaryAccumulator] = [:]
     private var modelTotals: [String: [String: UsageSummaryAccumulator]] = [:]
+    private var projectTotals: [String: [String: UsageSummaryAccumulator]] = [:]
 
     mutating func add(key: String, entry: ParsedUsageEntry, cost: Double) {
+        let projectKey = entry.cwd ?? "unknown"
         totals[key, default: UsageSummaryAccumulator()].add(entry, cost: cost)
         modelTotals[key, default: [:]][entry.model, default: UsageSummaryAccumulator()].add(entry, cost: cost)
+        projectTotals[key, default: [:]][projectKey, default: UsageSummaryAccumulator()].add(entry, cost: cost)
     }
 
     func makeSummaries() -> [String: UsageSummary] {
@@ -203,7 +216,8 @@ private struct UsageDimensionAccumulator {
         summaries.reserveCapacity(totals.count)
         for (key, total) in totals {
             summaries[key] = total.makeSummary(
-                modelBreakdown: modelTotals[key]?.makeSummaries() ?? [:]
+                modelBreakdown: modelTotals[key]?.makeSummaries() ?? [:],
+                projectBreakdown: projectTotals[key]?.makeSummaries() ?? [:]
             )
         }
         return summaries

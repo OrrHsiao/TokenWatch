@@ -1457,7 +1457,7 @@ private struct DashboardRangeSnapshot {
 
         var summaries = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, UsageSummary.zero) })
         var toolTotals: [ProviderID: Int] = [:]
-        var modelTotals: [String: Int] = [:]
+        var projectTotals: [String: Int] = [:]
         var loadedProviderCount = 0
         var loadingProviderCount = 0
         var unauthorizedProviderCount = 0
@@ -1481,8 +1481,8 @@ private struct DashboardRangeSnapshot {
                 guard let summary = range.summary(in: stats, for: key) else { continue }
                 summaries[key, default: .zero] = summaries[key, default: .zero].merged(with: summary)
                 providerVisibleTokens += summary.totalTokens
-                for (model, modelSummary) in summary.modelBreakdown {
-                    modelTotals[model, default: 0] += modelSummary.totalTokens
+                for (project, projectSummary) in summary.projectBreakdown {
+                    projectTotals[project, default: 0] += projectSummary.totalTokens
                 }
             }
             if providerVisibleTokens > 0 {
@@ -1511,7 +1511,7 @@ private struct DashboardRangeSnapshot {
         }
         let summary = makeWindowSummary(
             orderedSummaries: orderedSummaries,
-            modelTotals: modelTotals
+            projectTotals: projectTotals
         )
 
         return DashboardRangeSnapshot(
@@ -1587,21 +1587,12 @@ private struct DashboardRangeSnapshot {
 
     private static func makeWindowSummary(
         orderedSummaries: [(key: String, label: String, summary: UsageSummary)],
-        modelTotals: [String: Int]
+        projectTotals: [String: Int]
     ) -> DashboardUsageSummary {
         let total = orderedSummaries.reduce(UsageSummary.zero) { partial, row in
             partial.merged(with: row.summary)
         }
-        let projects = modelTotals
-            .filter { $0.value > 0 }
-            .sorted { lhs, rhs in
-                if lhs.value != rhs.value {
-                    return lhs.value > rhs.value
-                }
-                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
-            }
-            .prefix(4)
-            .map { DashboardProjectRow(name: $0.key, tokens: $0.value) }
+        let projects = DashboardProjectRows.makeRows(fromTokenTotals: projectTotals)
         let details = orderedSummaries
             .filter { $0.summary.totalTokens > 0 }
             .reversed()
@@ -1723,23 +1714,14 @@ private struct DashboardUsageSummary {
             totalTokens: totalTokens,
             cost: cost,
             entryCount: entryCount,
-            projectCount: projects.filter { $0.value.totalTokens > 0 }.count,
+            projectCount: DashboardProjectRows.projectCount(fromSummaries: projects),
             projects: makeProjectRows(projects),
             details: details.sorted { $0.period > $1.period }
         )
     }
 
     private static func makeProjectRows(_ projects: [String: UsageSummary]) -> [DashboardProjectRow] {
-        projects
-            .filter { $0.value.totalTokens > 0 }
-            .sorted { lhs, rhs in
-                if lhs.value.totalTokens != rhs.value.totalTokens {
-                    return lhs.value.totalTokens > rhs.value.totalTokens
-                }
-                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
-            }
-            .prefix(4)
-            .map { DashboardProjectRow(name: displayProjectName($0.key), tokens: $0.value.totalTokens) }
+        DashboardProjectRows.makeRows(fromSummaries: projects)
     }
 
     private static func providerName(_ id: ProviderID) -> String {
@@ -1747,15 +1729,11 @@ private struct DashboardUsageSummary {
     }
 
     private static func displayProjectName(_ path: String) -> String {
-        let components = path.split(separator: "/")
-        return components.last.map(String.init) ?? path
+        DashboardProjectRows.displayName(for: path)
     }
 
     private static func topProjectName(in stats: AggregatedStats) -> String {
-        guard let project = stats.byProject.max(by: { $0.value.totalTokens < $1.value.totalTokens }) else {
-            return "全部项目"
-        }
-        return displayProjectName(project.key)
+        makeProjectRows(stats.byProject).first?.name ?? "全部项目"
     }
 
     private static func topModelName(in summary: UsageSummary) -> String {
@@ -1766,6 +1744,100 @@ private struct DashboardUsageSummary {
 private struct DashboardProjectRow {
     let name: String
     let tokens: Int
+}
+
+private enum DashboardProjectRows {
+    static func makeRows(fromSummaries projects: [String: UsageSummary]) -> [DashboardProjectRow] {
+        makeRows(fromTokenTotals: projects.mapValues(\.totalTokens))
+    }
+
+    static func makeRows(fromTokenTotals projects: [String: Int]) -> [DashboardProjectRow] {
+        mergedDisplayTotals(projects)
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value {
+                    return lhs.value > rhs.value
+                }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            .prefix(4)
+            .map { DashboardProjectRow(name: $0.key, tokens: $0.value) }
+    }
+
+    static func projectCount(fromSummaries projects: [String: UsageSummary]) -> Int {
+        mergedDisplayTotals(projects.mapValues(\.totalTokens)).count
+    }
+
+    static func displayName(for path: String) -> String {
+        displayNameOrNil(for: path) ?? fallbackDisplayName(for: path)
+    }
+
+    private static func displayNameOrNil(for path: String) -> String? {
+        let path = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty, path != "unknown" else { return nil }
+        guard !isPencilDocumentPath(path) else { return nil }
+        guard !isMacOSTemporaryRootPath(path) else { return nil }
+
+        if let claudeParentProject = parentProjectBeforeClaudeWorktree(in: path) {
+            return fallbackDisplayName(for: claudeParentProject)
+        }
+        if let codexWorktreeProject = projectInsideCodexWorktree(in: path) {
+            return fallbackDisplayName(for: codexWorktreeProject)
+        }
+        return fallbackDisplayName(for: path)
+    }
+
+    private static func fallbackDisplayName(for path: String) -> String {
+        let components = path.split(separator: "/")
+        return components.last.map(String.init) ?? path
+    }
+
+    private static func mergedDisplayTotals(_ projects: [String: Int]) -> [String: Int] {
+        var totals: [String: Int] = [:]
+        for (project, tokens) in projects where tokens > 0 {
+            guard let displayName = displayNameOrNil(for: project) else { continue }
+            totals[displayName, default: 0] += tokens
+        }
+        return totals
+    }
+
+    private static func isPencilDocumentPath(_ path: String) -> Bool {
+        let components = path.split(separator: "/").map(String.init)
+        guard let pencilIndex = components.firstIndex(of: ".pencil"),
+              components.indices.contains(pencilIndex + 1)
+        else {
+            return false
+        }
+        return components[pencilIndex + 1] == "documents"
+    }
+
+    private static func isMacOSTemporaryRootPath(_ path: String) -> Bool {
+        let components = path.split(separator: "/").map(String.init)
+        guard components.last == "T" else { return false }
+        if components.count == 5 {
+            return components[0] == "var" && components[1] == "folders"
+        }
+        if components.count == 6 {
+            return components[0] == "private" && components[1] == "var" && components[2] == "folders"
+        }
+        return false
+    }
+
+    private static func parentProjectBeforeClaudeWorktree(in path: String) -> String? {
+        guard let range = path.range(of: "/.claude/worktrees/") else { return nil }
+        let parent = String(path[..<range.lowerBound])
+        return parent.isEmpty ? nil : parent
+    }
+
+    private static func projectInsideCodexWorktree(in path: String) -> String? {
+        let components = path.split(separator: "/").map(String.init)
+        guard let codexIndex = components.firstIndex(of: ".codex"),
+              components.indices.contains(codexIndex + 3),
+              components[codexIndex + 1] == "worktrees"
+        else {
+            return nil
+        }
+        return components[codexIndex + 3]
+    }
 }
 
 private struct DashboardDetailRow {
@@ -2397,7 +2469,8 @@ private extension UsageSummary {
             totalTokens: totalTokens + other.totalTokens,
             cost: cost + other.cost,
             entryCount: entryCount + other.entryCount,
-            modelBreakdown: modelBreakdown.merging(other.modelBreakdown) { $0.merged(with: $1) }
+            modelBreakdown: modelBreakdown.merging(other.modelBreakdown) { $0.merged(with: $1) },
+            projectBreakdown: projectBreakdown.merging(other.projectBreakdown) { $0.merged(with: $1) }
         )
     }
 }

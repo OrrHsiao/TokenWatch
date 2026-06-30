@@ -270,8 +270,8 @@ struct UsageAggregatorTests {
         #expect(stats.overall.modelBreakdown["deepseek-v4-flash"]?.inputTokens == 100)
     }
 
-    @Test("各维度 summary 仍包含该桶内的模型细分")
-    func groupedSummariesIncludeModelBreakdown() {
+    @Test("各维度 summary 仍包含该桶内的模型和项目细分")
+    func groupedSummariesIncludeModelAndProjectBreakdowns() {
         let entries = [
             makeEntry(sessionID: "s1", date: dateTime(2026, 6, 13, 9, 0),
                       model: "deepseek-v4-pro", input: 1000, output: 500,
@@ -286,11 +286,16 @@ struct UsageAggregatorTests {
 
         let stats = aggregator.aggregate(entries)
 
+        #expect(stats.overall.projectBreakdown["/project-a"]?.inputTokens == 1200)
+        #expect(stats.overall.projectBreakdown["/project-b"]?.totalTokens == 450)
         #expect(stats.byDay["2026-06-13"]?.modelBreakdown["deepseek-v4-pro"]?.inputTokens == 1000)
         #expect(stats.byDay["2026-06-13"]?.modelBreakdown["deepseek-v4-flash"]?.inputTokens == 200)
+        #expect(stats.byDay["2026-06-13"]?.projectBreakdown["/project-a"]?.totalTokens == 1800)
         #expect(stats.byHour["2026-06-13T09"]?.modelBreakdown.count == 2)
+        #expect(stats.byHour["2026-06-13T09"]?.projectBreakdown["/project-a"]?.entryCount == 2)
         #expect(stats.byProject["/project-a"]?.modelBreakdown["deepseek-v4-flash"]?.outputTokens == 100)
         #expect(stats.bySession["s3"]?.modelBreakdown["deepseek-v4-pro"]?.totalTokens == 450)
+        #expect(stats.byModel["deepseek-v4-pro"]?.projectBreakdown["/project-b"]?.totalTokens == 450)
     }
 
     // MARK: - Reasoning 聚合
