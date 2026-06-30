@@ -951,7 +951,7 @@ final class DashboardViewController: NSViewController {
         totalTokenValueLabel.stringValue = CompactNumberFormatter.formatMillions(summary.totalTokens)
         totalTokenDetailLabel.stringValue = "输入 \(CompactNumberFormatter.formatMillions(summary.inputTokens)) / 输出 \(CompactNumberFormatter.formatMillions(summary.outputTokens)) / 缓存命中率 \(formatCacheHitRate(summary))"
         totalCostValueLabel.stringValue = formatCurrency(summary.cost)
-        totalCostDetailLabel.stringValue = "\(totalSnapshot.loadedProviderCount) 个来源已载入 / \(totalSnapshot.unauthorizedProviderCount) 个待授权 / \(totalSnapshot.loadingProviderCount) 个刷新中"
+        totalCostDetailLabel.stringValue = formatCostBreakdown(summary)
         sessionValueLabel.stringValue = formatInt(summary.entryCount)
         sessionDetailLabel.stringValue = "\(totalSnapshot.loadedProviderCount) 个来源，\(summary.projectCount) 个项目"
         scanStatusBodyLabel.stringValue = scanStatusText(states: states)
@@ -1218,6 +1218,19 @@ final class DashboardViewController: NSViewController {
         let base = summary.inputTokens + summary.outputTokens + summary.reasoningTokens + cache
         guard base > 0 else { return "0%" }
         return formatPercentage(Double(cache) / Double(base))
+    }
+
+    private func formatCostBreakdown(_ summary: DashboardUsageSummary) -> String {
+        let inputBillableTokens = summary.inputTokens + summary.cacheReadTokens + summary.cacheCreationTokens
+        let billableTokens = inputBillableTokens + summary.outputTokens + summary.reasoningTokens
+        guard billableTokens > 0, summary.cost > 0 else {
+            return "输入 $0.00 / 输出 $0.00 / 推理 $0.00"
+        }
+
+        let inputCost = summary.cost * Double(inputBillableTokens) / Double(billableTokens)
+        let outputCost = summary.cost * Double(summary.outputTokens) / Double(billableTokens)
+        let reasoningCost = summary.cost * Double(summary.reasoningTokens) / Double(billableTokens)
+        return "输入 \(formatCurrency(inputCost)) / 输出 \(formatCurrency(outputCost)) / 推理 \(formatCurrency(reasoningCost))"
     }
 
     private func formatPercentage(_ value: Double) -> String {

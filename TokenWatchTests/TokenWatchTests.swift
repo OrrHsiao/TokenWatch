@@ -291,6 +291,44 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardTotalCostDetailMatchesPencilCostBreakdown() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeDashboardStats(
+                            byDay: [
+                                "2026-06-20": makeDashboardSummary(
+                                    input: 500,
+                                    output: 400,
+                                    reasoning: 300,
+                                    cost: 120
+                                ),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("输入 $50.00 / 输出 $40.00 / 推理 $30.00"))
+        #expect(!labels.contains { $0.contains("来源已载入") })
+    }
+
+    @MainActor
     @Test func dashboardTrendLegendAlignsWithDescription() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -969,16 +1007,26 @@ private func mergeDashboardSummaries(_ lhs: UsageSummary, _ rhs: UsageSummary) -
     )
 }
 
-private func makeDashboardSummary(total: Int, cost: Double = 0) -> UsageSummary {
-    UsageSummary(
-        inputTokens: total,
-        outputTokens: 0,
-        cacheReadTokens: 0,
-        cacheCreationTokens: 0,
-        reasoningTokens: 0,
-        totalTokens: total,
+private func makeDashboardSummary(
+    total: Int? = nil,
+    input: Int? = nil,
+    output: Int = 0,
+    reasoning: Int = 0,
+    cacheRead: Int = 0,
+    cacheCreation: Int = 0,
+    cost: Double = 0
+) -> UsageSummary {
+    let inputTokens = input ?? total ?? 0
+    let totalTokens = total ?? (inputTokens + output + reasoning + cacheRead + cacheCreation)
+    return UsageSummary(
+        inputTokens: inputTokens,
+        outputTokens: output,
+        cacheReadTokens: cacheRead,
+        cacheCreationTokens: cacheCreation,
+        reasoningTokens: reasoning,
+        totalTokens: totalTokens,
         cost: cost,
-        entryCount: total > 0 ? 1 : 0,
+        entryCount: totalTokens > 0 ? 1 : 0,
         modelBreakdown: [:]
     )
 }
