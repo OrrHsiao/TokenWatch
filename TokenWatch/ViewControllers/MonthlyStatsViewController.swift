@@ -37,8 +37,10 @@ final class MonthlyStatsViewController: NSViewController {
     private var costHoverLabelTrailingConstraint: NSLayoutConstraint?
     private var costTitleRowTrailingConstraint: NSLayoutConstraint?
     private var recentDetailsCache: RecentSessionDetailsCache?
+    private var recentDetailsEntriesFingerprintCache: [ProviderID: RecentSessionEntriesFingerprintCache] = [:]
     private var renderedRecentDetailsKey: RecentSessionDetailsRenderKey?
     private var recentDetailsSnapshotBuildCount = 0
+    private var recentDetailsEntriesFingerprintBuildCount = 0
     private var language: AppLanguage { languageSettings.resolvedLanguage }
 
     init(
@@ -96,6 +98,10 @@ final class MonthlyStatsViewController: NSViewController {
 
     var debugRecentSessionSnapshotBuildCount: Int {
         recentDetailsSnapshotBuildCount
+    }
+
+    var debugRecentSessionEntriesFingerprintBuildCount: Int {
+        recentDetailsEntriesFingerprintBuildCount
     }
 
     var debugRefreshButtonTitle: String {
@@ -515,7 +521,7 @@ final class MonthlyStatsViewController: NSViewController {
                 errorMessage: state.errorMessage,
                 hasStats: state.stats != nil,
                 hasEntries: state.entries != nil,
-                entriesFingerprint: state.entries.map(UsageEntriesFingerprint.make(from:))
+                entriesFingerprint: cachedEntriesFingerprint(for: state.entries, providerID: providerID)
             )
         }
         .sorted { lhs, rhs in
@@ -528,6 +534,31 @@ final class MonthlyStatsViewController: NSViewController {
             windowEnd: interval.end,
             providerStates: providerStates
         )
+    }
+
+    private func cachedEntriesFingerprint(
+        for entries: [ParsedUsageEntry]?,
+        providerID: ProviderID
+    ) -> UsageEntriesFingerprint? {
+        guard let entries else {
+            recentDetailsEntriesFingerprintCache[providerID] = nil
+            return nil
+        }
+
+        let storageKey = RecentSessionEntriesStorageKey(entries: entries)
+        if let cache = recentDetailsEntriesFingerprintCache[providerID],
+           cache.storageKey == storageKey {
+            return cache.fingerprint
+        }
+
+        let fingerprint = UsageEntriesFingerprint.make(from: entries)
+        recentDetailsEntriesFingerprintCache[providerID] = RecentSessionEntriesFingerprintCache(
+            storageKey: storageKey,
+            fingerprint: fingerprint,
+            retainedEntries: entries
+        )
+        recentDetailsEntriesFingerprintBuildCount += 1
+        return fingerprint
     }
 
     private func visibleRecentDetailsSnapshot(from snapshot: RecentSessionDetailsSnapshot) -> RecentSessionDetailsSnapshot {
@@ -712,6 +743,26 @@ private struct ChartSectionLayout {
 private struct RecentSessionDetailsCache {
     let key: RecentSessionDetailsCacheKey
     let snapshot: RecentSessionDetailsSnapshot
+}
+
+private struct RecentSessionEntriesFingerprintCache {
+    let storageKey: RecentSessionEntriesStorageKey
+    let fingerprint: UsageEntriesFingerprint
+    /// 保留当前 entries storage,避免旧数组释放后新数组复用相同 baseAddress 造成误命中。
+    let retainedEntries: [ParsedUsageEntry]
+}
+
+private struct RecentSessionEntriesStorageKey: Equatable {
+    let count: Int
+    let baseAddress: UInt
+
+    init(entries: [ParsedUsageEntry]) {
+        count = entries.count
+        baseAddress = entries.withUnsafeBufferPointer { buffer in
+            guard let baseAddress = buffer.baseAddress else { return 0 }
+            return UInt(bitPattern: UnsafeRawPointer(baseAddress))
+        }
+    }
 }
 
 private struct RecentSessionDetailsCacheKey: Equatable {

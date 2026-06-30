@@ -350,6 +350,16 @@ struct MonthlyStatsViewControllerTests {
     func reusesRecentSessionDetailsSnapshotWhenLanguageChanges() async throws {
         let calendar = utcCalendar()
         let settings = AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
+        let entries = [
+            makeEntry(
+                provider: .claude,
+                sessionID: "session-1",
+                timestamp: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+                model: "claude-sonnet-4-5",
+                input: 100,
+                output: 50
+            ),
+        ]
         let viewController = MonthlyStatsViewController(
             period: .today,
             stateProvider: {
@@ -358,16 +368,7 @@ struct MonthlyStatsViewControllerTests {
                         byHour: ["2026-06-20T10": makeSummary(total: 150)],
                         byMonth: [:]
                     ),
-                    entries: [
-                        makeEntry(
-                            provider: .claude,
-                            sessionID: "session-1",
-                            timestamp: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
-                            model: "claude-sonnet-4-5",
-                            input: 100,
-                            output: 50
-                        ),
-                    ],
+                    entries: entries,
                     isLoading: false,
                     errorMessage: nil,
                     needsAuthorization: false
@@ -380,11 +381,13 @@ struct MonthlyStatsViewControllerTests {
 
         viewController.loadViewIfNeeded()
         #expect(viewController.debugRecentSessionSnapshotBuildCount == 1)
+        #expect(viewController.debugRecentSessionEntriesFingerprintBuildCount == 1)
 
         settings.selectedPreference = .en
         await Task.yield()
 
         #expect(viewController.debugRecentSessionSnapshotBuildCount == 1)
+        #expect(viewController.debugRecentSessionEntriesFingerprintBuildCount == 1)
         let rowText = try #require(viewController.debugRecentSessionRowTexts.first)
         #expect(rowText.contains("session-1"))
     }
