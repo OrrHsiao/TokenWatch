@@ -791,7 +791,6 @@ enum RecentSessionDetailsBuilder {
         now: Date,
         calendar: Calendar
     ) -> RecentSessionDetailsSnapshot {
-        let interval = period.entryDateInterval(now: now, calendar: calendar)
         let costResolver = UsageCostResolver()
         var loadedProviderCount = 0
         var loadingProviderCount = 0
@@ -814,7 +813,7 @@ enum RecentSessionDetailsBuilder {
 
             for entry in state.entries ?? [] {
                 guard let timestamp = entry.timestamp else { continue }
-                guard interval.contains(timestamp) else { continue }
+                guard period.containsEntryDate(timestamp, now: now, calendar: calendar) else { continue }
 
                 let key = SessionKey(provider: providerID, sessionID: entry.sessionID)
                 let cost = costResolver.resolvedCost(for: entry)
