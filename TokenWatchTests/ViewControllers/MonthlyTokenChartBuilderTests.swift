@@ -507,6 +507,70 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-06")?.modelSegments.map(\.totalCost) == [2.25, 1.50])
     }
 
+    @Test("最近七天窗口包含今天并向前回溯六天")
+    func recentSevenDaysWindowIncludesTodayAndSixPreviousDays() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let interval = UsageStatsPeriod.recent7Days.entryDateInterval(now: now, calendar: calendar)
+
+        #expect(interval.start == date(2026, 6, 14, calendar: calendar))
+        #expect(interval.end == date(2026, 6, 21, calendar: calendar))
+    }
+
+    @Test("最近七天明细筛选包含开始并排除结束边界")
+    func recentSevenDaysContainsEntryDateUsesHalfOpenInterval() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+
+        #expect(UsageStatsPeriod.recent7Days.containsEntryDate(
+            date(2026, 6, 14, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+        #expect(!UsageStatsPeriod.recent7Days.containsEntryDate(
+            date(2026, 6, 21, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+    }
+
+    @Test("本日窗口使用自然日半开区间")
+    func todayEntryWindowUsesLocalDayHalfOpenInterval() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let interval = UsageStatsPeriod.today.entryDateInterval(now: now, calendar: calendar)
+
+        #expect(interval.start == date(2026, 6, 20, calendar: calendar))
+        #expect(interval.end == date(2026, 6, 21, calendar: calendar))
+    }
+
+    @Test("本日明细筛选包含开始并排除结束边界")
+    func todayContainsEntryDateUsesHalfOpenInterval() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+
+        #expect(UsageStatsPeriod.today.containsEntryDate(
+            date(2026, 6, 20, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+        #expect(!UsageStatsPeriod.today.containsEntryDate(
+            date(2026, 6, 21, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+    }
+
+    @Test("最近十二个月窗口结束于下一自然月")
+    func recentTwelveMonthEntryWindowEndsAtNextMonth() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let interval = UsageStatsPeriod.recent12Months.entryDateInterval(now: now, calendar: calendar)
+
+        #expect(interval.start == date(2025, 7, 1, calendar: calendar))
+        #expect(interval.end == date(2026, 7, 1, calendar: calendar))
+    }
+
     private func utcCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

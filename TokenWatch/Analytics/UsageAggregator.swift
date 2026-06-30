@@ -14,7 +14,7 @@ protocol UsageAggregating: Sendable {
 /// 参考 ccusage 的 daily/weekly/monthly/session 报告聚合逻辑
 final class UsageAggregator: UsageAggregating {
 
-    private let pricingEngine = PricingEngine()
+    private let costResolver = UsageCostResolver()
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "UsageAggregator")
 
     /// 主入口：聚合所有条目
@@ -58,7 +58,7 @@ final class UsageAggregator: UsageAggregating {
         for entry in entries {
             uniqueFiles.insert("\(entry.sessionID)\(entry.agentId.map { "_\($0)" } ?? "")")
 
-            let cost = resolvedCost(for: entry)
+            let cost = costResolver.resolvedCost(for: entry)
             let projectKey = entry.cwd ?? "unknown"
             overall.add(entry, cost: cost)
             overallByModel[entry.model, default: UsageSummaryAccumulator()].add(entry, cost: cost)
@@ -91,19 +91,6 @@ final class UsageAggregator: UsageAggregating {
     }
 
     // MARK: - Private Aggregation
-
-    private func resolvedCost(for entry: ParsedUsageEntry) -> Double {
-        // Cost fallback:PricingEngine 查不到模型(常见于 opencode 上游小众模型)
-        // 时退回到数据源自带 cost(opencode 的 message.data.cost)
-        let (engineCost, pricing) = pricingEngine.calculateCost(
-            usage: entry.usage,
-            model: entry.model
-        )
-        if pricing == nil, let upstream = entry.upstreamCost, upstream > 0 {
-            return upstream
-        }
-        return engineCost
-    }
 
     // MARK: - Date Helpers
 

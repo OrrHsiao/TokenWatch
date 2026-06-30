@@ -101,6 +101,7 @@ class ViewController: NSViewController {
 private enum ProviderSidebarItem {
     case total
     case monthly
+    case recentSevenDays
     case recentThirtyDays
     case today
     case settings
@@ -111,6 +112,8 @@ private enum ProviderSidebarItem {
             return AppStrings.text(.sidebarTotal, language: language)
         case .monthly:
             return AppStrings.text(.sidebarRecent12Months, language: language)
+        case .recentSevenDays:
+            return AppStrings.text(.sidebarRecent7Days, language: language)
         case .recentThirtyDays:
             return AppStrings.text(.sidebarRecent30Days, language: language)
         case .today:
@@ -126,6 +129,8 @@ private enum ProviderSidebarItem {
             return "chart.bar.xaxis"
         case .monthly:
             return "calendar"
+        case .recentSevenDays:
+            return "calendar.badge.clock"
         case .recentThirtyDays:
             return "clock"
         case .today:
@@ -141,6 +146,8 @@ private enum ProviderSidebarItem {
             return "total"
         case .monthly:
             return "monthly"
+        case .recentSevenDays:
+            return "recent7Days"
         case .recentThirtyDays:
             return "recent30Days"
         case .today:
@@ -165,18 +172,19 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
 
     var onSelectTotal: (() -> Void)?
     var onSelectMonthly: (() -> Void)?
+    var onSelectRecentSevenDays: (() -> Void)?
     var onSelectRecentThirtyDays: (() -> Void)?
     var onSelectToday: (() -> Void)?
     var onSelectSettings: (() -> Void)?
 
     init(languageSettings: AppLanguageSettings = .shared) {
-        self.items = [.total, .monthly, .recentThirtyDays, .today, .settings]
+        self.items = [.total, .monthly, .recentSevenDays, .recentThirtyDays, .today, .settings]
         self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
     }
 
     required init?(coder: NSCoder) {
-        self.items = [.total, .monthly, .recentThirtyDays, .today, .settings]
+        self.items = [.total, .monthly, .recentSevenDays, .recentThirtyDays, .today, .settings]
         self.languageSettings = .shared
         super.init(coder: coder)
     }
@@ -274,6 +282,8 @@ private final class ProviderSidebarViewController: NSViewController, NSTableView
             onSelectTotal?()
         case .monthly:
             onSelectMonthly?()
+        case .recentSevenDays:
+            onSelectRecentSevenDays?()
         case .recentThirtyDays:
             onSelectRecentThirtyDays?()
         case .today:
