@@ -517,6 +517,23 @@ struct MonthlyTokenChartBuilderTests {
         #expect(interval.end == date(2026, 6, 21, calendar: calendar))
     }
 
+    @Test("最近七天明细筛选包含开始并排除结束边界")
+    func recentSevenDaysContainsEntryDateUsesHalfOpenInterval() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+
+        #expect(UsageStatsPeriod.recent7Days.containsEntryDate(
+            date(2026, 6, 14, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+        #expect(!UsageStatsPeriod.recent7Days.containsEntryDate(
+            date(2026, 6, 21, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+    }
+
     @Test("本日窗口使用自然日半开区间")
     func todayEntryWindowUsesLocalDayHalfOpenInterval() {
         let calendar = utcCalendar()
@@ -525,6 +542,23 @@ struct MonthlyTokenChartBuilderTests {
 
         #expect(interval.start == date(2026, 6, 20, calendar: calendar))
         #expect(interval.end == date(2026, 6, 21, calendar: calendar))
+    }
+
+    @Test("本日明细筛选包含开始并排除结束边界")
+    func todayContainsEntryDateUsesHalfOpenInterval() {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+
+        #expect(UsageStatsPeriod.today.containsEntryDate(
+            date(2026, 6, 20, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
+        #expect(!UsageStatsPeriod.today.containsEntryDate(
+            date(2026, 6, 21, calendar: calendar),
+            now: now,
+            calendar: calendar
+        ))
     }
 
     @Test("最近十二个月窗口结束于下一自然月")

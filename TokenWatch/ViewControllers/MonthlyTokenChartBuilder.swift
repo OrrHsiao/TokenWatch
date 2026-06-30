@@ -155,6 +155,15 @@ enum UsageStatsPeriod: Sendable, Equatable {
         return DateInterval(start: start, end: end)
     }
 
+    /// 判断明细时间是否落在统计窗口内。
+    ///
+    /// 明细过滤使用半开区间 `[start, end)`: `DateInterval.contains(_:)`
+    /// 会包含结束边界,可能把下一天/月 00:00 的条目计入当前窗口。
+    func containsEntryDate(_ date: Date, now: Date, calendar: Calendar) -> Bool {
+        let interval = entryDateInterval(now: now, calendar: calendar)
+        return date >= interval.start && date < interval.end
+    }
+
     private static func monthKey(for date: Date, calendar: Calendar) -> String {
         let components = calendar.dateComponents([.year, .month], from: date)
         return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
