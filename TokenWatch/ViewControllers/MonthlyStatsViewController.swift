@@ -3,6 +3,7 @@ import AppKit
 /// 跨 provider 的时间窗口 token 消耗页面。
 final class MonthlyStatsViewController: NSViewController {
     private static let compactBarChartWidth: CGFloat = 520
+    private static let recentDetailsVisibleRowLimit = 50
     private static let refreshButtonSize: CGFloat = 20
     private static let refreshButtonSpacing: CGFloat = 8
     private static let refreshButtonDefaultSymbolName = "arrow.clockwise"
@@ -35,6 +36,9 @@ final class MonthlyStatsViewController: NSViewController {
     private var tokenTitleRowTrailingConstraint: NSLayoutConstraint?
     private var costHoverLabelTrailingConstraint: NSLayoutConstraint?
     private var costTitleRowTrailingConstraint: NSLayoutConstraint?
+    private var recentDetailsCache: RecentSessionDetailsCache?
+    private var renderedRecentDetailsKey: RecentSessionDetailsRenderKey?
+    private var recentDetailsSnapshotBuildCount = 0
     private var language: AppLanguage { languageSettings.resolvedLanguage }
 
     init(
@@ -77,11 +81,21 @@ final class MonthlyStatsViewController: NSViewController {
     }
 
     var debugRecentSessionRowTexts: [String] {
-        recentDetailsView.debugRowTexts
+        if recentDetailsView.isHidden {
+            return []
+        }
+        return recentDetailsView.debugRowTexts
     }
 
     var debugRecentSessionEmptyText: String {
-        recentDetailsView.debugEmptyText
+        if recentDetailsView.isHidden {
+            return ""
+        }
+        return recentDetailsView.debugEmptyText
+    }
+
+    var debugRecentSessionSnapshotBuildCount: Int {
+        recentDetailsSnapshotBuildCount
     }
 
     var debugRefreshButtonTitle: String {
@@ -434,17 +448,22 @@ final class MonthlyStatsViewController: NSViewController {
             calendar: calendar,
             language: language
         )
-        let recentSnapshot = RecentSessionDetailsBuilder.build(
+        let recentDetailsKey = makeRecentDetailsCacheKey(states: states, now: now)
+        let recentSnapshot = cachedRecentDetailsSnapshot(
             states: states,
-            period: period,
             now: now,
-            calendar: calendar
+            key: recentDetailsKey
         )
         chartView.configure(with: snapshot, period: period, language: language)
         costChartView.configure(with: snapshot, period: period, language: language)
         toolSharePieView.configure(slices: snapshot.toolShareSlices, language: language)
         modelSharePieView.configure(slices: snapshot.modelShareSlices, language: language)
-        recentDetailsView.configure(with: recentSnapshot, language: language)
+        applyRecentDetailsView(
+            with: recentSnapshot,
+            cacheKey: recentDetailsKey,
+            chartSnapshot: snapshot,
+            totalProviderCount: states.count
+        )
         totalLabel.stringValue = CompactNumberFormatter.formatMillions(snapshot.totalTokens)
         costLabel.stringValue = formatCurrency(snapshot.totalCost)
         let status = statusText(for: snapshot, totalProviderCount: states.count)
@@ -460,6 +479,117 @@ final class MonthlyStatsViewController: NSViewController {
         toolSharePieView.setTitle(AppStrings.text(.shareTool, language: language))
         modelSharePieView.setTitle(AppStrings.text(.shareModel, language: language))
         setRefreshButtonLoading(!refreshButton.isEnabled)
+    }
+
+    private func cachedRecentDetailsSnapshot(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        now: Date,
+        key: RecentSessionDetailsCacheKey
+    ) -> RecentSessionDetailsSnapshot {
+        if let recentDetailsCache, recentDetailsCache.key == key {
+            return recentDetailsCache.snapshot
+        }
+
+        let snapshot = RecentSessionDetailsBuilder.build(
+            states: states,
+            period: period,
+            now: now,
+            calendar: calendar
+        )
+        let visibleSnapshot = visibleRecentDetailsSnapshot(from: snapshot)
+        recentDetailsCache = RecentSessionDetailsCache(key: key, snapshot: visibleSnapshot)
+        recentDetailsSnapshotBuildCount += 1
+        return visibleSnapshot
+    }
+
+    private func makeRecentDetailsCacheKey(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        now: Date
+    ) -> RecentSessionDetailsCacheKey {
+        let interval = period.entryDateInterval(now: now, calendar: calendar)
+        let providerStates = states.map { providerID, state in
+            RecentSessionProviderStateCacheKey(
+                providerID: providerID,
+                isLoading: state.isLoading,
+                needsAuthorization: state.needsAuthorization,
+                errorMessage: state.errorMessage,
+                hasStats: state.stats != nil,
+                hasEntries: state.entries != nil,
+                entriesFingerprint: state.entries.map(UsageEntriesFingerprint.make(from:))
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.providerID.rawValue < rhs.providerID.rawValue
+        }
+
+        return RecentSessionDetailsCacheKey(
+            period: period,
+            windowStart: interval.start,
+            windowEnd: interval.end,
+            providerStates: providerStates
+        )
+    }
+
+    private func visibleRecentDetailsSnapshot(from snapshot: RecentSessionDetailsSnapshot) -> RecentSessionDetailsSnapshot {
+        guard snapshot.rows.count > Self.recentDetailsVisibleRowLimit else {
+            return snapshot
+        }
+
+        return RecentSessionDetailsSnapshot(
+            rows: Array(snapshot.rows.prefix(Self.recentDetailsVisibleRowLimit)),
+            totalSessionCount: snapshot.totalSessionCount,
+            totalTokens: snapshot.totalTokens,
+            totalCost: snapshot.totalCost,
+            loadedProviderCount: snapshot.loadedProviderCount,
+            loadingProviderCount: snapshot.loadingProviderCount,
+            unauthorizedProviderCount: snapshot.unauthorizedProviderCount,
+            errorMessages: snapshot.errorMessages
+        )
+    }
+
+    private func applyRecentDetailsView(
+        with recentSnapshot: RecentSessionDetailsSnapshot,
+        cacheKey: RecentSessionDetailsCacheKey,
+        chartSnapshot: MonthlyTokenChartSnapshot,
+        totalProviderCount: Int
+    ) {
+        let shouldHide = recentSnapshot.rows.isEmpty
+            && shouldHideRecentDetailsEmptyState(
+                chartSnapshot: chartSnapshot,
+                totalProviderCount: totalProviderCount
+            )
+        let renderKey = RecentSessionDetailsRenderKey(
+            cacheKey: cacheKey,
+            language: language,
+            isHidden: shouldHide
+        )
+        guard renderedRecentDetailsKey != renderKey else { return }
+
+        if shouldHide {
+            recentDetailsView.isHidden = true
+        } else {
+            recentDetailsView.configure(with: recentSnapshot, language: language)
+            recentDetailsView.isHidden = false
+        }
+        renderedRecentDetailsKey = renderKey
+    }
+
+    private func shouldHideRecentDetailsEmptyState(
+        chartSnapshot: MonthlyTokenChartSnapshot,
+        totalProviderCount: Int
+    ) -> Bool {
+        if totalProviderCount > 0
+            && chartSnapshot.loadingProviderCount == totalProviderCount
+            && chartSnapshot.loadedProviderCount == 0 {
+            return true
+        }
+        if chartSnapshot.loadedProviderCount == 0 && chartSnapshot.unauthorizedProviderCount > 0 {
+            return true
+        }
+        if chartSnapshot.loadedProviderCount == 0 && !chartSnapshot.errorMessages.isEmpty {
+            return true
+        }
+        return false
     }
 
     private func applyStatusText(_ text: String, isPartialLoading: Bool) {
@@ -577,4 +707,32 @@ private struct ChartSectionLayout {
     let stack: NSStackView
     let hoverLabelTrailingConstraint: NSLayoutConstraint
     let titleRowTrailingConstraint: NSLayoutConstraint
+}
+
+private struct RecentSessionDetailsCache {
+    let key: RecentSessionDetailsCacheKey
+    let snapshot: RecentSessionDetailsSnapshot
+}
+
+private struct RecentSessionDetailsCacheKey: Equatable {
+    let period: UsageStatsPeriod
+    let windowStart: Date
+    let windowEnd: Date
+    let providerStates: [RecentSessionProviderStateCacheKey]
+}
+
+private struct RecentSessionProviderStateCacheKey: Equatable {
+    let providerID: ProviderID
+    let isLoading: Bool
+    let needsAuthorization: Bool
+    let errorMessage: String?
+    let hasStats: Bool
+    let hasEntries: Bool
+    let entriesFingerprint: UsageEntriesFingerprint?
+}
+
+private struct RecentSessionDetailsRenderKey: Equatable {
+    let cacheKey: RecentSessionDetailsCacheKey
+    let language: AppLanguage
+    let isHidden: Bool
 }

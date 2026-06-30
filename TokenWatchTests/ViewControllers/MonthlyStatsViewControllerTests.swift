@@ -283,6 +283,156 @@ struct MonthlyStatsViewControllerTests {
     }
 
     @MainActor
+    @Test("全量加载中时隐藏最近会话明细空状态")
+    func hidesRecentSessionDetailsEmptyStateWhileLoading() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(stats: nil, entries: nil, isLoading: true, errorMessage: nil, needsAuthorization: false)]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(viewController.debugStatusText == "正在加载用量数据...")
+        #expect(viewController.debugRecentSessionRowTexts.isEmpty)
+        #expect(viewController.debugRecentSessionEmptyText == "")
+    }
+
+    @MainActor
+    @Test("未授权时隐藏最近会话明细空状态")
+    func hidesRecentSessionDetailsEmptyStateWhenAuthorizationRequired() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(stats: nil, entries: nil, isLoading: false, errorMessage: nil, needsAuthorization: true)]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(viewController.debugStatusText == "请先在设置中授权访问用户目录")
+        #expect(viewController.debugRecentSessionRowTexts.isEmpty)
+        #expect(viewController.debugRecentSessionEmptyText == "")
+    }
+
+    @MainActor
+    @Test("无已加载数据且有错误时隐藏最近会话明细空状态")
+    func hidesRecentSessionDetailsEmptyStateWhenNoLoadedDataHasError() {
+        let calendar = utcCalendar()
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(stats: nil, entries: nil, isLoading: false, errorMessage: "Claude 失败", needsAuthorization: false)]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        #expect(viewController.debugStatusText == "Claude 失败")
+        #expect(viewController.debugRecentSessionRowTexts.isEmpty)
+        #expect(viewController.debugRecentSessionEmptyText == "")
+    }
+
+    @MainActor
+    @Test("最近会话明细语言切换复用缓存快照")
+    func reusesRecentSessionDetailsSnapshotWhenLanguageChanges() async throws {
+        let calendar = utcCalendar()
+        let settings = AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(
+                        byHour: ["2026-06-20T10": makeSummary(total: 150)],
+                        byMonth: [:]
+                    ),
+                    entries: [
+                        makeEntry(
+                            provider: .claude,
+                            sessionID: "session-1",
+                            timestamp: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+                            model: "claude-sonnet-4-5",
+                            input: 100,
+                            output: 50
+                        ),
+                    ],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: settings
+        )
+
+        viewController.loadViewIfNeeded()
+        #expect(viewController.debugRecentSessionSnapshotBuildCount == 1)
+
+        settings.selectedPreference = .en
+        await Task.yield()
+
+        #expect(viewController.debugRecentSessionSnapshotBuildCount == 1)
+        let rowText = try #require(viewController.debugRecentSessionRowTexts.first)
+        #expect(rowText.contains("session-1"))
+    }
+
+    @MainActor
+    @Test("最近会话明细限制可见行数")
+    func limitsRecentSessionDetailsVisibleRows() throws {
+        let calendar = utcCalendar()
+        let entries = (0..<55).map { index in
+            makeEntry(
+                provider: .claude,
+                sessionID: "session-\(index)",
+                timestamp: dateTime(2026, 6, 20, hour: 10, minute: index, calendar: calendar),
+                model: "claude-sonnet-4-5",
+                input: 1,
+                output: 0
+            )
+        }
+        let viewController = MonthlyStatsViewController(
+            period: .today,
+            stateProvider: {
+                [.claude: .init(
+                    stats: makeStats(
+                        byHour: ["2026-06-20T10": makeSummary(total: 55)],
+                        byMonth: [:]
+                    ),
+                    entries: entries,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            nowProvider: { dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let rowTexts = viewController.debugRecentSessionRowTexts
+        #expect(rowTexts.count == 50)
+        let firstRow = try #require(rowTexts.first)
+        let lastRow = try #require(rowTexts.last)
+        #expect(firstRow.contains("session-54"))
+        #expect(lastRow.contains("session-5"))
+    }
+
+    @MainActor
     @Test("最近七天明细按当前窗口展示并按最近会话排序")
     func rendersRecentSevenDaysSessionDetailsInRecentOrder() throws {
         let calendar = utcCalendar()
