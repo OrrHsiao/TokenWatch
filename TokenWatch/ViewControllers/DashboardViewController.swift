@@ -1904,6 +1904,47 @@ private enum DashboardTrendRendering {
     static let areaStacking: MarkStackingMethod = .unstacked
     static let areaStackingModeName = "unstacked"
     static let areaLayerOrder = seriesKeys
+    static let costLineDashPattern: [CGFloat] = []
+    static let costYAxisPositionName = "trailing"
+    private static let costScalePaddingMultiplier = 1.20
+
+    static func costAxisLabel(forScaledValue value: Double, maxTokens: Double, maxCost: Double) -> String {
+        guard value.isFinite, maxTokens > 0, maxCost > 0 else {
+            return MonthlyBarChartStyle.costAxisLabel(for: 0)
+        }
+
+        let normalizedValue = clampedUnit(value / costPlotMaximum(maxTokens: maxTokens))
+        return MonthlyBarChartStyle.costAxisLabel(for: normalizedValue * maxCost)
+    }
+
+    static func tokenAxisValues(maxTokens: Double) -> [Double] {
+        [0, maxTokens * 0.5, maxTokens]
+    }
+
+    static func costAxisValues(maxTokens: Double) -> [Double] {
+        let maximum = costPlotMaximum(maxTokens: maxTokens)
+        return [0, maximum * 0.5, maximum]
+    }
+
+    static func costPlotY(forNormalizedCostHeight value: Double, maxTokens: Double) -> Double {
+        clampedUnit(value) * costPlotMaximum(maxTokens: maxTokens)
+    }
+
+    static func chartYScaleUpperBound(maxTokens: Double) -> Double {
+        costPlotMaximum(maxTokens: maxTokens)
+    }
+
+    private static func costPlotMaximum(maxTokens: Double) -> Double {
+        guard maxTokens.isFinite, maxTokens > 0 else {
+            return costScalePaddingMultiplier
+        }
+        return maxTokens * costScalePaddingMultiplier
+    }
+
+    private static func clampedUnit(_ value: Double) -> Double {
+        guard value.isFinite else { return 0 }
+        return min(max(value, 0), 1)
+    }
 }
 
 struct DashboardTrendBucket: Sendable, Equatable, Identifiable {
@@ -1968,6 +2009,33 @@ final class DashboardTrendView: NSView {
 
     var debugTrendLegendTitles: [String] {
         DashboardTrendRendering.trendLegendTitles
+    }
+
+    var debugCostLineDashPattern: [CGFloat] {
+        DashboardTrendRendering.costLineDashPattern
+    }
+
+    var debugCostYAxisPositionName: String {
+        DashboardTrendRendering.costYAxisPositionName
+    }
+
+    func debugCostYAxisLabel(forScaledValue value: Double, maxTokens: Double, maxCost: Double) -> String {
+        DashboardTrendRendering.costAxisLabel(
+            forScaledValue: value,
+            maxTokens: maxTokens,
+            maxCost: maxCost
+        )
+    }
+
+    func debugCostPlotY(forNormalizedCostHeight value: Double, maxTokens: Double) -> Double {
+        DashboardTrendRendering.costPlotY(
+            forNormalizedCostHeight: value,
+            maxTokens: maxTokens
+        )
+    }
+
+    func debugChartYScaleUpperBound(maxTokens: Double) -> Double {
+        DashboardTrendRendering.chartYScaleUpperBound(maxTokens: maxTokens)
     }
 
     var debugTokenAreaGradientLightRGBAComponents: [CGFloat]? {
@@ -2093,6 +2161,10 @@ private struct DashboardTrendChartContent: View {
         max(1, Double(buckets.map(\.totalTokens).max() ?? 0))
     }
 
+    private var maxCost: Double {
+        max(0, buckets.map(\.totalCost).max() ?? 0)
+    }
+
     var body: some View {
         Chart {
             ForEach(buckets) { bucket in
@@ -2107,7 +2179,13 @@ private struct DashboardTrendChartContent: View {
 
                 AreaMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Cost", bucket.normalizedCostHeight * maxTokens),
+                    y: .value(
+                        "Cost",
+                        DashboardTrendRendering.costPlotY(
+                            forNormalizedCostHeight: bucket.normalizedCostHeight,
+                            maxTokens: maxTokens
+                        )
+                    ),
                     series: .value("Series", DashboardTrendRendering.costSeriesName),
                     stacking: DashboardTrendRendering.areaStacking
                 )
@@ -2127,7 +2205,13 @@ private struct DashboardTrendChartContent: View {
 
                 LineMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Cost", bucket.normalizedCostHeight * maxTokens),
+                    y: .value(
+                        "Cost",
+                        DashboardTrendRendering.costPlotY(
+                            forNormalizedCostHeight: bucket.normalizedCostHeight,
+                            maxTokens: maxTokens
+                        )
+                    ),
                     series: .value("Series", DashboardTrendRendering.costSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
@@ -2144,7 +2228,13 @@ private struct DashboardTrendChartContent: View {
 
                     PointMark(
                         x: .value(axisValueName, bucket.key),
-                        y: .value("Cost", bucket.normalizedCostHeight * maxTokens)
+                        y: .value(
+                            "Cost",
+                            DashboardTrendRendering.costPlotY(
+                                forNormalizedCostHeight: bucket.normalizedCostHeight,
+                                maxTokens: maxTokens
+                            )
+                        )
                     )
                     .foregroundStyle(Color(nsColor: DashboardPalette.costLine))
                     .symbolSize(18)
@@ -2156,7 +2246,7 @@ private struct DashboardTrendChartContent: View {
             DashboardTrendRendering.costLegendTitle: Color(nsColor: DashboardPalette.costLine),
         ])
         .chartLegend(.hidden)
-        .chartYScale(domain: 0...maxTokens)
+        .chartYScale(domain: 0...DashboardTrendRendering.chartYScaleUpperBound(maxTokens: maxTokens))
         .chartXAxis {
             AxisMarks(values: axisKeys) { value in
                 AxisTick()
@@ -2169,13 +2259,28 @@ private struct DashboardTrendChartContent: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+            AxisMarks(position: .leading, values: DashboardTrendRendering.tokenAxisValues(maxTokens: maxTokens)) { value in
                 AxisGridLine()
                     .foregroundStyle(.secondary.opacity(0.16))
                 AxisTick()
                 if let tokens = value.as(Double.self) {
                     AxisValueLabel(MonthlyBarChartStyle.tokenAxisLabel(for: tokens))
                         .font(.system(size: 8))
+                }
+            }
+            AxisMarks(position: .trailing, values: DashboardTrendRendering.costAxisValues(maxTokens: maxTokens)) { value in
+                AxisTick()
+                    .foregroundStyle(Color(nsColor: DashboardPalette.costLine).opacity(0.65))
+                if let scaledValue = value.as(Double.self) {
+                    AxisValueLabel(
+                        DashboardTrendRendering.costAxisLabel(
+                            forScaledValue: scaledValue,
+                            maxTokens: maxTokens,
+                            maxCost: maxCost
+                        )
+                    )
+                    .font(.system(size: 8))
+                    .foregroundStyle(Color(nsColor: DashboardPalette.costLine))
                 }
             }
         }
