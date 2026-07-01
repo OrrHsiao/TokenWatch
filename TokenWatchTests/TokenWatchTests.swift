@@ -734,6 +734,59 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardRecentDetailsShowsRecentSessionIDsForSelectedRange() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let recentEntry = makeDashboardEntry(
+            sessionID: "session-recent",
+            date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "model-recent",
+            input: 700,
+            cwd: "/work/recent-app"
+        )
+        let olderEntry = makeDashboardEntry(
+            sessionID: "session-older",
+            date: dateTime(2026, 6, 19, hour: 9, minute: 0, calendar: calendar),
+            model: "model-older",
+            input: 500,
+            cwd: "/work/older-app"
+        )
+        let outOfRangeEntry = makeDashboardEntry(
+            sessionID: "session-out-of-range",
+            date: dateTime(2026, 6, 1, hour: 9, minute: 0, calendar: calendar),
+            model: "model-legacy",
+            input: 9_000,
+            cwd: "/work/legacy-app"
+        )
+        let entries = [recentEntry, olderEntry, outOfRangeEntry]
+        let stats = UsageAggregator().aggregate(entries)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: entries,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let recentDetailLabels = try labels(inPanelTitled: "最近明细", root: viewController.view)
+        #expect(recentDetailLabels.contains("session-recent"))
+        #expect(recentDetailLabels.contains("session-older"))
+        #expect(!recentDetailLabels.contains("session-out-of-range"))
+        #expect(!recentDetailLabels.contains("汇总"))
+        #expect(!recentDetailLabels.contains("全部项目"))
+    }
+
+    @MainActor
     @Test func dashboardRefreshButtonIsStableActionEntry() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()

@@ -796,7 +796,7 @@ final class DashboardViewController: NSViewController {
         title.textColor = DashboardPalette.primaryText
 
         let header = makeDetailRow(
-            values: ["时间", "来源", "项目/会话", "模型", "Token", "费用", "占比"],
+            values: ["时间", "工具", "会话", "项目", "模型", "Token", "费用", "记录"],
             isHeader: true
         )
         detailRowsStack.orientation = .vertical
@@ -824,7 +824,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeDetailRow(values: [String], isHeader: Bool) -> NSView {
-        let widths: [CGFloat] = [142, 106, 198, 152, 104, 72, 58]
+        let widths: [CGFloat] = [116, 58, 168, 150, 132, 82, 70, 48]
         let labels = zip(values, widths).map { value, width in
             let label = NSTextField(labelWithString: value)
             label.font = isHeader ? .systemFont(ofSize: 11, weight: .semibold) : .systemFont(ofSize: 11)
@@ -1141,7 +1141,7 @@ final class DashboardViewController: NSViewController {
         clearStack(detailRowsStack)
         if rows.isEmpty {
             addFullWidthArrangedSubview(makeDetailRow(
-                values: ["暂无数据", "-", "-", "-", "-", "-", "-"],
+                values: ["暂无数据", "-", "-", "-", "-", "-", "-", "-"],
                 isHeader: false
             ), to: detailRowsStack)
             return
@@ -1149,13 +1149,14 @@ final class DashboardViewController: NSViewController {
         for row in rows.prefix(5) {
             addFullWidthArrangedSubview(makeDetailRow(
                 values: [
-                    row.period,
-                    row.source,
+                    row.time,
+                    row.tool,
+                    row.session,
                     row.project,
                     row.model,
                     formatInt(row.tokens),
                     formatCurrency(row.cost),
-                    formatPercentage(row.percentage),
+                    formatInt(row.records),
                 ],
                 isHeader: false
             ), to: detailRowsStack)
@@ -1519,9 +1520,16 @@ private struct DashboardRangeSnapshot {
         let orderedSummaries = bucketKeys.map { key in
             (key: key, label: bucketRows.first(where: { $0.key == key })?.label ?? key, summary: summaries[key, default: .zero])
         }
+        let details = makeRecentSessionDetailRows(
+            states: states,
+            range: range,
+            now: now,
+            calendar: calendar
+        )
         let summary = makeWindowSummary(
             orderedSummaries: orderedSummaries,
-            projectTotals: projectTotals
+            projectTotals: projectTotals,
+            details: details
         )
 
         return DashboardRangeSnapshot(
@@ -1581,7 +1589,8 @@ private struct DashboardRangeSnapshot {
                 isCurrent: sortedMonths.last == month
             )
         }
-        let summary = DashboardUsageSummary.makeTotal(from: states)
+        let details = makeDetailRows(from: RecentSessionDetailsBuilder.buildAll(states: states))
+        let summary = DashboardUsageSummary.makeTotal(from: states, details: details)
 
         return DashboardRangeSnapshot(
             summary: summary,
@@ -1597,27 +1606,13 @@ private struct DashboardRangeSnapshot {
 
     private static func makeWindowSummary(
         orderedSummaries: [(key: String, label: String, summary: UsageSummary)],
-        projectTotals: [String: Int]
+        projectTotals: [String: Int],
+        details: [DashboardDetailRow]
     ) -> DashboardUsageSummary {
         let total = orderedSummaries.reduce(UsageSummary.zero) { partial, row in
             partial.merged(with: row.summary)
         }
         let projects = DashboardProjectRows.makeRows(fromTokenTotals: projectTotals)
-        let details = orderedSummaries
-            .filter { $0.summary.totalTokens > 0 }
-            .reversed()
-            .prefix(5)
-            .map { row in
-                DashboardDetailRow(
-                    period: row.label,
-                    source: "汇总",
-                    project: "全部项目",
-                    model: topModelName(in: row.summary),
-                    tokens: row.summary.totalTokens,
-                    cost: row.summary.cost,
-                    percentage: total.totalTokens > 0 ? Double(row.summary.totalTokens) / Double(total.totalTokens) : 0
-                )
-            }
 
         return DashboardUsageSummary(
             inputTokens: total.inputTokens,
@@ -1632,6 +1627,55 @@ private struct DashboardRangeSnapshot {
             projects: projects,
             details: details
         )
+    }
+
+    private static func makeRecentSessionDetailRows(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        range: DashboardRange,
+        now: Date,
+        calendar: Calendar
+    ) -> [DashboardDetailRow] {
+        let snapshot: RecentSessionDetailsSnapshot
+        switch range {
+        case .day:
+            snapshot = RecentSessionDetailsBuilder.build(states: states, period: .today, now: now, calendar: calendar)
+        case .sevenDays:
+            snapshot = RecentSessionDetailsBuilder.build(states: states, period: .recent7Days, now: now, calendar: calendar)
+        case .month:
+            snapshot = RecentSessionDetailsBuilder.build(states: states, period: .recent30Days, now: now, calendar: calendar)
+        case .all:
+            snapshot = RecentSessionDetailsBuilder.buildAll(states: states)
+        }
+
+        return makeDetailRows(from: snapshot)
+    }
+
+    private static func makeDetailRows(from snapshot: RecentSessionDetailsSnapshot) -> [DashboardDetailRow] {
+        snapshot.rows.prefix(5).map { row in
+            DashboardDetailRow(
+                time: formatDetailDate(row.lastActiveAt),
+                tool: providerName(row.provider),
+                session: row.sessionID,
+                project: row.projectPath.map(displayProjectName) ?? "unknown",
+                model: modelText(for: row),
+                tokens: row.totalTokens,
+                cost: row.cost,
+                records: row.entryCount
+            )
+        }
+    }
+
+    private static func modelText(for row: RecentSessionRow) -> String {
+        let model = row.primaryModel.isEmpty ? "-" : row.primaryModel
+        guard row.additionalModelCount > 0 else { return model }
+        return "\(model) +\(row.additionalModelCount)"
+    }
+
+    private static func formatDetailDate(_ date: Date?) -> String {
+        guard let date else { return "-" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
     }
 
     private static func makeToolShareSlices(_ totals: [ProviderID: Int]) -> [UsageShareSlice] {
@@ -1655,8 +1699,8 @@ private struct DashboardRangeSnapshot {
             }
     }
 
-    private static func topModelName(in summary: UsageSummary) -> String {
-        summary.modelBreakdown.max(by: { $0.value.totalTokens < $1.value.totalTokens })?.key ?? "全部模型"
+    private static func displayProjectName(_ path: String) -> String {
+        DashboardProjectRows.displayName(for: path)
     }
 
     private static func providerName(_ id: ProviderID) -> String {
@@ -1677,7 +1721,10 @@ private struct DashboardUsageSummary {
     let projects: [DashboardProjectRow]
     let details: [DashboardDetailRow]
 
-    static func makeTotal(from states: [ProviderID: TokenStatsViewModel.ProviderState]) -> DashboardUsageSummary {
+    static func makeTotal(
+        from states: [ProviderID: TokenStatsViewModel.ProviderState],
+        details: [DashboardDetailRow]
+    ) -> DashboardUsageSummary {
         var inputTokens = 0
         var outputTokens = 0
         var cacheReadTokens = 0
@@ -1687,9 +1734,8 @@ private struct DashboardUsageSummary {
         var cost = 0.0
         var entryCount = 0
         var projects: [String: UsageSummary] = [:]
-        var details: [DashboardDetailRow] = []
 
-        for (providerID, state) in states {
+        for (_, state) in states {
             guard let stats = state.stats else { continue }
             inputTokens += stats.overall.inputTokens
             outputTokens += stats.overall.outputTokens
@@ -1701,17 +1747,6 @@ private struct DashboardUsageSummary {
             entryCount += stats.overall.entryCount
             for (project, summary) in stats.byProject {
                 projects[project, default: .zero] = projects[project, default: .zero].merged(with: summary)
-            }
-            for (month, summary) in stats.byMonth.sorted(by: { $0.key > $1.key }).prefix(3) {
-                details.append(DashboardDetailRow(
-                    period: month,
-                    source: providerName(providerID),
-                    project: topProjectName(in: stats),
-                    model: topModelName(in: summary),
-                    tokens: summary.totalTokens,
-                    cost: summary.cost,
-                    percentage: totalTokens > 0 ? Double(summary.totalTokens) / Double(totalTokens) : 0
-                ))
             }
         }
 
@@ -1726,7 +1761,7 @@ private struct DashboardUsageSummary {
             entryCount: entryCount,
             projectCount: DashboardProjectRows.projectCount(fromSummaries: projects),
             projects: makeProjectRows(projects),
-            details: details.sorted { $0.period > $1.period }
+            details: details
         )
     }
 
@@ -1734,21 +1769,6 @@ private struct DashboardUsageSummary {
         DashboardProjectRows.makeRows(fromSummaries: projects)
     }
 
-    private static func providerName(_ id: ProviderID) -> String {
-        ProviderRegistry.provider(for: id)?.displayName ?? id.rawValue
-    }
-
-    private static func displayProjectName(_ path: String) -> String {
-        DashboardProjectRows.displayName(for: path)
-    }
-
-    private static func topProjectName(in stats: AggregatedStats) -> String {
-        makeProjectRows(stats.byProject).first?.name ?? "全部项目"
-    }
-
-    private static func topModelName(in summary: UsageSummary) -> String {
-        summary.modelBreakdown.max(by: { $0.value.totalTokens < $1.value.totalTokens })?.key ?? "全部模型"
-    }
 }
 
 private struct DashboardProjectRow {
@@ -1851,13 +1871,14 @@ private enum DashboardProjectRows {
 }
 
 private struct DashboardDetailRow {
-    let period: String
-    let source: String
+    let time: String
+    let tool: String
+    let session: String
     let project: String
     let model: String
     let tokens: Int
     let cost: Double
-    let percentage: Double
+    let records: Int
 }
 
 private enum DashboardColors {

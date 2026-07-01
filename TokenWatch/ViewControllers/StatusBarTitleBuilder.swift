@@ -38,7 +38,7 @@ enum StatusBarTitleBuilder {
     /// 跨 provider 累加 byDay[todayKey] 的 token 总数(纯累加,不考虑 loading/未授权)
     ///
     /// 显式不加 reasoningTokens:Codex 的 reasoning 已计入 output(README 已说明),
-    /// 累加它会双计;与 ProviderStatsViewController 的展示口径保持一致。
+            /// 累加它会双计;与主界面展示口径保持一致。
     /// - Parameters:
     ///   - states: ViewModel 当前所有 provider 的状态快照
     ///   - todayKey: 今日的 byDay key,格式 "yyyy-MM-dd"

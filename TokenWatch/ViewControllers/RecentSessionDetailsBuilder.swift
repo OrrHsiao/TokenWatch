@@ -98,6 +98,22 @@ enum RecentSessionDetailsBuilder {
         now: Date,
         calendar: Calendar
     ) -> RecentSessionDetailsSnapshot {
+        build(states: states) { timestamp in
+            period.containsEntryDate(timestamp, now: now, calendar: calendar)
+        }
+    }
+
+    /// 汇总所有可用 entries,按 provider + sessionID 生成最近会话行。
+    /// - Parameter states: 各 provider 的统计状态;只有带 timestamp 的明细条目参与聚合。
+    /// - Returns: 可直接渲染的最近会话明细快照。
+    static func buildAll(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> RecentSessionDetailsSnapshot {
+        build(states: states) { _ in true }
+    }
+
+    private static func build(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        includesEntryAt includesEntry: (Date) -> Bool
+    ) -> RecentSessionDetailsSnapshot {
         let costResolver = UsageCostResolver()
         var accumulators: [RecentSessionKey: RecentSessionAccumulator] = [:]
         var loadedProviderCount = 0
@@ -121,7 +137,7 @@ enum RecentSessionDetailsBuilder {
 
             for entry in state.entries ?? [] {
                 guard let timestamp = entry.timestamp,
-                      period.containsEntryDate(timestamp, now: now, calendar: calendar) else {
+                      includesEntry(timestamp) else {
                     continue
                 }
 
