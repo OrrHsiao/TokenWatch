@@ -144,6 +144,7 @@ final class DashboardViewController: NSViewController {
     private static let rowGap: CGFloat = 18
     private static let minimumContentWidth: CGFloat = 860
     private static let sessionTableColumnWidths: [CGFloat] = [150, 180, 86, 200, 150, 104, 84, 66]
+    private static let sourceLegendValueWidth: CGFloat = 52
 
     private let settingsViewController: SettingsViewController
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
@@ -891,7 +892,7 @@ final class DashboardViewController: NSViewController {
 
         let body = NSStackView(views: [sourceDonutView, sourceLegendStack])
         body.orientation = .horizontal
-        body.alignment = .centerY
+        body.alignment = .top
         body.spacing = 16
         NSLayoutConstraint.activate([
             sourceDonutView.widthAnchor.constraint(equalToConstant: 132),
@@ -1674,11 +1675,13 @@ final class DashboardViewController: NSViewController {
         valueLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         valueLabel.textColor = DashboardPalette.secondaryText
         valueLabel.alignment = .right
+        valueLabel.lineBreakMode = .byTruncatingTail
         let row = NSStackView(views: [dot, titleLabel, valueLabel])
         row.orientation = .horizontal
         row.alignment = .centerY
         row.distribution = .fill
         row.spacing = 8
+        valueLabel.widthAnchor.constraint(equalToConstant: Self.sourceLegendValueWidth).isActive = true
         return row
     }
 

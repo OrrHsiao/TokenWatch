@@ -450,6 +450,73 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardSourceLegendKeepsPositionAcrossRanges() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeDashboardStats(
+                            byDay: [
+                                "2026-06-20": makeDashboardSummary(total: 1_000),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(
+                        stats: makeDashboardStats(
+                            byDay: [
+                                "2026-06-05": makeDashboardSummary(total: 800),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .opencode: .init(
+                        stats: makeDashboardStats(
+                            byDay: [
+                                "2026-06-02": makeDashboardSummary(total: 700),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let sevenDayLegend = try textField("Claude Code", inPanelTitled: "来源占比", root: viewController.view)
+        let sevenDayValue = try textField("100.0%", inPanelTitled: "来源占比", root: viewController.view)
+        let sevenDayTitleFrame = sevenDayLegend.convert(sevenDayLegend.bounds, to: viewController.view)
+        let sevenDayValueFrame = sevenDayValue.convert(sevenDayValue.bounds, to: viewController.view)
+
+        try clickDashboardRange("month", in: viewController)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let monthLegend = try textField("Claude Code", inPanelTitled: "来源占比", root: viewController.view)
+        let monthValue = try textField("40.0%", inPanelTitled: "来源占比", root: viewController.view)
+        let monthTitleFrame = monthLegend.convert(monthLegend.bounds, to: viewController.view)
+        let monthValueFrame = monthValue.convert(monthValue.bounds, to: viewController.view)
+
+        #expect(abs(monthTitleFrame.minX - sevenDayTitleFrame.minX) <= 1)
+        #expect(abs(monthTitleFrame.maxY - sevenDayTitleFrame.maxY) <= 1)
+        #expect(abs(monthValueFrame.maxX - sevenDayValueFrame.maxX) <= 1)
+    }
+
+    @MainActor
     @Test func dashboardTextUsesLeftAlignment() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -1502,6 +1569,16 @@ private func labels(inPanelTitled title: String, root: NSView) throws -> [String
         return abs(cornerRadius - 8) < 0.1
     })
     return panel.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+}
+
+@MainActor
+private func textField(_ value: String, inPanelTitled title: String, root: NSView) throws -> NSTextField {
+    let titleLabel = try #require(root.textField(stringValue: title))
+    let panel = try #require(titleLabel.firstAncestor { view in
+        guard let cornerRadius = view.layer?.cornerRadius else { return false }
+        return abs(cornerRadius - 8) < 0.1
+    })
+    return try #require(panel.textField(stringValue: value))
 }
 
 @MainActor
