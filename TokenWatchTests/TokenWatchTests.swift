@@ -453,7 +453,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardSessionsNavigationKeepsOverviewContentAndRange() throws {
+    @Test func dashboardSessionsNavigationShowsPencilSessionDetailsPage() throws {
         let appearance = try #require(NSAppearance(named: .aqua))
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         appearance.performAsCurrentDrawingAppearance {
@@ -465,15 +465,116 @@ struct TokenWatchTests {
             _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
         }
 
-        let selectedRangeButton = try #require(viewController.view.button(identifier: "DashboardRange.sevenDays"))
-        let dayRangeButton = try #require(viewController.view.button(identifier: "DashboardRange.day"))
-        let selectedBackgroundColor = try #require(selectedRangeButton.layer?.backgroundColor)
-        let dayBackgroundColor = try #require(dayRangeButton.layer?.backgroundColor)
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("会话"))
+        #expect(labels.contains("按最近时间倒序查看会话聚合、成本与使用记录"))
+        #expect(labels.contains("最近时间 ↓"))
+        #expect(labels.contains("会话 ID"))
+        #expect(labels.contains("主模型"))
+        #expect(labels.contains("记录数"))
+        #expect(!labels.contains("用量总览"))
+        #expect(!labels.contains("趋势"))
+        #expect(viewController.view.button(identifier: "DashboardRange.sevenDays") == nil)
+        #expect(viewController.view.button(identifier: "DashboardRefreshButton") == nil)
+        #expect(viewController.view.firstDescendant(identifier: "DashboardSessionsPage") != nil)
+        #expect(viewController.view.firstDescendant(identifier: "DashboardSessionsTable") != nil)
+    }
 
-        #expect(viewController.view.textField(stringValue: "用量总览") != nil)
-        #expect(viewController.view.button(identifier: "DashboardRefreshButton") != nil)
-        #expect(rgbHex(selectedBackgroundColor) == 0x2563EB)
-        #expect(rgbHex(dayBackgroundColor) != 0x2563EB)
+    @MainActor
+    @Test func dashboardSessionsPageRendersPencilSessionRowsAndSummaries() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let recentEntry = makeDashboardEntry(
+            sessionID: "session-recent",
+            date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "model-recent",
+            input: 700,
+            cwd: "/work/recent-app"
+        )
+        let olderEntry = makeDashboardEntry(
+            sessionID: "session-older",
+            date: dateTime(2026, 6, 19, hour: 9, minute: 0, calendar: calendar),
+            model: "model-older",
+            input: 500,
+            cwd: "/work/older-app"
+        )
+        let outOfRangeEntry = makeDashboardEntry(
+            sessionID: "session-out-of-range",
+            date: dateTime(2026, 6, 1, hour: 9, minute: 0, calendar: calendar),
+            model: "model-legacy",
+            input: 9_000,
+            cwd: "/work/legacy-app"
+        )
+        let entries = [recentEntry, olderEntry, outOfRangeEntry]
+        let stats = UsageAggregator().aggregate(entries)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: entries,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        let labels = try labels(inContainer: "DashboardSessionsPage", root: viewController.view)
+        #expect(labels.contains("2"))
+        #expect(labels.contains("1.2k"))
+        #expect(labels.contains("$0.00"))
+        #expect(labels.contains("session-recent"))
+        #expect(labels.contains("session-older"))
+        #expect(!labels.contains("session-out-of-range"))
+        #expect(labels.contains("recent-app"))
+        #expect(labels.contains("older-app"))
+        #expect(labels.contains("Claude"))
+    }
+
+    @MainActor
+    @Test func dashboardSessionsPageUsesPencilLightAndDarkColors() throws {
+        let aqua = try #require(NSAppearance(named: .aqua))
+        let lightController = ViewController(languageSettings: zhHansLanguageSettings())
+        aqua.performAsCurrentDrawingAppearance {
+            lightController.loadViewIfNeeded()
+        }
+        let lightSessionsButton = try #require(lightController.view.button(identifier: "DashboardNav.sessions"))
+        aqua.performAsCurrentDrawingAppearance {
+            _ = lightSessionsButton.sendAction(lightSessionsButton.action, to: lightSessionsButton.target)
+        }
+
+        let lightTable = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let lightHeader = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
+        let lightRow = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+        #expect(rgbHex(try #require(lightTable.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(lightHeader.layer?.backgroundColor)) == 0xF1F5F9)
+        #expect(rgbHex(try #require(lightRow.layer?.backgroundColor)) == 0xFFFFFF)
+
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let darkController = ViewController(languageSettings: zhHansLanguageSettings())
+        dark.performAsCurrentDrawingAppearance {
+            darkController.loadViewIfNeeded()
+        }
+        let darkSessionsButton = try #require(darkController.view.button(identifier: "DashboardNav.sessions"))
+        dark.performAsCurrentDrawingAppearance {
+            _ = darkSessionsButton.sendAction(darkSessionsButton.action, to: darkSessionsButton.target)
+        }
+
+        let darkTable = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let darkHeader = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
+        let darkRow = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+        #expect(rgbHex(try #require(darkTable.layer?.backgroundColor)) == 0x151B23)
+        #expect(rgbHex(try #require(darkHeader.layer?.backgroundColor)) == 0x202936)
+        #expect(rgbHex(try #require(darkRow.layer?.backgroundColor)) == 0x151B23)
     }
 
     @MainActor
@@ -1267,6 +1368,12 @@ private func clickDashboardRange(_ rawValue: String, in viewController: Dashboar
     _ = button.sendAction(button.action, to: button.target)
 }
 
+@MainActor
+private func clickDashboardNavigation(_ rawValue: String, in viewController: NSViewController) throws {
+    let button = try #require(viewController.view.button(identifier: "DashboardNav.\(rawValue)"))
+    _ = button.sendAction(button.action, to: button.target)
+}
+
 private func makeDashboardStats(
     byHour: [String: UsageSummary] = [:],
     byDay: [String: UsageSummary] = [:],
@@ -1340,6 +1447,12 @@ private func labels(inPanelTitled title: String, root: NSView) throws -> [String
         return abs(cornerRadius - 8) < 0.1
     })
     return panel.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+}
+
+@MainActor
+private func labels(inContainer identifier: String, root: NSView) throws -> [String] {
+    let container = try #require(root.firstDescendant(identifier: identifier))
+    return container.allDescendants(ofType: NSTextField.self).map(\.stringValue)
 }
 
 private func restoreUserDefaultsValue(_ value: Any?, forKey key: String) {
