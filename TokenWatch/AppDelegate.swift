@@ -7,7 +7,6 @@
 
 import Cocoa
 
-@main
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -142,8 +141,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static func shouldOpenMainWindowOnLaunch() -> Bool {
-        UserDefaults.standard.bool(forKey: openMainWindowOnLaunchKey)
-            || ProcessInfo.processInfo.arguments.contains("-\(openMainWindowOnLaunchKey)")
+        guard UserDefaults.standard.object(forKey: openMainWindowOnLaunchKey) != nil else {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: openMainWindowOnLaunchKey)
     }
 
     private static func hasPromptedInitialAuthorization() -> Bool {

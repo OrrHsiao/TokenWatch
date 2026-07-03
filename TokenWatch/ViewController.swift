@@ -80,7 +80,7 @@ class ViewController: NSViewController {
     }
 
     /// 把 ViewModel 的状态变更回调多路复用到 Notification,
-    /// Dashboard 与保留的统计页面自行订阅并按需刷新。
+    /// Dashboard 自行订阅并按需刷新。
     private func bindViewModel() {
         observerToken = viewModel?.observe { providerID in
             NotificationCenter.default.post(

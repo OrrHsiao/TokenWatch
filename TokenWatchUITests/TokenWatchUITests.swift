@@ -37,7 +37,7 @@ final class TokenWatchUITests: XCTestCase {
         let overviewTitle = app.staticTexts["用量总览"]
         XCTAssertTrue(overviewTitle.waitForExistence(timeout: 5))
 
-        let trendTitle = app.staticTexts["每小时 Token 与缓存命中率"]
+        let trendTitle = app.staticTexts["趋势"]
         XCTAssertTrue(trendTitle.waitForExistence(timeout: 5))
         XCTAssertLessThanOrEqual(trendTitle.frame.minX, overviewTitle.frame.minX + 32)
     }
@@ -53,7 +53,7 @@ final class TokenWatchUITests: XCTestCase {
         let timelineButton = app.buttons["DashboardNav.timeline"]
         XCTAssertTrue(timelineButton.waitForExistence(timeout: 5))
         timelineButton.click()
-        XCTAssertTrue(app.staticTexts["每小时 Token 与缓存命中率"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["趋势"].waitForExistence(timeout: 5))
 
         let modelsButton = app.buttons["DashboardNav.models"]
         XCTAssertTrue(modelsButton.waitForExistence(timeout: 5))

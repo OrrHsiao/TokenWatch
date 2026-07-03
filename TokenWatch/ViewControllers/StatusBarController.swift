@@ -547,31 +547,12 @@ final class StatusBarController {
         switch StatusMainWindowPresentation.timing() {
         case .afterCurrentEvent:
             Task { @MainActor [weak self] in
-                self?.presentMainWindow()
-            }
-        }
-    }
-
-    private func presentMainWindow() {
-        // 主窗口在 storyboard 中已设 releasedWhenClosed="NO",
-        // 用户点红叉关闭后 window 对象仍在 NSApp.windows 里,可直接 makeKeyAndOrderFront 恢复。
-        // 优先按 contentVC 类型匹配 ViewController 窗口,fallback 到 NSApp.mainWindow
-        let target = NSApp.windows.first(where: { $0.contentViewController is ViewController })
-            ?? NSApp.mainWindow
-        guard let target else {
-            logger.info("openMainWindow: 找不到 ViewController 窗口,跳过(后续版本再处理重建)")
-            return
-        }
-
-        for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
-            switch action {
-            case .activateApplication:
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-            case .makeWindowKeyAndOrderFront:
-                target.makeKeyAndOrderFront(nil)
-            case .orderWindowFrontRegardless:
-                target.orderFrontRegardless()
+                guard let self else { return }
+                guard let appDelegate = NSApp.delegate as? AppDelegate else {
+                    logger.info("openMainWindow: 找不到 AppDelegate,跳过")
+                    return
+                }
+                appDelegate.openMainWindow(nil)
             }
         }
     }

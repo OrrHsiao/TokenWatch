@@ -108,14 +108,47 @@ struct TokenWatchTests {
         #expect(didLoadAllStats)
     }
 
-    @MainActor
-    @Test func mainStoryboardUsesRoomierDefaultWindowSize() throws {
-        let storyboard = NSStoryboard(name: "Main", bundle: Bundle.main)
-        let windowController = try #require(storyboard.instantiateInitialController() as? NSWindowController)
-        let contentSize = try #require(windowController.window?.contentView?.frame.size)
+    @Test func appBundleDoesNotDeclareMainStoryboard() throws {
+        let appBundle = try #require(Bundle.allBundles.first {
+            $0.bundleIdentifier == "com.xiaoao.TokenWatch"
+        })
 
-        #expect(contentSize == NSSize(width: 1180, height: 760))
-        #expect(windowController.window?.title == "")
+        #expect(appBundle.object(forInfoDictionaryKey: "NSMainStoryboardFile") == nil)
+        #expect(appBundle.url(forResource: "Main", withExtension: "storyboardc", subdirectory: "Base.lproj") == nil)
+    }
+
+    @MainActor
+    @Test func applicationLaunchShowsMainWindowWithoutStoryboard() throws {
+        let openWindowKey = "TokenWatch.openMainWindowOnLaunch"
+        let promptedKey = "TokenWatch.didPromptInitialHomeAuthorization"
+        let previousOpenWindowValue = UserDefaults.standard.object(forKey: openWindowKey)
+        let previousPromptedValue = UserDefaults.standard.object(forKey: promptedKey)
+        let previousDelegate = NSApp.delegate
+        NSApp.windows
+            .filter { $0.contentViewController is ViewController }
+            .forEach { $0.close() }
+
+        UserDefaults.standard.removeObject(forKey: openWindowKey)
+        UserDefaults.standard.set(true, forKey: promptedKey)
+
+        let delegate = AppDelegate(languageSettings: zhHansLanguageSettings())
+        NSApp.delegate = delegate
+        defer {
+            delegate.applicationWillTerminate(Notification(name: NSApplication.willTerminateNotification, object: NSApp))
+            NSApp.delegate = previousDelegate
+            restoreUserDefaultsValue(previousOpenWindowValue, forKey: openWindowKey)
+            restoreUserDefaultsValue(previousPromptedValue, forKey: promptedKey)
+            NSApp.windows
+                .filter { $0.contentViewController is ViewController }
+                .forEach { $0.close() }
+        }
+
+        delegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification, object: NSApp))
+
+        let mainWindow = NSApp.windows.first {
+            $0.contentViewController is ViewController && $0.isVisible
+        }
+        #expect(mainWindow != nil)
     }
 
     @MainActor
@@ -1280,6 +1313,14 @@ private func labels(inPanelTitled title: String, root: NSView) throws -> [String
         return abs(cornerRadius - 8) < 0.1
     })
     return panel.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+}
+
+private func restoreUserDefaultsValue(_ value: Any?, forKey key: String) {
+    if let value {
+        UserDefaults.standard.set(value, forKey: key)
+    } else {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
 }
 
 private func mergeDashboardSummaries(_ lhs: UsageSummary, _ rhs: UsageSummary) -> UsageSummary {
