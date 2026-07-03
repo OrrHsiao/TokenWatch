@@ -104,26 +104,35 @@ ci(actions): 优化构建缓存策略
 1. 设计文档优先使用中文。
 2. 优先使用 Xcode MCP 进行构建、测试和调试。
 
+### macOS 测试运行说明
+- 在 Codex/agent 沙盒内，`xcodebuild` 默认写入 `~/Library/Developer/Xcode/DerivedData` 可能触发权限错误；运行构建或测试时优先指定 `-derivedDataPath .build/DerivedData`，必要时把 `.xcresult` 写到 `.build/TestResults/`。
+- macOS app-hosted tests 需要连接系统测试服务 `com.apple.testmanagerd.control`。沙盒内执行 `xcodebuild test` 可能失败并出现 `Sandbox restriction`；完整测试应在沙盒外运行，或在 Codex 中对测试命令申请提升权限。
+- 如果无法提升权限，`build-for-testing` 只能验证编译，不能替代真正的测试运行。
+- `.build/` 已被 `.gitignore` 忽略，可作为本项目的本地 DerivedData 和测试结果目录。
+
 ### Build
 ```bash
 # Build the app (Debug)
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Debug build
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Debug -derivedDataPath .build/DerivedData build
 
 # Build the app (Release)
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Release build
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Release -derivedDataPath .build/DerivedData build
 ```
 
 ### Test
 ```bash
 # Run all tests (unit + UI)
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData test
 
 # Run only unit tests
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
 
 # Run only UI tests
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchUITests test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
 
 # Run a single unit test
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/TokenWatchTests/testMethodName test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/TokenWatchTests/testMethodName -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
+
+# Compile tests without running them (usable inside sandbox when testmanagerd is unavailable)
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData build-for-testing
 ```
