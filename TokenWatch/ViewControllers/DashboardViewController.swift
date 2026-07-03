@@ -1426,7 +1426,7 @@ final class DashboardViewController: NSViewController {
         let summary = rangeSnapshot.summary
 
         totalTokenValueLabel.stringValue = CompactNumberFormatter.formatMillions(summary.totalTokens)
-        totalTokenDetailLabel.stringValue = "输入 \(CompactNumberFormatter.formatMillions(summary.inputTokens)) / 输出 \(CompactNumberFormatter.formatMillions(summary.outputTokens)) / 缓存命中率 \(formatCacheHitRate(summary))"
+        totalTokenDetailLabel.stringValue = formatTokenBreakdown(summary)
         totalCostValueLabel.stringValue = formatCurrency(summary.cost)
         totalCostDetailLabel.stringValue = formatCostBreakdown(summary)
         sessionValueLabel.stringValue = formatInt(summary.entryCount)
@@ -1725,11 +1725,23 @@ final class DashboardViewController: NSViewController {
         return Swift.max(0.04, min(1, CGFloat(value) / CGFloat(maxValue)))
     }
 
-    private func formatCacheHitRate(_ summary: DashboardUsageSummary) -> String {
-        let cache = summary.cacheReadTokens + summary.cacheCreationTokens
-        let base = summary.inputTokens + summary.outputTokens + summary.reasoningTokens + cache
+    private func formatTokenBreakdown(_ summary: DashboardUsageSummary) -> String {
+        var parts = [
+            "输入 \(CompactNumberFormatter.formatMillions(summary.inputTokens))",
+            "输出 \(CompactNumberFormatter.formatMillions(summary.outputTokens))",
+        ]
+        let cacheTokens = summary.cacheReadTokens + summary.cacheCreationTokens
+        parts.append("缓存 \(CompactNumberFormatter.formatMillions(cacheTokens))（\(formatCacheHitRate(summary, cacheTokens: cacheTokens))）")
+        if summary.reasoningTokens > 0 {
+            parts.append("推理 \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
+        }
+        return parts.joined(separator: " / ")
+    }
+
+    private func formatCacheHitRate(_ summary: DashboardUsageSummary, cacheTokens: Int) -> String {
+        let base = summary.inputTokens + summary.outputTokens + summary.reasoningTokens + cacheTokens
         guard base > 0 else { return "0%" }
-        return formatPercentage(Double(cache) / Double(base))
+        return formatPercentage(Double(cacheTokens) / Double(base))
     }
 
     private func formatCostBreakdown(_ summary: DashboardUsageSummary) -> String {

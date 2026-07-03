@@ -371,6 +371,61 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardTotalTokenDetailShowsAllTokenBuckets() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeDashboardStats(
+                            byDay: [
+                                "2026-06-20": makeDashboardSummary(
+                                    input: 500_000,
+                                    output: 400_000,
+                                    reasoning: 300_000,
+                                    cacheRead: 600_000,
+                                    cacheCreation: 100_000
+                                ),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("1.9M"))
+        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存 0.7M（36.8%） / 推理 0.3M"))
+        #expect(!labels.contains { $0.contains("缓存命中率") })
+    }
+
+    @MainActor
+    @Test func dashboardZeroTokenDetailStillShowsCacheBucket() throws {
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { [:] },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存 0.0M（0%）"))
+    }
+
+    @MainActor
     @Test func dashboardTrendLegendAlignsWithDescription() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
