@@ -199,7 +199,10 @@ struct TokenWatchTests {
             guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
             return button.title
         }
-        #expect(navTitles == ["总览", "时间线", "会话", "模型", "项目", "设置"])
+        #expect(navTitles == ["总览", "会话", "设置"])
+        #expect(viewController.view.button(identifier: "DashboardNav.timeline") == nil)
+        #expect(viewController.view.button(identifier: "DashboardNav.models") == nil)
+        #expect(viewController.view.button(identifier: "DashboardNav.projects") == nil)
     }
 
     @MainActor
@@ -432,7 +435,7 @@ struct TokenWatchTests {
         viewController.view.setFrameSize(MainWindowFactory.contentSize)
         viewController.view.layoutSubtreeIfNeeded()
 
-        for item in ["overview", "timeline", "sessions", "models", "projects", "settings"] {
+        for item in ["overview", "sessions", "settings"] {
             let identifier = "DashboardNav.\(item)"
             let button = try #require(viewController.view.button(identifier: identifier))
             let icon = try #require(button.firstDescendant(identifier: "\(identifier).icon"))
@@ -447,6 +450,30 @@ struct TokenWatchTests {
             #expect(titleFrame.minX - iconFrame.maxX >= 8)
             #expect(titleFrame.minX - iconFrame.maxX <= 12)
         }
+    }
+
+    @MainActor
+    @Test func dashboardSessionsNavigationKeepsOverviewContentAndRange() throws {
+        let appearance = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        appearance.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        appearance.performAsCurrentDrawingAppearance {
+            _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        }
+
+        let selectedRangeButton = try #require(viewController.view.button(identifier: "DashboardRange.sevenDays"))
+        let dayRangeButton = try #require(viewController.view.button(identifier: "DashboardRange.day"))
+        let selectedBackgroundColor = try #require(selectedRangeButton.layer?.backgroundColor)
+        let dayBackgroundColor = try #require(dayRangeButton.layer?.backgroundColor)
+
+        #expect(viewController.view.textField(stringValue: "用量总览") != nil)
+        #expect(viewController.view.button(identifier: "DashboardRefreshButton") != nil)
+        #expect(rgbHex(selectedBackgroundColor) == 0x2563EB)
+        #expect(rgbHex(dayBackgroundColor) != 0x2563EB)
     }
 
     @MainActor
@@ -1083,7 +1110,7 @@ struct TokenWatchTests {
                 guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
                 return button.title
             }
-            #expect(navTitles == ["总览", "时间线", "会话", "模型", "项目", "设置"])
+            #expect(navTitles == ["总览", "会话", "设置"])
         }
     }
 }

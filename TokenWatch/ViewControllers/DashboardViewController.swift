@@ -927,17 +927,8 @@ final class DashboardViewController: NSViewController {
 
         selectedNavigationItem = item
         switch item {
-        case .overview:
+        case .overview, .sessions:
             selectedRange = .sevenDays
-            installOverviewContent()
-        case .timeline:
-            selectedRange = .month
-            installOverviewContent()
-        case .sessions:
-            selectedRange = .day
-            installOverviewContent()
-        case .models, .projects:
-            selectedRange = .all
             installOverviewContent()
         case .settings:
             installSettingsContent()
@@ -1287,19 +1278,13 @@ final class DashboardViewController: NSViewController {
 
 private enum DashboardNavigationItem: String, CaseIterable {
     case overview
-    case timeline
     case sessions
-    case models
-    case projects
     case settings
 
     var title: String {
         switch self {
         case .overview: return "总览"
-        case .timeline: return "时间线"
         case .sessions: return "会话"
-        case .models: return "模型"
-        case .projects: return "项目"
         case .settings: return "设置"
         }
     }
@@ -1307,10 +1292,7 @@ private enum DashboardNavigationItem: String, CaseIterable {
     var symbolName: String {
         switch self {
         case .overview: return "waveform.path.ecg"
-        case .timeline: return "clock"
         case .sessions: return "message"
-        case .models: return "cpu"
-        case .projects: return "folder"
         case .settings: return "gearshape"
         }
     }
