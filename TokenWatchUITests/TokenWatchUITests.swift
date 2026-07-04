@@ -79,7 +79,7 @@ final class TokenWatchUITests: XCTestCase {
 
 extension XCUIApplication {
     func launchForUITesting(languagePreference: String = "zh-Hans") {
-        let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.TokenWatch")
+        let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
             existingApp.terminate()
             _ = existingApp.wait(for: .notRunning, timeout: 5)

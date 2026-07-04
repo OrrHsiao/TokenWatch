@@ -60,6 +60,7 @@ jobs:
             -destination 'platform=macOS' \
             -only-testing:TokenWatchTests \
             -derivedDataPath "$RUNNER_TEMP/TokenWatchDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
             test
 
   ui-tests:
@@ -82,6 +83,9 @@ jobs:
             -destination 'platform=macOS' \
             -only-testing:TokenWatchUITests \
             -derivedDataPath "$RUNNER_TEMP/TokenWatchUIDerivedData" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_IDENTITY="-" \
             test
 
   release-dry-run:
