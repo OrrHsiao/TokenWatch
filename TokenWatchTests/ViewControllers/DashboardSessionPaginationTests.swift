@@ -34,8 +34,9 @@ struct DashboardSessionPaginationTests {
     @Test("会话页每页展示 10 条并用下一页按钮展示后续会话")
     func dashboardNextButtonShowsNextSessionPage() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
         let controller = DashboardViewController(
-            settingsViewController: SettingsViewController(isAuthorized: { true }, defaults: temporaryDefaults()),
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
             stateProvider: { [
                 .claude: .init(
                     stats: nil,
@@ -46,7 +47,8 @@ struct DashboardSessionPaginationTests {
                 ),
             ] },
             nowProvider: { now },
-            calendar: calendar()
+            calendar: calendar(),
+            languageSettings: languageSettings
         )
 
         controller.loadViewIfNeeded()
@@ -69,8 +71,9 @@ struct DashboardSessionPaginationTests {
     func dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
         let fullSessionID = "019df220-aaaa-bbbb-cccc-ddddeeeeffff"
+        let languageSettings = zhHansLanguageSettings()
         let controller = DashboardViewController(
-            settingsViewController: SettingsViewController(isAuthorized: { true }, defaults: temporaryDefaults()),
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
             stateProvider: { [
                 .claude: .init(
                     stats: nil,
@@ -88,7 +91,8 @@ struct DashboardSessionPaginationTests {
                 ),
             ] },
             nowProvider: { now },
-            calendar: calendar()
+            calendar: calendar(),
+            languageSettings: languageSettings
         )
 
         controller.loadViewIfNeeded()
@@ -121,8 +125,9 @@ struct DashboardSessionPaginationTests {
     @Test("会话页只展示选中日期当天的全部会话")
     func dashboardSessionsOnlyUseSelectedDayEntries() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
         let controller = DashboardViewController(
-            settingsViewController: SettingsViewController(isAuthorized: { true }, defaults: temporaryDefaults()),
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
             stateProvider: { [
                 .claude: .init(
                     stats: nil,
@@ -154,7 +159,8 @@ struct DashboardSessionPaginationTests {
                 ),
             ] },
             nowProvider: { now },
-            calendar: calendar()
+            calendar: calendar(),
+            languageSettings: languageSettings
         )
 
         controller.loadViewIfNeeded()
@@ -326,5 +332,19 @@ struct DashboardSessionPaginationTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    @MainActor
+    private func zhHansLanguageSettings() -> AppLanguageSettings {
+        AppLanguageSettings(defaults: temporaryDefaults(), preferredLanguagesProvider: { ["zh-Hans-US"] })
+    }
+
+    @MainActor
+    private func settingsViewController(languageSettings: AppLanguageSettings) -> SettingsViewController {
+        SettingsViewController(
+            isAuthorized: { true },
+            autoRefreshSettings: AutoRefreshSettings(defaults: temporaryDefaults()),
+            languageSettings: languageSettings
+        )
     }
 }
