@@ -609,7 +609,7 @@ enum AutoRefreshIntervalOption: String, CaseIterable {
     }
 
     static var defaultOption: AutoRefreshIntervalOption {
-        .seconds30
+        .minutes5
     }
 
     static func option(titled title: String) -> AutoRefreshIntervalOption? {

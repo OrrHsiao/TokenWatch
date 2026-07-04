@@ -1158,7 +1158,8 @@ struct TokenWatchTests {
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
             #expect(popUpButton.itemTitles == ["30 秒", "1 分钟", "5 分钟", "15 分钟", "关闭自动刷新"])
-            #expect(popUpButton.titleOfSelectedItem == "30 秒")
+            #expect(AutoRefreshSettings(defaults: defaults).selectedOption == .minutes5)
+            #expect(popUpButton.titleOfSelectedItem == "5 分钟")
         }
     }
 
@@ -1231,10 +1232,10 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
-            popUpButton.selectItem(withTitle: "5 分钟")
+            popUpButton.selectItem(withTitle: "15 分钟")
             _ = popUpButton.sendAction(popUpButton.action, to: popUpButton.target)
 
-            #expect(defaults.string(forKey: "TokenWatch.autoRefreshInterval") == "minutes5")
+            #expect(defaults.string(forKey: "TokenWatch.autoRefreshInterval") == "minutes15")
         }
     }
 
