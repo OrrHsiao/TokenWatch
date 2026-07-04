@@ -2078,11 +2078,22 @@ final class DashboardViewController: NSViewController {
             "\(localized(.dashboardOutput)) \(CompactNumberFormatter.formatMillions(summary.outputTokens))",
         ]
         let cacheTokens = summary.cacheReadTokens + summary.cacheCreationTokens
-        parts.append("\(localized(.dashboardCache)) \(CompactNumberFormatter.formatMillions(cacheTokens)) (\(formatCacheHitRate(summary, cacheTokens: cacheTokens)))")
+        let cacheText = CompactNumberFormatter.formatMillions(cacheTokens)
+        let cacheHitRateText = localizedParenthetical(formatCacheHitRate(summary, cacheTokens: cacheTokens))
+        parts.append("\(localized(.dashboardCache)) \(cacheText)\(cacheHitRateText)")
         if summary.reasoningTokens > 0 {
             parts.append("\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
         }
         return parts.joined(separator: " / ")
+    }
+
+    private func localizedParenthetical(_ value: String) -> String {
+        switch language {
+        case .zhHans, .zhHant:
+            return "（\(value)）"
+        default:
+            return " (\(value))"
+        }
     }
 
     private func formatCacheHitRate(_ summary: DashboardUsageSummary, cacheTokens: Int) -> String {

@@ -282,7 +282,7 @@ struct TokenWatchTests {
                 || button.identifier?.rawValue == "DashboardRefreshButton" else { return nil }
             return button.title
         }
-        #expect(controlTitles == ["当天", "7天", "30天", "全部", "刷新"])
+        #expect(controlTitles == ["当天", "7天", "30天", "全部", "立即刷新"])
     }
 
     @MainActor
@@ -1086,7 +1086,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let refreshButton = try #require(viewController.view.button(identifier: "DashboardRefreshButton"))
-        #expect(refreshButton.title == "刷新")
+        #expect(refreshButton.title == "立即刷新")
         #expect(refreshButton.action.map(NSStringFromSelector) == "refreshDashboard:")
         #expect(refreshButton.image != nil)
         #expect(refreshButton.imageHugsTitle)

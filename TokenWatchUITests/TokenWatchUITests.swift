@@ -50,15 +50,12 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
 
-        let timelineButton = app.buttons["DashboardNav.timeline"]
-        XCTAssertTrue(timelineButton.waitForExistence(timeout: 5))
-        timelineButton.click()
-        XCTAssertTrue(app.staticTexts["趋势"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["DashboardNav.overview"].waitForExistence(timeout: 5))
 
-        let modelsButton = app.buttons["DashboardNav.models"]
-        XCTAssertTrue(modelsButton.waitForExistence(timeout: 5))
-        modelsButton.click()
-        XCTAssertTrue(app.staticTexts["模型消耗排行"].waitForExistence(timeout: 5))
+        let sessionsButton = app.buttons["DashboardNav.sessions"]
+        XCTAssertTrue(sessionsButton.waitForExistence(timeout: 5))
+        sessionsButton.click()
+        XCTAssertTrue(app.staticTexts["按最近时间倒序查看会话聚合、成本与使用记录"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["DashboardNav.settings"].exists)
     }
 
