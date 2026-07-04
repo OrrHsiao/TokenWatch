@@ -212,7 +212,6 @@ final class DashboardViewController: NSViewController {
     private let sourceDonutView = DashboardDonutView()
     private let sourceLegendStack = NSStackView()
     private let projectRowsStack = NSStackView()
-    private let detailRowsStack = NSStackView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let sessionTitleLabel = NSTextField(labelWithString: "")
     private let sessionSubtitleLabel = NSTextField(labelWithString: "")
@@ -433,7 +432,6 @@ final class DashboardViewController: NSViewController {
         addFullWidthArrangedSubview(makeHeaderView(), to: overviewStack)
         addFullWidthArrangedSubview(makeMetricRow(), to: overviewStack)
         addFullWidthArrangedSubview(makeAnalysisSection(), to: overviewStack)
-        addFullWidthArrangedSubview(makeDetailTable(), to: overviewStack)
         addFullWidthArrangedSubview(statusLabel, to: overviewStack)
         configureBodyStatusLabel(statusLabel)
 
@@ -1076,52 +1074,6 @@ final class DashboardViewController: NSViewController {
         return panel
     }
 
-    private func makeDetailTable() -> NSView {
-        let title = localizedLabel(.recentDetailsTitle)
-        title.font = .systemFont(ofSize: 16, weight: .bold)
-        title.textColor = DashboardPalette.primaryText
-
-        let header = makeDetailHeaderRow()
-        detailRowsStack.orientation = .vertical
-        detailRowsStack.alignment = .width
-        detailRowsStack.spacing = 0
-
-        let stack = NSStackView(views: [title, header, detailRowsStack])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 0
-
-        let panel = DashboardRoundedView(backgroundColor: DashboardPalette.deepPanelBackground, cornerRadius: 8)
-        panel.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -16),
-            stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 14),
-            stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -14),
-            title.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            header.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            detailRowsStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
-        ])
-        return panel
-    }
-
-    private func makeDetailHeaderRow() -> NSView {
-        makeDetailRow(
-            localizedKeys: [
-                .recentDetailsTime,
-                .recentDetailsTool,
-                .recentDetailsSession,
-                .recentDetailsProject,
-                .recentDetailsModel,
-                .recentDetailsTokens,
-                .chartCost,
-                .recentDetailsRecords,
-            ],
-            isHeader: true
-        )
-    }
-
     private func makeSessionTable() -> NSView {
         let header = makeSessionTableHeader()
         let pagination = makeSessionPaginationView()
@@ -1559,50 +1511,6 @@ final class DashboardViewController: NSViewController {
         ProviderRegistry.provider(for: provider)?.displayName ?? provider.rawValue
     }
 
-    private func makeDetailRow(values: [String], isHeader: Bool) -> NSView {
-        let widths: [CGFloat] = [116, 58, 168, 150, 132, 82, 70, 48]
-        let labels = zip(values, widths).map { value, width in
-            let label = NSTextField(labelWithString: value)
-            label.font = isHeader ? .systemFont(ofSize: 11, weight: .semibold) : .systemFont(ofSize: 11)
-            label.textColor = isHeader ? DashboardPalette.secondaryText : DashboardPalette.primaryText
-            label.lineBreakMode = .byTruncatingMiddle
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.widthAnchor.constraint(equalToConstant: width).isActive = true
-            return label
-        }
-        let row = NSStackView(views: labels)
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 12
-        row.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: isHeader ? 42 : 39),
-        ])
-        return row
-    }
-
-    private func makeDetailRow(localizedKeys: [AppStringKey], isHeader: Bool) -> NSView {
-        let widths: [CGFloat] = [116, 58, 168, 150, 132, 82, 70, 48]
-        let labels = zip(localizedKeys, widths).map { key, width in
-            let label = localizedLabel(key)
-            label.font = isHeader ? .systemFont(ofSize: 11, weight: .semibold) : .systemFont(ofSize: 11)
-            label.textColor = isHeader ? DashboardPalette.secondaryText : DashboardPalette.primaryText
-            label.lineBreakMode = .byTruncatingMiddle
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.widthAnchor.constraint(equalToConstant: width).isActive = true
-            return label
-        }
-        let row = NSStackView(views: labels)
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 12
-        row.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: isHeader ? 42 : 39),
-        ])
-        return row
-    }
-
     private func installOverviewContent() {
         currentSettingsController?.view.removeFromSuperview()
         currentSettingsController?.removeFromParent()
@@ -1777,7 +1685,6 @@ final class DashboardViewController: NSViewController {
         rebuildSourceLegend(rangeSnapshot.toolShareSlices)
         sourceDonutView.configure(slices: rangeSnapshot.toolShareSlices)
         rebuildProjectRows(summary.projects)
-        rebuildDetailRows(summary.details)
         statusLabel.stringValue = statusText(
             totalSnapshot: totalSnapshot,
             rangeSnapshot: rangeSnapshot,
@@ -1994,32 +1901,6 @@ final class DashboardViewController: NSViewController {
                 fraction: fraction(row.tokens, max: maxTokens),
                 color: DashboardColors.modelColor(at: index + 2)
             ), to: projectRowsStack)
-        }
-    }
-
-    private func rebuildDetailRows(_ rows: [DashboardDetailRow]) {
-        clearStack(detailRowsStack)
-        if rows.isEmpty {
-            addFullWidthArrangedSubview(makeDetailRow(
-                values: [localized(.shareEmpty), "-", "-", "-", "-", "-", "-", "-"],
-                isHeader: false
-            ), to: detailRowsStack)
-            return
-        }
-        for row in rows.prefix(5) {
-            addFullWidthArrangedSubview(makeDetailRow(
-                values: [
-                    row.time,
-                    row.tool,
-                    row.session,
-                    row.project,
-                    row.model,
-                    formatInt(row.tokens),
-                    formatCurrency(row.cost),
-                    formatInt(row.records),
-                ],
-                isHeader: false
-            ), to: detailRowsStack)
         }
     }
 
@@ -2463,16 +2344,9 @@ private struct DashboardRangeSnapshot {
         let orderedSummaries = bucketKeys.map { key in
             (key: key, label: bucketRows.first(where: { $0.key == key })?.label ?? key, summary: summaries[key, default: .zero])
         }
-        let details = makeRecentSessionDetailRows(
-            states: states,
-            range: range,
-            now: now,
-            calendar: calendar
-        )
         let summary = makeWindowSummary(
             orderedSummaries: orderedSummaries,
-            projectTotals: projectTotals,
-            details: details
+            projectTotals: projectTotals
         )
 
         return DashboardRangeSnapshot(
@@ -2532,8 +2406,7 @@ private struct DashboardRangeSnapshot {
                 isCurrent: sortedMonths.last == month
             )
         }
-        let details = makeDetailRows(from: RecentSessionDetailsBuilder.buildAll(states: states))
-        let summary = DashboardUsageSummary.makeTotal(from: states, details: details)
+        let summary = DashboardUsageSummary.makeTotal(from: states)
 
         return DashboardRangeSnapshot(
             summary: summary,
@@ -2549,8 +2422,7 @@ private struct DashboardRangeSnapshot {
 
     private static func makeWindowSummary(
         orderedSummaries: [(key: String, label: String, summary: UsageSummary)],
-        projectTotals: [String: Int],
-        details: [DashboardDetailRow]
+        projectTotals: [String: Int]
     ) -> DashboardUsageSummary {
         let total = orderedSummaries.reduce(UsageSummary.zero) { partial, row in
             partial.merged(with: row.summary)
@@ -2567,45 +2439,8 @@ private struct DashboardRangeSnapshot {
             cost: total.cost,
             entryCount: total.entryCount,
             projectCount: projects.count,
-            projects: projects,
-            details: details
+            projects: projects
         )
-    }
-
-    private static func makeRecentSessionDetailRows(
-        states: [ProviderID: TokenStatsViewModel.ProviderState],
-        range: DashboardRange,
-        now: Date,
-        calendar: Calendar
-    ) -> [DashboardDetailRow] {
-        let snapshot: RecentSessionDetailsSnapshot
-        switch range {
-        case .day:
-            snapshot = RecentSessionDetailsBuilder.build(states: states, period: .today, now: now, calendar: calendar)
-        case .sevenDays:
-            snapshot = RecentSessionDetailsBuilder.build(states: states, period: .recent7Days, now: now, calendar: calendar)
-        case .month:
-            snapshot = RecentSessionDetailsBuilder.build(states: states, period: .recent30Days, now: now, calendar: calendar)
-        case .all:
-            snapshot = RecentSessionDetailsBuilder.buildAll(states: states)
-        }
-
-        return makeDetailRows(from: snapshot)
-    }
-
-    private static func makeDetailRows(from snapshot: RecentSessionDetailsSnapshot) -> [DashboardDetailRow] {
-        snapshot.rows.prefix(5).map { row in
-            DashboardDetailRow(
-                time: formatDetailDate(row.lastActiveAt),
-                tool: providerName(row.provider),
-                session: row.sessionID,
-                project: row.projectPath.map(displayProjectName) ?? "unknown",
-                model: modelText(for: row),
-                tokens: row.totalTokens,
-                cost: row.cost,
-                records: row.entryCount
-            )
-        }
     }
 
     fileprivate static func modelText(for row: RecentSessionRow) -> String {
@@ -2662,12 +2497,8 @@ private struct DashboardUsageSummary {
     let entryCount: Int
     let projectCount: Int
     let projects: [DashboardProjectRow]
-    let details: [DashboardDetailRow]
 
-    static func makeTotal(
-        from states: [ProviderID: TokenStatsViewModel.ProviderState],
-        details: [DashboardDetailRow]
-    ) -> DashboardUsageSummary {
+    static func makeTotal(from states: [ProviderID: TokenStatsViewModel.ProviderState]) -> DashboardUsageSummary {
         var inputTokens = 0
         var outputTokens = 0
         var cacheReadTokens = 0
@@ -2703,8 +2534,7 @@ private struct DashboardUsageSummary {
             cost: cost,
             entryCount: entryCount,
             projectCount: DashboardProjectRows.projectCount(fromSummaries: projects),
-            projects: makeProjectRows(projects),
-            details: details
+            projects: makeProjectRows(projects)
         )
     }
 
@@ -2811,17 +2641,6 @@ private enum DashboardProjectRows {
         }
         return components[codexIndex + 3]
     }
-}
-
-private struct DashboardDetailRow {
-    let time: String
-    let tool: String
-    let session: String
-    let project: String
-    let model: String
-    let tokens: Int
-    let cost: Double
-    let records: Int
 }
 
 private enum DashboardColors {

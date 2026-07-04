@@ -364,7 +364,7 @@ struct TokenWatchTests {
         #expect(labels.contains("模型消耗排行"))
         #expect(labels.contains("来源占比"))
         #expect(labels.contains("项目消耗"))
-        #expect(labels.contains("最近明细"))
+        #expect(!labels.contains("最近明细"))
     }
 
     @MainActor
@@ -1052,7 +1052,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardRecentDetailsShowsRecentSessionIDsForSelectedRange() throws {
+    @Test func dashboardOverviewOmitsRecentDetailsForSelectedRange() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
         let recentEntry = makeDashboardEntry(
@@ -1096,12 +1096,13 @@ struct TokenWatchTests {
         )
         viewController.loadViewIfNeeded()
 
-        let recentDetailLabels = try labels(inPanelTitled: "最近明细", root: viewController.view)
-        #expect(recentDetailLabels.contains("session-recent"))
-        #expect(recentDetailLabels.contains("session-older"))
-        #expect(!recentDetailLabels.contains("session-out-of-range"))
-        #expect(!recentDetailLabels.contains("汇总"))
-        #expect(!recentDetailLabels.contains("全部项目"))
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(!labels.contains("最近明细"))
+        #expect(!labels.contains("session-recent"))
+        #expect(!labels.contains("session-older"))
+        #expect(!labels.contains("session-out-of-range"))
+        #expect(!labels.contains("汇总"))
+        #expect(!labels.contains("全部项目"))
     }
 
     @MainActor
@@ -1384,7 +1385,7 @@ struct TokenWatchTests {
             #expect(labels.contains("Model Usage Ranking"))
             #expect(labels.contains("Source Share"))
             #expect(labels.contains("Project Usage"))
-            #expect(labels.contains("Recent Details"))
+            #expect(!labels.contains("Recent Details"))
             #expect(!labels.contains("用量总览"))
         }
     }

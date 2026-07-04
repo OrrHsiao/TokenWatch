@@ -26,7 +26,7 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["总费用"].exists)
         XCTAssertTrue(app.staticTexts["会话数"].exists)
         XCTAssertTrue(app.staticTexts["模型消耗排行"].exists)
-        XCTAssertTrue(app.staticTexts["最近明细"].exists)
+        XCTAssertFalse(app.staticTexts["最近明细"].exists)
     }
 
     @MainActor
