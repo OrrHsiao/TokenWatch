@@ -137,6 +137,23 @@ private final class DashboardNavigationButton: NSButton {
     }
 }
 
+private final class DashboardRangeButton: NSButton {
+    init(title: String, target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero)
+        self.title = title
+        self.target = target
+        self.action = action
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardRangeButton 必须用指定初始化方法构造")
+    }
+
+    override var acceptsFirstResponder: Bool {
+        false
+    }
+}
+
 /// Pencil 设计稿中的 TokenWatch 深色总览 Dashboard。
 final class DashboardViewController: NSViewController {
     private static let sidebarWidth: CGFloat = 244
@@ -669,10 +686,11 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeRangeButton(_ range: DashboardRange) -> NSButton {
-        let button = NSButton(title: range.title, target: self, action: #selector(rangeButtonClicked(_:)))
+        let button = DashboardRangeButton(title: range.title, target: self, action: #selector(rangeButtonClicked(_:)))
         button.identifier = NSUserInterfaceItemIdentifier("DashboardRange.\(range.rawValue)")
         button.setAccessibilityIdentifier("DashboardRange.\(range.rawValue)")
         button.bezelStyle = .regularSquare
+        button.focusRingType = .none
         button.isBordered = false
         button.font = .systemFont(ofSize: 12, weight: .semibold)
         button.alignment = .center

@@ -313,6 +313,17 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardRangeButtonsDoNotBecomeFirstResponderOnStartup() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        for range in ["day", "sevenDays", "month", "all"] {
+            let button = try #require(viewController.view.button(identifier: "DashboardRange.\(range)"))
+            #expect(!button.acceptsFirstResponder)
+        }
+    }
+
+    @MainActor
     @Test func dashboardShowsPencilMetricCardsAndPanels() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
