@@ -177,6 +177,7 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableColumnWidths: [CGFloat] = [150, 150, 126, 190, 150, 104, 84, 66]
     private static let sessionPageSize = 10
     private static let sourceLegendValueWidth: CGFloat = 52
+    private static let privacyPolicyURL = URL(string: "https://orrhsiao.github.io/TokenWatch/privacy/")!
 
     private let settingsViewController: SettingsViewController
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
@@ -227,6 +228,7 @@ final class DashboardViewController: NSViewController {
 
     private var rangeButtons: [DashboardRange: NSButton] = [:]
     private var navButtons: [DashboardNavigationItem: NSButton] = [:]
+    private var privacyPolicyButton: DashboardNavigationButton?
     private var selectedRange: DashboardRange = .sevenDays
     private var selectedNavigationItem: DashboardNavigationItem = .overview
     private var currentSessionPage = 1
@@ -384,12 +386,20 @@ final class DashboardViewController: NSViewController {
         addFullWidthArrangedSubview(makeDataSourcesView(), to: rootStack)
         addFullWidthArrangedSubview(makeScanStatusView(), to: rootStack)
 
+        let privacyPolicyButton = makePrivacyPolicyButton()
+        self.privacyPolicyButton = privacyPolicyButton
+
         sidebarView.addSubview(rootStack)
+        sidebarView.addSubview(privacyPolicyButton)
         NSLayoutConstraint.activate([
             rootStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: 20),
             rootStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -20),
             rootStack.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: Self.pageInset),
-            rootStack.bottomAnchor.constraint(lessThanOrEqualTo: sidebarView.bottomAnchor, constant: -Self.pageInset),
+            rootStack.bottomAnchor.constraint(lessThanOrEqualTo: privacyPolicyButton.topAnchor, constant: -20),
+            privacyPolicyButton.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: 20),
+            privacyPolicyButton.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -20),
+            privacyPolicyButton.bottomAnchor.constraint(equalTo: sidebarView.bottomAnchor, constant: -Self.pageInset),
+            privacyPolicyButton.heightAnchor.constraint(equalToConstant: 39),
         ])
         updateNavigationSelection()
     }
@@ -531,6 +541,16 @@ final class DashboardViewController: NSViewController {
             button.heightAnchor.constraint(equalToConstant: 39),
         ])
         return button
+    }
+
+    private func makePrivacyPolicyButton() -> DashboardNavigationButton {
+        DashboardNavigationButton(
+            title: localized(.privacyPolicy),
+            symbolName: "hand.raised",
+            identifier: "DashboardPrivacyPolicyButton",
+            target: self,
+            action: #selector(openPrivacyPolicy(_:))
+        )
     }
 
     private func makeDataSourcesView() -> NSView {
@@ -1672,6 +1692,10 @@ final class DashboardViewController: NSViewController {
         }
     }
 
+    @objc private func openPrivacyPolicy(_ sender: Any?) {
+        NSWorkspace.shared.open(Self.privacyPolicyURL)
+    }
+
     @objc private func rangeButtonClicked(_ sender: NSButton) {
         guard let range = DashboardRange.allCases.first(where: {
             sender.identifier?.rawValue == "DashboardRange.\($0.rawValue)"
@@ -1769,6 +1793,7 @@ final class DashboardViewController: NSViewController {
     private func applyLocalizedText() {
         refreshLocalizedTextFields(in: view)
         updateNavigationTitles()
+        updatePrivacyPolicyTitle()
         updateRangeButtonTitles()
     }
 
@@ -1787,6 +1812,14 @@ final class DashboardViewController: NSViewController {
             guard let button = rangeButtons[range] else { continue }
             button.title = range.title(language: language)
         }
+    }
+
+    private func updatePrivacyPolicyTitle() {
+        guard let button = privacyPolicyButton else { return }
+        let title = localized(.privacyPolicy)
+        button.title = title
+        button.setAccessibilityLabel(title)
+        button.updateTitle(title)
     }
 
     private func renderSessionPage(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
@@ -1821,6 +1854,9 @@ final class DashboardViewController: NSViewController {
             button.contentTintColor = tintColor
             (button as? DashboardNavigationButton)?.setVisualTint(tintColor)
         }
+        privacyPolicyButton?.layer?.backgroundColor = DashboardPalette.sidebarBackground.cgColor
+        privacyPolicyButton?.contentTintColor = DashboardPalette.secondaryText
+        privacyPolicyButton?.setVisualTint(DashboardPalette.secondaryText)
     }
 
     private func updateRangeButtons() {

@@ -110,7 +110,8 @@ struct TokenWatchTests {
 
     @Test func appBundleDoesNotDeclareMainStoryboard() throws {
         let appBundle = try #require(Bundle.allBundles.first {
-            $0.bundleIdentifier == "com.xiaoao.TokenWatch"
+            $0.bundleURL.pathExtension == "app"
+                && ($0.object(forInfoDictionaryKey: "CFBundleExecutable") as? String) == "TokenWatch"
         })
 
         #expect(appBundle.object(forInfoDictionaryKey: "NSMainStoryboardFile") == nil)
@@ -203,6 +204,29 @@ struct TokenWatchTests {
         #expect(viewController.view.button(identifier: "DashboardNav.timeline") == nil)
         #expect(viewController.view.button(identifier: "DashboardNav.models") == nil)
         #expect(viewController.view.button(identifier: "DashboardNav.projects") == nil)
+
+        let privacyButton = try #require(viewController.view.button(identifier: "DashboardPrivacyPolicyButton"))
+        #expect(privacyButton.title == "隐私政策")
+        #expect(privacyButton.action.map(NSStringFromSelector) == "openPrivacyPolicy:")
+    }
+
+    @MainActor
+    @Test func dashboardPrivacyPolicyEntryStaysAtSidebarBottom() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let sidebar = try #require(viewController.view.firstDescendant(identifier: "DashboardSidebar"))
+        let settingsButton = try #require(viewController.view.button(identifier: "DashboardNav.settings"))
+        let privacyButton = try #require(viewController.view.button(identifier: "DashboardPrivacyPolicyButton"))
+
+        let sidebarFrame = sidebar.convert(sidebar.bounds, to: viewController.view)
+        let settingsFrame = settingsButton.convert(settingsButton.bounds, to: viewController.view)
+        let privacyFrame = privacyButton.convert(privacyButton.bounds, to: viewController.view)
+
+        #expect(privacyFrame.minY <= sidebarFrame.minY + 40)
+        #expect(privacyFrame.maxY < settingsFrame.minY)
     }
 
     @MainActor
@@ -1099,9 +1123,11 @@ struct TokenWatchTests {
 
         viewController.showSettingsFromMainMenu(nil)
 
-        let buttonTitles = viewController.view.allDescendants(ofType: NSButton.self).map(\.title)
+        let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
+        let buttonTitles = mainContent.allDescendants(ofType: NSButton.self).map(\.title)
         #expect(buttonTitles.contains("去授权") || buttonTitles.contains("已授权"))
         #expect(buttonTitles.contains("刷新全部数据"))
+        #expect(!buttonTitles.contains("隐私政策"))
     }
 
     @MainActor
@@ -1283,6 +1309,8 @@ struct TokenWatchTests {
             let buttons = settingsViewController.view.allDescendants(ofType: NSButton.self)
             #expect(buttons.first { $0.title == "去授权" }?.accessibilityIdentifier() == "AuthorizationActionButton")
             #expect(buttons.first { $0.title == "刷新全部数据" }?.accessibilityIdentifier() == "RefreshAllDataButton")
+            #expect(buttons.first { $0.title == "隐私政策" } == nil)
+            #expect(settingsViewController.view.button(identifier: "PrivacyPolicyButton") == nil)
 
             let autoRefreshPopUp = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
             #expect(autoRefreshPopUp.accessibilityIdentifier() == "AutoRefreshIntervalPopUpButton")
@@ -1335,7 +1363,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func dashboardUsesEnglishCopyWhenLanguageIsEnglish() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
             languageSettings.selectedPreference = .en
             let viewController = ViewController(languageSettings: languageSettings)
@@ -1363,7 +1391,7 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func dashboardRefreshesVisibleCopyAfterLanguageChange() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
             let viewController = ViewController(languageSettings: languageSettings)
             viewController.loadViewIfNeeded()

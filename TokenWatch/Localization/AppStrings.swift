@@ -103,6 +103,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case refreshNow
     case statusMenuQuit
     case mainMenuAbout
+    case privacyPolicy
     case mainMenuSettings
     case mainMenuHide
     case mainMenuHideOthers
@@ -264,6 +265,7 @@ enum AppStrings {
         .refreshNow: "立即刷新",
         .statusMenuQuit: "退出 TokenWatch",
         .mainMenuAbout: "关于 TokenWatch",
+        .privacyPolicy: "隐私政策",
         .mainMenuSettings: "设置...",
         .mainMenuHide: "隐藏 TokenWatch",
         .mainMenuHideOthers: "隐藏其他",
@@ -402,6 +404,7 @@ enum AppStrings {
         .refreshNow: "立即重新整理",
         .statusMenuQuit: "結束 TokenWatch",
         .mainMenuAbout: "關於 TokenWatch",
+        .privacyPolicy: "隱私權政策",
         .mainMenuSettings: "設定...",
         .mainMenuHide: "隱藏 TokenWatch",
         .mainMenuHideOthers: "隱藏其他",
@@ -540,6 +543,7 @@ enum AppStrings {
         .refreshNow: "今すぐ更新",
         .statusMenuQuit: "TokenWatch を終了",
         .mainMenuAbout: "TokenWatch について",
+        .privacyPolicy: "プライバシーポリシー",
         .mainMenuSettings: "設定...",
         .mainMenuHide: "TokenWatch を隠す",
         .mainMenuHideOthers: "ほかを隠す",
@@ -678,6 +682,7 @@ enum AppStrings {
         .refreshNow: "지금 새로고침",
         .statusMenuQuit: "TokenWatch 종료",
         .mainMenuAbout: "TokenWatch 정보",
+        .privacyPolicy: "개인정보 처리방침",
         .mainMenuSettings: "설정...",
         .mainMenuHide: "TokenWatch 숨기기",
         .mainMenuHideOthers: "다른 항목 숨기기",
@@ -816,6 +821,7 @@ enum AppStrings {
         .refreshNow: "Actualizar ahora",
         .statusMenuQuit: "Salir de TokenWatch",
         .mainMenuAbout: "Acerca de TokenWatch",
+        .privacyPolicy: "Política de privacidad",
         .mainMenuSettings: "Configuración...",
         .mainMenuHide: "Ocultar TokenWatch",
         .mainMenuHideOthers: "Ocultar otros",
@@ -954,6 +960,7 @@ enum AppStrings {
         .refreshNow: "Jetzt aktualisieren",
         .statusMenuQuit: "TokenWatch beenden",
         .mainMenuAbout: "Über TokenWatch",
+        .privacyPolicy: "Datenschutzrichtlinie",
         .mainMenuSettings: "Einstellungen...",
         .mainMenuHide: "TokenWatch ausblenden",
         .mainMenuHideOthers: "Andere ausblenden",
@@ -1092,6 +1099,7 @@ enum AppStrings {
         .refreshNow: "Actualiser maintenant",
         .statusMenuQuit: "Quitter TokenWatch",
         .mainMenuAbout: "À propos de TokenWatch",
+        .privacyPolicy: "Politique de confidentialité",
         .mainMenuSettings: "Paramètres...",
         .mainMenuHide: "Masquer TokenWatch",
         .mainMenuHideOthers: "Masquer les autres",
@@ -1230,6 +1238,7 @@ enum AppStrings {
         .refreshNow: "Atualizar agora",
         .statusMenuQuit: "Sair do TokenWatch",
         .mainMenuAbout: "Sobre o TokenWatch",
+        .privacyPolicy: "Política de Privacidade",
         .mainMenuSettings: "Configurações...",
         .mainMenuHide: "Ocultar TokenWatch",
         .mainMenuHideOthers: "Ocultar Outros",
@@ -1368,6 +1377,7 @@ enum AppStrings {
         .refreshNow: "Aggiorna ora",
         .statusMenuQuit: "Esci da TokenWatch",
         .mainMenuAbout: "Informazioni su TokenWatch",
+        .privacyPolicy: "Informativa sulla privacy",
         .mainMenuSettings: "Impostazioni...",
         .mainMenuHide: "Nascondi TokenWatch",
         .mainMenuHideOthers: "Nascondi altri",
@@ -1506,6 +1516,7 @@ enum AppStrings {
         .refreshNow: "Nu verversen",
         .statusMenuQuit: "TokenWatch stoppen",
         .mainMenuAbout: "Over TokenWatch",
+        .privacyPolicy: "Privacybeleid",
         .mainMenuSettings: "Instellingen...",
         .mainMenuHide: "Verberg TokenWatch",
         .mainMenuHideOthers: "Verberg andere",
@@ -1644,6 +1655,7 @@ enum AppStrings {
         .refreshNow: "Odśwież teraz",
         .statusMenuQuit: "Zamknij TokenWatch",
         .mainMenuAbout: "O TokenWatch",
+        .privacyPolicy: "Polityka prywatności",
         .mainMenuSettings: "Ustawienia...",
         .mainMenuHide: "Ukryj TokenWatch",
         .mainMenuHideOthers: "Ukryj inne",
@@ -1782,6 +1794,7 @@ enum AppStrings {
         .refreshNow: "Refresh Now",
         .statusMenuQuit: "Quit TokenWatch",
         .mainMenuAbout: "About TokenWatch",
+        .privacyPolicy: "Privacy Policy",
         .mainMenuSettings: "Settings...",
         .mainMenuHide: "Hide TokenWatch",
         .mainMenuHideOthers: "Hide Others",
