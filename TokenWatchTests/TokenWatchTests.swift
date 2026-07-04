@@ -614,7 +614,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardSessionsPageRendersPencilSessionRowsAndSummaries() throws {
+    @Test func dashboardSessionsPageRendersSelectedDaySessionRowsAndSummaries() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
         let recentEntry = makeDashboardEntry(
@@ -662,15 +662,15 @@ struct TokenWatchTests {
         _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
 
         let labels = try labels(inContainer: "DashboardSessionsPage", root: viewController.view)
-        #expect(labels.contains("2"))
-        #expect(labels.contains("1.2k"))
+        #expect(labels.contains("显示 1-1 / 共 1 个会话"))
+        #expect(labels.contains("700"))
         #expect(labels.contains("$0.00"))
         #expect(labels.contains("session-recent"))
-        #expect(labels.contains("session-older"))
+        #expect(!labels.contains("session-older"))
         #expect(!labels.contains("session-out-of-range"))
         #expect(labels.contains("recent-app"))
-        #expect(labels.contains("older-app"))
-        #expect(labels.contains("Claude"))
+        #expect(!labels.contains("older-app"))
+        #expect(labels.contains("Claude Code"))
     }
 
     @MainActor
@@ -1595,7 +1595,23 @@ private func textField(_ value: String, inPanelTitled title: String, root: NSVie
 @MainActor
 private func labels(inContainer identifier: String, root: NSView) throws -> [String] {
     let container = try #require(root.firstDescendant(identifier: identifier))
-    return container.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+    return container.visibleTextValues()
+}
+
+private extension NSView {
+    func visibleTextValues() -> [String] {
+        var values: [String] = []
+        if let textField = self as? NSTextField {
+            values.append(textField.stringValue)
+        }
+        if let button = self as? NSButton, !button.title.isEmpty {
+            values.append(button.title)
+        }
+        for subview in subviews {
+            values.append(contentsOf: subview.visibleTextValues())
+        }
+        return values
+    }
 }
 
 private func restoreUserDefaultsValue(_ value: Any?, forKey key: String) {

@@ -160,7 +160,8 @@ final class DashboardViewController: NSViewController {
     private static let pageInset: CGFloat = 28
     private static let rowGap: CGFloat = 18
     private static let minimumContentWidth: CGFloat = 860
-    private static let sessionTableColumnWidths: [CGFloat] = [150, 180, 86, 200, 150, 104, 84, 66]
+    private static let sessionTableColumnWidths: [CGFloat] = [150, 150, 126, 190, 150, 104, 84, 66]
+    private static let sessionPageSize = 10
     private static let sourceLegendValueWidth: CGFloat = 52
 
     private let settingsViewController: SettingsViewController
@@ -206,12 +207,15 @@ final class DashboardViewController: NSViewController {
     private let sessionCostValueLabel = NSTextField(labelWithString: "$0.00")
     private let sessionRecordValueLabel = NSTextField(labelWithString: "0")
     private let sessionRowsStack = NSStackView()
+    private let sessionPaginationRangeLabel = NSTextField(labelWithString: "")
+    private let sessionPaginationControlsStack = NSStackView()
     private let sessionStatusLabel = NSTextField(labelWithString: "")
 
     private var rangeButtons: [DashboardRange: NSButton] = [:]
     private var navButtons: [DashboardNavigationItem: NSButton] = [:]
     private var selectedRange: DashboardRange = .sevenDays
     private var selectedNavigationItem: DashboardNavigationItem = .overview
+    private var currentSessionPage = 1
     private var currentSettingsController: NSViewController?
     private var overviewConstraints: [NSLayoutConstraint] = []
     private var sessionConstraints: [NSLayoutConstraint] = []
@@ -1028,11 +1032,16 @@ final class DashboardViewController: NSViewController {
 
     private func makeSessionTable() -> NSView {
         let header = makeSessionTableHeader()
+        let pagination = makeSessionPaginationView()
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+
         sessionRowsStack.orientation = .vertical
         sessionRowsStack.alignment = .width
         sessionRowsStack.spacing = 0
 
-        let stack = NSStackView(views: [header, sessionRowsStack])
+        let stack = NSStackView(views: [header, sessionRowsStack, spacer, pagination])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 0
@@ -1052,11 +1061,152 @@ final class DashboardViewController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: table.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: table.trailingAnchor),
             stack.topAnchor.constraint(equalTo: table.topAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: table.bottomAnchor),
+            stack.bottomAnchor.constraint(equalTo: table.bottomAnchor),
             header.widthAnchor.constraint(equalTo: stack.widthAnchor),
             sessionRowsStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            spacer.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            pagination.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         return table
+    }
+
+    private func makeSessionPaginationView() -> NSView {
+        sessionPaginationRangeLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        sessionPaginationRangeLabel.textColor = DashboardPalette.secondaryText
+        sessionPaginationRangeLabel.lineBreakMode = .byTruncatingTail
+        sessionPaginationRangeLabel.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPaginationRange")
+        sessionPaginationRangeLabel.setAccessibilityIdentifier("DashboardSessionsPaginationRange")
+
+        sessionPaginationControlsStack.orientation = .horizontal
+        sessionPaginationControlsStack.alignment = .centerY
+        sessionPaginationControlsStack.spacing = 6
+        sessionPaginationControlsStack.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPaginationControls")
+        sessionPaginationControlsStack.setAccessibilityIdentifier("DashboardSessionsPaginationControls")
+
+        let view = NSView()
+        view.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPagination")
+        view.setAccessibilityIdentifier("DashboardSessionsPagination")
+        view.addSubview(sessionPaginationRangeLabel)
+        view.addSubview(sessionPaginationControlsStack)
+        sessionPaginationRangeLabel.translatesAutoresizingMaskIntoConstraints = false
+        sessionPaginationControlsStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            view.heightAnchor.constraint(equalToConstant: 44),
+            sessionPaginationRangeLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            sessionPaginationRangeLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            sessionPaginationRangeLabel.trailingAnchor.constraint(lessThanOrEqualTo: sessionPaginationControlsStack.leadingAnchor, constant: -18),
+            sessionPaginationControlsStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            sessionPaginationControlsStack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+        ])
+        return view
+    }
+
+    private func rebuildSessionPaginationControls(_ pagination: RecentSessionPagination) {
+        clearStack(sessionPaginationControlsStack)
+        sessionPaginationRangeLabel.stringValue = pagination.displayRangeText
+
+        sessionPaginationControlsStack.addArrangedSubview(makeSessionPaginationButton(
+            title: "上一页",
+            identifier: "DashboardSessionsPagination.previous",
+            width: 64,
+            page: max(1, pagination.currentPage - 1),
+            isSelected: false,
+            isEnabled: pagination.canGoPrevious
+        ))
+
+        for item in pagination.items {
+            switch item {
+            case .page(let page):
+                sessionPaginationControlsStack.addArrangedSubview(makeSessionPaginationButton(
+                    title: "\(page)",
+                    identifier: "DashboardSessionsPagination.page.\(page)",
+                    width: page >= 100 ? 40 : 32,
+                    page: page,
+                    isSelected: page == pagination.currentPage,
+                    isEnabled: page != pagination.currentPage
+                ))
+            case .ellipsis:
+                sessionPaginationControlsStack.addArrangedSubview(makeSessionPaginationEllipsisLabel())
+            }
+        }
+
+        sessionPaginationControlsStack.addArrangedSubview(makeSessionPaginationButton(
+            title: "下一页",
+            identifier: "DashboardSessionsPagination.next",
+            width: 64,
+            page: min(pagination.totalPages, pagination.currentPage + 1),
+            isSelected: false,
+            isEnabled: pagination.canGoNext
+        ))
+    }
+
+    private func makeSessionPaginationButton(
+        title: String,
+        identifier: String,
+        width: CGFloat,
+        page: Int,
+        isSelected: Bool,
+        isEnabled: Bool
+    ) -> NSButton {
+        let button = DashboardRangeButton(title: title, target: self, action: #selector(sessionPaginationButtonClicked(_:)))
+        button.identifier = NSUserInterfaceItemIdentifier(identifier)
+        button.setAccessibilityIdentifier(identifier)
+        button.setAccessibilityLabel(title)
+        button.tag = page
+        button.bezelStyle = .regularSquare
+        button.focusRingType = .none
+        button.isBordered = false
+        button.alignment = .center
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 7
+        button.layer?.borderWidth = 1
+        button.isEnabled = isEnabled
+        button.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: width),
+            button.heightAnchor.constraint(equalToConstant: 32),
+        ])
+        applySessionPaginationButtonStyle(button, title: title, isSelected: isSelected, isEnabled: isEnabled)
+        return button
+    }
+
+    private func applySessionPaginationButtonStyle(
+        _ button: NSButton,
+        title: String,
+        isSelected: Bool,
+        isEnabled: Bool
+    ) {
+        let backgroundColor = isSelected ? DashboardPalette.accent : DashboardPalette.sessionDateBackground
+        let borderColor = isSelected ? DashboardPalette.accent : DashboardPalette.sessionDateBorder
+        let textColor: NSColor
+        if isSelected {
+            textColor = DashboardPalette.rangeSelectedText
+        } else {
+            textColor = isEnabled ? DashboardPalette.primaryText : DashboardPalette.secondaryText
+        }
+        button.layer?.backgroundColor = backgroundColor.cgColor
+        button.layer?.borderColor = borderColor.cgColor
+        button.contentTintColor = textColor
+        button.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+                .foregroundColor: textColor,
+            ]
+        )
+    }
+
+    private func makeSessionPaginationEllipsisLabel() -> NSTextField {
+        let label = NSTextField(labelWithString: "...")
+        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = DashboardPalette.secondaryText
+        label.alignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.widthAnchor.constraint(equalToConstant: 12),
+            label.heightAnchor.constraint(equalToConstant: 32),
+        ])
+        return label
     }
 
     private func makeSessionTableHeader() -> NSView {
@@ -1090,7 +1240,7 @@ final class DashboardViewController: NSViewController {
                     font: .monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
                     color: DashboardPalette.primaryText
                 ),
-                makeSessionIDCell(row.sessionID, width: Self.sessionTableColumnWidths[1]),
+                makeSessionIDCell(row.sessionID, rowIndex: index, width: Self.sessionTableColumnWidths[1]),
                 makeSessionProviderCell(row.provider, width: Self.sessionTableColumnWidths[2]),
                 makeSessionTextCell(
                     text: row.projectPath.map(DashboardRangeSnapshot.displayProjectName) ?? "unknown",
@@ -1190,25 +1340,66 @@ final class DashboardViewController: NSViewController {
         return cell
     }
 
-    private func makeSessionIDCell(_ sessionID: String, width: CGFloat) -> NSView {
-        let label = NSTextField(labelWithString: sessionID)
-        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        label.textColor = DashboardPalette.secondaryText
-        label.lineBreakMode = .byTruncatingMiddle
+    private func makeSessionIDCell(_ sessionID: String, rowIndex: Int, width: CGFloat) -> NSView {
+        let copyButton = DashboardRangeButton(
+            title: compactSessionID(sessionID),
+            target: self,
+            action: #selector(copySessionIDButtonClicked(_:))
+        )
+        copyButton.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsCopy.\(rowIndex)")
+        copyButton.setAccessibilityIdentifier("DashboardSessionsCopy.\(rowIndex)")
+        copyButton.setAccessibilityLabel("复制完整会话 ID")
+        copyButton.toolTip = sessionID
+        copyButton.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "复制完整 ID")
+        copyButton.isBordered = false
+        copyButton.bezelStyle = .regularSquare
+        copyButton.focusRingType = .none
+        copyButton.alignment = .left
+        copyButton.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        copyButton.contentTintColor = DashboardPalette.secondaryText
+        copyButton.imagePosition = .imageTrailing
+        copyButton.image?.isTemplate = true
+        copyButton.imageScaling = .scaleProportionallyDown
+        copyButton.translatesAutoresizingMaskIntoConstraints = false
+        copyButton.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        copyButton.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let cell = NSView()
+        cell.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(copyButton)
+        NSLayoutConstraint.activate([
+            cell.widthAnchor.constraint(equalToConstant: width),
+            copyButton.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+            copyButton.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
+            copyButton.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            copyButton.heightAnchor.constraint(equalToConstant: 24),
+        ])
+        return cell
+    }
+
+    private func compactSessionID(_ sessionID: String) -> String {
+        guard sessionID.count > 18 else { return sessionID }
+        return "\(sessionID.prefix(8))...\(sessionID.suffix(7))"
+    }
+
+    private func makeSessionProviderCell(_ provider: ProviderID, width: CGFloat) -> NSView {
+        let dot = DashboardDotView(color: sessionProviderColor(provider))
+
+        let toolName = sessionProviderName(provider)
+        let label = NSTextField(labelWithString: toolName)
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = DashboardPalette.primaryText
+        label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
-        label.toolTip = sessionID
+        label.toolTip = toolName
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let iconView = NSImageView()
-        iconView.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "复制完整 ID")
-        iconView.image?.isTemplate = true
-        iconView.contentTintColor = DashboardPalette.sessionCopyIcon
-        iconView.imageScaling = .scaleProportionallyDown
-        iconView.translatesAutoresizingMaskIntoConstraints = false
-
-        let stack = NSStackView(views: [label, iconView])
+        let stack = NSStackView(views: [dot, label])
         stack.orientation = .horizontal
         stack.alignment = .centerY
-        stack.spacing = 8
+        stack.distribution = .fill
+        stack.spacing = 6
 
         let cell = NSView()
         cell.translatesAutoresizingMaskIntoConstraints = false
@@ -1216,49 +1407,9 @@ final class DashboardViewController: NSViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             cell.widthAnchor.constraint(equalToConstant: width),
-            iconView.widthAnchor.constraint(equalToConstant: 14),
-            iconView.heightAnchor.constraint(equalToConstant: 14),
             stack.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-        ])
-        return cell
-    }
-
-    private func makeSessionProviderCell(_ provider: ProviderID, width: CGFloat) -> NSView {
-        let dot = DashboardDotView(color: sessionProviderColor(provider))
-
-        let label = NSTextField(labelWithString: sessionProviderName(provider))
-        label.font = .systemFont(ofSize: 11, weight: .semibold)
-        label.textColor = DashboardPalette.primaryText
-
-        let stack = NSStackView(views: [dot, label])
-        stack.orientation = .horizontal
-        stack.alignment = .centerY
-        stack.spacing = 6
-
-        let badge = DashboardRoundedView(
-            backgroundColor: DashboardPalette.sessionProviderBadgeBackground,
-            cornerRadius: 999,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        badge.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        let cell = NSView()
-        cell.translatesAutoresizingMaskIntoConstraints = false
-        cell.addSubview(badge)
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            cell.widthAnchor.constraint(equalToConstant: width),
-            stack.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 8),
-            stack.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -8),
-            stack.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
-            badge.heightAnchor.constraint(equalToConstant: 26),
-            badge.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
-            badge.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            badge.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
         ])
         return cell
     }
@@ -1281,14 +1432,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func sessionProviderName(_ provider: ProviderID) -> String {
-        switch provider {
-        case .claude:
-            return "Claude"
-        case .codex:
-            return "Codex"
-        case .opencode:
-            return "opencode"
-        }
+        ProviderRegistry.provider(for: provider)?.displayName ?? provider.rawValue
     }
 
     private func makeDetailRow(values: [String], isHeader: Bool) -> NSView {
@@ -1431,6 +1575,19 @@ final class DashboardViewController: NSViewController {
         render()
     }
 
+    @objc private func sessionPaginationButtonClicked(_ sender: NSButton) {
+        guard sender.tag > 0 else { return }
+        currentSessionPage = sender.tag
+        render()
+    }
+
+    @objc private func copySessionIDButtonClicked(_ sender: NSButton) {
+        guard let sessionID = sender.toolTip, !sessionID.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(sessionID, forType: .string)
+    }
+
     @MainActor
     private func render() {
         let states = stateProvider()
@@ -1478,13 +1635,14 @@ final class DashboardViewController: NSViewController {
     }
 
     private func renderSessionPage(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
+        let selectedDate = nowProvider()
         let snapshot = RecentSessionDetailsBuilder.build(
             states: states,
-            period: .recent7Days,
-            now: nowProvider(),
+            period: .today,
+            now: selectedDate,
             calendar: calendar
         )
-        sessionDateLabel.stringValue = formatSessionDate(nowProvider())
+        sessionDateLabel.stringValue = formatSessionDate(selectedDate)
         sessionCountValueLabel.stringValue = formatInt(snapshot.totalSessionCount)
         sessionTokenValueLabel.stringValue = CompactNumberFormatter.format(snapshot.totalTokens)
         sessionCostValueLabel.stringValue = formatCurrency(snapshot.totalCost)
@@ -1673,7 +1831,15 @@ final class DashboardViewController: NSViewController {
 
     private func rebuildSessionRows(_ rows: [RecentSessionRow]) {
         clearStack(sessionRowsStack)
-        let visibleRows = Array(rows.prefix(8))
+        let pagination = RecentSessionPagination(
+            totalCount: rows.count,
+            pageSize: Self.sessionPageSize,
+            currentPage: currentSessionPage
+        )
+        currentSessionPage = pagination.currentPage
+        rebuildSessionPaginationControls(pagination)
+
+        let visibleRows = Array(rows[pagination.rowRange])
         if visibleRows.isEmpty {
             addFullWidthArrangedSubview(makeEmptySessionTableRow(), to: sessionRowsStack)
             return
@@ -1738,7 +1904,9 @@ final class DashboardViewController: NSViewController {
 
     private func isHeaderControlButton(_ button: NSButton) -> Bool {
         let identifier = button.identifier?.rawValue ?? button.accessibilityIdentifier()
-        return identifier.hasPrefix("DashboardRange.") || identifier == "DashboardRefreshButton"
+        return identifier.hasPrefix("DashboardRange.")
+            || identifier.hasPrefix("DashboardSessionsPagination.")
+            || identifier == "DashboardRefreshButton"
     }
 
     private func fraction(_ value: Int, max maxValue: Int) -> CGFloat {
@@ -1815,7 +1983,7 @@ final class DashboardViewController: NSViewController {
             return errorMessage
         }
         if snapshot.rows.isEmpty {
-            return "最近 7 天暂无会话记录"
+            return "当天暂无会话记录"
         }
         if snapshot.loadingProviderCount > 0 {
             return AppStrings.text(.statusPartialLoading, language: languageSettings.resolvedLanguage)
@@ -2353,7 +2521,7 @@ private enum DashboardProjectRows {
     }
 
     static func displayName(for path: String) -> String {
-        displayNameOrNil(for: path) ?? fallbackDisplayName(for: path)
+        displayNameOrNil(for: path) ?? "unknown"
     }
 
     private static func displayNameOrNil(for path: String) -> String? {
