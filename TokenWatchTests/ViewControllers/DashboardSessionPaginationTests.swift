@@ -13,6 +13,7 @@ struct DashboardSessionPaginationTests {
         #expect(pagination.currentPage == 3)
         #expect(pagination.rowRange == 20..<30)
         #expect(pagination.displayRangeText == "显示 21-30 / 共 47 个会话")
+        #expect(pagination.displayRangeText(language: .en) == "Showing 21-30 of 47 sessions")
         #expect(pagination.canGoPrevious)
         #expect(pagination.canGoNext)
     }

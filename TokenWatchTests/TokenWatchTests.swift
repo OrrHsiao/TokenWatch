@@ -1333,7 +1333,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardKeepsPencilNavigationWhenLanguageIsEnglish() throws {
+    @Test func dashboardUsesEnglishCopyWhenLanguageIsEnglish() throws {
         try withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
             languageSettings.selectedPreference = .en
@@ -1344,7 +1344,40 @@ struct TokenWatchTests {
                 guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
                 return button.title
             }
-            #expect(navTitles == ["总览", "会话", "设置"])
+            let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+
+            #expect(navTitles == ["Overview", "Sessions", "Settings"])
+            #expect(labels.contains("Usage Overview"))
+            #expect(labels.contains("Summarizes local records from Claude Code, Codex rollout, and opencode SQLite"))
+            #expect(labels.contains("Data Sources"))
+            #expect(labels.contains("Last Local Scan"))
+            #expect(labels.contains("Trend"))
+            #expect(labels.contains("Model Usage Ranking"))
+            #expect(labels.contains("Source Share"))
+            #expect(labels.contains("Project Usage"))
+            #expect(labels.contains("Recent Details"))
+            #expect(!labels.contains("用量总览"))
+        }
+    }
+
+    @MainActor
+    @Test func dashboardRefreshesVisibleCopyAfterLanguageChange() throws {
+        try withTemporaryDefaults { defaults in
+            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+            let viewController = ViewController(languageSettings: languageSettings)
+            viewController.loadViewIfNeeded()
+
+            languageSettings.selectedPreference = .en
+
+            let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
+                guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
+                return button.title
+            }
+            let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+
+            #expect(navTitles == ["Overview", "Sessions", "Settings"])
+            #expect(labels.contains("Usage Overview"))
+            #expect(!labels.contains("用量总览"))
         }
     }
 }

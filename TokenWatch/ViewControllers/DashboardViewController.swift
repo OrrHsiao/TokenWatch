@@ -59,6 +59,7 @@ private enum AppLogoImage {
 private final class DashboardNavigationButton: NSButton {
     private let iconView = NSImageView()
     private let titleTextField = NSTextField(labelWithString: "")
+    private let symbolName: String
 
     init(
         title: String,
@@ -67,6 +68,7 @@ private final class DashboardNavigationButton: NSButton {
         target: AnyObject?,
         action: Selector?
     ) {
+        self.symbolName = symbolName
         super.init(frame: .zero)
         self.title = title
         self.target = target
@@ -103,6 +105,18 @@ private final class DashboardNavigationButton: NSButton {
     func setVisualTint(_ color: NSColor) {
         iconView.contentTintColor = color
         titleTextField.textColor = color
+    }
+
+    func updateTitle(_ title: String) {
+        self.title = title
+        setAccessibilityLabel(title)
+        titleTextField.stringValue = title
+        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        iconView.image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: title
+        )?.withSymbolConfiguration(symbolConfiguration)
+        iconView.image?.isTemplate = true
     }
 
     private func configureContent(title: String, symbolName: String, identifier: String) {
@@ -182,9 +196,9 @@ final class DashboardViewController: NSViewController {
     private let navButtonsStack = NSStackView()
     private let dataSourceRowsStack = NSStackView()
     private let scanStatusBodyLabel = NSTextField(labelWithString: "")
-    private let titleLabel = NSTextField(labelWithString: "用量总览")
-    private let subtitleLabel = NSTextField(labelWithString: "汇总 Claude Code、Codex rollout 与 opencode SQLite 的本地记录")
-    private let refreshButton = NSButton(title: "刷新", target: nil, action: nil)
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
+    private let refreshButton = NSButton(title: "", target: nil, action: nil)
     private let totalTokenValueLabel = NSTextField(labelWithString: "0")
     private let totalTokenDetailLabel = NSTextField(labelWithString: "")
     private let totalCostValueLabel = NSTextField(labelWithString: "$0.00")
@@ -193,14 +207,14 @@ final class DashboardViewController: NSViewController {
     private let sessionDetailLabel = NSTextField(labelWithString: "")
     private let trendView = DashboardTrendView()
     private let modelRowsStack = NSStackView()
-    private let emptyModelLabel = NSTextField(labelWithString: "暂无模型数据")
+    private let emptyModelLabel = NSTextField(labelWithString: "")
     private let sourceDonutView = DashboardDonutView()
     private let sourceLegendStack = NSStackView()
     private let projectRowsStack = NSStackView()
     private let detailRowsStack = NSStackView()
     private let statusLabel = NSTextField(labelWithString: "")
-    private let sessionTitleLabel = NSTextField(labelWithString: "会话")
-    private let sessionSubtitleLabel = NSTextField(labelWithString: "按最近时间倒序查看会话聚合、成本与使用记录")
+    private let sessionTitleLabel = NSTextField(labelWithString: "")
+    private let sessionSubtitleLabel = NSTextField(labelWithString: "")
     private let sessionDateLabel = NSTextField(labelWithString: "")
     private let sessionCountValueLabel = NSTextField(labelWithString: "0")
     private let sessionTokenValueLabel = NSTextField(labelWithString: "0")
@@ -247,6 +261,49 @@ final class DashboardViewController: NSViewController {
 
     required init?(coder: NSCoder) {
         fatalError("DashboardViewController 必须用指定初始化方法构造")
+    }
+
+    private var language: AppLanguage {
+        languageSettings.resolvedLanguage
+    }
+
+    private func localized(_ key: AppStringKey) -> String {
+        AppStrings.text(key, language: language)
+    }
+
+    private func localizedLabel(_ key: AppStringKey) -> NSTextField {
+        let label = NSTextField(labelWithString: localized(key))
+        setLocalizedKey(key, for: label)
+        return label
+    }
+
+    private func setLocalizedKey(_ key: AppStringKey, for label: NSTextField) {
+        label.identifier = NSUserInterfaceItemIdentifier(localizedIdentifier(for: key))
+        label.stringValue = localized(key)
+    }
+
+    private func refreshLocalizedTextFields(in root: NSView) {
+        if let textField = root as? NSTextField,
+           let key = localizedKey(for: textField.identifier?.rawValue) {
+            textField.stringValue = localized(key)
+        }
+        for subview in root.subviews {
+            refreshLocalizedTextFields(in: subview)
+        }
+    }
+
+    private func localizedIdentifier(for key: AppStringKey) -> String {
+        "AppStringKey.\(String(describing: key))"
+    }
+
+    private func localizedKey(for identifier: String?) -> AppStringKey? {
+        guard let identifier,
+              identifier.hasPrefix("AppStringKey.")
+        else {
+            return nil
+        }
+        let name = String(identifier.dropFirst("AppStringKey.".count))
+        return AppStringKey.allCases.first { String(describing: $0) == name }
     }
 
     override func loadView() {
@@ -442,10 +499,7 @@ final class DashboardViewController: NSViewController {
         let name = NSTextField(labelWithString: "TokenWatch")
         name.font = .systemFont(ofSize: 18, weight: .bold)
         name.textColor = DashboardPalette.primaryText
-        let subtitle = NSTextField(labelWithString: AppStrings.text(
-            .appTagline,
-            language: languageSettings.resolvedLanguage
-        ))
+        let subtitle = localizedLabel(.appTagline)
         subtitle.font = .systemFont(ofSize: 11, weight: .regular)
         subtitle.textColor = DashboardPalette.secondaryText
 
@@ -467,7 +521,7 @@ final class DashboardViewController: NSViewController {
 
     private func makeNavigationButton(_ item: DashboardNavigationItem) -> NSButton {
         let button = DashboardNavigationButton(
-            title: item.title,
+            title: item.title(language: language),
             symbolName: item.symbolName,
             identifier: "DashboardNav.\(item.rawValue)",
             target: self,
@@ -480,7 +534,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeDataSourcesView() -> NSView {
-        let title = NSTextField(labelWithString: "数据源")
+        let title = localizedLabel(.dashboardDataSources)
         title.font = .systemFont(ofSize: 11, weight: .bold)
         title.textColor = DashboardPalette.mutedText
 
@@ -500,7 +554,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeScanStatusView() -> NSView {
-        let title = NSTextField(labelWithString: "上次本地扫描")
+        let title = localizedLabel(.dashboardLastLocalScan)
         title.font = .systemFont(ofSize: 12, weight: .semibold)
         title.textColor = DashboardPalette.primaryText
 
@@ -529,8 +583,10 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeHeaderView() -> NSView {
+        setLocalizedKey(.dashboardOverviewTitle, for: titleLabel)
         titleLabel.font = .systemFont(ofSize: 26, weight: .bold)
         titleLabel.textColor = DashboardPalette.primaryText
+        setLocalizedKey(.dashboardOverviewSubtitle, for: subtitleLabel)
         subtitleLabel.font = .systemFont(ofSize: 12)
         subtitleLabel.textColor = DashboardPalette.secondaryText
 
@@ -573,8 +629,10 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeSessionHeaderView() -> NSView {
+        setLocalizedKey(.dashboardSessionsTitle, for: sessionTitleLabel)
         sessionTitleLabel.font = .systemFont(ofSize: 26, weight: .bold)
         sessionTitleLabel.textColor = DashboardPalette.primaryText
+        setLocalizedKey(.dashboardSessionsSubtitle, for: sessionSubtitleLabel)
         sessionSubtitleLabel.font = .systemFont(ofSize: 12)
         sessionSubtitleLabel.textColor = DashboardPalette.secondaryText
 
@@ -604,7 +662,7 @@ final class DashboardViewController: NSViewController {
 
     private func makeSessionDateBadge() -> NSView {
         let iconView = NSImageView()
-        iconView.image = NSImage(systemSymbolName: "calendar", accessibilityDescription: "日期")
+        iconView.image = NSImage(systemSymbolName: "calendar", accessibilityDescription: localized(.recentDetailsTime))
         iconView.image?.isTemplate = true
         iconView.contentTintColor = DashboardPalette.secondaryText
         iconView.imageScaling = .scaleProportionallyDown
@@ -643,10 +701,10 @@ final class DashboardViewController: NSViewController {
 
     private func makeSessionMetricRow() -> NSView {
         let row = NSStackView(views: [
-            makeSessionMetricCard(title: "会话数", valueLabel: sessionCountValueLabel),
-            makeSessionMetricCard(title: "总 Token", valueLabel: sessionTokenValueLabel),
-            makeSessionMetricCard(title: "成本", valueLabel: sessionCostValueLabel),
-            makeSessionMetricCard(title: "记录数", valueLabel: sessionRecordValueLabel),
+            makeSessionMetricCard(titleKey: .dashboardMetricSessions, valueLabel: sessionCountValueLabel),
+            makeSessionMetricCard(titleKey: .dashboardMetricTotalTokens, valueLabel: sessionTokenValueLabel),
+            makeSessionMetricCard(titleKey: .recentDetailsCost, valueLabel: sessionCostValueLabel),
+            makeSessionMetricCard(titleKey: .dashboardMetricRecords, valueLabel: sessionRecordValueLabel),
         ])
         row.orientation = .horizontal
         row.alignment = .height
@@ -658,8 +716,8 @@ final class DashboardViewController: NSViewController {
         return row
     }
 
-    private func makeSessionMetricCard(title: String, valueLabel: NSTextField) -> NSView {
-        let titleLabel = NSTextField(labelWithString: title)
+    private func makeSessionMetricCard(titleKey: AppStringKey, valueLabel: NSTextField) -> NSView {
+        let titleLabel = localizedLabel(titleKey)
         titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         titleLabel.textColor = DashboardPalette.secondaryText
 
@@ -690,7 +748,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeRangeButton(_ range: DashboardRange) -> NSButton {
-        let button = DashboardRangeButton(title: range.title, target: self, action: #selector(rangeButtonClicked(_:)))
+        let button = DashboardRangeButton(title: range.title(language: language), target: self, action: #selector(rangeButtonClicked(_:)))
         button.identifier = NSUserInterfaceItemIdentifier("DashboardRange.\(range.rawValue)")
         button.setAccessibilityIdentifier("DashboardRange.\(range.rawValue)")
         button.bezelStyle = .regularSquare
@@ -716,7 +774,7 @@ final class DashboardViewController: NSViewController {
         refreshButton.setAccessibilityIdentifier("DashboardRefreshButton")
         refreshButton.target = self
         refreshButton.action = #selector(refreshDashboard(_:))
-        refreshButton.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "刷新")
+        refreshButton.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: localized(.refreshNow))
         refreshButton.image?.isTemplate = true
         refreshButton.imagePosition = .imageLeading
         refreshButton.imageHugsTitle = true
@@ -741,17 +799,17 @@ final class DashboardViewController: NSViewController {
 
     private func makeMetricRow() -> NSView {
         let tokenCard = makeMetricCard(
-            title: "总 Token",
+            titleKey: .dashboardMetricTotalTokens,
             valueLabel: totalTokenValueLabel,
             detailLabel: totalTokenDetailLabel
         )
         let costCard = makeMetricCard(
-            title: "总费用",
+            titleKey: .dashboardMetricTotalCost,
             valueLabel: totalCostValueLabel,
             detailLabel: totalCostDetailLabel
         )
         let sessionCard = makeMetricCard(
-            title: "会话数",
+            titleKey: .dashboardMetricSessions,
             valueLabel: sessionValueLabel,
             detailLabel: sessionDetailLabel
         )
@@ -766,8 +824,8 @@ final class DashboardViewController: NSViewController {
         return row
     }
 
-    private func makeMetricCard(title: String, valueLabel: NSTextField, detailLabel: NSTextField) -> NSView {
-        let titleLabel = NSTextField(labelWithString: title)
+    private func makeMetricCard(titleKey: AppStringKey, valueLabel: NSTextField, detailLabel: NSTextField) -> NSView {
+        let titleLabel = localizedLabel(titleKey)
         titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
         titleLabel.textColor = DashboardPalette.secondaryText
 
@@ -839,8 +897,8 @@ final class DashboardViewController: NSViewController {
     private func makeTrendPanel() -> NSView {
         trendView.translatesAutoresizingMaskIntoConstraints = false
         return makePanel(
-            title: "趋势",
-            subtitle: "展示 Token 消耗与费用变化",
+            titleKey: .dashboardTrendTitle,
+            subtitleKey: .dashboardTrendSubtitle,
             content: trendView,
             minimumHeight: 230,
             trailingHeaderContent: makeTrendLegendView()
@@ -850,12 +908,12 @@ final class DashboardViewController: NSViewController {
     private func makeTrendLegendView() -> NSView {
         let row = NSStackView(views: [
             makeTrendLegendItem(
-                title: DashboardTrendRendering.tokenLegendTitle,
+                titleKey: .dashboardTrendTokenLegend,
                 color: DashboardPalette.accent,
                 identifier: "DashboardTrendLegend.token"
             ),
             makeTrendLegendItem(
-                title: DashboardTrendRendering.costLegendTitle,
+                titleKey: .chartCost,
                 color: DashboardPalette.costLine,
                 identifier: "DashboardTrendLegend.cost"
             ),
@@ -868,10 +926,10 @@ final class DashboardViewController: NSViewController {
         return row
     }
 
-    private func makeTrendLegendItem(title: String, color: NSColor, identifier: String) -> NSView {
+    private func makeTrendLegendItem(titleKey: AppStringKey, color: NSColor, identifier: String) -> NSView {
         let dot = DashboardDotView(color: color)
 
-        let label = NSTextField(labelWithString: title)
+        let label = localizedLabel(titleKey)
         label.font = .systemFont(ofSize: 12, weight: .medium)
         label.textColor = DashboardPalette.secondaryText
         label.alignment = .left
@@ -891,6 +949,7 @@ final class DashboardViewController: NSViewController {
         modelRowsStack.orientation = .vertical
         modelRowsStack.alignment = .width
         modelRowsStack.spacing = 8
+        setLocalizedKey(.totalEmptyModels, for: emptyModelLabel)
         emptyModelLabel.font = .systemFont(ofSize: 12)
         emptyModelLabel.textColor = DashboardPalette.secondaryText
 
@@ -899,8 +958,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .width
         stack.spacing = 8
         return makePanel(
-            title: "模型消耗排行",
-            subtitle: nil,
+            titleKey: .dashboardModelRankTitle,
+            subtitleKey: nil,
             content: stack,
             minimumHeight: 232
         )
@@ -920,32 +979,32 @@ final class DashboardViewController: NSViewController {
             sourceDonutView.widthAnchor.constraint(equalToConstant: 132),
             sourceDonutView.heightAnchor.constraint(equalToConstant: 132),
         ])
-        return makePanel(title: "来源占比", subtitle: nil, content: body, minimumHeight: 230)
+        return makePanel(titleKey: .dashboardSourceShareTitle, subtitleKey: nil, content: body, minimumHeight: 230)
     }
 
     private func makeProjectPanel() -> NSView {
         projectRowsStack.orientation = .vertical
         projectRowsStack.alignment = .width
         projectRowsStack.spacing = 10
-        return makePanel(title: "项目消耗", subtitle: nil, content: projectRowsStack, minimumHeight: 232)
+        return makePanel(titleKey: .dashboardProjectUsageTitle, subtitleKey: nil, content: projectRowsStack, minimumHeight: 232)
     }
 
     private func makePanel(
-        title: String,
-        subtitle: String?,
+        titleKey: AppStringKey,
+        subtitleKey: AppStringKey?,
         content: NSView,
         minimumHeight: CGFloat,
         trailingHeaderContent: NSView? = nil
     ) -> NSView {
-        let titleLabel = NSTextField(labelWithString: title)
+        let titleLabel = localizedLabel(titleKey)
         titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
         titleLabel.textColor = DashboardPalette.primaryText
         titleLabel.lineBreakMode = .byTruncatingTail
 
         var headerViews: [NSView] = [titleLabel]
         var trailingAlignmentView: NSView = titleLabel
-        if let subtitle {
-            let subtitleLabel = NSTextField(labelWithString: subtitle)
+        if let subtitleKey {
+            let subtitleLabel = localizedLabel(subtitleKey)
             subtitleLabel.font = .systemFont(ofSize: 12)
             subtitleLabel.textColor = DashboardPalette.secondaryText
             subtitleLabel.lineBreakMode = .byTruncatingTail
@@ -998,14 +1057,11 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeDetailTable() -> NSView {
-        let title = NSTextField(labelWithString: "最近明细")
+        let title = localizedLabel(.recentDetailsTitle)
         title.font = .systemFont(ofSize: 16, weight: .bold)
         title.textColor = DashboardPalette.primaryText
 
-        let header = makeDetailRow(
-            values: ["时间", "工具", "会话", "项目", "模型", "Token", "费用", "记录"],
-            isHeader: true
-        )
+        let header = makeDetailHeaderRow()
         detailRowsStack.orientation = .vertical
         detailRowsStack.alignment = .width
         detailRowsStack.spacing = 0
@@ -1028,6 +1084,22 @@ final class DashboardViewController: NSViewController {
             detailRowsStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         return panel
+    }
+
+    private func makeDetailHeaderRow() -> NSView {
+        makeDetailRow(
+            localizedKeys: [
+                .recentDetailsTime,
+                .recentDetailsTool,
+                .recentDetailsSession,
+                .recentDetailsProject,
+                .recentDetailsModel,
+                .recentDetailsTokens,
+                .chartCost,
+                .recentDetailsRecords,
+            ],
+            isHeader: true
+        )
     }
 
     private func makeSessionTable() -> NSView {
@@ -1103,10 +1175,10 @@ final class DashboardViewController: NSViewController {
 
     private func rebuildSessionPaginationControls(_ pagination: RecentSessionPagination) {
         clearStack(sessionPaginationControlsStack)
-        sessionPaginationRangeLabel.stringValue = pagination.displayRangeText
+        sessionPaginationRangeLabel.stringValue = pagination.displayRangeText(language: language)
 
         sessionPaginationControlsStack.addArrangedSubview(makeSessionPaginationButton(
-            title: "上一页",
+            title: localized(.dashboardPreviousPage),
             identifier: "DashboardSessionsPagination.previous",
             width: 64,
             page: max(1, pagination.currentPage - 1),
@@ -1131,7 +1203,7 @@ final class DashboardViewController: NSViewController {
         }
 
         sessionPaginationControlsStack.addArrangedSubview(makeSessionPaginationButton(
-            title: "下一页",
+            title: localized(.dashboardNextPage),
             identifier: "DashboardSessionsPagination.next",
             width: 64,
             page: min(pagination.totalPages, pagination.currentPage + 1),
@@ -1215,11 +1287,20 @@ final class DashboardViewController: NSViewController {
             backgroundColor: DashboardPalette.sessionTableHeaderBackground,
             height: 44,
             cells: zip(
-                ["最近时间 ↓", "会话 ID", "工具", "项目", "主模型", "总 Token", "成本", "记录数"],
+                [
+                    .dashboardLatestTime,
+                    .dashboardSessionID,
+                    .recentDetailsTool,
+                    .recentDetailsProject,
+                    .dashboardPrimaryModel,
+                    .dashboardMetricTotalTokens,
+                    .recentDetailsCost,
+                    .dashboardMetricRecords,
+                ],
                 Self.sessionTableColumnWidths
-            ).map { title, width in
-                makeSessionTextCell(
-                    text: title,
+            ).map { key, width in
+                makeSessionLocalizedTextCell(
+                    key: key,
                     width: width,
                     font: .systemFont(ofSize: 11, weight: .bold),
                     color: DashboardPalette.secondaryText
@@ -1282,7 +1363,7 @@ final class DashboardViewController: NSViewController {
             backgroundColor: sessionTableRowBackground(at: 0),
             height: 56,
             cells: zip(
-                ["暂无会话", "-", "-", "-", "-", "-", "-", "-"],
+                [localized(.dashboardNoSessions), "-", "-", "-", "-", "-", "-", "-"],
                 Self.sessionTableColumnWidths
             ).map { value, width in
                 makeSessionTextCell(
@@ -1340,6 +1421,26 @@ final class DashboardViewController: NSViewController {
         return cell
     }
 
+    private func makeSessionLocalizedTextCell(key: AppStringKey, width: CGFloat, font: NSFont, color: NSColor) -> NSView {
+        let label = localizedLabel(key)
+        label.font = font
+        label.textColor = color
+        label.lineBreakMode = .byTruncatingMiddle
+        label.maximumNumberOfLines = 1
+
+        let cell = NSView()
+        cell.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            cell.widthAnchor.constraint(equalToConstant: width),
+            label.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
+            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+        ])
+        return cell
+    }
+
     private func makeSessionIDCell(_ sessionID: String, rowIndex: Int, width: CGFloat) -> NSView {
         let copyButton = DashboardRangeButton(
             title: compactSessionID(sessionID),
@@ -1348,9 +1449,12 @@ final class DashboardViewController: NSViewController {
         )
         copyButton.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsCopy.\(rowIndex)")
         copyButton.setAccessibilityIdentifier("DashboardSessionsCopy.\(rowIndex)")
-        copyButton.setAccessibilityLabel("复制完整会话 ID")
+        copyButton.setAccessibilityLabel(localized(.dashboardCopySessionIDAccessibility))
         copyButton.toolTip = sessionID
-        copyButton.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "复制完整 ID")
+        copyButton.image = NSImage(
+            systemSymbolName: "doc.on.doc",
+            accessibilityDescription: localized(.dashboardCopyIDAccessibilityDescription)
+        )
         copyButton.isBordered = false
         copyButton.bezelStyle = .regularSquare
         copyButton.focusRingType = .none
@@ -1439,6 +1543,28 @@ final class DashboardViewController: NSViewController {
         let widths: [CGFloat] = [116, 58, 168, 150, 132, 82, 70, 48]
         let labels = zip(values, widths).map { value, width in
             let label = NSTextField(labelWithString: value)
+            label.font = isHeader ? .systemFont(ofSize: 11, weight: .semibold) : .systemFont(ofSize: 11)
+            label.textColor = isHeader ? DashboardPalette.secondaryText : DashboardPalette.primaryText
+            label.lineBreakMode = .byTruncatingMiddle
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.widthAnchor.constraint(equalToConstant: width).isActive = true
+            return label
+        }
+        let row = NSStackView(views: labels)
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 12
+        row.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: isHeader ? 42 : 39),
+        ])
+        return row
+    }
+
+    private func makeDetailRow(localizedKeys: [AppStringKey], isHeader: Bool) -> NSView {
+        let widths: [CGFloat] = [116, 58, 168, 150, 132, 82, 70, 48]
+        let labels = zip(localizedKeys, widths).map { key, width in
+            let label = localizedLabel(key)
             label.font = isHeader ? .systemFont(ofSize: 11, weight: .semibold) : .systemFont(ofSize: 11)
             label.textColor = isHeader ? DashboardPalette.secondaryText : DashboardPalette.primaryText
             label.lineBreakMode = .byTruncatingMiddle
@@ -1590,6 +1716,8 @@ final class DashboardViewController: NSViewController {
 
     @MainActor
     private func render() {
+        applyLocalizedText()
+
         let states = stateProvider()
         let totalSnapshot = TotalStatsBuilder.build(states: states)
         let rangeSnapshot = DashboardRangeSnapshot.build(
@@ -1606,7 +1734,11 @@ final class DashboardViewController: NSViewController {
         totalCostValueLabel.stringValue = formatCurrency(summary.cost)
         totalCostDetailLabel.stringValue = formatCostBreakdown(summary)
         sessionValueLabel.stringValue = formatInt(summary.entryCount)
-        sessionDetailLabel.stringValue = "\(totalSnapshot.loadedProviderCount) 个来源，\(summary.projectCount) 个项目"
+        sessionDetailLabel.stringValue = String(
+            format: localized(.dashboardTotalSourcesProjectsFormat),
+            totalSnapshot.loadedProviderCount,
+            summary.projectCount
+        )
         scanStatusBodyLabel.stringValue = scanStatusText(states: states)
 
         updateRangeButtons()
@@ -1632,6 +1764,29 @@ final class DashboardViewController: NSViewController {
             renderSessionPage(states: states)
         }
         enforceLeftAlignedContent(in: view)
+    }
+
+    private func applyLocalizedText() {
+        refreshLocalizedTextFields(in: view)
+        updateNavigationTitles()
+        updateRangeButtonTitles()
+    }
+
+    private func updateNavigationTitles() {
+        for item in DashboardNavigationItem.allCases {
+            guard let button = navButtons[item] else { continue }
+            let title = item.title(language: language)
+            button.title = title
+            button.setAccessibilityLabel(title)
+            (button as? DashboardNavigationButton)?.updateTitle(title)
+        }
+    }
+
+    private func updateRangeButtonTitles() {
+        for range in DashboardRange.allCases {
+            guard let button = rangeButtons[range] else { continue }
+            button.title = range.title(language: language)
+        }
     }
 
     private func renderSessionPage(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
@@ -1682,10 +1837,10 @@ final class DashboardViewController: NSViewController {
 
     private func setRefreshButtonLoading(_ isLoading: Bool) {
         refreshButton.isEnabled = !isLoading
-        refreshButton.title = "刷新"
+        refreshButton.title = localized(.refreshNow)
         refreshButton.image = NSImage(
             systemSymbolName: isLoading ? "arrow.triangle.2.circlepath" : "arrow.clockwise",
-            accessibilityDescription: refreshButton.title
+            accessibilityDescription: isLoading ? localized(.refreshInProgress) : refreshButton.title
         )
         refreshButton.image?.isTemplate = true
         refreshButton.imageHugsTitle = true
@@ -1694,24 +1849,27 @@ final class DashboardViewController: NSViewController {
 
     private func scanStatusText(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> String {
         if states.values.contains(where: { $0.isLoading }) {
-            return "正在更新本地记录。不依赖任何网络 API。"
+            return localized(.dashboardScanUpdating)
         }
         guard let lastRefreshedAt = states.values.compactMap(\.lastRefreshedAt).max() else {
-            return "尚未完成本地扫描。不依赖任何网络 API。"
+            return localized(.dashboardScanPending)
         }
-        return "\(relativeRefreshDescription(since: lastRefreshedAt, now: nowProvider()))更新。不依赖任何网络 API。"
+        return String(
+            format: localized(.dashboardScanUpdatedFormat),
+            relativeRefreshDescription(since: lastRefreshedAt, now: nowProvider())
+        )
     }
 
     private func relativeRefreshDescription(since date: Date, now: Date) -> String {
         let elapsedSeconds = max(0, now.timeIntervalSince(date))
         let minutes = Int(elapsedSeconds / 60)
         if minutes < 1 {
-            return "刚刚"
+            return localized(.dashboardJustNow)
         }
         if minutes < 60 {
-            return "\(minutes) 分钟前"
+            return String(format: localized(.dashboardMinutesAgoFormat), minutes)
         }
-        return "\(max(1, Int(elapsedSeconds / 3_600))) 小时前"
+        return String(format: localized(.dashboardHoursAgoFormat), max(1, Int(elapsedSeconds / 3_600)))
     }
 
     private func rebuildDataSourceRows(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
@@ -1728,7 +1886,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeSourceStatusRow(providerID: ProviderID, title: String, isAuthorized: Bool) -> NSView {
-        let statusText = isAuthorized ? "已授权" : "未授权"
+        let statusText = isAuthorized ? localized(.settingsAuthorized) : localized(.dashboardUnauthorized)
         let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: 12)
         label.textColor = DashboardPalette.secondaryText
@@ -1768,7 +1926,7 @@ final class DashboardViewController: NSViewController {
         clearStack(sourceLegendStack)
         let visible = Array(slices.prefix(4))
         if visible.isEmpty {
-            let label = NSTextField(labelWithString: "暂无数据")
+            let label = NSTextField(labelWithString: localized(.shareEmpty))
             label.font = .systemFont(ofSize: 12)
             label.textColor = DashboardPalette.secondaryText
             addFullWidthArrangedSubview(label, to: sourceLegendStack)
@@ -1786,7 +1944,7 @@ final class DashboardViewController: NSViewController {
     private func rebuildProjectRows(_ rows: [DashboardProjectRow]) {
         clearStack(projectRowsStack)
         if rows.isEmpty {
-            let label = NSTextField(labelWithString: "暂无项目数据")
+            let label = NSTextField(labelWithString: localized(.dashboardNoProjectData))
             label.font = .systemFont(ofSize: 12)
             label.textColor = DashboardPalette.secondaryText
             addFullWidthArrangedSubview(label, to: projectRowsStack)
@@ -1807,7 +1965,7 @@ final class DashboardViewController: NSViewController {
         clearStack(detailRowsStack)
         if rows.isEmpty {
             addFullWidthArrangedSubview(makeDetailRow(
-                values: ["暂无数据", "-", "-", "-", "-", "-", "-", "-"],
+                values: [localized(.shareEmpty), "-", "-", "-", "-", "-", "-", "-"],
                 isHeader: false
             ), to: detailRowsStack)
             return
@@ -1916,13 +2074,13 @@ final class DashboardViewController: NSViewController {
 
     private func formatTokenBreakdown(_ summary: DashboardUsageSummary) -> String {
         var parts = [
-            "输入 \(CompactNumberFormatter.formatMillions(summary.inputTokens))",
-            "输出 \(CompactNumberFormatter.formatMillions(summary.outputTokens))",
+            "\(localized(.dashboardInput)) \(CompactNumberFormatter.formatMillions(summary.inputTokens))",
+            "\(localized(.dashboardOutput)) \(CompactNumberFormatter.formatMillions(summary.outputTokens))",
         ]
         let cacheTokens = summary.cacheReadTokens + summary.cacheCreationTokens
-        parts.append("缓存 \(CompactNumberFormatter.formatMillions(cacheTokens))（\(formatCacheHitRate(summary, cacheTokens: cacheTokens))）")
+        parts.append("\(localized(.dashboardCache)) \(CompactNumberFormatter.formatMillions(cacheTokens)) (\(formatCacheHitRate(summary, cacheTokens: cacheTokens)))")
         if summary.reasoningTokens > 0 {
-            parts.append("推理 \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
+            parts.append("\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
         }
         return parts.joined(separator: " / ")
     }
@@ -1937,13 +2095,13 @@ final class DashboardViewController: NSViewController {
         let inputBillableTokens = summary.inputTokens + summary.cacheReadTokens + summary.cacheCreationTokens
         let billableTokens = inputBillableTokens + summary.outputTokens + summary.reasoningTokens
         guard billableTokens > 0, summary.cost > 0 else {
-            return "输入 $0.00 / 输出 $0.00 / 推理 $0.00"
+            return "\(localized(.dashboardInput)) $0.00 / \(localized(.dashboardOutput)) $0.00 / \(localized(.dashboardReasoning)) $0.00"
         }
 
         let inputCost = summary.cost * Double(inputBillableTokens) / Double(billableTokens)
         let outputCost = summary.cost * Double(summary.outputTokens) / Double(billableTokens)
         let reasoningCost = summary.cost * Double(summary.reasoningTokens) / Double(billableTokens)
-        return "输入 \(formatCurrency(inputCost)) / 输出 \(formatCurrency(outputCost)) / 推理 \(formatCurrency(reasoningCost))"
+        return "\(localized(.dashboardInput)) \(formatCurrency(inputCost)) / \(localized(.dashboardOutput)) \(formatCurrency(outputCost)) / \(localized(.dashboardReasoning)) \(formatCurrency(reasoningCost))"
     }
 
     private func formatPercentage(_ value: Double) -> String {
@@ -1983,7 +2141,7 @@ final class DashboardViewController: NSViewController {
             return errorMessage
         }
         if snapshot.rows.isEmpty {
-            return "当天暂无会话记录"
+            return localized(.dashboardSessionsEmptyToday)
         }
         if snapshot.loadingProviderCount > 0 {
             return AppStrings.text(.statusPartialLoading, language: languageSettings.resolvedLanguage)
@@ -2023,10 +2181,17 @@ private enum DashboardNavigationItem: String, CaseIterable {
     case settings
 
     var title: String {
+        title(language: .zhHans)
+    }
+
+    func title(language: AppLanguage) -> String {
         switch self {
-        case .overview: return "总览"
-        case .sessions: return "会话"
-        case .settings: return "设置"
+        case .overview:
+            return AppStrings.text(.dashboardOverviewNavigation, language: language)
+        case .sessions:
+            return AppStrings.text(.dashboardSessionsNavigation, language: language)
+        case .settings:
+            return AppStrings.text(.sidebarSettings, language: language)
         }
     }
 
@@ -2046,11 +2211,19 @@ private enum DashboardRange: String, CaseIterable {
     case all
 
     var title: String {
+        title(language: .zhHans)
+    }
+
+    func title(language: AppLanguage) -> String {
         switch self {
-        case .day: return "当天"
-        case .sevenDays: return "7天"
-        case .month: return "30天"
-        case .all: return "全部"
+        case .day:
+            return AppStrings.text(.dashboardRangeDay, language: language)
+        case .sevenDays:
+            return AppStrings.text(.dashboardRange7Days, language: language)
+        case .month:
+            return AppStrings.text(.dashboardRange30Days, language: language)
+        case .all:
+            return AppStrings.text(.dashboardRangeAll, language: language)
         }
     }
 
@@ -2722,9 +2895,15 @@ private enum DashboardTrendRendering {
     static let tokenSeriesName = "Token"
     static let costSeriesName = "Cost"
     static let seriesKeys = [tokenSeriesName, costSeriesName]
-    static let tokenLegendTitle = "Token 消耗"
-    static let costLegendTitle = "费用"
-    static let trendLegendTitles = [tokenLegendTitle, costLegendTitle]
+    static var tokenLegendTitle: String {
+        tokenLegendTitle(language: .zhHans)
+    }
+    static var costLegendTitle: String {
+        costLegendTitle(language: .zhHans)
+    }
+    static var trendLegendTitles: [String] {
+        trendLegendTitles(language: .zhHans)
+    }
     static let trendLegendPlacementName = "subtitleHeaderTrailing"
     static let chartLegendVisibilityName = "hidden"
     static let areaStacking: MarkStackingMethod = .unstacked
@@ -2733,6 +2912,18 @@ private enum DashboardTrendRendering {
     static let costLineDashPattern: [CGFloat] = []
     static let costYAxisPositionName = "trailing"
     private static let costScalePaddingMultiplier = 1.20
+
+    static func tokenLegendTitle(language: AppLanguage) -> String {
+        AppStrings.text(.dashboardTrendTokenLegend, language: language)
+    }
+
+    static func costLegendTitle(language: AppLanguage) -> String {
+        AppStrings.text(.chartCost, language: language)
+    }
+
+    static func trendLegendTitles(language: AppLanguage) -> [String] {
+        [tokenLegendTitle(language: language), costLegendTitle(language: language)]
+    }
 
     static func costAxisLabel(forScaledValue value: Double, maxTokens: Double, maxCost: Double) -> String {
         guard value.isFinite, maxTokens > 0, maxCost > 0 else {
@@ -2834,7 +3025,7 @@ final class DashboardTrendView: NSView {
     }
 
     var debugTrendLegendTitles: [String] {
-        DashboardTrendRendering.trendLegendTitles
+        DashboardTrendRendering.trendLegendTitles(language: language)
     }
 
     var debugCostLineDashPattern: [CGFloat] {
@@ -2934,7 +3125,8 @@ final class DashboardTrendView: NSView {
             hoverLabel.stringValue = ""
             return
         }
-        hoverLabel.stringValue = "\(bucket.label) · \(CompactNumberFormatter.formatHoverTokens(bucket.totalTokens)) · 费用 \(Self.costText(bucket.totalCost))"
+        let costTitle = AppStrings.text(.chartCost, language: language)
+        hoverLabel.stringValue = "\(bucket.label) · \(CompactNumberFormatter.formatHoverTokens(bucket.totalTokens)) · \(costTitle) \(Self.costText(bucket.totalCost))"
     }
 
     private static func axisKeys(for buckets: [DashboardTrendBucket]) -> [String] {
@@ -3026,7 +3218,7 @@ private struct DashboardTrendChartContent: View {
                     series: .value("Series", DashboardTrendRendering.tokenSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(by: .value("图例", DashboardTrendRendering.tokenLegendTitle))
+                .foregroundStyle(by: .value("Legend", DashboardTrendRendering.tokenLegendTitle(language: language)))
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
                 LineMark(
@@ -3041,7 +3233,7 @@ private struct DashboardTrendChartContent: View {
                     series: .value("Series", DashboardTrendRendering.costSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(by: .value("图例", DashboardTrendRendering.costLegendTitle))
+                .foregroundStyle(by: .value("Legend", DashboardTrendRendering.costLegendTitle(language: language)))
                 .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
 
                 if bucket.isCurrent {
@@ -3068,8 +3260,8 @@ private struct DashboardTrendChartContent: View {
             }
         }
         .chartForegroundStyleScale([
-            DashboardTrendRendering.tokenLegendTitle: Color(nsColor: DashboardPalette.accent),
-            DashboardTrendRendering.costLegendTitle: Color(nsColor: DashboardPalette.costLine),
+            DashboardTrendRendering.tokenLegendTitle(language: language): Color(nsColor: DashboardPalette.accent),
+            DashboardTrendRendering.costLegendTitle(language: language): Color(nsColor: DashboardPalette.costLine),
         ])
         .chartLegend(.hidden)
         .chartYScale(domain: 0...DashboardTrendRendering.chartYScaleUpperBound(maxTokens: maxTokens))

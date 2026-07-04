@@ -4,7 +4,7 @@ import Foundation
 enum ProviderAuthorization {
     static let homeBookmarkKey = "HomeDirectoryBookmark"
     static let homeDirectoryPath = FileManager.default.homeDirectoryForCurrentUser.path
-    static let homeAccessMessage = "TokenWatch 想访问用户目录"
+    static let homeAccessMessage = AppStrings.text(.homeAccessMessage, language: .zhHans)
 }
 
 /// 抽象的数据源 provider

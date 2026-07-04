@@ -23,13 +23,27 @@ struct RecentSessionPagination: Equatable {
     }
 
     var displayRangeText: String {
+        displayRangeText(language: .zhHans)
+    }
+
+    func displayRangeText(language: AppLanguage) -> String {
         guard totalCount > 0 else {
-            return "显示 0-0 / 共 0 个会话"
+            return String(
+                format: AppStrings.text(.dashboardShowingSessionsFormat, language: language),
+                Self.formatInt(0),
+                Self.formatInt(0),
+                Self.formatInt(0)
+            )
         }
         let start = Self.formatInt(rowRange.lowerBound + 1)
         let end = Self.formatInt(rowRange.upperBound)
         let total = Self.formatInt(totalCount)
-        return "显示 \(start)-\(end) / 共 \(total) 个会话"
+        return String(
+            format: AppStrings.text(.dashboardShowingSessionsFormat, language: language),
+            start,
+            end,
+            total
+        )
     }
 
     init(totalCount: Int, pageSize: Int, currentPage: Int) {

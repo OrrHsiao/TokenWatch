@@ -105,16 +105,16 @@ class ViewController: NSViewController {
 /// 通用设置页,承载跨 provider 的授权、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
 
-    private let titleLabel = NSTextField(labelWithString: "设置")
-    private let descriptionLabel = NSTextField(labelWithString: "管理 TokenWatch 的通用访问权限和数据刷新。")
-    private let authorizationTitleLabel = NSTextField(labelWithString: "通用访问权限")
-    private let authorizationActionButton = NSButton(title: "授权访问用户目录", target: nil, action: nil)
-    private let refreshButton = NSButton(title: "刷新全部数据", target: nil, action: nil)
-    private let autoRefreshIntervalLabel = NSTextField(labelWithString: "自动刷新间隔")
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let descriptionLabel = NSTextField(labelWithString: "")
+    private let authorizationTitleLabel = NSTextField(labelWithString: "")
+    private let authorizationActionButton = NSButton(title: "", target: nil, action: nil)
+    private let refreshButton = NSButton(title: "", target: nil, action: nil)
+    private let autoRefreshIntervalLabel = NSTextField(labelWithString: "")
     private let autoRefreshIntervalPopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let launchAtLoginLabel = NSTextField(labelWithString: "开机自启动")
+    private let launchAtLoginLabel = NSTextField(labelWithString: "")
     private let launchAtLoginSwitch = NSSwitch(frame: .zero)
-    private let languageLabel = NSTextField(labelWithString: "语言")
+    private let languageLabel = NSTextField(labelWithString: "")
     private let languagePopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
     private let isAuthorized: @MainActor () -> Bool
     private let loginItemSettings: LoginItemSettingsControlling
