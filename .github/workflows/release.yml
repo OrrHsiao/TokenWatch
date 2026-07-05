@@ -17,6 +17,9 @@ on:
 permissions:
   contents: write
 
+env:
+  XCODE_APP_PRODUCT_NAME: AI Token Watch
+
 jobs:
   build:
     name: macOS Release Build
@@ -44,7 +47,7 @@ jobs:
 
       - name: Verify Universal Binary
         run: |
-          APP_BINARY="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/TokenWatch.app/Contents/MacOS/TokenWatch"
+          APP_BINARY="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/$XCODE_APP_PRODUCT_NAME.app/Contents/MacOS/$XCODE_APP_PRODUCT_NAME"
           ARCHS="$(lipo -archs "$APP_BINARY")"
           echo "Built architectures: $ARCHS"
           case " $ARCHS " in
@@ -58,7 +61,7 @@ jobs:
 
       - name: Package App
         run: |
-          APP_PATH="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/TokenWatch.app"
+          APP_PATH="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/$XCODE_APP_PRODUCT_NAME.app"
           test -d "$APP_PATH"
           ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/TokenWatch-macOS-universal.zip"
 

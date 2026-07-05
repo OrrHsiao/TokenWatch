@@ -111,7 +111,7 @@ struct TokenWatchTests {
     @Test func appBundleDoesNotDeclareMainStoryboard() throws {
         let appBundle = try #require(Bundle.allBundles.first {
             $0.bundleURL.pathExtension == "app"
-                && ($0.object(forInfoDictionaryKey: "CFBundleExecutable") as? String) == "TokenWatch"
+                && ($0.object(forInfoDictionaryKey: "CFBundleIdentifier") as? String) == "com.xiaoao.tokenwatch"
         })
 
         #expect(appBundle.object(forInfoDictionaryKey: "NSMainStoryboardFile") == nil)
