@@ -1553,7 +1553,7 @@ final class DashboardViewController: NSViewController {
         makeSessionTableRowContainer(
             identifier: "DashboardSessionsRow.\(index)",
             backgroundColor: sessionTableRowBackground(at: index),
-            height: 56,
+            height: 48,
             cells: [
                 makeSessionTextCell(
                     text: DashboardRangeSnapshot.formatDetailDate(row.lastActiveAt),
@@ -1601,7 +1601,7 @@ final class DashboardViewController: NSViewController {
         makeSessionTableRowContainer(
             identifier: "DashboardSessionsRow.0",
             backgroundColor: sessionTableRowBackground(at: 0),
-            height: 56,
+            height: 48,
             cells: zip(
                 [localized(.dashboardNoSessions), "-", "-", "-", "-", "-", "-", "-"],
                 Self.sessionTableColumnWidths

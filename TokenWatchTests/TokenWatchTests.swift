@@ -928,6 +928,43 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardSessionDataRowsUseCompactItemHeight() throws {
+        let calendar = utcCalendar()
+        let entry = makeDashboardEntry(
+            sessionID: "session-compact-row",
+            date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "model-compact-row",
+            input: 700,
+            cwd: "/work/compact-row"
+        )
+        let stats = UsageAggregator().aggregate([entry])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: [entry],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+
+        #expect(row.fixedHeightConstant == 48)
+    }
+
+    @MainActor
     @Test func settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride() throws {
         let dark = try #require(NSAppearance(named: .darkAqua))
         let aqua = try #require(NSAppearance(named: .aqua))
@@ -1846,6 +1883,14 @@ private extension NSView {
             current = view.superview
         }
         return nil
+    }
+
+    var fixedHeightConstant: CGFloat? {
+        constraints.first {
+            $0.firstAttribute == .height
+                && $0.relation == .equal
+                && $0.secondItem == nil
+        }?.constant
     }
 
     func popUpButton(identifier: String) -> NSPopUpButton? {
