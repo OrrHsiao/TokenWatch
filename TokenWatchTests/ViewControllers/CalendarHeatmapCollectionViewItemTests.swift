@@ -158,6 +158,30 @@ struct CalendarHeatmapCollectionViewItemTests {
     }
 
     @MainActor
+    @Test("浅色模式 0 token 方块使用更清晰的中性色")
+    func zeroTokenUsesClearerNeutralInLightMode() {
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+        item.view.appearance = NSAppearance(named: .aqua)
+
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: Date(timeIntervalSince1970: 0),
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 0,
+            intensity: 0,
+            isToday: false,
+            isFuture: false
+        )
+
+        item.configure(with: .day(day))
+
+        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.847, 0.871, 0.91, 1.0])
+        #expect(item.view.toolTip == "2026-06-10 · 0.0M")
+    }
+
+    @MainActor
     @Test("复用 item 时重置公开 view 状态")
     func reusedItemResetsPublicViewState() {
         let item = CalendarHeatmapCollectionViewItem()

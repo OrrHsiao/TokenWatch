@@ -156,7 +156,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 /// 构建主窗口。App 启动、主菜单和 UI 测试入口都走同一套窗口配置。
 @MainActor
 enum MainWindowFactory {
-    static let contentSize = NSSize(width: 1180, height: 760)
+    static let contentSize = NSSize(width: 1180, height: 840)
 
     static func makeWindowController(
         languageSettings: AppLanguageSettings = .shared

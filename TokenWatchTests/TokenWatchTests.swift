@@ -169,6 +169,11 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func mainWindowDefaultHeightCanShowDashboardDetails() {
+        #expect(MainWindowFactory.contentSize.height >= 840)
+    }
+
+    @MainActor
     @Test func mainWindowUsesPencilDashboardLayout() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -735,6 +740,337 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardSessionsPageUsesPencilLightDetailColors() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let entry = makeDashboardEntry(
+            sessionID: "session-recent",
+            date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "model-recent",
+            input: 700,
+            cwd: "/work/recent-app"
+        )
+        let stats = UsageAggregator().aggregate([entry])
+        let appearance = try #require(NSAppearance(named: .aqua))
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: [entry],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        appearance.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        appearance.performAsCurrentDrawingAppearance {
+            _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        }
+
+        let dateBadge = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge"))
+        let sessionMetricCard = try roundedAncestor(containingText: "会话数", root: viewController.view)
+        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let pagination = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPagination"))
+        let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+        let providerLabel = try #require(row.textField(stringValue: "Claude Code"))
+        let copyButton = try #require(row.button(identifier: "DashboardSessionsCopy.0"))
+        let modelLabel = try #require(row.textField(stringValue: "model-recent"))
+        let costLabel = try #require(row.textField(stringValue: "$0.00"))
+
+        #expect(rgbHex(try #require(dateBadge.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(dateBadge.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(sessionMetricCard.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(sessionMetricCard.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(table.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(pagination.layer?.backgroundColor)) == 0xF4F6FA)
+        #expect(row.firstDescendant(identifier: "DashboardSessionsProviderBadge.claude") == nil)
+        #expect(try rgbHex(try #require(copyButton.contentTintColor), appearance: .aqua) == 0x111827)
+        #expect(try rgbHex(try #require(providerLabel.textColor), appearance: .aqua) == 0x2563EB)
+        #expect(try rgbHex(try #require(modelLabel.textColor), appearance: .aqua) == 0x6B7280)
+        #expect(try rgbHex(try #require(costLabel.textColor), appearance: .aqua) == 0x6B7280)
+    }
+
+    @MainActor
+    @Test func dashboardLayerColorsReapplyPencilLightColorsAfterAppearanceChangesToAqua() throws {
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let aqua = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        dark.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        dark.performAsCurrentDrawingAppearance {
+            _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        }
+
+        viewController.view.appearance = aqua
+        refreshEffectiveAppearance(in: viewController.view)
+
+        let root = viewController.view
+        let sidebar = try #require(root.firstDescendant(identifier: "DashboardSidebar"))
+        let mainContent = try #require(root.firstDescendant(identifier: "DashboardMainContent"))
+        let overviewButton = try #require(root.button(identifier: "DashboardNav.overview"))
+        let table = try #require(root.firstDescendant(identifier: "DashboardSessionsTable"))
+        let tableHeader = try #require(root.firstDescendant(identifier: "DashboardSessionsTableHeader"))
+        let tableRow = try #require(root.firstDescendant(identifier: "DashboardSessionsRow.0"))
+        let paginationButton = try #require(root.button(identifier: "DashboardSessionsPagination.page.1"))
+
+        #expect(rgbHex(try #require(root.layer?.backgroundColor)) == 0xF4F6FA)
+        #expect(rgbHex(try #require(sidebar.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(mainContent.layer?.backgroundColor)) == 0xF4F6FA)
+        #expect(rgbHex(try #require(sessionsButton.layer?.backgroundColor)) == 0xEAF2FF)
+        #expect(rgbHex(try #require(overviewButton.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(table.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
+        #expect(rgbHex(try #require(tableRow.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(paginationButton.layer?.backgroundColor)) == 0x2563EB)
+        #expect(rgbHex(try #require(paginationButton.layer?.borderColor)) == 0x2563EB)
+    }
+
+    @MainActor
+    @Test func dashboardSessionsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride() throws {
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let aqua = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        dark.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        viewController.view.appearance = aqua
+        refreshEffectiveAppearance(in: viewController.view)
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        dark.performAsCurrentDrawingAppearance {
+            _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        }
+
+        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let tableHeader = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
+        let tableRow = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+        let dateBadge = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge"))
+        let pagination = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPagination"))
+        let previousButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.previous"))
+        let selectedPageButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.page.1"))
+        let nextButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.next"))
+        let previousTitleLabel = try #require(previousButton.textField(stringValue: "上一页"))
+        let nextTitleLabel = try #require(nextButton.textField(stringValue: "下一页"))
+
+        #expect(rgbHex(try #require(table.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(table.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
+        #expect(rgbHex(try #require(tableRow.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(dateBadge.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(dateBadge.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(pagination.layer?.backgroundColor)) == 0xF4F6FA)
+        #expect(rgbHex(try #require(previousButton.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(selectedPageButton.layer?.backgroundColor)) == 0x2563EB)
+        #expect(rgbHex(try #require(nextButton.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(try rgbHex(try #require(previousTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
+        #expect(try rgbHex(try #require(nextTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
+    }
+
+    @MainActor
+    @Test func dashboardSessionRowsUseLightTextWhenOpenedAfterAppearanceOverride() throws {
+        let calendar = utcCalendar()
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let aqua = try #require(NSAppearance(named: .aqua))
+        let entry = makeDashboardEntry(
+            sessionID: "session-light-row",
+            date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "model-light-row",
+            input: 700,
+            cwd: "/work/light-row"
+        )
+        let stats = UsageAggregator().aggregate([entry])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: [entry],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        dark.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        viewController.view.appearance = aqua
+        refreshEffectiveAppearance(in: viewController.view)
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        dark.performAsCurrentDrawingAppearance {
+            _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        }
+
+        let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+        let copyButton = try #require(row.button(identifier: "DashboardSessionsCopy.0"))
+        let copyButtonBackgroundColor = try #require(copyButton.layer?.backgroundColor)
+        let copyButtonTitleLabel = try #require(copyButton.textField(stringValue: "session-light-row"))
+
+        #expect(rgbHex(try #require(row.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(copyButtonBackgroundColor) == 0)
+        #expect(try rgbHex(try #require(copyButton.contentTintColor), appearance: .aqua) == 0x111827)
+        #expect(try rgbHex(try #require(copyButtonTitleLabel.textColor), appearance: .aqua) == 0x111827)
+    }
+
+    @MainActor
+    @Test func dashboardSessionDataRowsUseCompactItemHeight() throws {
+        let calendar = utcCalendar()
+        let entry = makeDashboardEntry(
+            sessionID: "session-compact-row",
+            date: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "model-compact-row",
+            input: 700,
+            cwd: "/work/compact-row"
+        )
+        let stats = UsageAggregator().aggregate([entry])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: [entry],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar) },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
+
+        #expect(row.fixedHeightConstant == 48)
+    }
+
+    @MainActor
+    @Test func dashboardSessionsTableHeightFitsTenCompactRows() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+
+        #expect(table.fixedHeightConstant == 568)
+    }
+
+    @MainActor
+    @Test func settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride() throws {
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let aqua = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        dark.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        viewController.view.appearance = aqua
+        refreshEffectiveAppearance(in: viewController.view)
+
+        let settingsButton = try #require(viewController.view.button(identifier: "DashboardNav.settings"))
+        dark.performAsCurrentDrawingAppearance {
+            _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
+        }
+
+        let settingsPanel = try #require(viewController.view.firstDescendant(identifier: "SettingsPanel"))
+        let authorizeButton = try #require(viewController.view.button(identifier: "AuthorizationActionButton"))
+        let refreshButton = try #require(viewController.view.button(identifier: "RefreshAllDataButton"))
+        let autoRefreshPopUp = try #require(viewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
+        let languagePopUp = try #require(viewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+
+        #expect(rgbHex(try #require(settingsPanel.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(settingsPanel.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
+        #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
+        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xD8DEE8)
+    }
+
+    @MainActor
+    @Test func dashboardTabSwitchDoesNotManuallyInvokeAppKitAppearanceCallbacksOnArbitrarySubviews() throws {
+        let aqua = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.view.appearance = aqua
+        viewController.loadViewIfNeeded()
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        let sessionPage = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPage"))
+        let sentinel = AppearanceCallbackSentinelView()
+        sessionPage.addSubview(sentinel)
+
+        let overviewButton = try #require(viewController.view.button(identifier: "DashboardNav.overview"))
+        _ = overviewButton.sendAction(overviewButton.action, to: overviewButton.target)
+        sentinel.appearanceCallbackCount = 0
+
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        #expect(sentinel.appearanceCallbackCount == 0)
+    }
+
+    @MainActor
+    @Test func dashboardRefreshStillInvokesActionAfterAppearanceOverrideAndTabSwitch() async throws {
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let aqua = try #require(NSAppearance(named: .aqua))
+        var refreshCount = 0
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { [:] },
+            refreshAction: { refreshCount += 1 },
+            languageSettings: zhHansLanguageSettings()
+        )
+        dark.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        viewController.view.appearance = aqua
+        refreshEffectiveAppearance(in: viewController.view)
+        try clickDashboardNavigation("sessions", in: viewController)
+        try clickDashboardNavigation("overview", in: viewController)
+
+        let refreshButton = try #require(viewController.view.button(identifier: "DashboardRefreshButton"))
+        dark.performAsCurrentDrawingAppearance {
+            _ = refreshButton.sendAction(refreshButton.action, to: refreshButton.target)
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(refreshCount == 1)
+    }
+
+    @MainActor
     @Test func dashboardAnalysisPanelsStartAtLeadingEdge() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -805,6 +1141,69 @@ struct TokenWatchTests {
 
         #expect(rgbHex(backgroundColor) == 0x2563EB)
         #expect(try rgbHex(tintColor, appearance: .aqua) == 0xFFFFFF)
+    }
+
+    @MainActor
+    @Test func dashboardAnalysisPanelsUsePencilLightPanelBorders() throws {
+        let appearance = try #require(NSAppearance(named: .aqua))
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        appearance.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        for title in ["趋势", "模型消耗排行", "来源占比", "项目消耗"] {
+            let panel = try panelTitled(title, root: viewController.view)
+            #expect(rgbHex(try #require(panel.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(panel.layer?.borderWidth == 1)
+            #expect(rgbHex(try #require(panel.layer?.borderColor)) == 0xD8DEE8)
+        }
+    }
+
+    @MainActor
+    @Test func dashboardSourceLegendUsesPencilLightChartColors() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let appearance = try #require(NSAppearance(named: .aqua))
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeDashboardStats(byDay: ["2026-06-20": makeDashboardSummary(total: 1_000)]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .codex: .init(
+                        stats: makeDashboardStats(byDay: ["2026-06-20": makeDashboardSummary(total: 800)]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                    .opencode: .init(
+                        stats: makeDashboardStats(byDay: ["2026-06-20": makeDashboardSummary(total: 600)]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        appearance.performAsCurrentDrawingAppearance {
+            viewController.loadViewIfNeeded()
+        }
+
+        let firstDot = try #require(viewController.view.firstDescendant(identifier: "DashboardSourceLegendDot.0"))
+        let secondDot = try #require(viewController.view.firstDescendant(identifier: "DashboardSourceLegendDot.1"))
+        let thirdDot = try #require(viewController.view.firstDescendant(identifier: "DashboardSourceLegendDot.2"))
+
+        #expect(rgbHex(try #require(firstDot.layer?.backgroundColor)) == 0x5AA2FF)
+        #expect(rgbHex(try #require(secondDot.layer?.backgroundColor)) == 0x4ADE80)
+        #expect(rgbHex(try #require(thirdDot.layer?.backgroundColor)) == 0xFBBF24)
     }
 
     @MainActor
@@ -1325,6 +1724,46 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func settingsPageUsesPencilLightColors() throws {
+        try withTemporaryDefaults { defaults in
+            let appearance = try #require(NSAppearance(named: .aqua))
+            let settingsViewController = SettingsViewController(
+                isAuthorized: { false },
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: zhHansLanguageSettings(defaults: defaults)
+            )
+            appearance.performAsCurrentDrawingAppearance {
+                settingsViewController.loadViewIfNeeded()
+            }
+
+            let panel = try #require(settingsViewController.view.firstDescendant(identifier: "SettingsPanel"))
+            let titleLabel = try #require(settingsViewController.view.textField(stringValue: "设置"))
+            let descriptionLabel = try #require(settingsViewController.view.textField(stringValue: "管理 TokenWatch 的通用访问权限和数据刷新。"))
+            let authorizationLabel = try #require(settingsViewController.view.textField(stringValue: "通用访问权限"))
+            let authorizeButton = try #require(settingsViewController.view.button(identifier: "AuthorizationActionButton"))
+            let refreshButton = try #require(settingsViewController.view.button(identifier: "RefreshAllDataButton"))
+            let autoRefreshPopUp = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
+            let languagePopUp = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+
+            #expect(rgbHex(try #require(settingsViewController.view.layer?.backgroundColor)) == 0xF4F6FA)
+            #expect(rgbHex(try #require(panel.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(panel.layer?.borderColor)) == 0xD8DEE8)
+            #expect(try rgbHex(try #require(titleLabel.textColor), appearance: .aqua) == 0x111827)
+            #expect(try rgbHex(try #require(descriptionLabel.textColor), appearance: .aqua) == 0x6B7280)
+            #expect(try rgbHex(try #require(authorizationLabel.textColor), appearance: .aqua) == 0x111827)
+            #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
+            #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
+            #expect(try rgbHex(try #require(authorizeButton.contentTintColor), appearance: .aqua) == 0xFFFFFF)
+            #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
+            #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
+            #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xD8DEE8)
+        }
+    }
+
+    @MainActor
     @Test func changingLanguagePersistsSelectionAndRefreshesSettingsLabels() throws {
         try withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
@@ -1465,6 +1904,14 @@ private extension NSView {
         return nil
     }
 
+    var fixedHeightConstant: CGFloat? {
+        constraints.first {
+            $0.firstAttribute == .height
+                && $0.relation == .equal
+                && $0.secondItem == nil
+        }?.constant
+    }
+
     func popUpButton(identifier: String) -> NSPopUpButton? {
         allDescendants(ofType: NSPopUpButton.self).first {
             $0.identifier?.rawValue == identifier
@@ -1558,6 +2005,29 @@ private func rgbHex(_ color: CGColor) -> Int {
         | Int((components[2] * 255).rounded())
 }
 
+private func alphaValue(_ color: CGColor) -> Int {
+    let convertedColor = color.converted(
+        to: CGColorSpace(name: CGColorSpace.sRGB)!,
+        intent: .defaultIntent,
+        options: nil
+    ) ?? color
+    return Int(((convertedColor.components?.last ?? 1) * 255).rounded())
+}
+
+private func refreshEffectiveAppearance(in view: NSView) {
+    view.viewDidChangeEffectiveAppearance()
+    view.subviews.forEach(refreshEffectiveAppearance)
+}
+
+private final class AppearanceCallbackSentinelView: NSView {
+    var appearanceCallbackCount = 0
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        appearanceCallbackCount += 1
+    }
+}
+
 @MainActor
 private func clickDashboardRange(_ rawValue: String, in viewController: DashboardViewController) throws {
     let button = try #require(viewController.view.button(identifier: "DashboardRange.\(rawValue)"))
@@ -1637,22 +2107,31 @@ private func makeDashboardEntry(
 
 @MainActor
 private func labels(inPanelTitled title: String, root: NSView) throws -> [String] {
-    let titleLabel = try #require(root.textField(stringValue: title))
-    let panel = try #require(titleLabel.firstAncestor { view in
-        guard let cornerRadius = view.layer?.cornerRadius else { return false }
-        return abs(cornerRadius - 8) < 0.1
-    })
-    return panel.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+    try panelTitled(title, root: root).allDescendants(ofType: NSTextField.self).map(\.stringValue)
 }
 
 @MainActor
 private func textField(_ value: String, inPanelTitled title: String, root: NSView) throws -> NSTextField {
+    let panel = try panelTitled(title, root: root)
+    return try #require(panel.textField(stringValue: value))
+}
+
+@MainActor
+private func panelTitled(_ title: String, root: NSView) throws -> NSView {
     let titleLabel = try #require(root.textField(stringValue: title))
-    let panel = try #require(titleLabel.firstAncestor { view in
+    return try #require(titleLabel.firstAncestor { view in
         guard let cornerRadius = view.layer?.cornerRadius else { return false }
         return abs(cornerRadius - 8) < 0.1
     })
-    return try #require(panel.textField(stringValue: value))
+}
+
+@MainActor
+private func roundedAncestor(containingText text: String, root: NSView) throws -> NSView {
+    let label = try #require(root.textField(stringValue: text))
+    return try #require(label.firstAncestor { view in
+        guard let cornerRadius = view.layer?.cornerRadius else { return false }
+        return abs(cornerRadius - 8) < 0.1
+    })
 }
 
 @MainActor

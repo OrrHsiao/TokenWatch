@@ -48,9 +48,10 @@ class ViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize))
-        view.wantsLayer = true
-        view.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
+        view = DashboardBackgroundView(
+            frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
+            backgroundColor: DashboardPalette.appBackground
+        )
         view.setAccessibilityIdentifier("DashboardRootView")
     }
 
@@ -102,20 +103,53 @@ class ViewController: NSViewController {
     }
 }
 
+private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefreshable {
+    init() {
+        super.init(frame: .zero, pullsDown: false)
+        wantsLayer = true
+        layer?.cornerRadius = 7
+        layer?.borderWidth = 1
+        isBordered = false
+        focusRingType = .none
+        font = .systemFont(ofSize: 13, weight: .medium)
+        contentTintColor = DashboardPalette.primaryText
+        applyDashboardLayerColors()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("SettingsPopUpButton 必须用 init() 构造")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    func refreshDashboardAppearance() {
+        applyDashboardLayerColors()
+    }
+
+    func applyDashboardLayerColors() {
+        wantsLayer = true
+        layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.panelBackground, for: self)
+        layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.border, for: self)
+    }
+}
+
 /// 通用设置页,承载跨 provider 的授权、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let descriptionLabel = NSTextField(labelWithString: "")
     private let authorizationTitleLabel = NSTextField(labelWithString: "")
-    private let authorizationActionButton = NSButton(title: "", target: nil, action: nil)
-    private let refreshButton = NSButton(title: "", target: nil, action: nil)
+    private let authorizationActionButton = DashboardRangeButton(title: "", target: nil, action: nil)
+    private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let autoRefreshIntervalLabel = NSTextField(labelWithString: "")
-    private let autoRefreshIntervalPopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let autoRefreshIntervalPopUpButton = SettingsPopUpButton()
     private let launchAtLoginLabel = NSTextField(labelWithString: "")
     private let launchAtLoginSwitch = NSSwitch(frame: .zero)
     private let languageLabel = NSTextField(labelWithString: "")
-    private let languagePopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let languagePopUpButton = SettingsPopUpButton()
     private let isAuthorized: @MainActor () -> Bool
     private let loginItemSettings: LoginItemSettingsControlling
     private let autoRefreshSettings: AutoRefreshSettings
@@ -150,7 +184,10 @@ final class SettingsViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 320))
+        view = DashboardBackgroundView(
+            frame: NSRect(x: 0, y: 0, width: 480, height: 320),
+            backgroundColor: DashboardPalette.appBackground
+        )
     }
 
     override func viewDidLoad() {
@@ -168,15 +205,18 @@ final class SettingsViewController: NSViewController {
 
     private func setupSubviews() {
         titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleLabel.textColor = DashboardPalette.primaryText
 
         descriptionLabel.font = .systemFont(ofSize: 13)
-        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.textColor = DashboardPalette.secondaryText
         descriptionLabel.lineBreakMode = .byWordWrapping
         descriptionLabel.maximumNumberOfLines = 0
 
         authorizationTitleLabel.font = .systemFont(ofSize: 13)
+        authorizationTitleLabel.textColor = DashboardPalette.primaryText
 
         autoRefreshIntervalLabel.font = .systemFont(ofSize: 13)
+        autoRefreshIntervalLabel.textColor = DashboardPalette.primaryText
 
         autoRefreshIntervalPopUpButton.identifier = NSUserInterfaceItemIdentifier("AutoRefreshIntervalPopUpButton")
         autoRefreshIntervalPopUpButton.setAccessibilityIdentifier("AutoRefreshIntervalPopUpButton")
@@ -184,24 +224,26 @@ final class SettingsViewController: NSViewController {
         autoRefreshIntervalPopUpButton.action = #selector(autoRefreshIntervalChanged)
 
         launchAtLoginLabel.font = .systemFont(ofSize: 13)
+        launchAtLoginLabel.textColor = DashboardPalette.primaryText
         launchAtLoginSwitch.identifier = NSUserInterfaceItemIdentifier("LaunchAtLoginSwitch")
         launchAtLoginSwitch.setAccessibilityIdentifier("LaunchAtLoginSwitch")
         launchAtLoginSwitch.target = self
         launchAtLoginSwitch.action = #selector(launchAtLoginSwitchChanged)
 
         languageLabel.font = .systemFont(ofSize: 13)
+        languageLabel.textColor = DashboardPalette.primaryText
         languagePopUpButton.identifier = NSUserInterfaceItemIdentifier("LanguagePreferencePopUpButton")
         languagePopUpButton.setAccessibilityIdentifier("LanguagePreferencePopUpButton")
         languagePopUpButton.target = self
         languagePopUpButton.action = #selector(languagePreferenceChanged)
 
-        authorizationActionButton.bezelStyle = .rounded
+        configureSettingsButton(authorizationActionButton)
         authorizationActionButton.identifier = NSUserInterfaceItemIdentifier("AuthorizationActionButton")
         authorizationActionButton.setAccessibilityIdentifier("AuthorizationActionButton")
         authorizationActionButton.target = self
         authorizationActionButton.action = #selector(authorizationActionButtonClicked)
 
-        refreshButton.bezelStyle = .rounded
+        configureSettingsButton(refreshButton)
         refreshButton.identifier = NSUserInterfaceItemIdentifier("RefreshAllDataButton")
         refreshButton.setAccessibilityIdentifier("RefreshAllDataButton")
         refreshButton.target = self
@@ -249,24 +291,88 @@ final class SettingsViewController: NSViewController {
         contentStack.alignment = .leading
         contentStack.spacing = 14
 
-        view.addSubview(contentStack)
+        let panel = DashboardRoundedView(
+            backgroundColor: DashboardPalette.panelBackground,
+            cornerRadius: 8,
+            borderColor: DashboardPalette.border,
+            borderWidth: 1
+        )
+        panel.identifier = NSUserInterfaceItemIdentifier("SettingsPanel")
+        panel.setAccessibilityIdentifier("SettingsPanel")
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(contentStack)
+        view.addSubview(panel)
         NSLayoutConstraint.activate([
-            contentStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            contentStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -32),
-            contentStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
+            panel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -28),
+            panel.topAnchor.constraint(equalTo: view.topAnchor, constant: 28),
+            contentStack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 24),
+            contentStack.trailingAnchor.constraint(lessThanOrEqualTo: panel.trailingAnchor, constant: -24),
+            contentStack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 24),
+            contentStack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -24),
         ])
 
         reloadLocalizedText()
     }
 
+    private func configureSettingsButton(_ button: DashboardRangeButton) {
+        button.bezelStyle = .regularSquare
+        button.focusRingType = .none
+        button.isBordered = false
+        button.alignment = .center
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 7
+        button.layer?.borderWidth = 1
+        button.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            button.heightAnchor.constraint(equalToConstant: 32),
+        ])
+    }
+
+    private func applySettingsButtonStyle(
+        _ button: DashboardRangeButton,
+        title: String,
+        backgroundColor: NSColor,
+        borderColor: NSColor,
+        textColor: NSColor
+    ) {
+        button.title = title
+        button.setDashboardLayerColors(backgroundColor: backgroundColor, borderColor: borderColor)
+        button.contentTintColor = textColor
+        button.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: textColor,
+            ]
+        )
+    }
+
     private func renderAuthorizationState() {
+        let title: String
+        let backgroundColor: NSColor
+        let borderColor: NSColor
+        let textColor: NSColor
         if isAuthorized() {
-            authorizationActionButton.title = AppStrings.text(.settingsAuthorized, language: languageSettings.resolvedLanguage)
+            title = AppStrings.text(.settingsAuthorized, language: languageSettings.resolvedLanguage)
+            backgroundColor = DashboardPalette.panelBackground
+            borderColor = DashboardPalette.border
+            textColor = DashboardPalette.secondaryText
             authorizationActionButton.isEnabled = false
         } else {
-            authorizationActionButton.title = AppStrings.text(.settingsAuthorize, language: languageSettings.resolvedLanguage)
+            title = AppStrings.text(.settingsAuthorize, language: languageSettings.resolvedLanguage)
+            backgroundColor = DashboardPalette.accent
+            borderColor = DashboardPalette.accent
+            textColor = DashboardPalette.rangeSelectedText
             authorizationActionButton.isEnabled = true
         }
+        applySettingsButtonStyle(
+            authorizationActionButton,
+            title: title,
+            backgroundColor: backgroundColor,
+            borderColor: borderColor,
+            textColor: textColor
+        )
     }
 
     private func renderLaunchAtLoginState() {
@@ -319,7 +425,13 @@ final class SettingsViewController: NSViewController {
         titleLabel.stringValue = AppStrings.text(.settingsTitle, language: language)
         descriptionLabel.stringValue = AppStrings.text(.settingsDescription, language: language)
         authorizationTitleLabel.stringValue = AppStrings.text(.settingsAuthorizationTitle, language: language)
-        refreshButton.title = AppStrings.text(.settingsRefreshAllData, language: language)
+        applySettingsButtonStyle(
+            refreshButton,
+            title: AppStrings.text(.settingsRefreshAllData, language: language),
+            backgroundColor: DashboardPalette.panelBackground,
+            borderColor: DashboardPalette.border,
+            textColor: DashboardPalette.primaryText
+        )
         autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
         launchAtLoginLabel.stringValue = AppStrings.text(.settingsLaunchAtLogin, language: language)
         languageLabel.stringValue = AppStrings.text(.settingsLanguage, language: language)
@@ -342,6 +454,7 @@ final class SettingsViewController: NSViewController {
         if let selectedIndex = AutoRefreshIntervalOption.allCases.firstIndex(of: selectedOption) {
             autoRefreshIntervalPopUpButton.selectItem(at: selectedIndex)
         }
+        autoRefreshIntervalPopUpButton.applyDashboardLayerColors()
     }
 
     private func reloadLanguagePopUp(language: AppLanguage) {
@@ -351,6 +464,7 @@ final class SettingsViewController: NSViewController {
         if let selectedIndex = AppLanguagePreference.allCases.firstIndex(of: selectedPreference) {
             languagePopUpButton.selectItem(at: selectedIndex)
         }
+        languagePopUpButton.applyDashboardLayerColors()
     }
 
     deinit {

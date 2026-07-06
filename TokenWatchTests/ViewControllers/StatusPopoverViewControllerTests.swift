@@ -17,7 +17,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugSummaryCards.map(\.toolTip) == ["本月 0 Tokens", "本周 0 Tokens", "今日 0 Tokens", "日均 0 Tokens"])
         #expect(controller.debugSummaryCards.map(\.styleName) == ["neutral", "neutral", "neutral", "neutral"])
         #expect(controller.debugSummaryCards.allSatisfy { $0.hasBackgroundColor })
-        #expect(controller.debugSummaryCards.allSatisfy { !$0.hasBorder })
+        #expect(controller.debugSummaryCards.allSatisfy { $0.hasBorder })
         #expect(controller.debugSummaryCards.allSatisfy { $0.cornerRadius == 8 })
         #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
         #expect(controller.debugTodayDescriptionAlignment == .left)
@@ -139,13 +139,54 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonToolTip == "Refresh Now")
     }
 
-    @Test("根视图使用动态窗口背景")
-    func rootViewUsesDynamicWindowBackground() {
+    @Test("根视图使用状态栏弹窗背景视图")
+    func rootViewUsesPopoverBackgroundView() {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
 
         #expect(controller.view is StatusPopoverRootView)
+    }
+
+    @Test("弹窗根背景使用系统 popover 背景以匹配顶部三角形")
+    func rootBackgroundMatchesPopoverArrowBackgroundInLightAndDark() throws {
+        let controller = makeController()
+        let aquaAppearance = try #require(NSAppearance(named: .aqua))
+        let darkAppearance = try #require(NSAppearance(named: .darkAqua))
+
+        controller.loadViewIfNeeded()
+
+        controller.view.appearance = aquaAppearance
+        refreshEffectiveAppearance(in: controller.view)
+        let aquaBackground = rgbHex(try #require(controller.view.layer?.backgroundColor))
+        let expectedAquaBackground = try rgbHex(NSColor.windowBackgroundColor, appearance: .aqua)
+        #expect(aquaBackground == expectedAquaBackground)
+
+        controller.view.appearance = darkAppearance
+        refreshEffectiveAppearance(in: controller.view)
+        let darkBackground = rgbHex(try #require(controller.view.layer?.backgroundColor))
+        let expectedDarkBackground = try rgbHex(NSColor.windowBackgroundColor, appearance: .darkAqua)
+        #expect(darkBackground == expectedDarkBackground)
+    }
+
+    @Test("浅色外观保留主界面 Pencil 文本和卡片调色板")
+    func lightAppearanceUsesDashboardPaletteForCardsAndText() throws {
+        let controller = makeController()
+        let aquaAppearance = try #require(NSAppearance(named: .aqua))
+        let darkAppearance = try #require(NSAppearance(named: .darkAqua))
+
+        darkAppearance.performAsCurrentDrawingAppearance {
+            controller.loadViewIfNeeded()
+        }
+        controller.view.appearance = aquaAppearance
+        refreshEffectiveAppearance(in: controller.view)
+
+        let summaryCard = try #require(summaryCardViews(in: controller).first)
+        #expect(rgbHex(try #require(summaryCard.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(summaryCard.layer?.borderWidth == 1)
+        #expect(rgbHex(try #require(summaryCard.layer?.borderColor)) == 0xD8DEE8)
+        #expect(try rgbHex(try #require(label(named: "todayDescriptionLabel", in: controller).textColor), appearance: .aqua) == 0x111827)
+        #expect(try rgbHex(try #require(label(named: "hoverLabel", in: controller).textColor), appearance: .aqua) == 0x6B7280)
     }
 
     @Test("collection view 使用固定 7 行网格高度")
@@ -233,7 +274,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugHoverLabelTrailingAlignsWithCollectionView)
         #expect(controller.debugHoverLabelLeadingAlignsWithCollectionView)
         #expect(controller.debugHoverLabelSitsJustAboveCollectionView)
-        #expect(try label(named: "hoverLabel", in: controller).textColor == .secondaryLabelColor)
+        #expect(try rgbHex(try #require(label(named: "hoverLabel", in: controller).textColor), appearance: .aqua) == 0x6B7280)
 
         controller.debugUpdateHoverText(nil)
         controller.view.layoutSubtreeIfNeeded()
@@ -302,5 +343,41 @@ struct StatusPopoverViewControllerTests {
     private func label(named name: String, in controller: StatusPopoverViewController) throws -> NSTextField {
         let child = Mirror(reflecting: controller).children.first { $0.label == name }
         return try #require(child?.value as? NSTextField)
+    }
+
+    private func summaryCardViews(in controller: StatusPopoverViewController) -> [NSView] {
+        let cards = Mirror(reflecting: controller).children.first { $0.label == "summaryCards" }?.value
+        return cards.map { value in
+            Mirror(reflecting: value).children.compactMap { $0.value as? NSView }
+        } ?? []
+    }
+
+    private func refreshEffectiveAppearance(in view: NSView) {
+        view.viewDidChangeEffectiveAppearance()
+        view.subviews.forEach(refreshEffectiveAppearance)
+    }
+
+    private func rgbHex(_ color: NSColor, appearance: NSAppearance.Name) throws -> Int {
+        let appearance = try #require(NSAppearance(named: appearance))
+        var components: [CGFloat]?
+        appearance.performAsCurrentDrawingAppearance {
+            components = color.cgColor.components
+        }
+        return rgbHex(try #require(components))
+    }
+
+    private func rgbHex(_ color: CGColor) -> Int {
+        let convertedColor = color.converted(
+            to: CGColorSpace(name: CGColorSpace.sRGB)!,
+            intent: .defaultIntent,
+            options: nil
+        ) ?? color
+        return rgbHex(convertedColor.components ?? [0, 0, 0, 1])
+    }
+
+    private func rgbHex(_ components: [CGFloat]) -> Int {
+        Int((components[0] * 255).rounded()) << 16
+            | Int((components[1] * 255).rounded()) << 8
+            | Int((components[2] * 255).rounded())
     }
 }
