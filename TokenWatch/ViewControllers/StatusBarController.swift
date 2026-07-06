@@ -34,12 +34,17 @@ final class StatusBarController {
 
     /// 状态栏左侧仪表盘图标,按当日 token 总量分档替换 SF Symbol;持有引用以便 renderTitle 时更新
     private let iconView = NSImageView()
+    /// 上次渲染的图标 symbol 名,用于在档位未变时跳过 image 赋值,避免触发状态栏重布局
+    private var lastRenderedSymbolName: String?
     /// SF Symbol 配置统一管理,保证替换图标后 pointSize/weight 不丢失
     private let iconSymbolConfig = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
-    private var lastRenderedSymbolName: String?
     private var loadingAnimationTimer: Timer?
     private var loadingAnimationFrameIndex = 0
     private static let loadingAnimationInterval: TimeInterval = 0.18
+    private static let statusItemHorizontalInset: CGFloat = 4
+    private static let iconTitleSpacing: CGFloat = 4
+    private static let iconSize: CGFloat = 20
+    private static let minimumStatusItemLength: CGFloat = 52
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -61,7 +66,7 @@ final class StatusBarController {
         self.viewModel = viewModel
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
-        self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.statusItem = NSStatusBar.system.statusItem(withLength: Self.minimumStatusItemLength)
 
         configureButton()
         configurePopover()
@@ -127,9 +132,15 @@ final class StatusBarController {
 
     private func configureButton() {
         guard let button = statusItem.button else { return }
-        // 关掉 button 自带的 image / title 渲染,统一用自定义布局
+        // 关掉 button 自带的 image/title 渲染,用自定义轻量布局保证图标和两行文字垂直居中。
+        //
+        // 注意:不要把 rootStack.trailingAnchor 反绑到 variableLength 的 button 上。
+        // macOS 26 的 NSStatusItemScene 会在状态栏宽度自适应和子视图约束之间形成重布局循环,
+        // 导致空闲时持续向 ControlCenter 发 fence 并占用 CPU。这里改为固定 statusItem.length,
+        // 每次标题变化时手动按内容宽度更新长度。
         button.image = nil
         button.title = ""
+        button.attributedTitle = NSAttributedString()
         button.target = self
         button.action = #selector(handleStatusItemClick)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -140,26 +151,35 @@ final class StatusBarController {
         iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 20),
-            iconView.heightAnchor.constraint(equalToConstant: 20),
+            iconView.widthAnchor.constraint(equalToConstant: Self.iconSize),
+            iconView.heightAnchor.constraint(equalToConstant: Self.iconSize),
         ])
 
         titleLabel.alignment = .center
         titleLabel.lineBreakMode = .byClipping
         titleLabel.maximumNumberOfLines = 2
+        titleLabel.cell?.usesSingleLineMode = false
+        titleLabel.cell?.wraps = false
+        titleLabel.setContentHuggingPriority(.required, for: .horizontal)
+        titleLabel.setContentHuggingPriority(.required, for: .vertical)
+        titleLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let rootStack = NSStackView(views: [iconView, titleLabel])
         rootStack.orientation = .horizontal
         // 整体垂直居中,让图标中线和两行文字的整体中线对齐
         rootStack.alignment = .centerY
-        rootStack.spacing = 4
+        rootStack.spacing = Self.iconTitleSpacing
+        rootStack.setContentHuggingPriority(.required, for: .horizontal)
+        rootStack.setContentHuggingPriority(.required, for: .vertical)
+        rootStack.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rootStack.setContentCompressionResistancePriority(.required, for: .vertical)
         rootStack.translatesAutoresizingMaskIntoConstraints = false
 
         button.addSubview(rootStack)
         NSLayoutConstraint.activate([
-            rootStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
-            rootStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
+            rootStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: Self.statusItemHorizontalInset),
             rootStack.centerYAnchor.constraint(equalTo: button.centerYAnchor),
         ])
     }
@@ -364,6 +384,7 @@ final class StatusBarController {
             systemSymbolName: symbolName,
             accessibilityDescription: "TokenWatch"
         )?.withSymbolConfiguration(iconSymbolConfig)
+        // 状态栏图标做成 template 由系统按主题自动反色
         iconView.image?.isTemplate = true
         lastRenderedSymbolName = symbolName
     }
@@ -376,12 +397,23 @@ final class StatusBarController {
         // 图标分档:用与文本相同的累加口径,避免文字和图标显示出处不一致
         let total = StatusBarTitleBuilder.totalTokens(states: viewModel.states, todayKey: todayKey)
         let symbolName = StatusBarTitleBuilder.symbolName(forTotalTokens: total)
-        // 仅在档位变化时换图,减少 NSImageView.image set 引发的状态栏重新布局
+        // 仅在档位变化时换图,减少 image 赋值引发的状态栏重新布局
         if symbolName != lastRenderedSymbolName {
             setIcon(symbolName: symbolName)
         }
 
+        updateStatusItemLength()
         lastRenderedDayKey = todayKey
+    }
+
+    private func updateStatusItemLength() {
+        let titleWidth = ceil(titleLabel.attributedStringValue.size().width)
+        let contentWidth = Self.statusItemHorizontalInset
+            + Self.iconSize
+            + Self.iconTitleSpacing
+            + titleWidth
+            + Self.statusItemHorizontalInset
+        statusItem.length = max(Self.minimumStatusItemLength, ceil(contentWidth))
     }
 
     /// 与 UsageAggregator.dayKey 保持一致:本地 Calendar + "yyyy-MM-dd"
