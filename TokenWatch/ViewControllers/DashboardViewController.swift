@@ -330,6 +330,7 @@ private final class DashboardSessionButton: NSButton, DashboardAppearanceRefresh
         self.title = title
         self.target = target
         self.action = action
+        self.image = image
 
         isBordered = false
         bezelStyle = .regularSquare
@@ -1744,28 +1745,15 @@ final class DashboardViewController: NSViewController {
         label.setContentHuggingPriority(.defaultLow, for: .horizontal)
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let badge = DashboardRoundedView(
-            backgroundColor: DashboardPalette.navigationSelectedBackground,
-            cornerRadius: 6
-        )
-        badge.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsProviderBadge.\(provider.rawValue)")
-        badge.setAccessibilityIdentifier("DashboardSessionsProviderBadge.\(provider.rawValue)")
-
         let cell = NSView()
         cell.translatesAutoresizingMaskIntoConstraints = false
-        cell.addSubview(badge)
-        badge.addSubview(label)
-        badge.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(label)
         label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             cell.widthAnchor.constraint(equalToConstant: width),
-            badge.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
-            badge.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
-            badge.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 8),
-            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -8),
-            label.topAnchor.constraint(equalTo: badge.topAnchor, constant: 4),
-            label.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -4),
+            label.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
+            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
         ])
         return cell
     }
