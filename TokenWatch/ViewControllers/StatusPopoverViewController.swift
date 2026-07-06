@@ -293,7 +293,7 @@ final class StatusPopoverViewController: NSViewController {
         todayDescriptionRow.translatesAutoresizingMaskIntoConstraints = false
 
         todayDescriptionLabel.font = .systemFont(ofSize: 12, weight: .semibold)
-        todayDescriptionLabel.textColor = .labelColor
+        todayDescriptionLabel.textColor = DashboardPalette.primaryText
         todayDescriptionLabel.alignment = .left
         todayDescriptionLabel.lineBreakMode = .byTruncatingTail
         todayDescriptionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -302,7 +302,7 @@ final class StatusPopoverViewController: NSViewController {
         configureTodayRefreshButton()
 
         hoverLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        hoverLabel.textColor = .secondaryLabelColor
+        hoverLabel.textColor = DashboardPalette.secondaryText
         hoverLabel.alignment = .right
         hoverLabel.lineBreakMode = .byTruncatingMiddle
         hoverLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -401,7 +401,7 @@ final class StatusPopoverViewController: NSViewController {
         todayRefreshButton.imageScaling = .scaleProportionallyDown
         todayRefreshButton.isBordered = false
         todayRefreshButton.bezelStyle = .smallSquare
-        todayRefreshButton.contentTintColor = .secondaryLabelColor
+        todayRefreshButton.contentTintColor = DashboardPalette.secondaryText
         todayRefreshButton.toolTip = AppStrings.text(.refreshNow, language: languageSettings.resolvedLanguage)
         todayRefreshButton.target = self
         todayRefreshButton.action = #selector(refreshTodayStats(_:))
@@ -567,26 +567,17 @@ enum StatusPopoverDailyTokenDescription {
 private struct SummaryMetricCardStyle {
     let name: String
     let backgroundColor: NSColor
+    let borderColor: NSColor
+    let borderWidth: CGFloat
     let cornerRadius: CGFloat
 
     static let neutral = SummaryMetricCardStyle(
         name: "neutral",
-        backgroundColor: dynamicColor(
-            light: color(red: 252, green: 252, blue: 252),
-            dark: color(red: 33, green: 34, blue: 37)
-        ),
+        backgroundColor: DashboardPalette.panelBackground,
+        borderColor: DashboardPalette.border,
+        borderWidth: 1,
         cornerRadius: 8
     )
-
-    private static func dynamicColor(light: NSColor, dark: NSColor) -> NSColor {
-        NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-        }
-    }
-
-    private static func color(red: CGFloat, green: CGFloat, blue: CGFloat) -> NSColor {
-        NSColor(calibratedRed: red / 255, green: green / 255, blue: blue / 255, alpha: 1)
-    }
 }
 
 private final class SummaryMetricCardView: NSView {
@@ -612,12 +603,12 @@ private final class SummaryMetricCardView: NSView {
         titleLabel.stringValue = title
         titleLabel.alignment = .center
         titleLabel.font = .systemFont(ofSize: 10, weight: .medium)
-        titleLabel.textColor = .secondaryLabelColor
+        titleLabel.textColor = DashboardPalette.secondaryText
         titleLabel.lineBreakMode = .byTruncatingTail
 
         valueLabel.alignment = .center
         valueLabel.font = .systemFont(ofSize: 15, weight: .semibold)
-        valueLabel.textColor = .labelColor
+        valueLabel.textColor = DashboardPalette.primaryText
         valueLabel.lineBreakMode = .byTruncatingTail
 
         let contentStack = NSStackView(views: [titleLabel, valueLabel])
@@ -653,12 +644,10 @@ private final class SummaryMetricCardView: NSView {
     }
 
     private func updateCardColors() {
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.cornerRadius = style.cornerRadius
-            layer?.backgroundColor = style.backgroundColor.cgColor
-            layer?.borderColor = nil
-            layer?.borderWidth = 0
-        }
+        layer?.cornerRadius = style.cornerRadius
+        layer?.backgroundColor = DashboardLayerColor.cgColor(style.backgroundColor, for: self)
+        layer?.borderColor = DashboardLayerColor.cgColor(style.borderColor, for: self)
+        layer?.borderWidth = style.borderWidth
     }
 }
 
@@ -681,7 +670,9 @@ final class StatusPopoverRootView: NSView {
     }
 
     private func updateBackgroundColor() {
-        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        }
     }
 }
 

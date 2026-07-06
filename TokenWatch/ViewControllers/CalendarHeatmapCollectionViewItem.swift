@@ -166,7 +166,7 @@ enum CalendarHeatmapGitHubPalette {
     static let maxIntensity = 4
 
     private static let lightColors = [
-        color(red: 235, green: 237, blue: 240),
+        color(red: 216, green: 222, blue: 232),
         color(red: 155, green: 233, blue: 168),
         color(red: 64, green: 196, blue: 99),
         color(red: 48, green: 161, blue: 78),
