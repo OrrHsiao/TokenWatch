@@ -33,12 +33,79 @@ enum DashboardPalette {
     static let sessionClaude = dynamicColor(light: 0x2563EB, dark: 0x5AA2FF)
     static let sessionCodex = dynamicColor(light: 0x16A34A, dark: 0x4ADE80)
     static let sessionOpenCode = dynamicColor(light: 0xD97706, dark: 0xFBBF24)
+    static let chartBlue = dynamicColor(light: 0x5AA2FF, dark: 0x5AA2FF)
+    static let chartGreen = dynamicColor(light: 0x4ADE80, dark: 0x4ADE80)
+    static let chartAmber = dynamicColor(light: 0xFBBF24, dark: 0xFBBF24)
+    static let chartCyan = dynamicColor(light: 0x36C6D9, dark: 0x36C6D9)
+    static let chartRed = dynamicColor(light: 0xF87171, dark: 0xF87171)
+    static let chartPurple = dynamicColor(light: 0xA78BFA, dark: 0xA78BFA)
 
     private static func dynamicColor(light: Int, dark: Int) -> NSColor {
         NSColor(name: nil) { appearance in
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             return NSColor(hex: isDark ? dark : light)
         }
+    }
+}
+
+enum DashboardLayerColor {
+    @MainActor
+    static func cgColor(_ color: NSColor, for view: NSView) -> CGColor {
+        guard usesEffectiveAppearance(for: view) else {
+            return color.cgColor
+        }
+
+        var resolvedColor = color.cgColor
+        view.effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolvedColor = color.cgColor
+        }
+        return resolvedColor
+    }
+
+    @MainActor
+    static func applyBackground(_ color: NSColor, to view: NSView) {
+        view.wantsLayer = true
+        view.layer?.backgroundColor = cgColor(color, for: view)
+    }
+
+    @MainActor
+    private static func usesEffectiveAppearance(for view: NSView) -> Bool {
+        if view.window != nil {
+            return true
+        }
+
+        var currentView: NSView? = view
+        while let view = currentView {
+            if view.appearance != nil {
+                return true
+            }
+            currentView = view.superview
+        }
+        return false
+    }
+}
+
+final class DashboardBackgroundView: NSView {
+    private let backgroundColor: NSColor
+
+    init(frame frameRect: NSRect = .zero, backgroundColor: NSColor) {
+        self.backgroundColor = backgroundColor
+        super.init(frame: frameRect)
+        wantsLayer = true
+        updateLayerColors()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardBackgroundView 必须用 init(frame:backgroundColor:) 构造")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateLayerColors()
+    }
+
+    private func updateLayerColors() {
+        layer?.backgroundColor = DashboardLayerColor.cgColor(backgroundColor, for: self)
     }
 }
 
@@ -60,6 +127,7 @@ private final class DashboardNavigationButton: NSButton {
     private let iconView = NSImageView()
     private let titleTextField = NSTextField(labelWithString: "")
     private let symbolName: String
+    private var dashboardBackgroundColor: NSColor?
 
     init(
         title: String,
@@ -94,6 +162,11 @@ private final class DashboardNavigationButton: NSButton {
         fatalError("DashboardNavigationButton 必须用指定初始化方法构造")
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateDashboardBackgroundColor()
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         // 内容由子视图排版，避免 AppKit 默认按钮绘制吞掉设计稿里的内边距。
     }
@@ -105,6 +178,11 @@ private final class DashboardNavigationButton: NSButton {
     func setVisualTint(_ color: NSColor) {
         iconView.contentTintColor = color
         titleTextField.textColor = color
+    }
+
+    func setDashboardBackgroundColor(_ color: NSColor) {
+        dashboardBackgroundColor = color
+        updateDashboardBackgroundColor()
     }
 
     func updateTitle(_ title: String) {
@@ -149,9 +227,17 @@ private final class DashboardNavigationButton: NSButton {
             titleTextField.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
         ])
     }
+
+    private func updateDashboardBackgroundColor() {
+        guard let dashboardBackgroundColor else { return }
+        layer?.backgroundColor = DashboardLayerColor.cgColor(dashboardBackgroundColor, for: self)
+    }
 }
 
 private final class DashboardRangeButton: NSButton {
+    private var dashboardBackgroundColor: NSColor?
+    private var dashboardBorderColor: NSColor?
+
     init(title: String, target: AnyObject?, action: Selector?) {
         super.init(frame: .zero)
         self.title = title
@@ -163,8 +249,25 @@ private final class DashboardRangeButton: NSButton {
         fatalError("DashboardRangeButton 必须用指定初始化方法构造")
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateDashboardLayerColors()
+    }
+
     override var acceptsFirstResponder: Bool {
         false
+    }
+
+    func setDashboardLayerColors(backgroundColor: NSColor, borderColor: NSColor) {
+        dashboardBackgroundColor = backgroundColor
+        dashboardBorderColor = borderColor
+        updateDashboardLayerColors()
+    }
+
+    private func updateDashboardLayerColors() {
+        guard let dashboardBackgroundColor, let dashboardBorderColor else { return }
+        layer?.backgroundColor = DashboardLayerColor.cgColor(dashboardBackgroundColor, for: self)
+        layer?.borderColor = DashboardLayerColor.cgColor(dashboardBorderColor, for: self)
     }
 }
 
@@ -186,20 +289,20 @@ final class DashboardViewController: NSViewController {
     private let nowProvider: () -> Date
     private let calendar: Calendar
 
-    private let sidebarView = NSView()
-    private let mainContentContainer = NSView()
+    private let sidebarView = DashboardBackgroundView(backgroundColor: DashboardPalette.sidebarBackground)
+    private let mainContentContainer = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
     private let overviewScrollView = NSScrollView()
-    private let overviewContentView = NSView()
+    private let overviewContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
     private let overviewStack = NSStackView()
     private let sessionScrollView = NSScrollView()
-    private let sessionContentView = NSView()
+    private let sessionContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
     private let sessionStack = NSStackView()
     private let navButtonsStack = NSStackView()
     private let dataSourceRowsStack = NSStackView()
     private let scanStatusBodyLabel = NSTextField(labelWithString: "")
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
-    private let refreshButton = NSButton(title: "", target: nil, action: nil)
+    private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let totalTokenValueLabel = NSTextField(labelWithString: "0")
     private let totalTokenDetailLabel = NSTextField(labelWithString: "")
     private let totalCostValueLabel = NSTextField(labelWithString: "$0.00")
@@ -308,10 +411,11 @@ final class DashboardViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize))
+        view = DashboardBackgroundView(
+            frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
+            backgroundColor: DashboardPalette.appBackground
+        )
         view.userInterfaceLayoutDirection = .leftToRight
-        view.wantsLayer = true
-        view.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
     }
 
     override func viewDidLoad() {
@@ -360,8 +464,6 @@ final class DashboardViewController: NSViewController {
 
     private func setupSidebar() {
         sidebarView.userInterfaceLayoutDirection = .leftToRight
-        sidebarView.wantsLayer = true
-        sidebarView.layer?.backgroundColor = DashboardPalette.sidebarBackground.cgColor
         sidebarView.setAccessibilityIdentifier("DashboardSidebar")
 
         let rootStack = NSStackView()
@@ -405,8 +507,6 @@ final class DashboardViewController: NSViewController {
 
     private func setupMainContent() {
         mainContentContainer.userInterfaceLayoutDirection = .leftToRight
-        mainContentContainer.wantsLayer = true
-        mainContentContainer.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
         mainContentContainer.setAccessibilityIdentifier("DashboardMainContent")
 
         overviewScrollView.userInterfaceLayoutDirection = .leftToRight
@@ -420,8 +520,6 @@ final class DashboardViewController: NSViewController {
 
         overviewContentView.userInterfaceLayoutDirection = .leftToRight
         overviewContentView.translatesAutoresizingMaskIntoConstraints = false
-        overviewContentView.wantsLayer = true
-        overviewContentView.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
 
         overviewStack.translatesAutoresizingMaskIntoConstraints = false
         overviewStack.orientation = .vertical
@@ -462,8 +560,6 @@ final class DashboardViewController: NSViewController {
 
         sessionContentView.userInterfaceLayoutDirection = .leftToRight
         sessionContentView.translatesAutoresizingMaskIntoConstraints = false
-        sessionContentView.wantsLayer = true
-        sessionContentView.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
 
         sessionStack.translatesAutoresizingMaskIntoConstraints = false
         sessionStack.orientation = .vertical
@@ -804,8 +900,10 @@ final class DashboardViewController: NSViewController {
         refreshButton.wantsLayer = true
         refreshButton.layer?.cornerRadius = 8
         refreshButton.layer?.borderWidth = 1
-        refreshButton.layer?.borderColor = DashboardPalette.border.cgColor
-        refreshButton.layer?.backgroundColor = DashboardPalette.panelBackground.cgColor
+        refreshButton.setDashboardLayerColors(
+            backgroundColor: DashboardPalette.panelBackground,
+            borderColor: DashboardPalette.border
+        )
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
         refreshButton.setContentHuggingPriority(.required, for: .horizontal)
         refreshButton.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -1059,7 +1157,12 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 12
 
-        let panel = DashboardRoundedView(backgroundColor: DashboardPalette.deepPanelBackground, cornerRadius: 8)
+        let panel = DashboardRoundedView(
+            backgroundColor: DashboardPalette.panelBackground,
+            cornerRadius: 8,
+            borderColor: DashboardPalette.border,
+            borderWidth: 1
+        )
         panel.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -1215,7 +1318,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func applySessionPaginationButtonStyle(
-        _ button: NSButton,
+        _ button: DashboardRangeButton,
         title: String,
         isSelected: Bool,
         isEnabled: Bool
@@ -1228,8 +1331,7 @@ final class DashboardViewController: NSViewController {
         } else {
             textColor = isEnabled ? DashboardPalette.primaryText : DashboardPalette.secondaryText
         }
-        button.layer?.backgroundColor = backgroundColor.cgColor
-        button.layer?.borderColor = borderColor.cgColor
+        button.setDashboardLayerColors(backgroundColor: backgroundColor, borderColor: borderColor)
         button.contentTintColor = textColor
         button.attributedTitle = NSAttributedString(
             string: title,
@@ -1561,8 +1663,7 @@ final class DashboardViewController: NSViewController {
         addChild(settingsViewController)
         settingsViewController.view.translatesAutoresizingMaskIntoConstraints = false
         settingsViewController.view.userInterfaceLayoutDirection = .leftToRight
-        settingsViewController.view.wantsLayer = true
-        settingsViewController.view.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
+        DashboardLayerColor.applyBackground(DashboardPalette.appBackground, to: settingsViewController.view)
         mainContentContainer.addSubview(settingsViewController.view)
         settingsConstraints = [
             settingsViewController.view.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
@@ -1754,14 +1855,13 @@ final class DashboardViewController: NSViewController {
         for item in DashboardNavigationItem.allCases {
             guard let button = navButtons[item] else { continue }
             let isSelected = item == selectedNavigationItem
-            button.layer?.backgroundColor = (
-                isSelected ? DashboardPalette.navigationSelectedBackground : DashboardPalette.sidebarBackground
-            ).cgColor
+            let backgroundColor = isSelected ? DashboardPalette.navigationSelectedBackground : DashboardPalette.sidebarBackground
+            (button as? DashboardNavigationButton)?.setDashboardBackgroundColor(backgroundColor)
             let tintColor = isSelected ? DashboardPalette.navigationSelectedText : DashboardPalette.secondaryText
             button.contentTintColor = tintColor
             (button as? DashboardNavigationButton)?.setVisualTint(tintColor)
         }
-        privacyPolicyButton?.layer?.backgroundColor = DashboardPalette.sidebarBackground.cgColor
+        privacyPolicyButton?.setDashboardBackgroundColor(DashboardPalette.sidebarBackground)
         privacyPolicyButton?.contentTintColor = DashboardPalette.secondaryText
         privacyPolicyButton?.setVisualTint(DashboardPalette.secondaryText)
     }
@@ -1770,10 +1870,10 @@ final class DashboardViewController: NSViewController {
         for range in DashboardRange.allCases {
             guard let button = rangeButtons[range] else { continue }
             let isSelected = range == selectedRange
-            button.layer?.backgroundColor = (
-                isSelected ? DashboardPalette.rangeSelectedBackground : DashboardPalette.panelBackground
-            ).cgColor
-            button.layer?.borderColor = (isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.border).cgColor
+            (button as? DashboardRangeButton)?.setDashboardLayerColors(
+                backgroundColor: isSelected ? DashboardPalette.rangeSelectedBackground : DashboardPalette.panelBackground,
+                borderColor: isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.border
+            )
             button.contentTintColor = isSelected ? DashboardPalette.rangeSelectedText : DashboardPalette.primaryText
         }
     }
@@ -1879,7 +1979,8 @@ final class DashboardViewController: NSViewController {
             addFullWidthArrangedSubview(makeLegendRow(
                 title: slice.label,
                 value: formatPercentage(slice.percentage),
-                color: DashboardColors.modelColor(at: index)
+                color: DashboardColors.modelColor(at: index),
+                dotIdentifier: "DashboardSourceLegendDot.\(index)"
             ), to: sourceLegendStack)
         }
     }
@@ -1924,8 +2025,8 @@ final class DashboardViewController: NSViewController {
         }
     }
 
-    private func makeLegendRow(title: String, value: String, color: NSColor) -> NSView {
-        let dot = DashboardDotView(color: color)
+    private func makeLegendRow(title: String, value: String, color: NSColor, dotIdentifier: String? = nil) -> NSView {
+        let dot = DashboardDotView(color: color, accessibilityIdentifier: dotIdentifier)
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 12)
         titleLabel.textColor = DashboardPalette.primaryText
@@ -2645,12 +2746,12 @@ private enum DashboardProjectRows {
 
 private enum DashboardColors {
     static let palette = [
-        DashboardPalette.accent,
-        DashboardPalette.green,
-        DashboardPalette.yellow,
-        DashboardPalette.purple,
-        NSColor(hex: 0x38BDF8),
-        NSColor(hex: 0xFB7185),
+        DashboardPalette.chartBlue,
+        DashboardPalette.chartGreen,
+        DashboardPalette.chartAmber,
+        DashboardPalette.chartCyan,
+        DashboardPalette.chartRed,
+        DashboardPalette.chartPurple,
     ]
 
     static func modelColor(at index: Int) -> NSColor {
@@ -2659,22 +2760,36 @@ private enum DashboardColors {
 }
 
 private final class DashboardRoundedView: NSView {
+    private let backgroundColor: NSColor
+    private let borderColor: NSColor?
+
     init(
         backgroundColor: NSColor,
         cornerRadius: CGFloat,
         borderColor: NSColor? = nil,
         borderWidth: CGFloat = 0
     ) {
+        self.backgroundColor = backgroundColor
+        self.borderColor = borderColor
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = backgroundColor.cgColor
         layer?.cornerRadius = cornerRadius
-        layer?.borderColor = borderColor?.cgColor
         layer?.borderWidth = borderWidth
+        updateLayerColors()
     }
 
     required init?(coder: NSCoder) {
         fatalError("DashboardRoundedView 必须用 init(backgroundColor:cornerRadius:) 构造")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateLayerColors()
+    }
+
+    private func updateLayerColors() {
+        layer?.backgroundColor = DashboardLayerColor.cgColor(backgroundColor, for: self)
+        layer?.borderColor = borderColor.map { DashboardLayerColor.cgColor($0, for: self) }
     }
 }
 
@@ -2685,8 +2800,8 @@ private final class DashboardDotView: NSView {
         self.color = color
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = color.cgColor
         layer?.cornerRadius = 4
+        updateLayerColors()
         if let accessibilityIdentifier {
             setAccessibilityIdentifier(accessibilityIdentifier)
         }
@@ -2702,6 +2817,15 @@ private final class DashboardDotView: NSView {
 
     required init?(coder: NSCoder) {
         fatalError("DashboardDotView 必须用 init(color:) 构造")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateLayerColors()
+    }
+
+    private func updateLayerColors() {
+        layer?.backgroundColor = DashboardLayerColor.cgColor(color, for: self)
     }
 }
 
@@ -3265,7 +3389,7 @@ private final class DashboardDonutView: NSView {
             startAngle -= sweep
         }
 
-        DashboardPalette.deepPanelBackground.setFill()
+        DashboardPalette.panelBackground.setFill()
         NSBezierPath(ovalIn: rect.insetBy(dx: rect.width * 0.27, dy: rect.height * 0.27)).fill()
     }
 }

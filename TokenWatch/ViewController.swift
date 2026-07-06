@@ -48,9 +48,10 @@ class ViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize))
-        view.wantsLayer = true
-        view.layer?.backgroundColor = DashboardPalette.appBackground.cgColor
+        view = DashboardBackgroundView(
+            frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
+            backgroundColor: DashboardPalette.appBackground
+        )
         view.setAccessibilityIdentifier("DashboardRootView")
     }
 
@@ -150,7 +151,10 @@ final class SettingsViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 320))
+        view = DashboardBackgroundView(
+            frame: NSRect(x: 0, y: 0, width: 480, height: 320),
+            backgroundColor: DashboardPalette.appBackground
+        )
     }
 
     override func viewDidLoad() {
