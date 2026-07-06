@@ -169,6 +169,11 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func mainWindowDefaultHeightCanShowDashboardDetails() {
+        #expect(MainWindowFactory.contentSize.height >= 840)
+    }
+
+    @MainActor
     @Test func mainWindowUsesPencilDashboardLayout() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -962,6 +967,19 @@ struct TokenWatchTests {
         let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
 
         #expect(row.fixedHeightConstant == 48)
+    }
+
+    @MainActor
+    @Test func dashboardSessionsTableHeightFitsTenCompactRows() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+
+        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+
+        #expect(table.fixedHeightConstant == 568)
     }
 
     @MainActor

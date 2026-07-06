@@ -446,6 +446,12 @@ final class DashboardViewController: NSViewController {
     private static let minimumContentWidth: CGFloat = 860
     private static let sessionTableColumnWidths: [CGFloat] = [150, 150, 126, 190, 150, 104, 84, 66]
     private static let sessionPageSize = 10
+    private static let sessionTableHeaderHeight: CGFloat = 44
+    private static let sessionTableRowHeight: CGFloat = 48
+    private static let sessionPaginationHeight: CGFloat = 44
+    private static let sessionTableHeight = sessionTableHeaderHeight
+        + CGFloat(sessionPageSize) * sessionTableRowHeight
+        + sessionPaginationHeight
     private static let sourceLegendValueWidth: CGFloat = 52
     private static let privacyPolicyURL = URL(string: "https://orrhsiao.github.io/TokenWatch/privacy/")!
 
@@ -1371,7 +1377,7 @@ final class DashboardViewController: NSViewController {
         table.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            table.heightAnchor.constraint(equalToConstant: 620),
+            table.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
             stack.leadingAnchor.constraint(equalTo: table.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: table.trailingAnchor),
             stack.topAnchor.constraint(equalTo: table.topAnchor),
@@ -1405,7 +1411,7 @@ final class DashboardViewController: NSViewController {
         sessionPaginationRangeLabel.translatesAutoresizingMaskIntoConstraints = false
         sessionPaginationControlsStack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            view.heightAnchor.constraint(equalToConstant: 44),
+            view.heightAnchor.constraint(equalToConstant: Self.sessionPaginationHeight),
             sessionPaginationRangeLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             sessionPaginationRangeLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             sessionPaginationRangeLabel.trailingAnchor.constraint(lessThanOrEqualTo: sessionPaginationControlsStack.leadingAnchor, constant: -18),
@@ -1525,7 +1531,7 @@ final class DashboardViewController: NSViewController {
         makeSessionTableRowContainer(
             identifier: "DashboardSessionsTableHeader",
             backgroundColor: DashboardPalette.sessionTableHeaderBackground,
-            height: 44,
+            height: Self.sessionTableHeaderHeight,
             cells: zip(
                 [
                     .dashboardLatestTime,
@@ -1553,7 +1559,7 @@ final class DashboardViewController: NSViewController {
         makeSessionTableRowContainer(
             identifier: "DashboardSessionsRow.\(index)",
             backgroundColor: sessionTableRowBackground(at: index),
-            height: 48,
+            height: Self.sessionTableRowHeight,
             cells: [
                 makeSessionTextCell(
                     text: DashboardRangeSnapshot.formatDetailDate(row.lastActiveAt),
@@ -1601,7 +1607,7 @@ final class DashboardViewController: NSViewController {
         makeSessionTableRowContainer(
             identifier: "DashboardSessionsRow.0",
             backgroundColor: sessionTableRowBackground(at: 0),
-            height: 48,
+            height: Self.sessionTableRowHeight,
             cells: zip(
                 [localized(.dashboardNoSessions), "-", "-", "-", "-", "-", "-", "-"],
                 Self.sessionTableColumnWidths
