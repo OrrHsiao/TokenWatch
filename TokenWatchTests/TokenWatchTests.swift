@@ -115,6 +115,7 @@ struct TokenWatchTests {
         })
 
         #expect(appBundle.object(forInfoDictionaryKey: "NSMainStoryboardFile") == nil)
+        #expect(appBundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String == "AI Token Watch")
         #expect(appBundle.url(forResource: "Main", withExtension: "storyboardc", subdirectory: "Base.lproj") == nil)
     }
 
@@ -190,7 +191,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("TokenWatch"))
+        #expect(labels.contains("AI Token Watch"))
         #expect(labels.contains("本地 AI 用量监控"))
         #expect(labels.contains("数据源"))
         #expect(labels.contains("上次本地扫描"))
@@ -1738,7 +1739,7 @@ struct TokenWatchTests {
 
             let panel = try #require(settingsViewController.view.firstDescendant(identifier: "SettingsPanel"))
             let titleLabel = try #require(settingsViewController.view.textField(stringValue: "设置"))
-            let descriptionLabel = try #require(settingsViewController.view.textField(stringValue: "管理 TokenWatch 的通用访问权限和数据刷新。"))
+            let descriptionLabel = try #require(settingsViewController.view.textField(stringValue: "管理 AI Token Watch 的通用访问权限和数据刷新。"))
             let authorizationLabel = try #require(settingsViewController.view.textField(stringValue: "通用访问权限"))
             let authorizeButton = try #require(settingsViewController.view.button(identifier: "AuthorizationActionButton"))
             let refreshButton = try #require(settingsViewController.view.button(identifier: "RefreshAllDataButton"))

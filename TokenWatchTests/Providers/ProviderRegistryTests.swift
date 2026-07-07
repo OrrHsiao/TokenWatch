@@ -31,7 +31,7 @@ struct ProviderRegistryTests {
     @Test("所有 provider 授权弹窗提示为用户目录")
     func openPanelMessagesUseHomeDirectory() {
         #expect(ProviderRegistry.allProviders.allSatisfy {
-            $0.openPanelMessage == "TokenWatch 想访问用户目录"
+            $0.openPanelMessage == "AI Token Watch 想访问用户目录"
         })
     }
 

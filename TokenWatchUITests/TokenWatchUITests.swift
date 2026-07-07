@@ -19,7 +19,7 @@ final class TokenWatchUITests: XCTestCase {
         app.launchForUITesting()
 
         XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["TokenWatch"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["AI Token Watch"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["本地 AI 用量监控"].exists)
         XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["总 Token"].exists)

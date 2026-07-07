@@ -9,7 +9,7 @@ struct AppMainMenuBuilderTests {
         let actionTarget = AppDelegate()
         let menu = AppMainMenuBuilder.build(actionTarget: actionTarget)
 
-        #expect(menu.items.map(\.title) == ["TokenWatch", "Window"])
+        #expect(menu.items.map(\.title) == ["AI Token Watch", "Window"])
     }
 
     @Test func applicationMenuContainsOnlySupportedCommands() throws {
@@ -19,14 +19,14 @@ struct AppMainMenuBuilderTests {
         let items = appMenu.items.filter { !$0.isSeparatorItem }
 
         #expect(items.map(\.title) == [
-            "About TokenWatch",
-            "Open TokenWatch",
+            "About AI Token Watch",
+            "Open AI Token Watch",
             "Settings...",
             "Refresh Now",
-            "Hide TokenWatch",
+            "Hide AI Token Watch",
             "Hide Others",
             "Show All",
-            "Quit TokenWatch",
+            "Quit AI Token Watch",
         ])
         #expect(items.map { $0.action.map(NSStringFromSelector) } == [
             "orderFrontStandardAboutPanel:",
@@ -49,16 +49,16 @@ struct AppMainMenuBuilderTests {
         let appMenu = try #require(menu.items.first?.submenu)
         let windowMenu = try #require(menu.item(withTitle: "窗口")?.submenu)
 
-        #expect(menu.items.map(\.title) == ["TokenWatch", "窗口"])
+        #expect(menu.items.map(\.title) == ["AI Token Watch", "窗口"])
         #expect(appMenu.items.filter { !$0.isSeparatorItem }.map(\.title) == [
-            "关于 TokenWatch",
-            "打开 TokenWatch",
+            "关于 AI Token Watch",
+            "打开 AI Token Watch",
             "设置...",
             "立即刷新",
-            "隐藏 TokenWatch",
+            "隐藏 AI Token Watch",
             "隐藏其他",
             "全部显示",
-            "退出 TokenWatch",
+            "退出 AI Token Watch",
         ])
         #expect(windowMenu.items.filter { !$0.isSeparatorItem }.map(\.title) == [
             "最小化",
@@ -89,11 +89,11 @@ struct AppMainMenuBuilderTests {
             NSApp.windowsMenu = previousWindowsMenu
         }
 
-        #expect(NSApp.mainMenu?.items.map(\.title) == ["TokenWatch", "窗口"])
+        #expect(NSApp.mainMenu?.items.map(\.title) == ["AI Token Watch", "窗口"])
 
         languageSettings.selectedPreference = .en
 
-        #expect(NSApp.mainMenu?.items.map(\.title) == ["TokenWatch", "Window"])
+        #expect(NSApp.mainMenu?.items.map(\.title) == ["AI Token Watch", "Window"])
     }
 
     @Test func windowMenuContainsOnlySupportedWindowCommands() throws {
