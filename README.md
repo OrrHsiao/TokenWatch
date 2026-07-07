@@ -17,11 +17,15 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does 
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/tokenwatch-statusbar-area-inspect.png" alt="TokenWatch menu bar status item showing current token usage" width="820">
+  <img src="./snapshots/appstore_snapshot/en-US/01-menu-bar-popover.png" alt="TokenWatch menu bar popover showing month, week, today, and daily average token usage" width="820">
 </p>
 
 <p align="center">
-  <img src="./docs/images/tokenwatch-popview.png" alt="TokenWatch menu bar popover showing token totals and a calendar heatmap" width="520">
+  <img src="./snapshots/appstore_snapshot/en-US/02-overview.png" alt="TokenWatch overview dashboard showing token totals, cost, trends, source share, model ranking, and project usage" width="820">
+</p>
+
+<p align="center">
+  <img src="./snapshots/appstore_snapshot/en-US/03-sessions.png" alt="TokenWatch sessions view showing session-level model, token, cost, and record counts" width="820">
 </p>
 
 ## Features
@@ -30,6 +34,7 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does 
 - Total usage, today, recent 30 days, and recent 12 months views
 - Token and cost breakdowns by provider and model
 - Calendar heatmap and chart views for trend scanning
+- Session-level review with model, project, token, cost, and record counts
 - Local parsing for Claude Code JSONL, Codex rollout JSONL, and opencode SQLite data
 - Security-scoped bookmark access for sandbox-friendly local file permissions
 - Embedded LiteLLM pricing snapshot with hand-tuned pricing overrides for common models

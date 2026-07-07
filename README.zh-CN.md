@@ -17,11 +17,15 @@ TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中
 ## 截图
 
 <p align="center">
-  <img src="./docs/images/tokenwatch-statusbar-area-inspect.png" alt="TokenWatch 菜单栏状态项，展示当前 token 用量" width="820">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/01-menu-bar-popover.png" alt="TokenWatch 菜单栏弹窗，展示本月、本周、今日和日均 token 用量" width="820">
 </p>
 
 <p align="center">
-  <img src="./docs/images/tokenwatch-popview.png" alt="TokenWatch 菜单栏弹窗，展示 token 汇总和日历热力图" width="520">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/02-overview.png" alt="TokenWatch 总览面板，展示 token 总量、费用、趋势、来源占比、模型排行和项目用量" width="820">
+</p>
+
+<p align="center">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/03-sessions.png" alt="TokenWatch Sessions 视图，展示按 session 聚合的模型、token、费用和记录数" width="820">
 </p>
 
 ## 功能
@@ -30,6 +34,7 @@ TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中
 - 总计、今日、最近 30 天、最近 12 个月视图
 - 按 provider 和模型拆分 token 用量与费用
 - 日历热力图和图表视图，方便快速查看趋势
+- 按 session 查看模型、项目、token、费用和记录数
 - 本地解析 Claude Code JSONL、Codex rollout JSONL 和 opencode SQLite 数据
 - 使用 security-scoped bookmark 适配沙盒环境下的本地文件授权
 - 内置 LiteLLM 价格快照，并对常用模型做了手动价格修正
