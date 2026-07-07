@@ -439,7 +439,7 @@ private final class DashboardSessionButton: NSButton, DashboardAppearanceRefresh
     }
 }
 
-/// Pencil 设计稿中的 TokenWatch 深色总览 Dashboard。
+/// Pencil 设计稿中的 AI Token Watch 深色总览 Dashboard。
 final class DashboardViewController: NSViewController {
     private static let sidebarWidth: CGFloat = 244
     private static let pageInset: CGFloat = 28
@@ -770,11 +770,11 @@ final class DashboardViewController: NSViewController {
         logoView.imageScaling = .scaleProportionallyUpOrDown
         logoView.identifier = NSUserInterfaceItemIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
         logoView.setAccessibilityIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
-        logoView.setAccessibilityLabel("TokenWatch")
+        logoView.setAccessibilityLabel("AI Token Watch")
         logoView.setContentHuggingPriority(.required, for: .horizontal)
         logoView.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        let name = NSTextField(labelWithString: "TokenWatch")
+        let name = NSTextField(labelWithString: "AI Token Watch")
         name.font = .systemFont(ofSize: 18, weight: .bold)
         name.textColor = DashboardPalette.primaryText
         let subtitle = localizedLabel(.appTagline)

@@ -1,6 +1,6 @@
 # Security
 
-TokenWatch reads local coding-agent usage data after the user grants macOS file access. Please do not post private prompts, responses, usage records, credentials, or full local project paths in public issues.
+AI Token Watch reads local coding-agent usage data after the user grants macOS file access. Please do not post private prompts, responses, usage records, credentials, or full local project paths in public issues.
 
 ## Reporting
 

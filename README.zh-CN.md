@@ -1,4 +1,4 @@
-# TokenWatch
+# AI Token Watch
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
@@ -10,22 +10,22 @@
 ![Menu Bar App](https://img.shields.io/badge/menu%20bar-app-34C759)
 ![Privacy: local only](https://img.shields.io/badge/privacy-local--only-30D158)
 
-TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中统计 token 用量和预估费用。它会读取 Claude Code、Codex 和 opencode 的本地使用记录，并按日期、月份、模型、项目和 provider 汇总数据。
+AI Token Watch 是一个原生 macOS 应用，用于从本地 coding agent 数据中统计 token 用量和预估费用。它会读取 Claude Code、Codex 和 opencode 的本地使用记录，并按日期、月份、模型、项目和 provider 汇总数据。
 
-应用使用 Swift、AppKit 和 macOS App Sandbox 构建。TokenWatch 不会把你的使用数据发送到任何地方。
+应用使用 Swift、AppKit 和 macOS App Sandbox 构建。AI Token Watch 不会把你的使用数据发送到任何地方。
 
 ## 截图
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/zh-Hans/01-menu-bar-popover.png" alt="TokenWatch 菜单栏弹窗，展示本月、本周、今日和日均 token 用量" width="820">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/01-menu-bar-popover.png" alt="AI Token Watch 菜单栏弹窗，展示本月、本周、今日和日均 token 用量" width="820">
 </p>
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/zh-Hans/02-overview.png" alt="TokenWatch 总览面板，展示 token 总量、费用、趋势、来源占比、模型排行和项目用量" width="820">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/02-overview.png" alt="AI Token Watch 总览面板，展示 token 总量、费用、趋势、来源占比、模型排行和项目用量" width="820">
 </p>
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/zh-Hans/03-sessions.png" alt="TokenWatch Sessions 视图，展示按 session 聚合的模型、token、费用和记录数" width="820">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/03-sessions.png" alt="AI Token Watch Sessions 视图，展示按 session 聚合的模型、token、费用和记录数" width="820">
 </p>
 
 ## 功能
@@ -41,7 +41,7 @@ TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中
 
 ## 支持的数据源
 
-| 数据源 | TokenWatch 读取的本地数据 | 说明 |
+| 数据源 | AI Token Watch 读取的本地数据 | 说明 |
 | --- | --- | --- |
 | Claude Code | `~/.claude/projects/**/*.jsonl` | 按 `message.id` 去重，并把 `requestId` 作为可选后缀。 |
 | Codex | `~/.codex/sessions/**/rollout-*.jsonl` 和归档 session | 优先使用 `last_token_usage`，没有时从累计 token 数推导增量。 |
@@ -49,7 +49,7 @@ TokenWatch 是一个原生 macOS 应用，用于从本地 coding agent 数据中
 
 ## 隐私
 
-TokenWatch 被设计为只在本地运行的工具。
+AI Token Watch 被设计为只在本地运行的工具。
 
 - 只有在你通过 macOS 打开面板授权后，它才会读取文件。
 - 它会把 security-scoped bookmark 存在 `UserDefaults` 中，便于应用下次重新打开同一批本地目录。
@@ -62,12 +62,12 @@ TokenWatch 被设计为只在本地运行的工具。
 
 推荐从 [GitHub Releases 页面](https://github.com/OrrHsiao/TokenWatch/releases) 下载最新安装包：
 
-1. 在最新 release 中下载 `TokenWatch-macOS-universal.zip`。
+1. 在最新 release 中下载 `AI-Token-Watch-macOS-universal.zip`。
 2. 解压压缩包。
-3. 将 `TokenWatch.app` 移动到 `/Applications`。
-4. 打开 TokenWatch，并在提示时授权访问你的用户目录。
+3. 将 `AI Token Watch.app` 移动到 `/Applications`。
+4. 打开 AI Token Watch，并在提示时授权访问你的用户目录。
 
-如果 macOS 提示 `TokenWatch.app 已损坏，无法打开。你应该将它移到废纸篓。`，请先确认应用来自官方 TokenWatch release 页面，然后打开 **系统设置 > 隐私与安全性**。在“安全性”区域为 TokenWatch 点击“仍要打开”，之后重新打开 TokenWatch，并在提示时选择“打开”。
+如果 macOS 提示 `AI Token Watch.app 已损坏，无法打开。你应该将它移到废纸篓。`，请先确认应用来自官方 AI Token Watch release 页面，然后打开 **系统设置 > 隐私与安全性**。在“安全性”区域为 AI Token Watch 点击“仍要打开”，之后重新打开 AI Token Watch，并在提示时选择“打开”。
 
 如果你想从源码构建：
 
@@ -79,7 +79,7 @@ TokenWatch 被设计为只在本地运行的工具。
 
 ## 首次运行
 
-TokenWatch 会请求一次用户目录访问权限，然后扫描你 home 目录下受支持的 provider 文件夹。如果你没有使用其中某个工具，对应 provider 会显示为没有数据。
+AI Token Watch 会请求一次用户目录访问权限，然后扫描你 home 目录下受支持的 provider 文件夹。如果你没有使用其中某个工具，对应 provider 会显示为没有数据。
 
 你可以在主窗口或菜单栏弹窗里手动刷新。自动刷新间隔可以在设置中调整。
 
@@ -147,7 +147,7 @@ TokenWatchUITests/ XCTest UI 测试
 
 ## 价格数据
 
-TokenWatch 使用内置价格数据预估费用。价格可能和上游 provider 的实际账单存在差异，因此应用里的总额应视为估算值，而不是正式账单。未知模型会优先使用数据源自带的上游费用；如果源数据没有费用，费用可能会显示为零，直到价格数据被更新。
+AI Token Watch 使用内置价格数据预估费用。价格可能和上游 provider 的实际账单存在差异，因此应用里的总额应视为估算值，而不是正式账单。未知模型会优先使用数据源自带的上游费用；如果源数据没有费用，费用可能会显示为零，直到价格数据被更新。
 
 ## 贡献
 
@@ -157,4 +157,4 @@ TokenWatch 使用内置价格数据预估费用。价格可能和上游 provider
 
 ## 许可证
 
-TokenWatch 使用 GNU General Public License v3.0 or later 授权。详见 [LICENSE](./LICENSE)。
+AI Token Watch 使用 GNU General Public License v3.0 or later 授权。详见 [LICENSE](./LICENSE)。

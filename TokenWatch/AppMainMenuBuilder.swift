@@ -1,8 +1,10 @@
 import AppKit
 
-/// 构建 TokenWatch 的精简主菜单,只暴露当前应用实际支持的命令。
+/// 构建 AI Token Watch 的精简主菜单,只暴露当前应用实际支持的命令。
 @MainActor
 enum AppMainMenuBuilder {
+    private static let appName = "AI Token Watch"
+
     /// 创建主菜单。调用方负责把返回值安装到 `NSApp.mainMenu`。
     static func build(actionTarget: AppDelegate, language: AppLanguage = .en) -> NSMenu {
         let mainMenu = NSMenu(title: "Main Menu")
@@ -12,7 +14,7 @@ enum AppMainMenuBuilder {
     }
 
     private static func makeApplicationMenuItem(actionTarget: AppDelegate, language: AppLanguage) -> NSMenuItem {
-        let appMenu = NSMenu(title: "TokenWatch")
+        let appMenu = NSMenu(title: appName)
         appMenu.addItem(makeApplicationItem(
             title: text(.mainMenuAbout, language: language),
             action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
@@ -64,7 +66,7 @@ enum AppMainMenuBuilder {
             target: NSApp
         ))
 
-        let item = NSMenuItem(title: "TokenWatch", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: appName, action: nil, keyEquivalent: "")
         item.submenu = appMenu
         return item
     }

@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible TokenWatch problem
+description: Report a reproducible AI Token Watch problem
 title: "[Bug]: "
 labels:
   - bug
@@ -13,7 +13,7 @@ body:
     attributes:
       label: Summary
       description: What went wrong?
-      placeholder: TokenWatch shows...
+      placeholder: AI Token Watch shows...
     validations:
       required: true
   - type: textarea
@@ -22,7 +22,7 @@ body:
       label: Steps to reproduce
       description: How can someone else reproduce this?
       placeholder: |
-        1. Open TokenWatch
+        1. Open AI Token Watch
         2. Authorize...
         3. Refresh...
     validations:
@@ -47,7 +47,7 @@ body:
     id: expected
     attributes:
       label: Expected behavior
-      description: What did you expect TokenWatch to do?
+      description: What did you expect AI Token Watch to do?
   - type: textarea
     id: actual
     attributes:
@@ -58,4 +58,3 @@ body:
     attributes:
       label: Logs or screenshots
       description: Optional. Redact local paths, prompts, responses, API keys, and usage records.
-

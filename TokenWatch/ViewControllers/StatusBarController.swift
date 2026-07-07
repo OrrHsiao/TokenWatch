@@ -363,7 +363,7 @@ final class StatusBarController {
     private func setIcon(symbolName: String) {
         let image = NSImage(
             systemSymbolName: symbolName,
-            accessibilityDescription: "TokenWatch"
+            accessibilityDescription: "AI Token Watch"
         )?.withSymbolConfiguration(iconSymbolConfig)
         // 状态栏图标做成 template 由系统按主题自动反色
         image?.isTemplate = true
