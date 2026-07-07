@@ -33,6 +33,45 @@ struct StatusBarControllerTests {
         #expect(StatusBarMenuPresentation.presenter() == .statusItemMenu(selectorName: "popUpStatusItemMenu:"))
     }
 
+    /// 状态栏双行标题通过富文本基线下移修正视觉居中,不替换系统状态栏 cell。
+    @Test func statusBarTitleTextUsesDownwardBaselineOffset() {
+        #expect(StatusBarTitleTextLayout.baselineOffset < 0)
+    }
+
+    /// 状态栏图标通过透明右留白拉开与文字的距离,避免在标题字符串里塞空格。
+    @Test func statusBarIconAddsTrailingSpacingBeforeTitle() {
+        #expect(StatusBarIconLayout.pointSize == 18)
+        #expect(StatusBarIconLayout.pointSize < 20)
+        #expect(StatusBarIconLayout.imageTitleSpacing == 4)
+        #expect(StatusBarIconLayout.canvasSize(for: NSSize(width: 20, height: 18)) == NSSize(width: 24, height: 18))
+
+        let image = NSImage(size: NSSize(width: 20, height: 18))
+        image.isTemplate = true
+        let paddedImage = StatusBarIconLayout.imageWithTrailingSpacing(image)
+        #expect(paddedImage.size == NSSize(width: 24, height: 18))
+        #expect(paddedImage.isTemplate)
+    }
+
+    /// 状态栏按钮必须使用 AppKit 原生 image + attributedTitle。
+    /// 自定义子视图或自定义 cell 都会绕过系统状态栏绘制语义,可能造成重绘或垂直位置异常。
+    @MainActor
+    @Test func statusBarButtonUsesNativeCellImageAndTitleWithoutCustomLayoutSubviews() throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults)
+        )
+        defer { controller.stop() }
+
+        #expect(controller.debugStatusButtonCustomSubviewCount == 0)
+        #expect(controller.debugStatusItemLength == NSStatusItem.variableLength)
+        #expect(!controller.debugStatusButtonUsesCustomCell)
+        #expect(controller.debugTitleBaselineOffsets.allSatisfy { $0 == StatusBarTitleTextLayout.baselineOffset })
+    }
+
     /// popover 显示期间应让状态栏按钮保持系统高亮背景。
     @Test func popoverShownHighlightsStatusButton() {
         #expect(StatusBarButtonHighlight.isHighlighted(popoverIsShown: true))
