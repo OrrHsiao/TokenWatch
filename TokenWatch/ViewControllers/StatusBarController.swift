@@ -30,7 +30,10 @@ final class StatusBarController {
     /// 上次渲染的图标 symbol 名,用于在档位未变时跳过 image 赋值,避免触发状态栏重布局
     private var lastRenderedSymbolName: String?
     /// SF Symbol 配置统一管理,保证替换图标后 pointSize/weight 不丢失
-    private let iconSymbolConfig = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
+    private let iconSymbolConfig = NSImage.SymbolConfiguration(
+        pointSize: StatusBarIconLayout.pointSize,
+        weight: .regular
+    )
     private var loadingAnimationTimer: Timer?
     private var loadingAnimationFrameIndex = 0
     private static let loadingAnimationInterval: TimeInterval = 0.18
@@ -45,6 +48,29 @@ final class StatusBarController {
     }
     var debugTitlePlainString: String {
         statusItem.button?.attributedTitle.string ?? ""
+    }
+    var debugStatusButtonCustomSubviewCount: Int {
+        statusItem.button?.subviews.filter {
+            $0 is NSStackView || $0 is NSTextField || $0 is NSImageView
+        }.count ?? 0
+    }
+    var debugStatusItemLength: CGFloat {
+        statusItem.length
+    }
+    var debugStatusButtonUsesCustomCell: Bool {
+        guard let cell = statusItem.button?.cell else { return false }
+        return String(describing: type(of: cell)) == "StatusBarNativeButtonCell"
+    }
+    var debugTitleBaselineOffsets: [CGFloat] {
+        guard let attributedTitle = statusItem.button?.attributedTitle else { return [] }
+        let fullRange = NSRange(location: 0, length: attributedTitle.length)
+        var offsets: [CGFloat] = []
+        attributedTitle.enumerateAttribute(.baselineOffset, in: fullRange) { value, _, _ in
+            if let value = value as? NSNumber {
+                offsets.append(CGFloat(value.doubleValue))
+            }
+        }
+        return offsets
     }
 
     init(
@@ -122,16 +148,15 @@ final class StatusBarController {
     private func configureButton() {
         guard let button = statusItem.button else { return }
         // 用 NSStatusBarButton 原生 image + attributedTitle 渲染图标与双行文字。
-        // 早期版本曾把自定义 NSStackView 加到 button 上做布局,但与 macOS 26 的
-        // NSStatusItemScene 渲染管线形成约束循环(variableLength + trailingAnchor 回绑 button),
-        // 导致 button 每个 runloop tick 都重绘并向 ControlCenter 发 fence,持续占用 ~40% CPU。
-        // 改用原生 cell 后,button 宽度由系统按 image+title 内容自适应,无循环依赖。
+        // 自定义 NSStackView 子视图会进入 macOS 26 的 NSStatusItemScene 布局管线,
+        // 与状态栏自适应宽度互相 invalidation,空闲时也可能持续重绘。
+        // 保留系统状态栏 cell,由它负责状态栏图标和标题整体垂直位置。
         button.target = self
         button.action = #selector(handleStatusItemClick)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.imagePosition = .imageLeft
         button.imageScaling = .scaleProportionallyDown
-        // attributedTitle 双行渲染(数字 + 单位)需要 cell 开启换行
+        // attributedTitle 双行渲染(数字 + 单位)需要 cell 开启换行。
         if let cell = button.cell as? NSButtonCell {
             cell.wraps = true
             cell.truncatesLastVisibleLine = false
@@ -181,6 +206,7 @@ final class StatusBarController {
                 .font: NSFont.boldSystemFont(ofSize: 9),
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: primaryParagraph,
+                .baselineOffset: StatusBarTitleTextLayout.baselineOffset,
             ]
         )
         result.append(NSAttributedString(
@@ -189,6 +215,7 @@ final class StatusBarController {
                 .font: NSFont.systemFont(ofSize: 7),
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: secondaryParagraph,
+                .baselineOffset: StatusBarTitleTextLayout.baselineOffset,
             ]
         ))
         return result
@@ -340,7 +367,7 @@ final class StatusBarController {
         )?.withSymbolConfiguration(iconSymbolConfig)
         // 状态栏图标做成 template 由系统按主题自动反色
         image?.isTemplate = true
-        statusItem.button?.image = image
+        statusItem.button?.image = image.map(StatusBarIconLayout.imageWithTrailingSpacing)
         lastRenderedSymbolName = symbolName
     }
 
@@ -751,6 +778,46 @@ enum StatusBarButtonHighlight {
 
     static func applicationTiming(popoverIsShown: Bool) -> ApplicationTiming {
         popoverIsShown ? .afterCurrentEvent : .immediate
+    }
+}
+
+/// 状态栏双行标题的富文本布局参数。
+///
+/// 保留系统 NSStatusBarButton cell 负责状态栏整体垂直定位,只用 baseline offset
+/// 把两行文字在行框内轻微下移,修正 attributedTitle 多行绘制偏上的视觉问题。
+enum StatusBarTitleTextLayout {
+    static let baselineOffset: CGFloat = -3.5
+}
+
+/// 状态栏图标布局参数。
+///
+/// AppKit 没有可设具体数值的 image-title spacing API。这里扩展图标画布右侧透明区域,
+/// 继续交给原生 NSStatusBarButton cell 绘制 image + attributedTitle,避免标题字符串塞空格。
+enum StatusBarIconLayout {
+    static let pointSize: CGFloat = 18
+    static let imageTitleSpacing: CGFloat = 4
+
+    static func canvasSize(for imageSize: NSSize) -> NSSize {
+        NSSize(width: imageSize.width + imageTitleSpacing, height: imageSize.height)
+    }
+
+    static func imageWithTrailingSpacing(_ image: NSImage) -> NSImage {
+        guard imageTitleSpacing > 0, image.size.width > 0, image.size.height > 0 else {
+            return image
+        }
+
+        let imageSize = image.size
+        let paddedImage = NSImage(size: canvasSize(for: imageSize), flipped: false) { _ in
+            image.draw(
+                in: NSRect(origin: .zero, size: imageSize),
+                from: NSRect(origin: .zero, size: imageSize),
+                operation: .sourceOver,
+                fraction: 1
+            )
+            return true
+        }
+        paddedImage.isTemplate = image.isTemplate
+        return paddedImage
     }
 }
 
