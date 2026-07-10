@@ -70,3 +70,174 @@ struct PricingTableTests {
         #expect(catalog.entries["missing-output"] == nil)
     }
 }
+
+extension PricingTableTests {
+    @Test("来源优先级是 builtin exact > LiteLLM，且 primary > models.dev")
+    func sourcePriority() throws {
+        let lite = [
+            "same-key": catalogEntry(id: "same-key", input: 2.0),
+            "primary-only": catalogEntry(id: "primary-only", input: 3.0),
+        ]
+        let fallback = [
+            "same-key": pricing(id: "same-key", input: 9.0),
+            "primary-only": pricing(id: "primary-only", input: 8.0),
+            "fallback-only": pricing(id: "fallback-only", input: 7.0),
+        ]
+        let builtins = ["same-key": pricing(id: "same-key", input: 5.0)]
+        let table = PricingTable(
+            liteLLMEntries: lite,
+            modelsDevEntries: fallback,
+            builtins: builtins
+        )
+
+        #expect(abs((table.pricing(for: "same-key")?.inputPrice ?? 0) - 5.0) < 1e-9)
+        #expect(abs((table.pricing(for: "primary-only")?.inputPrice ?? 0) - 3.0) < 1e-9)
+        #expect(abs((table.pricing(for: "fallback-only")?.inputPrice ?? 0) - 7.0) < 1e-9)
+    }
+
+    @Test("primary exact 胜过 builtin fuzzy")
+    func exactBeforeFuzzyAcrossPrimary() {
+        let table = PricingTable(
+            liteLLMEntries: ["gpt-5-mini": catalogEntry(id: "gpt-5-mini", input: 0.25)],
+            modelsDevEntries: [:],
+            builtins: ["gpt-5": pricing(id: "gpt-5", input: 1.25)]
+        )
+        #expect(table.pricing(for: "gpt-5-mini")?.modelID == "gpt-5-mini")
+    }
+
+    @Test("fuzzy 多候选先最长，等长取 canonical 字典序最小")
+    func deterministicFuzzySelection() {
+        let table = PricingTable(
+            liteLLMEntries: [
+                "z/model-x": catalogEntry(id: "z/model-x", input: 9.0),
+                "a/model-x": catalogEntry(id: "a/model-x", input: 1.0),
+                "model": catalogEntry(id: "model", input: 5.0),
+            ],
+            modelsDevEntries: [:],
+            builtins: [:]
+        )
+        #expect(table.pricing(for: "model-x")?.modelID == "a/model-x")
+    }
+
+    @Test("点号与 @ 规范化、provider 边界和数字版本守卫")
+    func normalizationAndBoundaries() {
+        let table = PricingTable(
+            liteLLMEntries: [
+                "claude-opus-4-7": catalogEntry(id: "claude-opus-4-7", input: 5.0),
+                "glm-5.1": catalogEntry(id: "glm-5.1", input: 1.4),
+            ],
+            modelsDevEntries: [:],
+            builtins: [:]
+        )
+        #expect(abs((table.pricing(for: "claude-opus-4.7-20260416")?.inputPrice ?? 0) - 5.0) < 1e-9)
+        #expect(abs((table.pricing(for: "provider/glm-5.1")?.inputPrice ?? 0) - 1.4) < 1e-9)
+        #expect(table.pricing(for: "claude-opus-4.70") == nil)
+        #expect(table.pricing(for: "claude-opus-4-9") == nil)
+    }
+
+    @Test("alias 仅在原 model primary miss 后解析，fallback 使用 resolved alias")
+    func aliasOrdering() {
+        let table = PricingTable(
+            liteLLMEntries: [
+                "gpt-5.3-codex": catalogEntry(id: "gpt-5.3-codex", input: 1.75),
+            ],
+            modelsDevEntries: [
+                "gpt-5.3-codex-spark": pricing(id: "gpt-5.3-codex-spark", input: 99.0),
+            ],
+            builtins: [:]
+        )
+        #expect(abs((table.pricing(for: "gpt-5.3-spark")?.inputPrice ?? 0) - 1.75) < 1e-9)
+    }
+
+    @Test("exact builtin 整条覆盖 LiteLLM；provider fast 显式优先且 override 只补缺失")
+    func fastOverlayPriority() {
+        let conflictingExact = catalogEntry(
+            id: "gpt-5.5",
+            input: 99.0,
+            explicitFast: 3.0
+        )
+        let providerExplicit = catalogEntry(
+            id: "anthropic/claude-opus-4-6-v1",
+            input: 5.0,
+            explicitFast: 7.0
+        )
+        let providerMissing = catalogEntry(
+            id: "amazon/claude-opus-4-6-v1",
+            input: 5.0
+        )
+        let table = PricingTable(
+            liteLLMEntries: [
+                "gpt-5.5": conflictingExact,
+                "anthropic/claude-opus-4-6-v1": providerExplicit,
+                "amazon/claude-opus-4-6-v1": providerMissing,
+            ],
+            modelsDevEntries: [:],
+            builtins: ["gpt-5.5": pricing(id: "gpt-5.5", input: 5.0, fast: 2.5)]
+        )
+        #expect(abs((table.pricing(for: "gpt-5.5")?.inputPrice ?? 0) - 5.0) < 1e-9)
+        #expect(abs((table.pricing(for: "gpt-5.5")?.fastMultiplier ?? 0) - 2.5) < 1e-9)
+        #expect(abs((table.pricing(
+            for: "anthropic/claude-opus-4-6-v1"
+        )?.fastMultiplier ?? 0) - 7.0) < 1e-9)
+        #expect(abs((table.pricing(
+            for: "amazon/claude-opus-4-6-v1"
+        )?.fastMultiplier ?? 0) - 6.0) < 1e-9)
+    }
+
+    @Test("long-context overlay 整组补齐，不与已有任意 above 字段混用")
+    func longContextOverlayIsAllOrNothing() throws {
+        let empty = catalogEntry(id: "gpt-5.4", input: 2.5)
+        let partialPricing = ModelPricing(
+            modelID: "gpt-5.5",
+            displayName: "gpt-5.5",
+            inputPrice: 5.0,
+            outputPrice: 30.0,
+            cacheReadPrice: 0.5,
+            cacheWritePrice: 5.0,
+            inputPriceAbove200k: 123.0
+        )
+        let partial = CatalogPricingEntry(pricing: partialPricing, explicitFastMultiplier: nil)
+        let table = PricingTable(
+            liteLLMEntries: ["gpt-5.4": empty, "gpt-5.5": partial],
+            modelsDevEntries: [:],
+            builtins: [:]
+        )
+
+        let gpt54 = try #require(table.pricing(for: "gpt-5.4"))
+        let gpt55 = try #require(table.pricing(for: "gpt-5.5"))
+        #expect(gpt54.longContextThreshold == 272_000)
+        #expect(abs((gpt54.inputPriceAbove200k ?? 0) - 5.0) < 1e-9)
+        #expect(abs((gpt54.outputPriceAbove200k ?? 0) - 22.5) < 1e-9)
+        #expect(abs((gpt54.cacheReadPriceAbove200k ?? 0) - 0.5) < 1e-9)
+        #expect(abs((gpt55.inputPriceAbove200k ?? 0) - 123.0) < 1e-9)
+        #expect(gpt55.outputPriceAbove200k == nil)
+        #expect(gpt55.longContextThreshold == nil)
+    }
+
+    private func catalogEntry(
+        id: String,
+        input: Double,
+        explicitFast: Double? = nil
+    ) -> CatalogPricingEntry {
+        CatalogPricingEntry(
+            pricing: pricing(id: id, input: input, fast: explicitFast ?? 1.0),
+            explicitFastMultiplier: explicitFast
+        )
+    }
+
+    private func pricing(
+        id: String,
+        input: Double,
+        fast: Double = 1.0
+    ) -> ModelPricing {
+        ModelPricing(
+            modelID: id,
+            displayName: id,
+            inputPrice: input,
+            outputPrice: input * 4,
+            cacheReadPrice: input * 0.1,
+            cacheWritePrice: input * 1.25,
+            fastMultiplier: fast
+        )
+    }
+}

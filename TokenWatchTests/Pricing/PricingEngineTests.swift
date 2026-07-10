@@ -161,42 +161,21 @@ struct PricingEngineTests {
 
     // MARK: - 定价表查找
 
-    @Test("精确匹配模型定价")
-    func exactModelMatch() {
-        // 价位参考 TokenTracker `pricing/curated-overrides.json`(DeepSeek 官方 API 价)
-        let pricing = PricingTable.pricing(for: "deepseek-v4-pro")
-        #expect(pricing != nil)
-        #expect(pricing?.displayName == "DeepSeek V4 Pro")
-        #expect(pricing?.inputPrice == 0.435)
-        #expect(pricing?.outputPrice == 0.87)
-        #expect(pricing?.cacheReadPrice == 0.003625)
-    }
-
-    @Test("精确匹配 - glm-5.1 (TokenTracker / ccusage 价位)")
+    @Test("精确匹配 - glm-5.1 (ccusage builtin 价位)")
     func exactGLM51Match() {
-        // 价位与 TokenTracker `curated-overrides.json` 及 ccusage 主表一致
         let pricing = PricingTable.pricing(for: "glm-5.1")
         #expect(pricing != nil)
-        #expect(pricing?.inputPrice == 1.4)
-        #expect(pricing?.outputPrice == 4.4)
-        #expect(pricing?.cacheReadPrice == 0.26)
+        #expect(abs((pricing?.inputPrice ?? 0) - 1.4) < 1e-9)
+        #expect(abs((pricing?.outputPrice ?? 0) - 4.4) < 1e-9)
+        #expect(abs((pricing?.cacheReadPrice ?? 0) - 0.26) < 1e-9)
     }
 
-    @Test("精确匹配 - deepseek-v4-flash (TokenTracker 价位)")
-    func exactDeepseekV4FlashMatch() {
-        let pricing = PricingTable.pricing(for: "deepseek-v4-flash")
-        #expect(pricing != nil)
-        #expect(pricing?.inputPrice == 0.14)
-        #expect(pricing?.outputPrice == 0.28)
-        #expect(pricing?.cacheReadPrice == 0.0028)
-    }
-
-    @Test("前缀模糊匹配 - 带日期后缀")
-    func prefixFuzzyMatch() {
-        // "claude-opus-4-20250514" 应匹配 "claude-opus-4"（8 位日期后缀允许）
+    @Test("primary exact 胜过 builtin 日期前缀模糊匹配")
+    func primaryExactBeforeBuiltinDateFuzzy() {
+        // filtered LiteLLM 含 exact 日期条目，因此应优先于 builtin 短名。
         let pricing = PricingTable.pricing(for: "claude-opus-4-20250514")
         #expect(pricing != nil)
-        #expect(pricing?.displayName == "Claude Opus 4")
+        #expect(pricing?.modelID == "claude-opus-4-20250514")
     }
 
     @Test("版本号守卫 - sonnet-4-5-20250514 不应误命中 sonnet-4")
@@ -204,13 +183,13 @@ struct PricingEngineTests {
         // 关键回归：候选 "claude-sonnet-4" 与 "claude-sonnet-4-5" 都是输入前缀,
         // 必须命中 4-5 而不是 4
         let pricing = PricingTable.pricing(for: "claude-sonnet-4-5-20250514")
-        #expect(pricing?.displayName == "Claude Sonnet 4.5")
+        #expect(pricing?.modelID == "claude-sonnet-4-5")
     }
 
     @Test("版本号守卫 - opus-4-1-... 应命中 4-1 而不是 4")
     func versionGuardOpus41() {
         let pricing = PricingTable.pricing(for: "claude-opus-4-1-20250830")
-        #expect(pricing?.displayName == "Claude Opus 4.1")
+        #expect(pricing?.modelID == "claude-opus-4-1")
     }
 
     @Test("版本号守卫 - opus-4-5 即便 4-5 不在表中也不应命中 4")
@@ -500,9 +479,11 @@ struct PricingEngineTests {
 
     @Test("tiered - 3.5 Sonnet 的 output above 是 ×2 (非 ×1.5)")
     func tieredSonnet35OutputAboveIsDouble() {
-        // LiteLLM 上 claude-3-5-sonnet 的 output above_200k = 3e-05 = $30/1M
-        let pricing = PricingTable.pricing(for: "claude-3.5-sonnet")
-        #expect(pricing?.outputPriceAbove200k == 30.0)
+        // 该 exact LiteLLM provider 条目的 output above_200k = 3e-05 = $30/1M。
+        let pricing = PricingTable.pricing(
+            for: "anthropic.claude-3-5-sonnet-20240620-v1:0"
+        )
+        #expect(abs((pricing?.outputPriceAbove200k ?? 0) - 30.0) < 1e-9)
     }
 
     @Test("tiered - Opus / Haiku / Fable / 3.7 Sonnet 没有 above 价")
@@ -709,35 +690,34 @@ struct PricingEngineTests {
     func fastDateSuffixMatch() {
         // claude-opus-4-8-20260101 → 前缀匹配 claude-opus-4-8 → fast=2.0
         let pricing = PricingTable.pricing(for: "claude-opus-4-8-20260101")
-        #expect(pricing?.displayName == "Claude Opus 4.8")
+        #expect(pricing?.modelID == "claude-opus-4-8")
         #expect(pricing?.fastMultiplier == 2.0)
     }
 
-    // MARK: - LiteLLM 兜底
+    // MARK: - 离线 catalog 来源
     //
-    // PricingTable 仅维护 ~12 条手写「短名」,对 Bedrock / Vertex / Azure 等
-    // 带 provider 前缀的别名命中不到 → 由 LiteLLMPriceCatalog 兜底(嵌入 LiteLLM 全表)。
-    // 这里只做存在性 + 价格量级的回归检查,具体单价以 LiteLLM 上游为准。
+    // PricingTable 使用 filtered LiteLLM primary + 独立 models.dev fallback。
+    // 这里只做存在性 + 价格量级的回归检查，具体单价以固定离线快照为准。
 
-    @Test("LiteLLM 兜底 - Bedrock anthropic.* 别名能命中")
-    func liteLLMBedrockFallback() {
-        // 手写表里没有这个 key,只能由 LiteLLM 兜底
+    @Test("filtered LiteLLM primary - Bedrock anthropic.* 别名能命中")
+    func liteLLMBedrockPrimary() {
+        // builtin 中没有这个 key，由 filtered LiteLLM primary 命中。
         let pricing = PricingTable.pricing(for: "anthropic.claude-opus-4-5-20251101-v1:0")
         #expect(pricing != nil)
-        #expect(pricing?.inputPrice == 5.0)
-        #expect(pricing?.outputPrice == 25.0)
+        #expect(abs((pricing?.inputPrice ?? 0) - 5.0) < 1e-9)
+        #expect(abs((pricing?.outputPrice ?? 0) - 25.0) < 1e-9)
     }
 
-    @Test("LiteLLM 兜底 - 手写表优先于 LiteLLM(displayName 保留)")
-    func liteLLMHandwrittenWins() {
-        // 同名 key 同时存在于手写表和 LiteLLM 时,手写表赢 → displayName 是「Claude Opus 4.5」而非裸 modelID
+    @Test("builtin exact 在 primary 组装后仍可查询")
+    func builtinExactRemainsAvailable() {
         let pricing = PricingTable.pricing(for: "claude-opus-4-5")
-        #expect(pricing?.displayName == "Claude Opus 4.5")
+        #expect(pricing?.modelID == "claude-opus-4-5")
+        #expect(abs((pricing?.inputPrice ?? 0) - 5.0) < 1e-9)
     }
 
-    @Test("LiteLLM 兜底 - 仍然完全无法识别的模型返回 nil")
-    func liteLLMStillReturnsNilForUnknown() {
-        // 既不在手写表也不在 LiteLLM 上,最终返回 nil → 上层 logger.warning + cost=0
+    @Test("primary 与 models.dev fallback 都无法识别时返回 nil")
+    func offlineCatalogsReturnNilForUnknown() {
+        // 两个离线来源都 miss，最终返回 nil → 上层 logger.warning + cost=0。
         let pricing = PricingTable.pricing(for: "this-model-definitely-does-not-exist-anywhere-xyzzy")
         #expect(pricing == nil)
     }
