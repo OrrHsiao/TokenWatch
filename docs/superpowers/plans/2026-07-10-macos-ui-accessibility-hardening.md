@@ -12,7 +12,7 @@
 
 - 保持现有视觉设计，不更换控件体系，不引入 SwiftUI 重写。
 - 会话表固定列宽继续保留；表格 document/table 最小宽度必须为 `1108pt`，页面其他区块仍跟随外层垂直滚动。
-- `DashboardNavigationButton`、`DashboardRangeButton`、`DashboardSessionButton` 必须恢复键盘聚焦和系统 focus ring；窗口启动时通过 `initialFirstResponder` 避免自动选中操作按钮。
+- `DashboardNavigationButton`、`DashboardRangeButton`、`DashboardSessionButton` 必须恢复键盘聚焦和系统 focus ring；窗口启动时通过 `initialFirstResponder` 避免自动选中操作按钮。主窗口根背景 view 必须以显式 opt-in 方式接受 first responder，其他背景 view 默认仍不接受，且该根 view 继续是非 `NSControl` 的非操作控件。
 - 设置页 popup、switch、授权、刷新和 Login Item 操作必须在每次 App 语言刷新时获得可读 accessibility label。
 - 热力图 day cell 必须是 `.staticText` accessibility element；placeholder 必须退出 accessibility 树并清除复用残留。
 - 窗口逻辑标题必须是 `TokenWatch`，同时保持 `titleVisibility = .hidden`。
@@ -33,9 +33,10 @@
 - Modify: `TokenWatch/ViewControllers/CompactNumberFormatter.swift` — 保留状态栏格式，集中实现 Dashboard 紧凑数字规则。
 - Modify: `TokenWatch/ViewControllers/DashboardViewController.swift` — 为会话表创建独立横向 scroll view，并恢复 range button 的 focus ring。
 - Modify: `TokenWatch/ViewControllers/DashboardButtons.swift` — 恢复三个自定义按钮类的 first responder 能力和默认 focus ring。
+- Modify: `TokenWatch/ViewControllers/DashboardAppearance.swift` — 让背景 view 默认拒绝、仅主窗口根 view 显式接受 first responder。
 - Modify: `TokenWatch/AppDelegate.swift` — 配置主窗口逻辑标题、隐藏标题显示和初始 responder。
 - Modify: `TokenWatch/Services/LoginItemSettings.swift` — 定义 Login Item 四态、可测试 service 边界和系统动作。
-- Modify: `TokenWatch/ViewController.swift` — 渲染设置页四态、监听应用激活、设置本地化 accessibility label。
+- Modify: `TokenWatch/ViewController.swift` — 让主窗口根背景显式 opt in first responder，并渲染设置页四态、监听应用激活、设置本地化 accessibility label。
 - Modify: `TokenWatch/Localization/AppStrings.swift` — 增加 Login Item 批准、不可用、打开系统设置文案，并覆盖全部 12 种 App 语言。
 - Modify: `TokenWatch/ViewControllers/CalendarHeatmapCollectionViewItem.swift` — 生成并应用日期格 accessibility 快照。
 - Modify: `TokenWatch/ViewControllers/StatusPopoverViewController.swift` — 将同一 `Calendar` 传给热力图 item。
@@ -225,7 +226,7 @@ func testSessionTableScrollsHorizontally() throws {
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionTableUsesIndependentHorizontalScrollView -only-testing:TokenWatchUITests/TokenWatchUITests/testSessionTableScrollsHorizontally CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionTableUsesIndependentHorizontalScrollView()" -only-testing:TokenWatchUITests/TokenWatchUITests/testSessionTableScrollsHorizontally CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
 预期：FAIL；`DashboardSessionsPageScrollView` 与 `DashboardSessionsTableScrollView` 尚不存在，UI 查询无法找到内层 scroll view。
@@ -293,7 +294,7 @@ private func makeSessionTableScrollView() -> NSScrollView {
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionTableUsesIndependentHorizontalScrollView -only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionsNavigationShowsPencilSessionDetailsPage -only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionsTableHeightFitsTenCompactRows -only-testing:TokenWatchTests/DashboardSessionPaginationTests -only-testing:TokenWatchUITests/TokenWatchUITests/testSessionTableScrollsHorizontally CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionTableUsesIndependentHorizontalScrollView()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionsNavigationShowsPencilSessionDetailsPage()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardSessionsTableHeightFitsTenCompactRows()" -only-testing:TokenWatchTests/DashboardSessionPaginationTests -only-testing:TokenWatchUITests/TokenWatchUITests/testSessionTableScrollsHorizontally CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
 预期：PASS；内层滚动改变分页 next button 的屏幕 x 坐标，外层标题和指标卡不横向移动。
@@ -309,24 +310,54 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
 
 **Files:**
 - Modify: `TokenWatch/ViewControllers/DashboardButtons.swift:25-53,133-140,186-228`
+- Modify: `TokenWatch/ViewControllers/DashboardAppearance.swift:100-126`
 - Modify: `TokenWatch/ViewControllers/DashboardViewController.swift:599-618`
-- Modify: `TokenWatch/ViewController.swift:318-330`
+- Modify: `TokenWatch/ViewController.swift:50-56,318-330`
 - Modify: `TokenWatch/AppDelegate.swift:156-176`
 - Test: `TokenWatchTests/TokenWatchTests.swift:155-169,344-353,594-614`
 - Test: `TokenWatchUITests/TokenWatchUITests.swift:16-30`
 
 **Interfaces:**
 - Consumes: AppKit 默认 `NSButton.acceptsFirstResponder == true` 与 `NSFocusRingType.default`。
-- Produces: `MainWindowFactory.makeWindowController(languageSettings:) -> NSWindowController` 返回逻辑标题为 `TokenWatch`、视觉标题隐藏、`initialFirstResponder` 指向内容根视图的窗口。
+- Produces: `DashboardBackgroundView.init(frame:backgroundColor:acceptsFirstResponder:)` 默认参数为 `false`；`ViewController` 的根背景 view 显式传 `true`；`MainWindowFactory.makeWindowController(languageSettings:) -> NSWindowController` 返回逻辑标题为 `TokenWatch`、视觉标题隐藏、`initialFirstResponder` 指向该非操作根视图且能够实际成为 `window.firstResponder` 的窗口。
 
-- [ ] **Step 1: 替换拒绝焦点的断言并增加窗口语义测试**
+- [ ] **Step 1: 替换拒绝焦点的断言并增加真实窗口 responder 测试**
 
-将 `mainWindowFactoryBuildsVisibleMainWindowShape` 的标题断言改为并增加：
+将 `mainWindowFactoryBuildsVisibleMainWindowShape` 替换为完整测试；除了检查配置属性，还必须显示窗口、显式请求根 view 成为 first responder，并读取 `window.firstResponder` 验证结果：
 
 ```swift
-#expect(window.title == "TokenWatch")
-#expect(window.titleVisibility == .hidden)
-#expect(window.initialFirstResponder === window.contentViewController?.view)
+@MainActor
+@Test func mainWindowFactoryBuildsVisibleMainWindowShape() throws {
+    let windowController = MainWindowFactory.makeWindowController(
+        languageSettings: zhHansLanguageSettings()
+    )
+    let window = try #require(windowController.window)
+    defer { window.close() }
+    let rootView = try #require(window.contentViewController?.view)
+
+    #expect(window.title == "TokenWatch")
+    #expect(window.titleVisibility == .hidden)
+    #expect(window.styleMask.contains(.titled))
+    #expect(window.styleMask.contains(.closable))
+    #expect(window.styleMask.contains(.miniaturizable))
+    #expect(window.styleMask.contains(.resizable))
+    #expect(window.isReleasedWhenClosed == false)
+    #expect(window.contentViewController is ViewController)
+    #expect(window.contentView?.frame.size == MainWindowFactory.contentSize)
+    #expect(rootView.acceptsFirstResponder)
+    #expect(!(rootView is NSControl))
+    #expect(window.initialFirstResponder === rootView)
+
+    let ordinaryBackground = DashboardBackgroundView(
+        backgroundColor: DashboardPalette.panelBackground
+    )
+    #expect(!ordinaryBackground.acceptsFirstResponder)
+
+    windowController.showWindow(nil)
+    #expect(window.isVisible)
+    #expect(window.makeFirstResponder(rootView))
+    #expect(window.firstResponder === rootView)
+}
 ```
 
 用以下测试替换 `dashboardRangeButtonsDoNotBecomeFirstResponderOnStartup`：
@@ -411,12 +442,12 @@ XCTAssertTrue(mainWindow.waitForExistence(timeout: 5))
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/TokenWatchTests/mainWindowFactoryBuildsVisibleMainWindowShape -only-testing:TokenWatchTests/TokenWatchTests/dashboardActionButtonsSupportKeyboardFocusAndFocusRings -only-testing:TokenWatchTests/TokenWatchTests/dashboardNavigationItemsUsePencilIconSpacing -only-testing:TokenWatchUITests/TokenWatchUITests/testLaunchShowsPencilDashboardOverview CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/mainWindowFactoryBuildsVisibleMainWindowShape()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardActionButtonsSupportKeyboardFocusAndFocusRings()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardNavigationItemsUsePencilIconSpacing()" -only-testing:TokenWatchUITests/TokenWatchUITests/testLaunchShowsPencilDashboardOverview CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：FAIL；窗口标题仍为空，三个按钮类返回 `acceptsFirstResponder == false`，导航和 range/session 控件的 focus ring 为 `.none`。
+预期：FAIL；窗口标题仍为空，根背景 view 与三个按钮类都返回 `acceptsFirstResponder == false`，`window.makeFirstResponder(rootView)` 返回 false，导航和 range/session 控件的 focus ring 为 `.none`。
 
-- [ ] **Step 3: 删除永久焦点拒绝并配置初始 responder**
+- [ ] **Step 3: 删除永久焦点拒绝并让主窗口根 view 选择性接受 responder**
 
 在 `DashboardButtons.swift` 中删除三个完整 override：
 
@@ -438,6 +469,41 @@ focusRingType = .none
 button.focusRingType = .none
 ```
 
+在 `DashboardBackgroundView` 中加入默认关闭的 opt-in；仅显式传 `true` 的背景 view 才接受 first responder：
+
+```swift
+private let allowsFirstResponder: Bool
+
+init(
+    frame frameRect: NSRect = .zero,
+    backgroundColor: NSColor,
+    acceptsFirstResponder: Bool = false
+) {
+    self.backgroundColor = backgroundColor
+    self.allowsFirstResponder = acceptsFirstResponder
+    super.init(frame: frameRect)
+    wantsLayer = true
+    updateLayerColors()
+}
+
+override var acceptsFirstResponder: Bool {
+    allowsFirstResponder
+}
+```
+
+在 `ViewController.loadView()` 中只让主窗口根背景 opt in：
+
+```swift
+override func loadView() {
+    view = DashboardBackgroundView(
+        frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
+        backgroundColor: DashboardPalette.appBackground,
+        acceptsFirstResponder: true
+    )
+    view.setAccessibilityIdentifier("DashboardRootView")
+}
+```
+
 在 `MainWindowFactory.makeWindowController` 中使用同一个内容控制器配置窗口：
 
 ```swift
@@ -456,19 +522,19 @@ window.center()
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/TokenWatchTests/mainWindowFactoryBuildsVisibleMainWindowShape -only-testing:TokenWatchTests/TokenWatchTests/dashboardActionButtonsSupportKeyboardFocusAndFocusRings -only-testing:TokenWatchTests/TokenWatchTests/dashboardNavigationItemsUsePencilIconSpacing -only-testing:TokenWatchTests/TokenWatchTests/dashboardRefreshButtonIsStableActionEntry -only-testing:TokenWatchUITests/TokenWatchUITests/testLaunchShowsPencilDashboardOverview CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/mainWindowFactoryBuildsVisibleMainWindowShape()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardActionButtonsSupportKeyboardFocusAndFocusRings()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardNavigationItemsUsePencilIconSpacing()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardRefreshButtonIsStableActionEntry()" -only-testing:TokenWatchUITests/TokenWatchUITests/testLaunchShowsPencilDashboardOverview CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：PASS；逻辑标题可被 XCUI 查询，标题仍不在 title bar 绘制，按钮保留原视觉布局并接受 first responder。
+预期：PASS；逻辑标题可被 XCUI 查询，标题仍不在 title bar 绘制；主窗口根 view 是可实际成为 `window.firstResponder` 的非操作控件，其他背景 view 仍默认拒绝；按钮保留原视觉布局并接受 first responder。
 
 - [ ] **Step 5: 提交键盘和窗口语义**
 
 ```bash
-git add TokenWatch/ViewControllers/DashboardButtons.swift TokenWatch/ViewControllers/DashboardViewController.swift TokenWatch/ViewController.swift TokenWatch/AppDelegate.swift TokenWatchTests/TokenWatchTests.swift TokenWatchUITests/TokenWatchUITests.swift
+git add TokenWatch/ViewControllers/DashboardButtons.swift TokenWatch/ViewControllers/DashboardAppearance.swift TokenWatch/ViewControllers/DashboardViewController.swift TokenWatch/ViewController.swift TokenWatch/AppDelegate.swift TokenWatchTests/TokenWatchTests.swift TokenWatchUITests/TokenWatchUITests.swift
 git commit -m "fix(window): 恢复按钮键盘焦点与窗口语义"
 ```
 
-### Task 4: 建立可测试的 Login Item 四态领域模型
+### Task 4: 建立 Login Item 四态领域模型并锁定开关映射
 
 **Files:**
 - Modify: `TokenWatch/Services/LoginItemSettings.swift:1-37`
@@ -478,9 +544,9 @@ git commit -m "fix(window): 恢复按钮键盘焦点与窗口语义"
 
 **Interfaces:**
 - Consumes: `SMAppService.Status`、`SMAppService.register()`、`SMAppService.unregister()`、`SMAppService.openSystemSettingsLoginItems()`。
-- Produces: `LoginItemSettingsState`；`LoginItemSettingsControlling.state`、`setEnabled(_:)`、`openSystemSettings()`；内部 `LoginItemServiceControlling` 测试 seam。
+- Produces: `LoginItemSettingsState`；`LoginItemSettingsControlling.state`、`setEnabled(_:)`、`openSystemSettings()`；内部 `LoginItemServiceControlling` 测试 seam；`SettingsViewController.renderLaunchAtLoginState()` 的基础四态开关映射，其中 `requiresApproval` 为 on/enabled、`unavailable` 为 off/disabled。
 
-- [ ] **Step 1: 编写失败的 service 映射和动作矩阵测试**
+- [ ] **Step 1: 编写失败的 service 动作与 requiresApproval/unavailable UI 映射测试**
 
 创建 `TokenWatchTests/Services/LoginItemSettingsTests.swift`：
 
@@ -573,15 +639,87 @@ private final class FakeLoginItemService: LoginItemServiceControlling {
 }
 ```
 
-- [ ] **Step 2: 运行新 service suite 并确认 RED**
+在 `TokenWatchTests.swift` 中增加两个只验证基础开关映射的测试。说明文案、系统设置按钮和激活刷新仍属于 Task 5，不在这里提前断言：
+
+```swift
+@MainActor
+@Test func settingsMapsRequiresApprovalToEnabledOnSwitch() throws {
+    let controller = SettingsViewController(
+        isAuthorized: { false },
+        loginItemSettings: FakeLoginItemSettings(state: .requiresApproval),
+        languageSettings: zhHansLanguageSettings()
+    )
+    controller.loadViewIfNeeded()
+
+    let toggle = try #require(
+        controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+    )
+    #expect(toggle.state == .on)
+    #expect(toggle.isEnabled)
+}
+
+@MainActor
+@Test func settingsMapsUnavailableToDisabledOffSwitch() throws {
+    let controller = SettingsViewController(
+        isAuthorized: { false },
+        loginItemSettings: FakeLoginItemSettings(state: .unavailable),
+        languageSettings: zhHansLanguageSettings()
+    )
+    controller.loadViewIfNeeded()
+
+    let toggle = try #require(
+        controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+    )
+    #expect(toggle.state == .off)
+    #expect(!toggle.isEnabled)
+}
+```
+
+同时先把 `TokenWatchTests.swift` 末尾的 Bool fake 替换为四态 fake，让上述测试与既有开关测试共享同一个 test double：
+
+```swift
+@MainActor
+private final class FakeLoginItemSettings: LoginItemSettingsControlling {
+    enum ToggleError: Error {
+        case failed
+    }
+
+    private(set) var requestedStates: [Bool] = []
+    private(set) var openSystemSettingsCallCount = 0
+    var errorToThrow: Error?
+    var state: LoginItemSettingsState
+
+    init(state: LoginItemSettingsState) {
+        self.state = state
+    }
+
+    convenience init(isEnabled: Bool) {
+        self.init(state: isEnabled ? .enabled : .notRegistered)
+    }
+
+    func setEnabled(_ enabled: Bool) throws {
+        requestedStates.append(enabled)
+        if let errorToThrow {
+            throw errorToThrow
+        }
+        state = enabled ? .enabled : .notRegistered
+    }
+
+    func openSystemSettings() {
+        openSystemSettingsCallCount += 1
+    }
+}
+```
+
+- [ ] **Step 2: 运行 service 与基础 UI 映射测试并确认 RED**
 
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/LoginItemSettingsTests -skip-testing:TokenWatchUITests CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/LoginItemSettingsTests "-only-testing:TokenWatchTests/TokenWatchTests/settingsMapsRequiresApprovalToEnabledOnSwitch()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsMapsUnavailableToDisabledOffSwitch()" -skip-testing:TokenWatchUITests CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：编译失败；`LoginItemSettingsState`、`LoginItemServiceControlling`、`state` 与 `openSystemSettingsAction` 尚未定义。
+预期：编译失败；`LoginItemSettingsState`、`LoginItemServiceControlling`、`state` 与 `openSystemSettingsAction` 尚未定义。两个 UI 测试已在生产 `renderLaunchAtLoginState()` 四态映射之前进入 suite，不留到 Task 5 伪装成新 RED。
 
 - [ ] **Step 3: 用四态实现替换仅 Bool 的 service**
 
@@ -672,7 +810,7 @@ final class LoginItemSettings: LoginItemSettingsControlling {
 
 - [ ] **Step 4: 将现有设置消费者迁移到 state 接口**
 
-先把 `SettingsViewController.renderLaunchAtLoginState()` 改为不依赖新文案的完整 switch/off/disabled 映射；Task 5 会在同一个 switch 上增加说明和系统设置按钮：
+把 `SettingsViewController.renderLaunchAtLoginState()` 改为不依赖新文案的完整 switch/off/disabled 映射，让 Step 1 已经写入 suite 的两个 UI 测试转绿；Task 5 只在这个已验证的映射上增加说明和系统设置按钮：
 
 ```swift
 private func renderLaunchAtLoginState() {
@@ -690,51 +828,15 @@ private func renderLaunchAtLoginState() {
 }
 ```
 
-用以下 fake 替换 `TokenWatchTests.swift` 末尾的 Bool fake，使既有开关成功/失败测试继续测试同一协议：
-
-```swift
-@MainActor
-private final class FakeLoginItemSettings: LoginItemSettingsControlling {
-    enum ToggleError: Error {
-        case failed
-    }
-
-    private(set) var requestedStates: [Bool] = []
-    private(set) var openSystemSettingsCallCount = 0
-    var errorToThrow: Error?
-    var state: LoginItemSettingsState
-
-    init(state: LoginItemSettingsState) {
-        self.state = state
-    }
-
-    convenience init(isEnabled: Bool) {
-        self.init(state: isEnabled ? .enabled : .notRegistered)
-    }
-
-    func setEnabled(_ enabled: Bool) throws {
-        requestedStates.append(enabled)
-        if let errorToThrow {
-            throw errorToThrow
-        }
-        state = enabled ? .enabled : .notRegistered
-    }
-
-    func openSystemSettings() {
-        openSystemSettingsCallCount += 1
-    }
-}
-```
-
-- [ ] **Step 5: 运行 service 和现有设置测试并确认 GREEN**
+- [ ] **Step 5: 运行 service、四态 UI 映射和现有设置测试并确认 GREEN**
 
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/LoginItemSettingsTests -only-testing:TokenWatchTests/TokenWatchTests/settingsShowsLaunchAtLoginSwitch -only-testing:TokenWatchTests/TokenWatchTests/togglingLaunchAtLoginSwitchUpdatesLoginItemSetting -only-testing:TokenWatchTests/TokenWatchTests/failedLaunchAtLoginToggleRestoresActualState -skip-testing:TokenWatchUITests CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/LoginItemSettingsTests "-only-testing:TokenWatchTests/TokenWatchTests/settingsMapsRequiresApprovalToEnabledOnSwitch()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsMapsUnavailableToDisabledOffSwitch()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsShowsLaunchAtLoginSwitch()" "-only-testing:TokenWatchTests/TokenWatchTests/togglingLaunchAtLoginSwitchUpdatesLoginItemSetting()" "-only-testing:TokenWatchTests/TokenWatchTests/failedLaunchAtLoginToggleRestoresActualState()" -skip-testing:TokenWatchUITests CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：PASS；四个系统状态映射正确，动作矩阵没有重复 register，也不会对 unavailable 执行系统变更。
+预期：PASS；四个系统状态映射正确，`requiresApproval` 开关为 on/enabled、`unavailable` 为 off/disabled，动作矩阵没有重复 register，也不会对 unavailable 执行系统变更。
 
 - [ ] **Step 6: 提交领域边界和消费者迁移**
 
@@ -752,16 +854,16 @@ git commit -m "feat(settings): 引入登录项四态模型"
 - Modify: `TokenWatchTests/Localization/AppLanguageSettingsTests.swift:115-155`
 
 **Interfaces:**
-- Consumes: Task 4 的 `LoginItemSettingsState` 与 `LoginItemSettingsControlling.state/setEnabled/openSystemSettings`。
-- Produces: `LaunchAtLoginStatusLabel`、`OpenLoginItemsSettingsButton` 两个稳定 identifier；`renderLaunchAtLoginState()` 四态 UI；`NSApplication.didBecomeActiveNotification` 状态刷新；三个新 `AppStringKey`。
+- Consumes: Task 4 的 `LoginItemSettingsState`、`LoginItemSettingsControlling.state/setEnabled/openSystemSettings`，以及已经由失败测试锁定并实现的 `requiresApproval → on/enabled`、`unavailable → off/disabled` 基础开关映射。
+- Produces: `LaunchAtLoginStatusLabel`、`OpenLoginItemsSettingsButton` 两个稳定 identifier；在既有四态开关映射上增加批准/不可用说明；`NSApplication.didBecomeActiveNotification` 状态刷新；三个新 `AppStringKey`。
 
-- [ ] **Step 1: 编写失败的四态、激活刷新、辅助功能、本地化和外观隔离测试**
+- [ ] **Step 1: 编写失败的状态说明、激活刷新、辅助功能、本地化和外观隔离测试**
 
 在 `TokenWatchTests` 中增加：
 
 ```swift
 @MainActor
-@Test func settingsRendersRequiresApprovalAndOpensSystemSettingsWithoutRegistering() throws {
+@Test func settingsShowsRequiresApprovalGuidanceAndOpensSystemSettings() throws {
     let loginItemSettings = FakeLoginItemSettings(state: .requiresApproval)
     let controller = SettingsViewController(
         isAuthorized: { false },
@@ -770,14 +872,11 @@ git commit -m "feat(settings): 引入登录项四态模型"
     )
     controller.loadViewIfNeeded()
 
-    let toggle = try #require(controller.view.switchControl(identifier: "LaunchAtLoginSwitch"))
     let status = try #require(
         controller.view.firstDescendant(identifier: "LaunchAtLoginStatusLabel") as? NSTextField
     )
     let openButton = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
 
-    #expect(toggle.state == .on)
-    #expect(toggle.isEnabled)
     #expect(status.stringValue == "需要在系统设置中批准开机自启动。")
     #expect(!status.isHidden)
     #expect(!openButton.isHidden)
@@ -785,14 +884,10 @@ git commit -m "feat(settings): 引入登录项四态模型"
     _ = openButton.sendAction(openButton.action, to: openButton.target)
     #expect(loginItemSettings.openSystemSettingsCallCount == 1)
     #expect(loginItemSettings.requestedStates.isEmpty)
-
-    toggle.state = .off
-    _ = toggle.sendAction(toggle.action, to: toggle.target)
-    #expect(loginItemSettings.requestedStates == [false])
 }
 
 @MainActor
-@Test func settingsDisablesUnavailableLoginItemAndRefreshesWhenAppBecomesActive() throws {
+@Test func settingsShowsUnavailableGuidanceAndRefreshesWhenAppBecomesActive() throws {
     let loginItemSettings = FakeLoginItemSettings(state: .unavailable)
     let controller = SettingsViewController(
         isAuthorized: { false },
@@ -807,9 +902,8 @@ git commit -m "feat(settings): 引入登录项四态模型"
     )
     let openButton = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
 
-    #expect(toggle.state == .off)
-    #expect(!toggle.isEnabled)
     #expect(status.stringValue == "当前无法使用开机自启动。")
+    #expect(!status.isHidden)
     #expect(openButton.isHidden)
 
     loginItemSettings.state = .enabled
@@ -929,15 +1023,15 @@ let viewController = DashboardViewController(
 }
 ```
 
-- [ ] **Step 2: 运行设置与本地化测试并确认 RED**
+- [ ] **Step 2: 运行 Task 5 新增行为测试并确认 RED**
 
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/TokenWatchTests/settingsRendersRequiresApprovalAndOpensSystemSettingsWithoutRegistering -only-testing:TokenWatchTests/TokenWatchTests/settingsDisablesUnavailableLoginItemAndRefreshesWhenAppBecomesActive -only-testing:TokenWatchTests/TokenWatchTests/settingsRefreshesLocalizedAccessibilityLabels -only-testing:TokenWatchTests/TokenWatchTests/settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride -only-testing:TokenWatchTests/TokenWatchTests/settingsAuthorizedButtonUsesNeutralLightColors -only-testing:TokenWatchTests/AppLanguageSettingsTests/loginItemStatusStringsCoverEverySupportedLanguage -skip-testing:TokenWatchUITests CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/settingsShowsRequiresApprovalGuidanceAndOpensSystemSettings()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsShowsUnavailableGuidanceAndRefreshesWhenAppBecomesActive()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsRefreshesLocalizedAccessibilityLabels()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsAuthorizedButtonUsesNeutralLightColors()" "-only-testing:TokenWatchTests/AppLanguageSettingsTests/loginItemStatusStringsCoverEverySupportedLanguage()" -skip-testing:TokenWatchUITests CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：编译失败；新 identifier、四态说明、独立系统设置操作和三个 `AppStringKey` 尚不存在。
+预期：编译失败；Task 4 的两个基础开关映射测试已经是 GREEN，本次 RED 只来自尚不存在的新 identifier、状态说明、独立系统设置操作、激活刷新和三个 `AppStringKey`。
 
 - [ ] **Step 3: 增加三个本地化 key 及全部翻译**
 
@@ -1013,7 +1107,7 @@ case settingsOpenLoginItemsSettings
 .settingsOpenLoginItemsSettings: "Otwórz ustawienia rzeczy otwieranych",
 ```
 
-- [ ] **Step 4: 增加设置控件、四态渲染、激活刷新和 AX label**
+- [ ] **Step 4: 在已验证的四态开关映射上增加说明、激活刷新和 AX label**
 
 在 `SettingsViewController` 属性区增加：
 
@@ -1072,7 +1166,7 @@ launchAtLoginSettingsStack.alignment = .leading
 launchAtLoginSettingsStack.spacing = 8
 ```
 
-在 `contentStack` 中用 `launchAtLoginSettingsStack` 替换旧 `launchAtLoginStack`，并将 `renderLaunchAtLoginState()` 替换为：
+在 `contentStack` 中用 `launchAtLoginSettingsStack` 替换旧 `launchAtLoginStack`，并扩展 Task 4 已验证的 `renderLaunchAtLoginState()`：保留原开关 state/enabled 映射，只增加状态文案和独立系统设置操作的可见性。
 
 ```swift
 private func renderLaunchAtLoginState() {
@@ -1188,10 +1282,10 @@ NotificationCenter.default.removeObserver(self)
 运行：
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/LoginItemSettingsTests -only-testing:TokenWatchTests/AppLanguageSettingsTests -only-testing:TokenWatchTests/TokenWatchTests/settingsRendersRequiresApprovalAndOpensSystemSettingsWithoutRegistering -only-testing:TokenWatchTests/TokenWatchTests/settingsDisablesUnavailableLoginItemAndRefreshesWhenAppBecomesActive -only-testing:TokenWatchTests/TokenWatchTests/settingsRefreshesLocalizedAccessibilityLabels -only-testing:TokenWatchTests/TokenWatchTests/settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride -only-testing:TokenWatchTests/TokenWatchTests/settingsAuthorizedButtonUsesNeutralLightColors -only-testing:TokenWatchTests/TokenWatchTests/togglingLaunchAtLoginSwitchUpdatesLoginItemSetting -only-testing:TokenWatchTests/TokenWatchTests/failedLaunchAtLoginToggleRestoresActualState -only-testing:TokenWatchUITests/TokenWatchUITests/testSettingsPageExposesActionControls CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData -only-testing:TokenWatchTests/LoginItemSettingsTests -only-testing:TokenWatchTests/AppLanguageSettingsTests "-only-testing:TokenWatchTests/TokenWatchTests/settingsMapsRequiresApprovalToEnabledOnSwitch()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsMapsUnavailableToDisabledOffSwitch()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsShowsRequiresApprovalGuidanceAndOpensSystemSettings()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsShowsUnavailableGuidanceAndRefreshesWhenAppBecomesActive()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsRefreshesLocalizedAccessibilityLabels()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride()" "-only-testing:TokenWatchTests/TokenWatchTests/settingsAuthorizedButtonUsesNeutralLightColors()" "-only-testing:TokenWatchTests/TokenWatchTests/togglingLaunchAtLoginSwitchUpdatesLoginItemSetting()" "-only-testing:TokenWatchTests/TokenWatchTests/failedLaunchAtLoginToggleRestoresActualState()" -only-testing:TokenWatchUITests/TokenWatchUITests/testSettingsPageExposesActionControls CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：PASS；requiresApproval 打开系统设置时 register 调用数保持零，didBecomeActive 后 switch 立即反映 fake 的新状态，真实 `HomeDirectoryBookmark` 不再影响外观测试。
+预期：PASS；Task 4 的 requiresApproval/unavailable 基础开关映射继续通过，Task 5 新增的说明与系统设置操作正确，打开系统设置时 register 调用数保持零，didBecomeActive 后 switch 立即反映 fake 的新状态，真实 `HomeDirectoryBookmark` 不再影响外观测试。
 
 - [ ] **Step 6: 提交设置状态、本地化、辅助功能和确定性外观覆盖**
 

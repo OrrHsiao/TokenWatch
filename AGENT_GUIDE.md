@@ -68,8 +68,8 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platfo
 # Run only UI tests
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
 
-# Run a single unit test
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/TokenWatchTests/testMethodName -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
+# Run a single Swift Testing test (the identifier must include trailing parentheses)
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' '-only-testing:TokenWatchTests/TokenWatchTests/testMethodName()' -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
 
 # Compile tests without running them (usable inside sandbox when testmanagerd is unavailable)
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData build-for-testing

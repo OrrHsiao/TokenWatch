@@ -4,7 +4,7 @@
 
 **Goal:** 让 TokenWatch 对同一条 Claude、Codex 或 OpenCode 用量记录，在 ccusage `v20.0.16 --offline` 默认 Auto 成本模式下得到相同 USD 结果。
 
-**Architecture:** 将定价拆成三个稳定边界：`LiteLLMPriceCatalog` / `ModelsDevPriceCatalog` 只负责解码固定快照，`PricingTable` 负责 primary、builtin、alias 与 fallback 的确定性查价，`PricingEngine` 负责 standard 与 Codex 两套 token 计价语义。provider parser 负责传播 authoritative upstream cost、将 OpenCode `tokens.total` 缺口并入可计费 output，以及恢复 Codex speed 和模型状态；最终由 `UsageCostResolver` 实现 Auto 的 upstream-first 选择。
+**Architecture:** 将定价拆成三个稳定边界：`LiteLLMPriceCatalog` / `ModelsDevPriceCatalog` 只负责解码固定快照，`PricingTable` 负责 primary、builtin、alias 与 fallback 的确定性查价，`PricingEngine` 负责 standard 与 Codex 两套 token 计价语义。执行到本计划 Task 2 后必须先完成 Provider 数据正确性计划 Task 1，把 `TokenUsage.cacheCreation` 改成 optional；随后才能回到本计划 Task 3–6。provider parser 负责传播 authoritative upstream cost、将 OpenCode `tokens.total` 缺口并入可计费 output，以及恢复 Codex speed 和模型状态；最终由 `UsageCostResolver` 实现 Auto 的 upstream-first 选择。
 
 **Tech Stack:** Swift 6、Foundation、Swift Testing、Xcode 26.5、macOS app-hosted unit tests、内嵌 JSON 资源；不增加运行时网络或第三方依赖。
 
@@ -25,7 +25,9 @@
 - `.standard` 的 long-context 判断逐字使用 ccusage `TokenUsageRaw.input_tokens`；只有 `.codex` 因统一模型已拆成 pure/cached，才以两者之和重建原始 input。
 - Codex long-context 判定必须在单条请求上使用 `pure input + cached input`，不得先跨请求聚合。
 - LiteLLM 与 models.dev 缺失 cache write/read 时分别使用 input × 1.25 与 input × 0.1；Codex 对非显式 cache read 改用完整 input price。
-- 不引入通用 TOML、数据库、Rust 构建系统或第三方图表依赖；`.codex/config.toml` 只解析顶层 `service_tier` 行。
+- 跨计划唯一执行序列为：本计划 Task 1 → 本计划 Task 2 → Provider 数据正确性计划 Task 1 → 本计划 Task 3 → Task 4 → Task 5 → Task 6 → Provider 数据正确性计划 Task 2–7；不得把整个 Provider 计划推迟到本计划之后，也不得提前执行 Provider Task 2。
+- Provider Task 1 的 production change 与定向测试未 GREEN 前，本计划任何步骤都不得写入 `cacheCreation: nil`；该语法第一次出现在本计划 Task 3，此时 `TokenUsage.cacheCreation` 必须已经是 `CacheCreation?`。
+- 不引入通用 TOML、数据库、Rust 构建系统或第三方图表依赖；`.codex/config.toml` 只解析真正位于文档顶层、且出现在任何 TOML table header 之前的 `service_tier` 行，`[table]` / `[[array-of-tables]]` 内同名键一律忽略。
 - 所有行为先写最小失败测试，再写实现；金额比较容差为 `1e-9`。
 - 测试命令统一指定 `-destination 'platform=macOS'`、`-skip-testing:TokenWatchUITests` 和 `-derivedDataPath .build/DerivedData`。
 - test/build-for-testing 命令统一使用 `CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=-` 的临时 ad-hoc 签名；纯 build/analyze 使用 `CODE_SIGNING_ALLOWED=NO`。
@@ -52,7 +54,7 @@
 - Modify `TokenWatch/Providers/OpenCode/OpenCodeMessageData.swift`: 宽容解码 token 子字段，并按 ccusage `tokens.total` fallback 计算可计费 output。
 - Modify `TokenWatch/Providers/OpenCode/OpenCodeMessageParser.swift`: 将 total 缺口并入 output，并保留 `cost > 0` 过滤。
 - Create `TokenWatch/Providers/OpenCode/OpenCodePricingCandidateResolver.swift`: 逐字生成 ccusage OpenCode 裸 model、alias、规范化与 provider/model 候选。
-- Create `TokenWatch/Providers/Codex/CodexServiceTierResolver.swift`: 无依赖识别 `fast` / `priority`。
+- Create `TokenWatch/Providers/Codex/CodexServiceTierResolver.swift`: 无依赖跟踪 TOML section，只从 `config.toml` 文档顶层识别 `fast` / `priority`。
 - Create `TokenWatch/Providers/Codex/CodexModelResolver.swift`: 保存 explicit/fallback 状态并解析 `codex-auto-review` 日期表。
 - Modify `TokenWatch/Providers/Codex/CodexRecord.swift`: 解码 event/info 级真实 model。
 - Modify `TokenWatch/Providers/Codex/CodexRolloutParser.swift`: 恢复模型状态、应用 fallback 与 pricing speed，并让 cache 对 speed 敏感。
@@ -1076,12 +1078,15 @@ git commit -m "feat(pricing): 对齐 ccusage 定价查找优先级"
 ### Task 3: PricingEngine 的 marginal tier 与 Codex whole-request tier
 
 **Files:**
+- Prerequisite (already modified and GREEN in Provider 数据正确性计划 Task 1): `TokenWatch/Models/TokenUsage.swift`
 - Modify: `TokenWatch/Pricing/PricingEngine.swift:94-197`
 - Modify: `TokenWatchTests/Pricing/PricingEngineTests.swift`
 
 **Interfaces:**
-- Consumes: `PricingTable.shared`、Task 1 的 `ModelPricing.cacheReadPriceIsExplicit` / `longContextThreshold`。
+- Consumes: `PricingTable.shared`、Task 1 的 `ModelPricing.cacheReadPriceIsExplicit` / `longContextThreshold`，以及 Provider 数据正确性计划 Task 1 已产出的 `TokenUsage.cacheCreation: CacheCreation?` 与接受 optional 的显式 initializer。
 - Produces: `PricingSemantics.standard` / `.codex`，以及带 `semantics:` 参数的两个 `PricingEngine.calculateCost` overload。
+
+**执行门禁：** 开始本 Task 前，必须已按 Provider 数据正确性计划 Task 1 完成 `TokenUsage.cacheCreation` 的 optional production change，并确认该 Task 的 `TokenUsageDecodingTests`、OpenCode/Codex 扁平 usage 定向测试 GREEN。若尚未完成，停止本计划并先执行该 Task；不能临时把下方 `cacheCreation: nil` 改回零对象绕过依赖。
 
 - [ ] **Step 1: 写 whole-request、implicit cache 和 Codex fast 的失败测试**
 
@@ -1927,7 +1932,7 @@ struct OpenCodeTokens: Decodable {
         return output + max(total - known, 0)
     }
 
-    /// 已应用 total fallback 后仍全 0 才是 placeholder。
+    /// 已应用 total fallback 后仍全 0 才是可跳过的空 usage。
     var isAllZero: Bool {
         // pinned OpenCode adapter 不把 tokens.reasoning 映射到 TokenUsageRaw；
         // total 若包含它，会由 total fallback 以 output rate 计价。
@@ -2121,7 +2126,7 @@ git commit -m "fix(pricing): 对齐 Auto 与 OpenCode token 回退"
 
 **Interfaces:**
 - Consumes: `TokenUsage.serviceTier` 与 Task 3 的 `.codex` fast/cache 语义及 `PricingEngine.calculateCost(usage:model:semantics:)`。
-- Produces: `CodexPricingSpeed`、`CodexServiceTierResolver`、`CodexModelState`、`CodexModelResolver.resolve(parsedModel:eventDate:current:)`，以及带 `pricingSpeed:` 的 parser API。
+- Produces: `CodexPricingSpeed`、只接受顶层 `service_tier` 的 `CodexServiceTierResolver`、`CodexModelState`、`CodexModelResolver.resolve(parsedModel:eventDate:current:)`，以及带 `pricingSpeed:` 的 parser API。
 
 - [ ] **Step 1: 写 service tier 与模型状态的失败测试**
 
@@ -2150,6 +2155,39 @@ struct CodexServiceTierResolverTests {
         #expect(CodexServiceTierResolver.pricingSpeed(
             in: #"service_tier = "breakfast""#
         ) == .standard)
+    }
+
+    @Test("TOML table 内同名 service_tier 不得冒充顶层设置")
+    func rejectsServiceTierInsideTables() {
+        let nestedConfigurations = [
+            """
+            [model_providers.openai]
+            service_tier = "fast"
+            """,
+            """
+            [profiles.fast]
+            model = "gpt-5.4"
+            service_tier = "priority"
+            """,
+            """
+            [[profiles]]
+            name = "fast"
+            service_tier = "fast"
+            """,
+        ]
+
+        for contents in nestedConfigurations {
+            #expect(
+                CodexServiceTierResolver.pricingSpeed(in: contents) == .standard,
+                Comment(contents)
+            )
+        }
+
+        #expect(CodexServiceTierResolver.pricingSpeed(in: """
+        service_tier = "priority"
+        [profiles.default]
+        service_tier = "standard"
+        """) == .fast)
     }
 }
 ```
@@ -2251,7 +2289,7 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch \
   -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: 编译失败，报告 resolver 类型不存在，且 `CodexEventMsg` / `CodexTokenCountInfo` 没有 `model`。
+Expected: 编译失败，报告 resolver 类型不存在，且 `CodexEventMsg` / `CodexTokenCountInfo` 没有 `model`。如果只先补入旧的逐行 key/value 实现，`rejectsServiceTierInsideTables` 仍会 RED，因为 table 内的同名键会被错误识别成 `.fast`。
 
 - [ ] **Step 3: 实现 service tier 与模型 resolver**
 
@@ -2267,9 +2305,20 @@ enum CodexPricingSpeed: Sendable, Equatable {
 
 struct CodexServiceTierResolver: Sendable {
     static func pricingSpeed(in contents: String) -> CodexPricingSpeed {
+        var isTopLevel = true
         for line in contents.split(whereSeparator: \.isNewline) {
             let setting = String(line.split(separator: "#", maxSplits: 1).first ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !setting.isEmpty else { continue }
+
+            // TOML table header 之后的裸 key 都属于该 table；TOML 没有
+            // “返回文档根部”的 header，因此一旦进入 section 就保持 false。
+            if setting.hasPrefix("[") {
+                isTopLevel = false
+                continue
+            }
+
+            guard isTopLevel else { continue }
             guard let equals = setting.firstIndex(of: "=") else { continue }
             let key = String(setting[..<equals]).trimmingCharacters(in: .whitespaces)
             guard key == "service_tier" else { continue }
@@ -2709,7 +2758,7 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch \
   -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: 四个 suite 全部通过；无模型事件产出 `gpt-5`，真实模型覆盖 fallback，speed 改变不命中旧 cache，`raw=100 / cached=150` 被归一化为 `pure=0 / cached=100` 且本地成本为 `$0.0000225`。
+Expected: 四个 suite 全部通过；只有 table header 之前的顶层 `service_tier` 能启用 fast，`[table]` / `[[array-of-tables]]` 内同名键保持 standard；无模型事件产出 `gpt-5`，真实模型覆盖 fallback，speed 改变不命中旧 cache，`raw=100 / cached=150` 被归一化为 `pure=0 / cached=100` 且本地成本为 `$0.0000225`。
 
 - [ ] **Step 8: 提交 Codex speed 与 fallback**
 
@@ -2991,13 +3040,15 @@ git commit -m "test(pricing): 锁定 ccusage 离线金额契约"
 ## 顺序依赖与后续阶段交接
 
 1. Task 1 → Task 2：查价表依赖 catalog 的 explicit metadata，不能并行落地。
-2. Task 2 → Task 3：long-context rates 与 fast multiplier 必须先进入 `ModelPricing`，engine 才能测试真实合同。
-3. Task 3 → Task 4：`UsageCostResolver` 依赖新的 `PricingSemantics` overload。
-4. Task 3 → Task 5：Codex parser 传播的 `serviceTier` 由 engine 的 `.codex` 分支消费。
-5. Task 1–5 → Task 6：金额 fixture 是阶段验收，不替代各任务先前的 RED 回归测试。
-6. 后续数据正确性阶段会把 `TokenUsage.cacheCreation` 改为可选，并给 `ParsedUsageEntry` 增加 `isSidechain`；只需集中更新本计划新增的 fixture helper，不能改变金额期望。
-7. 后续增量解析阶段重写 Claude/Codex file cache 时，必须把 Claude `upstreamCost`、Codex `CodexModelState`、pricing speed 与 previous totals 一并纳入可恢复状态；不能退回最终 entry-only cache。
-8. 当前 `PricingEngineTests` 的 DeepSeek 产品手写价、`UsageAggregatorTests` 的 known-model local-first、`CodexRolloutParserTests` 的 missing-model skip 都是旧契约，必须按各任务明确替换，不能同时保留互相矛盾的断言。
+2. **跨计划硬门禁：Task 2 → Provider 数据正确性计划 Task 1。** Task 2 GREEN 后暂停本计划，只执行 Provider Task 1；该 Task 把 `TokenUsage.cacheCreation` 改成 `CacheCreation?`、更新当时已经存在的扁平 fixture，并通过自己的定向测试。此时不得执行 Provider Task 2。
+3. **回到本计划：Provider Task 1 → Task 3。** 只有 optional initializer 已存在，Task 3 才能首次加入 `cacheCreation: nil`；long-context rates 与 fast multiplier 也已由 Task 1–2 进入 `ModelPricing`。
+4. Task 3 → Task 4：`UsageCostResolver` 依赖新的 `PricingSemantics` overload。
+5. Task 3 → Task 5：Codex parser 传播的 `serviceTier` 由 engine 的 `.codex` 分支消费。
+6. Task 1–5 → Task 6：金额 fixture 是阶段验收，不替代各任务先前的 RED 回归测试；Task 6 创建 fixture helper 时直接使用 Provider Task 1 已存在的 optional 形状，Claude 构造 breakdown，Codex/OpenCode 传 `nil`。
+7. **完成本计划 Task 6 与本文件“阶段完成验证”后，才能回到 Provider 数据正确性计划 Task 2，并顺序执行其 Task 2–7。** 这就是两个计划的唯一交错点，不能解释为“先完整执行任意一个计划”。
+8. 后续 Provider Task 3 会给 `ParsedUsageEntry` 增加 `isSidechain`；只需更新本计划新增 fixture helper 的 initializer 参数，不能改变金额期望。
+9. 后续增量解析阶段重写 Claude/Codex file cache 时，必须把 Claude `upstreamCost`、Codex `CodexModelState`、pricing speed 与 previous totals 一并纳入可恢复状态；不能退回最终 entry-only cache。
+10. 当前 `PricingEngineTests` 的 DeepSeek 产品手写价、`UsageAggregatorTests` 的 known-model local-first、`CodexRolloutParserTests` 的 missing-model skip 都是旧契约，必须按各任务明确替换，不能同时保留互相矛盾的断言。
 
 ## 阶段完成验证
 

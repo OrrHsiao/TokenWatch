@@ -4,7 +4,7 @@
 
 **Goal:** 让 Claude 与 Codex JSONL 在文件追加时只读取 committed offset 之后的字节，并在尾行、截断、替换和暂时读取失败时保持与全量解析完全一致的结果。
 
-**Architecture:** 数据正确性计划先提供 `JSONLFileReading`、文件 identity/size/mtime 元数据、last-good 回退、Claude 全局去重器和 Codex 可选累计状态。本计划在其上增加通用状态迁移模型；每个 parser 保存 stable raw candidates、未提交尾段和 committed checkpoint，只有完整换行才推进 offset。所有缓存更新先在局部构建成功，再一次性替换。
+**Architecture:** 数据正确性计划先提供 `JSONLFileReading`、文件 identity/size/mtime 元数据、共享 `JSONLLastGoodCacheCoordinator`、Claude 全局去重器和 Codex 可选累计状态。本计划把该 coordinator 的泛型 payload 从候选数组演进为 provider-specific `State`，由同一个 `loadListedFiles` 循环继续唯一负责 snapshot、cache hit、scope-sensitive last-good、成功后的原子替换与 prune；Claude/Codex 只提供 previous-state transition/build 和 candidate projection closure。每个 state 保存 stable raw candidates、未提交尾段和 committed checkpoint，只有完整换行才推进 offset。
 
 **Tech Stack:** Swift 6、Foundation `FileHandle`、Swift Testing、Xcode 26.5、macOS 15+
 
@@ -12,7 +12,8 @@
 
 - 先完成 `2026-07-10-ccusage-pricing-parity.md` 和 `2026-07-10-provider-data-correctness-and-authorization.md`。
 - 保留 Claude 的 billing raw prefilter、严格 DTO、`costUSD`、`isSidechain`、`hasSourceMessageID` 与 daily 单遍去重语义；缓存必须保存去重前 raw candidates。
-- 保留 Codex 的 `CodexUsageCandidate`、loader dedup key、replay classifier、resolved model/source、service tier、session metadata 与 `previousTotals`。
+- 保留 Codex 的 `CodexUsageCandidate`、loader dedup key、replay classifier、resolved model/source、service tier、session metadata 与 `previousTotals`；config 的 fast/priority 只写 `TokenUsage.serviceTier`，Codex 的 `TokenUsage.speed` 始终为空。
+- `JSONLLastGoodCacheCoordinator<State, Scope>.loadListedFiles(...)` 必须继续是 Claude/Codex 唯一的 listed-file、open snapshot、unchanged hit、scope-sensitive last-good、原子替换和 prune 协调循环；parser 不得重新声明 `cachedFiles`、cache lock/hit counter、per-file catch 或 prune。
 - identity/size/mtime 全同才允许零读取复用；identity 不可验证时必须全量重建。
 - 所有 metadata 必须来自与 stream 相同的 opened descriptor snapshot；append 前校验有界 continuity anchor，以识别同 inode truncate 后重写为更大文件。
 - EOF 无换行的完整 JSON 只作为 provisional candidate 返回，不能推进 offset 或 checkpoint。
@@ -26,10 +27,12 @@
 ## File Structure
 
 - Create: `TokenWatch/Providers/IncrementalJSONLFileState.swift` — 通用缓存状态和 metadata 迁移决策。
+- Modify: `TokenWatch/Providers/JSONLLastGoodCacheCoordinator.swift` — 将泛型 payload 演进为 provider-specific state，并把 previous-state build/projection 纳入同一协调循环。
 - Create: `TokenWatch/Providers/Codex/CodexRolloutParsingState.swift` — 可保存/恢复的 Codex 行级 checkpoint reducer。
-- Modify: `TokenWatch/Providers/Claude/ClaudeJSONLParser.swift` — Claude 后缀读取、provisional tail 与原子缓存替换。
-- Modify: `TokenWatch/Providers/Codex/CodexRolloutParser.swift` — Codex 后缀读取与 checkpoint 恢复。
+- Modify: `TokenWatch/Providers/Claude/ClaudeJSONLParser.swift` — Claude provider-specific state build/projection、后缀读取与 provisional tail。
+- Modify: `TokenWatch/Providers/Codex/CodexRolloutParser.swift` — Codex provider-specific state build/projection、后缀读取与 checkpoint 恢复。
 - Create: `TokenWatchTests/Providers/IncrementalJSONLFileStateTests.swift` — 迁移矩阵测试。
+- Modify: `TokenWatchTests/Providers/JSONLLastGoodCacheCoordinatorTests.swift` — previous-state build、projection、scope、last-good、hit 与 prune 的唯一协调器契约。
 - Modify: `TokenWatchTests/Providers/Claude/ClaudeJSONLParserTests.swift` — Claude append/tail/truncate/replace/I/O 测试。
 - Create: `TokenWatchTests/Providers/Codex/CodexRolloutParsingStateTests.swift` — reducer checkpoint 测试。
 - Modify: `TokenWatchTests/Providers/Codex/CodexRolloutParserTests.swift` — Codex append/tail/truncate/replace/I/O 测试。
@@ -38,15 +41,19 @@
 
 ---
 
-### Task 1: 固定通用状态与迁移矩阵
+### Task 1: 固定通用状态并演进唯一 cache coordinator
 
 **Files:**
 - Create: `TokenWatch/Providers/IncrementalJSONLFileState.swift`
+- Modify: `TokenWatch/Providers/JSONLLastGoodCacheCoordinator.swift`
+- Modify: `TokenWatch/Providers/Claude/ClaudeJSONLParser.swift`
+- Modify: `TokenWatch/Providers/Codex/CodexRolloutParser.swift`
 - Create: `TokenWatchTests/Providers/IncrementalJSONLFileStateTests.swift`
+- Modify: `TokenWatchTests/Providers/JSONLLastGoodCacheCoordinatorTests.swift`
 
 **Interfaces:**
-- Consumes: `JSONLFileMetadata` from `TokenWatch/Providers/JSONLFileReader.swift`。
-- Produces: `IncrementalJSONLFileState<Candidate, Checkpoint>`、`JSONLContinuityAnchor`、`IncrementalJSONLTransition.decide(previous:newMetadata:)`。`.append` 只表示 metadata 候选，parser 校验 anchor 成功后才能执行后缀解析。
+- Consumes: Provider Task 6 的 `JSONLFileMetadata`、`JSONLFileReading` 与唯一 `JSONLLastGoodCacheCoordinator<Candidate, Scope>`。
+- Produces: `IncrementalJSONLFileState<Candidate, Checkpoint>`、`JSONLContinuityAnchor`、`IncrementalJSONLTransition.decide(previous:newMetadata:)`；以及演进后的 `JSONLLastGoodCacheCoordinator<State, Scope>.loadListedFiles(...build:project:onFailure:)` 和只读 `cachedState(for:scope:)`。`.append` 只表示 metadata 候选，provider build closure 校验 anchor 成功后才能执行后缀解析。
 
 - [ ] **Step 1: 写迁移矩阵失败测试**
 
@@ -100,20 +107,155 @@ struct IncrementalJSONLFileStateTests {
             newMetadata: JSONLFileMetadata(identity: nil, size: 120, modificationDate: .init(timeIntervalSince1970: 11))
         ) == .rebuild)
     }
+
+    @Test func continuityAnchorKeepsOnlyTheCommittedSuffix() {
+        let first = Data(repeating: 0x41, count: 200)
+        let second = Data(repeating: 0x42, count: 200)
+        let firstAnchor = JSONLContinuityAnchor.make(
+            previous: .empty,
+            newlyCommittedBytes: first,
+            committedOffset: 200
+        )
+        let secondAnchor = JSONLContinuityAnchor.make(
+            previous: firstAnchor,
+            newlyCommittedBytes: second,
+            committedOffset: 400
+        )
+
+        #expect(secondAnchor.bytes == Data((first + second).suffix(256)))
+        #expect(secondAnchor.offset == 144)
+    }
+
+    @Test func continuityAnchorMatchesAndRejectsOpenedStreamBytes() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ContinuityAnchor-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("0123456789abcdef".utf8).write(to: url)
+        let snapshot = try SystemJSONLFileReader().openSnapshot(for: url)
+        defer { snapshot.stream.close() }
+
+        let matching = JSONLContinuityAnchor(
+            offset: 4,
+            bytes: Data("4567".utf8)
+        )
+        let mismatching = JSONLContinuityAnchor(
+            offset: 4,
+            bytes: Data("4568".utf8)
+        )
+
+        #expect(try matching.matches(in: snapshot.stream))
+        #expect(try mismatching.matches(in: snapshot.stream) == false)
+    }
 }
 ```
 
-- [ ] **Step 2: 运行测试并确认类型尚不存在**
+在 `JSONLLastGoodCacheCoordinatorTests` 中把既有 coordinator payload 从单个 candidate 改成候选数组 state，并将原 `parse:` closure 精确替换为 `build/project`；原 unchanged、scope-sensitive last-good、成功替换与 prune 断言保持不变：
+
+```swift
+let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
+    fileReader: reader
+)
+
+func load(_ files: [ListedFile], scope: Scope) -> [String] {
+    coordinator.loadListedFiles(
+        files,
+        scope: scope,
+        cacheKey: { $0.url.standardizedFileURL.path },
+        urlForFile: \.url,
+        build: { _, snapshot, _ in
+            try readLines(from: snapshot.stream)
+        },
+        project: { $0 },
+        onFailure: { _, _, reusedLastGood in
+            fallbackFlags.append(reusedLastGood)
+        }
+    )
+}
+```
+
+同一 suite 增加 previous-state、projection 与只读 state forwarding 的失败测试：
+
+```swift
+private struct IncrementalCoordinatorState: Sendable, Equatable {
+    let revision: Int
+    let lines: [String]
+}
+
+@Test("协调器把同 scope previous state 交给 build，并继续唯一处理 hit fallback prune")
+func coordinatorBuildsAndProjectsProviderStateAtomically() throws {
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("JSONLIncrementalCoordinator-\(UUID().uuidString).jsonl")
+    try Data("first\n".utf8).write(to: url)
+    defer { try? FileManager.default.removeItem(at: url) }
+
+    let listed = ListedFile(url: url)
+    let key = url.standardizedFileURL.path
+    let reader = RecordingJSONLFileReader()
+    let coordinator = JSONLLastGoodCacheCoordinator<
+        IncrementalCoordinatorState,
+        Scope
+    >(fileReader: reader)
+    var receivedPreviousRevisions: [Int?] = []
+
+    func load(_ files: [ListedFile], scope: Scope) -> [String] {
+        coordinator.loadListedFiles(
+            files,
+            scope: scope,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, previous in
+                receivedPreviousRevisions.append(previous?.revision)
+                return IncrementalCoordinatorState(
+                    revision: (previous?.revision ?? 0) + 1,
+                    lines: try readLines(from: snapshot.stream)
+                )
+            },
+            project: \.lines,
+            onFailure: { _, _, _ in }
+        )
+    }
+
+    #expect(load([listed], scope: .standard) == ["first"])
+    #expect(receivedPreviousRevisions == [nil])
+
+    reader.resetMetrics()
+    #expect(load([listed], scope: .standard) == ["first"])
+    #expect(reader.totalBytesRead == 0)
+    #expect(receivedPreviousRevisions == [nil])
+
+    let handle = try FileHandle(forWritingTo: url)
+    try handle.seekToEnd()
+    try handle.write(contentsOf: Data("second\n".utf8))
+    try handle.close()
+    #expect(load([listed], scope: .standard) == ["first", "second"])
+    #expect(receivedPreviousRevisions == [nil, 1])
+    #expect(coordinator.cachedState(for: key, scope: .standard)?.revision == 2)
+
+    let failingHandle = try FileHandle(forWritingTo: url)
+    try failingHandle.seekToEnd()
+    try failingHandle.write(contentsOf: Data("third\n".utf8))
+    try failingHandle.close()
+    reader.failure = .read
+    #expect(load([listed], scope: .standard) == ["first", "second"])
+    #expect(load([listed], scope: .fast).isEmpty)
+
+    reader.failure = .none
+    #expect(load([], scope: .standard).isEmpty)
+    #expect(coordinator.debugCachedFileCount == 0)
+}
+```
+
+- [ ] **Step 2: 运行状态与唯一协调器测试并确认 RED**
 
 Run:
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -only-testing:TokenWatchTests/JSONLLastGoodCacheCoordinatorTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: FAIL，编译器报告找不到 `IncrementalJSONLFileState` 或 `IncrementalJSONLTransition`。
+Expected: FAIL；除 `IncrementalJSONLFileState`/anchor 类型尚不存在外，Provider Task 6 的 coordinator 仍以单个 `Candidate` 为 payload，只接受 `parse:`，没有 `build(previous:)`、`project(state:)` 或 `cachedState(for:scope:)`。
 
-- [ ] **Step 3: 实现状态容器和唯一迁移函数**
+- [ ] **Step 3: 实现状态容器并演进唯一 coordinator**
 
 ```swift
 import Foundation
@@ -199,32 +341,297 @@ enum IncrementalJSONLTransition: Sendable, Equatable {
 }
 ```
 
-- [ ] **Step 4: 运行定向测试确认通过**
+把 Provider Task 6 的 coordinator 原地演进为以下唯一实现；不新增第二个 cache helper：
 
-Run: 与 Step 2 相同。
+```swift
+import Foundation
 
-Expected: PASS，6 个迁移断言全部通过。
+struct JSONLUnscopedCacheScope: Sendable, Equatable {
+    static let shared = JSONLUnscopedCacheScope()
 
-同 suite 再断言 `JSONLContinuityAnchor.make` 在连续多段 committed bytes 后只保留最后 256 bytes，offset 始终等于 `committedOffset - bytes.count`。真实文件匹配/不匹配由 Task 3/6 的 parser I/O 测试覆盖。
+    private init() {}
+}
 
-- [ ] **Step 5: 提交通用状态**
+/// 统一协调 scanner 已列出文件的 snapshot、state cache、last-good 与 prune。
+/// Provider 只通过 build/project closure 定义状态迁移和候选投影。
+final class JSONLLastGoodCacheCoordinator<
+    State: Sendable,
+    Scope: Sendable & Equatable
+>: @unchecked Sendable {
+    private struct CachedFile {
+        let metadata: JSONLFileMetadata
+        let scope: Scope
+        let state: State
+    }
 
-```bash
-git add TokenWatch/Providers/IncrementalJSONLFileState.swift TokenWatchTests/Providers/IncrementalJSONLFileStateTests.swift
-git commit -m "feat(parser): 新增 JSONL 增量状态迁移"
+    private let fileReader: any JSONLFileReading
+    private let lock = NSLock()
+    private var cachedFiles: [String: CachedFile] = [:]
+    private var cacheHitCount = 0
+
+    init(fileReader: any JSONLFileReading) {
+        self.fileReader = fileReader
+    }
+
+    var debugCachedFileCount: Int {
+        withLock { cachedFiles.count }
+    }
+
+    var debugCacheHitCount: Int {
+        withLock { cacheHitCount }
+    }
+
+    /// 返回同 scope 的只读 state 副本，供 parser 的定向 debug accessor 转发。
+    func cachedState(for key: String, scope: Scope) -> State? {
+        withLock {
+            guard let cached = cachedFiles[key], cached.scope == scope else {
+                return nil
+            }
+            return cached.state
+        }
+    }
+
+    /// 这是唯一 listed-file 协调循环。只有 build 完整成功才原子替换 state；
+    /// 失败时只投影同 scope last-good，scanner 未列出的 key 在本轮末尾 prune。
+    func loadListedFiles<FileInfo, Candidate: Sendable>(
+        _ files: [FileInfo],
+        scope: Scope,
+        cacheKey: (FileInfo) -> String,
+        urlForFile: (FileInfo) -> URL,
+        build: (FileInfo, JSONLFileSnapshot, State?) throws -> State,
+        project: (State) -> [Candidate],
+        onFailure: (FileInfo, Error, Bool) -> Void
+    ) -> [Candidate] {
+        var allCandidates: [Candidate] = []
+        var listedKeys: Set<String> = []
+
+        for fileInfo in files {
+            let key = cacheKey(fileInfo)
+            listedKeys.insert(key)
+
+            do {
+                let snapshot = try fileReader.openSnapshot(
+                    for: urlForFile(fileInfo)
+                )
+                defer { snapshot.stream.close() }
+
+                if let unchanged = unchangedState(
+                    for: key,
+                    matching: snapshot.metadata,
+                    scope: scope
+                ) {
+                    allCandidates.append(contentsOf: project(unchanged))
+                    continue
+                }
+
+                let previous = cachedState(for: key, scope: scope)
+                let next = try build(fileInfo, snapshot, previous)
+                store(
+                    next,
+                    metadata: snapshot.metadata,
+                    scope: scope,
+                    for: key
+                )
+                allCandidates.append(contentsOf: project(next))
+            } catch {
+                let lastGood = cachedState(for: key, scope: scope)
+                if let lastGood {
+                    allCandidates.append(contentsOf: project(lastGood))
+                }
+                onFailure(fileInfo, error, lastGood != nil)
+            }
+        }
+
+        prune(keeping: listedKeys)
+        return allCandidates
+    }
+
+    private func unchangedState(
+        for key: String,
+        matching metadata: JSONLFileMetadata,
+        scope: Scope
+    ) -> State? {
+        withLock {
+            guard metadata.identity != nil,
+                  let cached = cachedFiles[key],
+                  cached.metadata == metadata,
+                  cached.scope == scope else {
+                return nil
+            }
+            cacheHitCount += 1
+            return cached.state
+        }
+    }
+
+    private func store(
+        _ state: State,
+        metadata: JSONLFileMetadata,
+        scope: Scope,
+        for key: String
+    ) {
+        withLock {
+            cachedFiles[key] = CachedFile(
+                metadata: metadata,
+                scope: scope,
+                state: state
+            )
+        }
+    }
+
+    private func prune(keeping listedKeys: Set<String>) {
+        withLock {
+            cachedFiles = cachedFiles.filter { listedKeys.contains($0.key) }
+        }
+    }
+
+    @discardableResult
+    private func withLock<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
+}
 ```
 
-### Task 2: Claude 追加只读取后缀
+为保证 Task 1 自身可编译提交，先把 Provider Task 6 的两个 parser 机械迁移到“候选数组作为 state”的新 API；Task 2/4 再分别把 state 换成真正的增量 state。Claude 完整装配为：
+
+```swift
+private let fileReader: any JSONLFileReading
+private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
+    [ParsedUsageEntry],
+    JSONLUnscopedCacheScope
+>
+
+init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
+    self.fileReader = fileReader
+    self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
+        [ParsedUsageEntry],
+        JSONLUnscopedCacheScope
+    >(fileReader: fileReader)
+}
+
+func parseAllFiles(
+    _ files: [ClaudeJSONLFileInfo],
+    claudeDataRoot: URL
+) throws -> [ParsedUsageEntry] {
+    let allCandidates: [ParsedUsageEntry] = cacheCoordinator.loadListedFiles(
+        files,
+        scope: .shared,
+        cacheKey: { Self.cacheKey(for: $0.url) },
+        urlForFile: { $0.url },
+        build: { [self] fileInfo, snapshot, _ in
+            try parseJSONLStream(
+                snapshot.stream,
+                fileInfo: fileInfo,
+                claudeDataRoot: claudeDataRoot
+            )
+        },
+        project: { $0 },
+        onFailure: { [self] fileInfo, error, reusedLastGood in
+            if reusedLastGood {
+                logger.warning(
+                    "文件暂时不可读，复用上次成功结果: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            } else {
+                logger.warning(
+                    "文件首次读取失败，跳过: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            }
+        }
+    )
+    return ClaudeUsageDeduplicator.deduplicate(allCandidates)
+}
+```
+
+Codex 同步机械迁移，`CodexPricingSpeed` 仍是 coordinator scope：
+
+```swift
+private let fileReader: any JSONLFileReading
+private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
+    [CodexUsageCandidate],
+    CodexPricingSpeed
+>
+
+init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
+    self.fileReader = fileReader
+    self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
+        [CodexUsageCandidate],
+        CodexPricingSpeed
+    >(fileReader: fileReader)
+}
+
+func parseAllFiles(
+    _ files: [CodexRolloutFileInfo],
+    pricingSpeed: CodexPricingSpeed = .standard
+) throws -> [ParsedUsageEntry] {
+    let allCandidates: [CodexUsageCandidate] = cacheCoordinator.loadListedFiles(
+        files,
+        scope: pricingSpeed,
+        cacheKey: { Self.cacheKey(for: $0.url) },
+        urlForFile: { $0.url },
+        build: { [self] fileInfo, snapshot, _ in
+            try parseCandidates(
+                snapshot.stream,
+                metadata: snapshot.metadata,
+                fileInfo: fileInfo,
+                pricingSpeed: pricingSpeed
+            )
+        },
+        project: { $0 },
+        onFailure: { [self] fileInfo, error, reusedLastGood in
+            if reusedLastGood {
+                logger.warning(
+                    "文件暂时不可读，复用上次成功结果: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            } else {
+                logger.warning(
+                    "文件首次读取失败，跳过: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            }
+        }
+    )
+
+    var seen: Set<CodexEventDedupKey> = []
+    return allCandidates.compactMap { candidate in
+        guard seen.insert(candidate.dedupKey).inserted else { return nil }
+        return candidate.entry
+    }
+}
+```
+
+- [ ] **Step 4: 运行状态、coordinator 与两个 parser suites**
+
+Run:
+
+```bash
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -only-testing:TokenWatchTests/JSONLLastGoodCacheCoordinatorTests -only-testing:TokenWatchTests/ClaudeJSONLParserTests -only-testing:TokenWatchTests/CodexRolloutParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+```
+
+Expected: PASS；迁移/anchor 断言通过，coordinator 的 previous-state build、projection、unchanged hit、scope-sensitive last-good、原子替换与 prune 仍由一个 suite 锁定，两个 parser 在候选数组 state 的过渡形态下无回归。
+
+- [ ] **Step 5: 提交通用状态与 coordinator 演进**
+
+```bash
+git add TokenWatch/Providers/IncrementalJSONLFileState.swift \
+  TokenWatch/Providers/JSONLLastGoodCacheCoordinator.swift \
+  TokenWatch/Providers/Claude/ClaudeJSONLParser.swift \
+  TokenWatch/Providers/Codex/CodexRolloutParser.swift \
+  TokenWatchTests/Providers/IncrementalJSONLFileStateTests.swift \
+  TokenWatchTests/Providers/JSONLLastGoodCacheCoordinatorTests.swift
+git commit -m "refactor(parser): 让共享缓存协调器承载增量状态"
+```
+
+### Task 2: Claude 追加、provisional tail 与重建
 
 **Files:**
 - Modify: `TokenWatch/Providers/Claude/ClaudeJSONLParser.swift`
 - Modify: `TokenWatchTests/Providers/Claude/ClaudeJSONLParserTests.swift`
 
 **Interfaces:**
-- Consumes: `JSONLFileReading`、`RecordingJSONLFileReader`、`IncrementalJSONLFileState<ParsedUsageEntry, StatelessJSONLCheckpoint>`。
-- Produces: `ClaudeJSONLParser.init(fileReader:)`；既有 `parseJSONLFile` 和 `parseAllFiles` 签名保持可用。
+- Consumes: Task 1 的 `JSONLLastGoodCacheCoordinator<State, Scope>.loadListedFiles(...build:project:onFailure:)`、`cachedState(for:scope:)`、`RecordingJSONLFileReader` 与 `IncrementalJSONLFileState<ParsedUsageEntry, StatelessJSONLCheckpoint>`。
+- Produces: coordinator payload `ClaudeFileState`；既有 `parseJSONLFile` 和 `parseAllFiles` 签名保持可用；append、provisional commit、truncate/replace/touch rebuild 与 fresh full scan 的 deep snapshot 完全一致。Claude parser 不拥有 cache dictionary、lock、per-file catch 或 prune。
 
-- [ ] **Step 1: 写 unchanged 与 append I/O 失败测试**
+- [ ] **Step 1: 写 unchanged、append、provisional、replacement 与 rebuild 失败测试**
 
 ```swift
 @Test("Claude 未变化文件零读取，追加从 committed offset 开始")
@@ -296,28 +703,161 @@ private func makeClaudeFixture() throws -> ClaudeFixture {
 
 把既有 `Self.assistantLine` helper 扩展为 `messageId`、`requestId: String? = nil`、`inputTokens`、`isSidechain: Bool = false` 四个业务参数，生成 compact `"usage":{` 形状并使用固定 3 位毫秒 timestamp；本文后续所有 Claude fixture 复用该唯一 helper。
 
-- [ ] **Step 2: 运行测试并确认当前实现从 0 重读**
+同一步先加入所有将由增量 state 实现的边界测试，不能等生产读取循环已经处理 provisional/rebuild 后再补测试：
+
+```swift
+@Test("Claude provisional 尾行重读后不重复")
+func provisionalTailIsReplacedWhenNewlineArrives() throws {
+    let fixture = try makeClaudeFixture()
+    defer { fixture.cleanup() }
+    let reader = RecordingJSONLFileReader()
+    let parser = ClaudeJSONLParser(fileReader: reader)
+    let line = Self.assistantLine(messageId: "tail", inputTokens: 42)
+    try line.write(to: fixture.file.url, atomically: false, encoding: .utf8)
+
+    let provisional = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    #expect(provisional.count == 1)
+    #expect(parser.debugCommittedOffset(for: fixture.file.url) == 0)
+
+    reader.resetMetrics()
+    try appendUTF8("\n", to: fixture.file.url)
+    let committed = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    #expect(committed.count == 1)
+    #expect(committed.first?.messageId == "tail")
+    #expect(parser.debugCommittedOffset(for: fixture.file.url) == UInt64((line + "\n").utf8.count))
+    #expect(reader.seekOffsets == [0])
+    #expect(reader.totalBytesRead == (line + "\n").utf8.count)
+}
+
+@Test("Claude 追加 parent 可替换 stable sidechain")
+func appendedParentReplacesStableSidechain() throws {
+    let fixture = try makeClaudeFixture()
+    defer { fixture.cleanup() }
+    let parser = ClaudeJSONLParser()
+    let sidechain = Self.assistantLine(messageId: "shared", requestId: "side", inputTokens: 500, isSidechain: true)
+    let parent = Self.assistantLine(messageId: "shared", requestId: "parent", inputTokens: 5, isSidechain: false)
+    try (sidechain + "\n").write(to: fixture.file.url, atomically: false, encoding: .utf8)
+    _ = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    try appendUTF8(parent + "\n", to: fixture.file.url)
+
+    let result = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    #expect(result.count == 1)
+    #expect(result.first?.requestId == "parent")
+    #expect(result.first?.usage.inputTokens == 5)
+}
+
+@Test("Claude 缺 source message ID 的绝对 offset 在 provisional/commit/append 中稳定")
+func missingMessageIDUsesStableAbsoluteOffset() throws {
+    let fixture = try makeClaudeFixture()
+    defer { fixture.cleanup() }
+    let parser = ClaudeJSONLParser()
+    let first = #"{"timestamp":"2026-06-13T12:00:00.000Z","message":{"model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1}}}"#
+    let second = #"{"timestamp":"2026-06-13T12:00:01.000Z","message":{"model":"claude-sonnet-4-5","usage":{"input_tokens":2,"output_tokens":1}}}"#
+    try first.write(to: fixture.file.url, atomically: false, encoding: .utf8)
+    let provisional = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    try appendUTF8("\n" + second + "\n", to: fixture.file.url)
+    let incremental = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    let fresh = try ClaudeJSONLParser().parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+
+    #expect(provisional.first?.messageId == incremental.first?.messageId)
+    #expect(Set(incremental.map(\.messageId)).count == 2)
+    #expect(incremental.allSatisfy { !$0.hasSourceMessageID })
+    #expect(ParsedUsageEntryDeepSnapshot.sorted(incremental) ==
+        ParsedUsageEntryDeepSnapshot.sorted(fresh))
+}
+
+@Test("Claude 半行续写只在完整后返回")
+func incompleteTailWaitsForCompletion() throws {
+    let fixture = try makeClaudeFixture()
+    defer { fixture.cleanup() }
+    let parser = ClaudeJSONLParser()
+    let line = Self.assistantLine(messageId: "partial", inputTokens: 9)
+    let split = line.utf8.index(line.utf8.startIndex, offsetBy: line.utf8.count / 2)
+    let firstHalf = String(decoding: line.utf8[..<split], as: UTF8.self)
+    let secondHalf = String(decoding: line.utf8[split...], as: UTF8.self)
+    try firstHalf.write(to: fixture.file.url, atomically: false, encoding: .utf8)
+    #expect(try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root).isEmpty)
+    try appendUTF8(secondHalf + "\n", to: fixture.file.url)
+    #expect(try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root).map(\.messageId) == ["partial"])
+}
+
+@Test(arguments: ["truncate", "truncate-grow", "replace", "touch"])
+func rebuildTransitionsReadFromZero(kind: String) throws {
+    let fixture = try makeClaudeFixture()
+    defer { fixture.cleanup() }
+    let reader = RecordingJSONLFileReader()
+    let parser = ClaudeJSONLParser(fileReader: reader)
+    let original = Self.assistantLine(messageId: "old", inputTokens: 10) + "\n"
+    try original.write(to: fixture.file.url, atomically: false, encoding: .utf8)
+    _ = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+
+    let replacement = Self.assistantLine(messageId: "new", inputTokens: 20) + "\n"
+    switch kind {
+    case "truncate":
+        let handle = try FileHandle(forWritingTo: fixture.file.url)
+        try handle.truncate(atOffset: 0)
+        try handle.close()
+    case "truncate-grow":
+        let handle = try FileHandle(forWritingTo: fixture.file.url)
+        try handle.truncate(atOffset: 0)
+        try handle.write(contentsOf: Data((replacement + replacement).utf8))
+        try handle.close()
+    case "replace":
+        try replacement.write(to: fixture.file.url, atomically: true, encoding: .utf8)
+    case "touch":
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(5)],
+            ofItemAtPath: fixture.file.url.path
+        )
+    default:
+        Issue.record("unexpected transition kind")
+    }
+
+    reader.resetMetrics()
+    let incremental = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    let fresh = try ClaudeJSONLParser().parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+    #expect(reader.seekOffsets.contains(0))
+    #expect(ParsedUsageEntryDeepSnapshot.sorted(incremental) == ParsedUsageEntryDeepSnapshot.sorted(fresh))
+}
+```
+
+- [ ] **Step 2: 运行完整 Claude parser suite 并确认真实 RED**
 
 Run:
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/ClaudeJSONLParserTests/appendReadsOnlySuffix -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/ClaudeJSONLParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: FAIL；当前 parser 没有 reader 注入接口，或 metrics 显示 seek offset 为 0、读取整个文件。
+Expected: FAIL；当前 parser 的 append metrics 仍显示从 0 读取，且尚无 committed offset/continuity anchor state，provisional checkpoint 与 truncate/replace rebuild 断言不能全部通过。这一 RED 必须在 Step 3 的读取循环和 cache state 改动前观察到。
 
 - [ ] **Step 3: 将 Claude 文件缓存改为增量 raw candidate 状态**
 
-在 parser 中固定以下结构和装配：
+将 Task 1 的候选数组过渡 state 换成真正的 Claude state；parser 仍把同一个 reader 交给唯一 coordinator：
 
 ```swift
 private typealias ClaudeFileState = IncrementalJSONLFileState<ParsedUsageEntry, StatelessJSONLCheckpoint>
 
 private let fileReader: any JSONLFileReading
-private var cachedFiles: [String: ClaudeFileState] = [:]
+private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
+    ClaudeFileState,
+    JSONLUnscopedCacheScope
+>
 
 init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
     self.fileReader = fileReader
+    self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
+        ClaudeFileState,
+        JSONLUnscopedCacheScope
+    >(fileReader: fileReader)
+}
+
+var debugCachedFileCount: Int {
+    cacheCoordinator.debugCachedFileCount
+}
+
+var debugCacheHitCount: Int {
+    cacheCoordinator.debugCacheHitCount
 }
 ```
 
@@ -389,210 +929,124 @@ private func readCandidates(
 }
 ```
 
-`parseCachedJSONLFile` 每轮只调用一次 `openSnapshot`，使用其 descriptor metadata 计算唯一迁移：`.reuse` 关闭 stream 并返回旧状态；`.append` 先调用共享 `previous.continuityAnchor.matches(in: snapshot.stream)`，匹配才保留 stable candidates 并从 committed offset 读，不匹配转 `.rebuild`；`.rebuild` 从 0、空数组和 `.empty` anchor 开始。只有 `readCandidates` 成功返回后才在 lock 内替换 cache。
+provider-specific build closure 使用 coordinator 传入的同 scope previous state 计算 transition；它不读取或写入任何 cache 容器：
 
-为 I/O 契约测试增加只读 debug accessor：
+```swift
+private func buildClaudeState(
+    fileInfo: ClaudeJSONLFileInfo,
+    snapshot: JSONLFileSnapshot,
+    previous: ClaudeFileState?
+) throws -> ClaudeFileState {
+    func rebuild() throws -> ClaudeFileState {
+        try readCandidates(
+            from: fileInfo,
+            snapshot: snapshot,
+            startOffset: 0,
+            stablePrefix: [],
+            previousAnchor: .empty
+        )
+    }
+
+    guard let previous else { return try rebuild() }
+    switch IncrementalJSONLTransition.decide(
+        previous: previous,
+        newMetadata: snapshot.metadata
+    ) {
+    case .reuse:
+        return previous
+    case .append(let startOffset):
+        guard try previous.continuityAnchor.matches(in: snapshot.stream) else {
+            return try rebuild()
+        }
+        return try readCandidates(
+            from: fileInfo,
+            snapshot: snapshot,
+            startOffset: startOffset,
+            stablePrefix: previous.stableCandidates,
+            previousAnchor: previous.continuityAnchor
+        )
+    case .rebuild:
+        return try rebuild()
+    }
+}
+```
+
+`parseAllFiles` 只提供 cache key、scope、state build、candidate projection、日志与最终 Claude 去重；open/hit/store/catch/prune 全部留在 coordinator：
+
+```swift
+func parseAllFiles(
+    _ files: [ClaudeJSONLFileInfo],
+    claudeDataRoot: URL
+) throws -> [ParsedUsageEntry] {
+    let allCandidates: [ParsedUsageEntry] = cacheCoordinator.loadListedFiles(
+        files,
+        scope: .shared,
+        cacheKey: { Self.cacheKey(for: $0.url) },
+        urlForFile: { $0.url },
+        build: { [self] fileInfo, snapshot, previous in
+            try buildClaudeState(
+                fileInfo: fileInfo,
+                snapshot: snapshot,
+                previous: previous
+            )
+        },
+        project: \.returnedCandidates,
+        onFailure: { [self] fileInfo, error, reusedLastGood in
+            if reusedLastGood {
+                logger.warning(
+                    "文件暂时不可读，复用上次成功结果: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            } else {
+                logger.warning(
+                    "文件首次读取失败，跳过: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            }
+        }
+    )
+    return ClaudeUsageDeduplicator.deduplicate(allCandidates)
+}
+```
+
+I/O debug accessor 只读转发 coordinator state：
 
 ```swift
 func debugCommittedOffset(for url: URL) -> UInt64? {
     let key = Self.cacheKey(for: url)
-    return withCacheLock { cachedFiles[key]?.committedOffset }
+    return cacheCoordinator.cachedState(
+        for: key,
+        scope: .shared
+    )?.committedOffset
 }
 
 func debugContinuityAnchor(for url: URL) -> JSONLContinuityAnchor? {
     let key = Self.cacheKey(for: url)
-    return withCacheLock { cachedFiles[key]?.continuityAnchor }
+    return cacheCoordinator.cachedState(
+        for: key,
+        scope: .shared
+    )?.continuityAnchor
 }
 ```
 
-- [ ] **Step 4: 运行 Claude parser suite**
+下一次 `.append(fromOffset:)` 由 build closure 丢弃旧 provisional 数组，从 committed offset 重新解析 tail + suffix；`.rebuild` 从空 stable candidates 开始。build 抛错时 coordinator 保留并投影 last-good state，成功返回后才原子替换；scanner 未列出的 key 仍由同一 coordinator prune。
+
+- [ ] **Step 4: 运行 Claude、去重器和通用状态 suites**
 
 Run:
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/ClaudeJSONLParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/JSONLLastGoodCacheCoordinatorTests -only-testing:TokenWatchTests/ClaudeJSONLParserTests -only-testing:TokenWatchTests/ClaudeUsageDeduplicatorTests -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: PASS；既有缓存测试和新增 I/O 测试同时通过。
+Expected: PASS；deep snapshot、offset/read byte count、provisional commit、rebuild、scope-compatible last-good、prune 与 sidechain replacement 全部通过，coordinator suite 继续证明 cache lifecycle 只有一个实现。
 
-- [ ] **Step 5: 提交 Claude 后缀读取**
+- [ ] **Step 5: 提交 Claude 增量边界**
 
 ```bash
 git add TokenWatch/Providers/Claude/ClaudeJSONLParser.swift TokenWatchTests/Providers/Claude/ClaudeJSONLParserTests.swift
-git commit -m "perf(claude): 增量读取追加 JSONL"
+git commit -m "perf(claude): 增量解析 JSONL 边界"
 ```
 
-### Task 3: Claude provisional tail、重建与全局替换
-
-**Files:**
-- Modify: `TokenWatch/Providers/Claude/ClaudeJSONLParser.swift`
-- Modify: `TokenWatchTests/Providers/Claude/ClaudeJSONLParserTests.swift`
-
-**Interfaces:**
-- Consumes: `ClaudeUsageDeduplicator.deduplicate(_:)` 与 `ParsedUsageEntryDeepSnapshot`。
-- Produces: append、full rebuild 对外返回完全相同的 deep snapshots。
-
-- [ ] **Step 1: 写尾段和重建失败测试**
-
-```swift
-@Test("Claude provisional 尾行重读后不重复")
-func provisionalTailIsReplacedWhenNewlineArrives() throws {
-    let fixture = try makeClaudeFixture()
-    defer { fixture.cleanup() }
-    let reader = RecordingJSONLFileReader()
-    let parser = ClaudeJSONLParser(fileReader: reader)
-    let line = Self.assistantLine(messageId: "tail", inputTokens: 42)
-    try line.write(to: fixture.file.url, atomically: false, encoding: .utf8)
-
-    let provisional = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    #expect(provisional.count == 1)
-    #expect(parser.debugCommittedOffset(for: fixture.file.url) == 0)
-
-    reader.resetMetrics()
-    try appendUTF8("\n", to: fixture.file.url)
-    let committed = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    #expect(committed.count == 1)
-    #expect(committed.first?.messageId == "tail")
-    #expect(parser.debugCommittedOffset(for: fixture.file.url) == UInt64((line + "\n").utf8.count))
-    #expect(reader.seekOffsets == [0])
-    #expect(reader.totalBytesRead == (line + "\n").utf8.count)
-}
-
-@Test("Claude 追加 parent 可替换 stable sidechain")
-func appendedParentReplacesStableSidechain() throws {
-    let fixture = try makeClaudeFixture()
-    defer { fixture.cleanup() }
-    let parser = ClaudeJSONLParser()
-    let sidechain = Self.assistantLine(messageId: "shared", requestId: "side", inputTokens: 500, isSidechain: true)
-    let parent = Self.assistantLine(messageId: "shared", requestId: "parent", inputTokens: 5, isSidechain: false)
-    try (sidechain + "\n").write(to: fixture.file.url, atomically: false, encoding: .utf8)
-    _ = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    try appendUTF8(parent + "\n", to: fixture.file.url)
-
-    let result = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    #expect(result.count == 1)
-    #expect(result.first?.requestId == "parent")
-    #expect(result.first?.usage.inputTokens == 5)
-}
-
-@Test("Claude 缺 source message ID 的绝对 offset 在 provisional/commit/append 中稳定")
-func missingMessageIDUsesStableAbsoluteOffset() throws {
-    let fixture = try makeClaudeFixture()
-    defer { fixture.cleanup() }
-    let parser = ClaudeJSONLParser()
-    let first = #"{"timestamp":"2026-06-13T12:00:00.000Z","message":{"model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1}}}"#
-    let second = #"{"timestamp":"2026-06-13T12:00:01.000Z","message":{"model":"claude-sonnet-4-5","usage":{"input_tokens":2,"output_tokens":1}}}"#
-    try first.write(to: fixture.file.url, atomically: false, encoding: .utf8)
-    let provisional = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    try appendUTF8("\n" + second + "\n", to: fixture.file.url)
-    let incremental = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    let fresh = try ClaudeJSONLParser().parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-
-    #expect(provisional.first?.messageId == incremental.first?.messageId)
-    #expect(Set(incremental.map(\.messageId)).count == 2)
-    #expect(incremental.allSatisfy { !$0.hasSourceMessageID })
-    #expect(ParsedUsageEntryDeepSnapshot.sorted(incremental) ==
-        ParsedUsageEntryDeepSnapshot.sorted(fresh))
-}
-```
-
-加入半行续写与 rebuild 矩阵；测试 helper 中的 `rewrite` 必须按指定方式保留或替换 identity：
-
-```swift
-@Test("Claude 半行续写只在完整后返回")
-func incompleteTailWaitsForCompletion() throws {
-    let fixture = try makeClaudeFixture()
-    defer { fixture.cleanup() }
-    let parser = ClaudeJSONLParser()
-    let line = Self.assistantLine(messageId: "partial", inputTokens: 9)
-    let split = line.utf8.index(line.utf8.startIndex, offsetBy: line.utf8.count / 2)
-    let firstHalf = String(decoding: line.utf8[..<split], as: UTF8.self)
-    let secondHalf = String(decoding: line.utf8[split...], as: UTF8.self)
-    try firstHalf.write(to: fixture.file.url, atomically: false, encoding: .utf8)
-    #expect(try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root).isEmpty)
-    try appendUTF8(secondHalf + "\n", to: fixture.file.url)
-    #expect(try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root).map(\.messageId) == ["partial"])
-}
-
-@Test(arguments: ["truncate", "truncate-grow", "replace", "touch"])
-func rebuildTransitionsReadFromZero(kind: String) throws {
-    let fixture = try makeClaudeFixture()
-    defer { fixture.cleanup() }
-    let reader = RecordingJSONLFileReader()
-    let parser = ClaudeJSONLParser(fileReader: reader)
-    let original = Self.assistantLine(messageId: "old", inputTokens: 10) + "\n"
-    try original.write(to: fixture.file.url, atomically: false, encoding: .utf8)
-    _ = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-
-    let replacement = Self.assistantLine(messageId: "new", inputTokens: 20) + "\n"
-    switch kind {
-    case "truncate":
-        let handle = try FileHandle(forWritingTo: fixture.file.url)
-        try handle.truncate(atOffset: 0)
-        try handle.close()
-    case "truncate-grow":
-        let handle = try FileHandle(forWritingTo: fixture.file.url)
-        try handle.truncate(atOffset: 0)
-        try handle.write(contentsOf: Data((replacement + replacement).utf8))
-        try handle.close()
-    case "replace":
-        try replacement.write(to: fixture.file.url, atomically: true, encoding: .utf8)
-    case "touch":
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date().addingTimeInterval(5)],
-            ofItemAtPath: fixture.file.url.path
-        )
-    default:
-        Issue.record("unexpected transition kind")
-    }
-
-    reader.resetMetrics()
-    let incremental = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    let fresh = try ClaudeJSONLParser().parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
-    #expect(reader.seekOffsets.contains(0))
-    #expect(ParsedUsageEntryDeepSnapshot.sorted(incremental) == ParsedUsageEntryDeepSnapshot.sorted(fresh))
-}
-```
-
-- [ ] **Step 2: 运行新增测试确认至少一个语义失败**
-
-Run:
-
-```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/ClaudeJSONLParserTests/provisionalTailIsReplacedWhenNewlineArrives -only-testing:TokenWatchTests/ClaudeJSONLParserTests/appendedParentReplacesStableSidechain -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
-```
-
-Expected: FAIL；若 parser 只 append 最终去重结果，parent replacement 断言失败；若错误提交 EOF，committed offset 断言失败。
-
-- [ ] **Step 3: 每次返回前统一对 raw candidates 去重**
-
-```swift
-private func deduplicatedEntries(from states: [ClaudeFileState]) -> [ParsedUsageEntry] {
-    let candidates = states.flatMap(\.returnedCandidates)
-    return ClaudeUsageDeduplicator.deduplicate(candidates)
-}
-```
-
-保持 provisional candidate 只存在于 `provisionalCandidates`；下一次 `.append(fromOffset:)` 丢弃旧 provisional 数组，从 committed offset 重新解析 tail + suffix。`.rebuild` 必须从空 stable candidates 开始。parse 失败沿用数据正确性阶段的 last-good state，不覆盖 cache。
-
-- [ ] **Step 4: 运行 Claude、去重器和状态测试**
-
-Run:
-
-```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/ClaudeJSONLParserTests -only-testing:TokenWatchTests/ClaudeUsageDeduplicatorTests -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
-```
-
-Expected: PASS；deep snapshot、I/O 与 sidechain replacement 全部通过。
-
-- [ ] **Step 5: 提交 Claude 边界语义**
-
-```bash
-git add TokenWatch/Providers/Claude/ClaudeJSONLParser.swift TokenWatchTests/Providers/Claude/ClaudeJSONLParserTests.swift
-git commit -m "fix(claude): 保持增量尾行与全量结果一致"
-```
-
-### Task 4: 抽出可保存的 Codex 行级 checkpoint
+### Task 3: 抽出可保存的 Codex 行级 checkpoint
 
 **Files:**
 - Create: `TokenWatch/Providers/Codex/CodexRolloutParsingState.swift`
@@ -601,7 +1055,7 @@ git commit -m "fix(claude): 保持增量尾行与全量结果一致"
 
 **Interfaces:**
 - Consumes: 数据计划的 `CodexUsageCandidate`、`CodexEventDedupKey`、normalized timestamp/model/token helper，以及 `CodexModelState`、`CodexPricingSpeed`、`CodexTokenCounts?`。
-- Produces: `CodexParserCheckpoint.consume(_:sourceOffset:speed:) -> CodexUsageCandidate?`；session token_count 无合法 timestamp 时返回 nil，byte offset 只用于有 timestamp candidate 的本地 record UUID。
+- Produces: `CodexParserCheckpoint.consume(_:sourceOffset:pricingSpeed:) -> CodexUsageCandidate?`；`CodexPricingSpeed` 只映射到 `TokenUsage.serviceTier`，`TokenUsage.speed` 对 Codex 始终为空；session token_count 无合法 timestamp 时返回 nil，byte offset 只用于有 timestamp candidate 的本地 record UUID。
 
 - [ ] **Step 1: 写 checkpoint 跨批恢复失败测试**
 
@@ -618,7 +1072,7 @@ struct CodexRolloutParsingStateTests {
             sessionID: "file-session",
             replaySecond: nil
         )
-        let speed = CodexPricingSpeed.standard
+        let pricingSpeed = CodexPricingSpeed.standard
         let lines = [
             #"{"timestamp":"2026-05-04T08:35:44Z","type":"session_meta","payload":{"id":"meta-session","cwd":"/tmp/project","model_provider":"openai"}}"#,
             #"{"timestamp":"2026-05-04T08:35:45Z","type":"turn_context","payload":{"model":"gpt-5.4"}}"#,
@@ -626,7 +1080,11 @@ struct CodexRolloutParsingStateTests {
         ]
         let firstCandidates = try lines.enumerated().compactMap { index, line -> CodexUsageCandidate? in
             let record = try decoder.decode(CodexRecord.self, from: Data(line.utf8))
-            return checkpoint.consume(record, sourceOffset: UInt64(index), speed: speed)
+            return checkpoint.consume(
+                record,
+                sourceOffset: UInt64(index),
+                pricingSpeed: pricingSpeed
+            )
         }
         #expect(firstCandidates.count == 1)
 
@@ -634,7 +1092,11 @@ struct CodexRolloutParsingStateTests {
         let next = #"{"timestamp":"2026-05-04T08:36:00Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1600,"cached_input_tokens":500,"output_tokens":260,"reasoning_output_tokens":0,"total_tokens":1860}}}}"#
         let record = try decoder.decode(CodexRecord.self, from: Data(next.utf8))
         let entry = try #require(
-            restored.consume(record, sourceOffset: 3, speed: speed)?.entry
+            restored.consume(
+                record,
+                sourceOffset: 3,
+                pricingSpeed: pricingSpeed
+            )?.entry
         )
 
         #expect(entry.sessionID == "meta-session")
@@ -664,21 +1126,47 @@ struct CodexRolloutParsingStateTests {
             let candidate = checkpoint.consume(
                 record,
                 sourceOffset: UInt64(offset),
-                speed: .standard
+                pricingSpeed: .standard
             )
             #expect(candidate?.entry == nil)
         }
         let firstRecord = try decoder.decode(CodexRecord.self, from: Data(first.utf8))
         let repeatedRecord = try decoder.decode(CodexRecord.self, from: Data(repeated.utf8))
         let emitted = [
-            checkpoint.consume(firstRecord, sourceOffset: 2, speed: .standard),
-            checkpoint.consume(repeatedRecord, sourceOffset: 3, speed: .standard),
+            checkpoint.consume(firstRecord, sourceOffset: 2, pricingSpeed: .standard),
+            checkpoint.consume(repeatedRecord, sourceOffset: 3, pricingSpeed: .standard),
         ].compactMap { $0?.entry }
 
         #expect(emitted.count == 2)
         #expect(emitted.allSatisfy { $0.model == "gpt-5" })
         #expect(emitted.allSatisfy { $0.usage.inputTokens == 0 })
         #expect(emitted.allSatisfy { $0.usage.cacheReadInputTokens == 100 })
+    }
+
+    @Test("Codex fast 只写 serviceTier，不污染 Claude usage.speed")
+    func pricingSpeedMapsOnlyToServiceTier() throws {
+        let decoder = JSONDecoder()
+        var checkpoint = CodexParserCheckpoint.initial(
+            sessionID: "session",
+            replaySecond: nil
+        )
+        let turn = #"{"timestamp":"2026-05-04T08:35:44.000Z","type":"turn_context","payload":{"model":"gpt-5.4"}}"#
+        let event = #"{"timestamp":"2026-05-04T08:35:46.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":100,"cached_input_tokens":20,"output_tokens":1,"reasoning_output_tokens":0,"total_tokens":101}}}}"#
+        let turnRecord = try decoder.decode(CodexRecord.self, from: Data(turn.utf8))
+        let eventRecord = try decoder.decode(CodexRecord.self, from: Data(event.utf8))
+        _ = checkpoint.consume(
+            turnRecord,
+            sourceOffset: 0,
+            pricingSpeed: .fast
+        )
+        let entry = try #require(checkpoint.consume(
+            eventRecord,
+            sourceOffset: 1,
+            pricingSpeed: .fast
+        )?.entry)
+
+        #expect(entry.usage.serviceTier == "fast")
+        #expect(entry.usage.speed.isEmpty)
     }
 
     @Test("session token_count 缺 timestamp 不使用 offset 计费")
@@ -694,7 +1182,7 @@ struct CodexRolloutParsingStateTests {
         #expect(checkpoint.consume(
             record,
             sourceOffset: 99,
-            speed: .standard
+            pricingSpeed: .standard
         )?.entry == nil)
     }
 }
@@ -738,7 +1226,7 @@ struct CodexParserCheckpoint: Sendable {
     mutating func consume(
         _ record: CodexRecord,
         sourceOffset: UInt64,
-        speed: CodexPricingSpeed
+        pricingSpeed: CodexPricingSpeed
     ) -> CodexUsageCandidate? {
         switch record.payload {
         case .sessionMeta(let meta):
@@ -781,7 +1269,7 @@ struct CodexParserCheckpoint: Sendable {
                 model: model,
                 cwd: cwd,
                 counts: delta,
-                speed: speed
+                pricingSpeed: pricingSpeed
             )
         case .unknown:
             return nil
@@ -805,12 +1293,6 @@ extension CodexTokenCounts {
     }
 }
 
-extension CodexPricingSpeed {
-    var usageSpeed: String {
-        self == .fast ? "fast" : ""
-    }
-}
-
 extension CodexUsageCandidate {
     static func make(
         sessionID: String,
@@ -819,7 +1301,7 @@ extension CodexUsageCandidate {
         model: String,
         cwd: String?,
         counts: CodexTokenCounts,
-        speed: CodexPricingSpeed
+        pricingSpeed: CodexPricingSpeed
     ) -> CodexUsageCandidate {
         let normalized = counts.normalizedForBilling
         let messageID = "\(sessionID):\(timestamp.key):\(sourceOffset)"
@@ -830,11 +1312,11 @@ extension CodexUsageCandidate {
             outputTokens: normalized.output,
             reasoningTokens: normalized.reasoning,
             serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
-            serviceTier: speed == .fast ? "fast" : "",
+            serviceTier: pricingSpeed == .fast ? "fast" : "",
             cacheCreation: nil,
             inferenceGeo: "",
             iterations: [],
-            speed: speed.usageSpeed
+            speed: ""
         )
         let entry = ParsedUsageEntry(
             recordUUID: messageID,
@@ -870,7 +1352,7 @@ extension CodexUsageCandidate {
 
 `CodexTokenCounts.normalizedForBilling` 是数据计划 Task 4 建立的唯一归一化 helper：先非负化 raw input，再将 cached clamp 到 raw input，输出 pure/raw/cached/output/reasoning/total。计价阶段的全量 parser 与本 reducer 都必须调它，不保留两份 `max(input-cached, 0)` 逻辑。
 
-`CodexRolloutParser.parseFile` 改为创建 checkpoint，并把每条 line 的绝对起始 byte offset 传给 `consume`，不保留第二套状态机。
+`CodexRolloutParser.parseFile` 改为创建 checkpoint，并把每条 line 的绝对起始 byte offset 与 `pricingSpeed` 传给 `consume`，不保留第二套状态机。Codex fast/priority 的唯一持久化表达是 `usage.serviceTier`；不得把配置值复制到 Claude 专用的 `usage.speed`。
 
 - [ ] **Step 4: 运行 reducer 与既有 Codex parser suites**
 
@@ -880,7 +1362,7 @@ Run:
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/CodexRolloutParsingStateTests -only-testing:TokenWatchTests/CodexRolloutParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: PASS，现有模型切换、fallback 和 delta 测试无回归；repeated total + nonzero last 仍 emit，四维全零不污染 model，cached clamp、timestamp 和 replay baseline 保持数据计划契约。
+Expected: PASS，现有模型切换、fallback 和 delta 测试无回归；repeated total + nonzero last 仍 emit，四维全零不污染 model，cached clamp、timestamp 和 replay baseline 保持数据计划契约；fast entry 的 `serviceTier == "fast"` 且 `speed.isEmpty`。
 
 - [ ] **Step 5: 提交 Codex reducer**
 
@@ -889,17 +1371,17 @@ git add TokenWatch/Providers/Codex/CodexRolloutParsingState.swift TokenWatch/Pro
 git commit -m "refactor(codex): 抽出可恢复的 rollout 状态"
 ```
 
-### Task 5: Codex 追加从 checkpoint 恢复
+### Task 4: Codex 追加、provisional、replay 与重建
 
 **Files:**
 - Modify: `TokenWatch/Providers/Codex/CodexRolloutParser.swift`
 - Modify: `TokenWatchTests/Providers/Codex/CodexRolloutParserTests.swift`
 
 **Interfaces:**
-- Consumes: `IncrementalJSONLFileState<CodexUsageCandidate, CodexParserCheckpoint>`、descriptor-based `JSONLFileReading`。
-- Produces: `CodexRolloutParser.init(fileReader:)` 和保留计价计划 `pricingSpeed:` 标签的仅后缀读取 `parseAllFiles`。
+- Consumes: Task 1 的 `JSONLLastGoodCacheCoordinator<State, CodexPricingSpeed>`、`IncrementalJSONLFileState<CodexUsageCandidate, CodexParserCheckpoint>`、data plan 的 replay/last-good 语义与 deep snapshot helper。
+- Produces: coordinator payload `CodexIncrementalState`（replay classification + file state）；保留 `pricingSpeed:` 标签的 `parseAllFiles`，由 coordinator scope 负责 tier-sensitive hit/last-good/失效，entry 只更新 `serviceTier` 且 `speed` 为空。Codex parser 不拥有 cache dictionary、lock、per-file catch 或 prune。
 
-- [ ] **Step 1: 写模型/session/total 跨 append 的 I/O 失败测试**
+- [ ] **Step 1: 写 append checkpoint、provisional、replay 与 rebuild 失败测试**
 
 ```swift
 @Test("Codex append 从 committed checkpoint 恢复")
@@ -964,260 +1446,7 @@ private func appendUTF8(_ text: String, to url: URL) throws {
 
 上述 helper 定义在 `CodexRolloutParserTests.swift` 自身；不引用 Claude test file 的 file-private `appendUTF8`。
 
-- [ ] **Step 2: 运行测试并确认当前 Codex cache 全量失效**
-
-Run:
-
-```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/CodexRolloutParserTests/appendReadsOnlySuffixAndRestoresCheckpoint -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
-```
-
-Expected: FAIL；metrics 显示从 0 读取，或增量 delta 没有 previous totals。
-
-- [ ] **Step 3: 将 Codex cache 改为带 checkpoint 的增量状态**
-
-```swift
-private typealias CodexFileState = IncrementalJSONLFileState<CodexUsageCandidate, CodexParserCheckpoint>
-
-private struct CachedCodexFile: Sendable {
-    let speed: CodexPricingSpeed
-    let replayClassification: CodexReplayClassification
-    let state: CodexFileState
-}
-
-private let fileReader: any JSONLFileReading
-private var cachedFiles: [String: CachedCodexFile] = [:]
-
-init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
-    self.fileReader = fileReader
-}
-```
-
-读取完整行时对可变 checkpoint 调 `consume(record, sourceOffset: lineStartOffset, speed: speed)`，每消费一个以换行结束的 line 后更新 `checkpointAtCommittedOffset`。处理 EOF tail 时必须复制 checkpoint：
-
-```swift
-var provisionalCheckpoint = committedCheckpoint
-let provisionalCandidates = parseRecord(buffer).flatMap {
-    provisionalCheckpoint.consume($0, sourceOffset: committedOffset, speed: speed)
-}.map { [$0] } ?? []
-```
-
-返回 state 时保存 `committedCheckpoint`，不能保存 `provisionalCheckpoint`。`parseCachedFile` 每轮打开一个 descriptor snapshot；metadata + speed 完全相同时可直接 reuse，其他情况先重新分类 replay，然后只计算一次 transition：
-
-```swift
-let snapshot = try fileReader.openSnapshot(for: fileInfo.url)
-defer { snapshot.stream.close() }
-let cached = withCacheLock { cachedFiles[cacheKey] }
-
-if let cached,
-   cached.speed == speed,
-   cached.state.metadata == snapshot.metadata,
-   snapshot.metadata.identity != nil {
-    withCacheLock { cacheHitCount += 1 }
-    return cached.state.returnedCandidates
-}
-
-let contentTransition = cached.map {
-    IncrementalJSONLTransition.decide(
-        previous: $0.state,
-        newMetadata: snapshot.metadata
-    )
-} ?? .rebuild
-let anchorMatches: Bool
-if case .append = contentTransition, let cached {
-    anchorMatches = try cached.state.continuityAnchor.matches(
-        in: snapshot.stream
-    )
-} else {
-    anchorMatches = false
-}
-let contentCanReuseClassification: Bool = {
-    switch contentTransition {
-    case .reuse:
-        return true
-    case .append:
-        return anchorMatches
-    case .rebuild:
-        return false
-    }
-}()
-let replayClassification: CodexReplayClassification
-if let cached,
-   contentCanReuseClassification,
-   cached.replayClassification != .pending {
-    replayClassification = cached.replayClassification
-} else {
-    replayClassification = try CodexReplayDetector.classify(snapshot: snapshot)
-}
-let replaySecond = replayClassification.replaySecond
-let previous: CodexFileState? = {
-    guard let cached,
-          cached.speed == speed,
-          contentCanReuseClassification,
-          cached.state.checkpointAtCommittedOffset.replaySecond == replaySecond
-    else { return nil }
-    return cached.state
-}()
-let transition = previous == nil ? .rebuild : contentTransition
-
-let nextState = try buildState(
-    fileInfo: fileInfo,
-    snapshot: snapshot,
-    previous: previous,
-    transition: transition,
-    replaySecond: replaySecond,
-    speed: speed
-)
-```
-
-只在 `buildState` 完整成功后写入 `CachedCodexFile(speed: speed, replayClassification: replayClassification, state: nextState)`；config 从 standard 切到 fast 时 `previous == nil`，必须从 0 重建，使所有 entry 的 `usage.speed` 更新。不得在 `buildState` 内再根据 metadata 重算 transition，否则 speed mismatch 会错误 reuse 旧 state。
-
-`CodexReplayDetector.classify` 复用数据计划的 pinned 规则。对带 marker 但尚不足两条 usage 的文件返回 `.pending`；第二条同秒 usage 追加后分类从 pending 变为 replay，上述 replaySecond 比较会强制从 0 重建，因而能撤销上一轮 provisional/stable 的第一条历史 candidate。
-
-`buildState` 与底层读取循环按以下唯一算法实现，确保每个完整行之后的 checkpoint 与 committed offset 同步推进：
-
-```swift
-private func buildState(
-    fileInfo: CodexRolloutFileInfo,
-    snapshot: JSONLFileSnapshot,
-    previous: CodexFileState?,
-    transition: IncrementalJSONLTransition,
-    replaySecond: String?,
-    speed: CodexPricingSpeed
-) throws -> CodexFileState {
-    switch transition {
-    case .reuse:
-        return previous!
-    case .append(let startOffset):
-        return try readState(
-            fileInfo: fileInfo,
-            snapshot: snapshot,
-            startOffset: startOffset,
-            stablePrefix: previous!.stableCandidates,
-            checkpoint: previous!.checkpointAtCommittedOffset,
-            previousAnchor: previous!.continuityAnchor,
-            speed: speed
-        )
-    case .rebuild:
-        return try readState(
-            fileInfo: fileInfo,
-            snapshot: snapshot,
-            startOffset: 0,
-            stablePrefix: [],
-            checkpoint: .initial(
-                sessionID: fileInfo.sessionID,
-                replaySecond: replaySecond
-            ),
-            previousAnchor: .empty,
-            speed: speed
-        )
-    }
-}
-
-private func readState(
-    fileInfo: CodexRolloutFileInfo,
-    snapshot: JSONLFileSnapshot,
-    startOffset: UInt64,
-    stablePrefix: [CodexUsageCandidate],
-    checkpoint: CodexParserCheckpoint,
-    previousAnchor: JSONLContinuityAnchor,
-    speed: CodexPricingSpeed
-) throws -> CodexFileState {
-    try snapshot.stream.seek(toOffset: startOffset)
-
-    var stable = stablePrefix
-    var committedCheckpoint = checkpoint
-    var buffer = Data()
-    var bufferStartOffset = startOffset
-    var nextReadOffset = startOffset
-    var newlyCommittedBytes = Data()
-
-    while nextReadOffset < snapshot.metadata.size {
-        let count = Int(min(UInt64(64 * 1024), snapshot.metadata.size - nextReadOffset))
-        let chunk = try snapshot.stream.read(upToCount: count)
-        guard !chunk.isEmpty else { throw IncrementalJSONLReadError.unexpectedEOF }
-        nextReadOffset += UInt64(chunk.count)
-        buffer.append(chunk)
-
-        var consumed = buffer.startIndex
-        while let newline = buffer[consumed...].firstIndex(of: 0x0A) {
-            let lineStartOffset = bufferStartOffset + UInt64(consumed)
-            let line = Data(buffer[consumed..<newline])
-            if let record = parseRecord(line),
-               let candidate = committedCheckpoint.consume(
-                    record,
-                    sourceOffset: lineStartOffset,
-                    speed: speed
-               ) {
-                stable.append(candidate)
-            }
-            consumed = buffer.index(after: newline)
-        }
-        if consumed > buffer.startIndex {
-            newlyCommittedBytes.append(buffer[..<consumed])
-            buffer.removeSubrange(buffer.startIndex..<consumed)
-            bufferStartOffset += UInt64(consumed)
-        }
-    }
-
-    let committedOffset = bufferStartOffset
-    var provisionalCheckpoint = committedCheckpoint
-    let provisionalCandidates = parseRecord(buffer).flatMap {
-        provisionalCheckpoint.consume(
-            $0,
-            sourceOffset: committedOffset,
-            speed: speed
-        )
-    }.map { [$0] } ?? []
-
-    return CodexFileState(
-        metadata: snapshot.metadata,
-        committedOffset: committedOffset,
-        stableCandidates: stable,
-        provisionalTail: buffer,
-        provisionalCandidates: provisionalCandidates,
-        continuityAnchor: .make(
-            previous: previousAnchor,
-            newlyCommittedBytes: newlyCommittedBytes,
-            committedOffset: committedOffset
-        ),
-        checkpointAtCommittedOffset: committedCheckpoint
-    )
-}
-```
-
-`parseRecord(_:)` 只负责 `JSONDecoder` 解码非空单行并返回 optional `CodexRecord`；无效行仍算已提交字节，但不能改变 checkpoint。`parseCachedFile` 只有在上述方法完整返回后才替换 cache。
-
-- [ ] **Step 4: 运行 Codex parser、reducer 与 reader suites**
-
-Run:
-
-```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/CodexRolloutParserTests -only-testing:TokenWatchTests/CodexRolloutParsingStateTests -only-testing:TokenWatchTests/JSONLFileReaderTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
-```
-
-Expected: PASS；append I/O、模型、session、delta、speed 全部正确。
-
-- [ ] **Step 5: 提交 Codex 增量读取**
-
-```bash
-git add TokenWatch/Providers/Codex/CodexRolloutParser.swift TokenWatchTests/Providers/Codex/CodexRolloutParserTests.swift
-git commit -m "perf(codex): 从 checkpoint 增量读取 rollout"
-```
-
-### Task 6: Codex provisional、重建、last-good 与深比较
-
-**Files:**
-- Modify: `TokenWatch/Providers/Codex/CodexRolloutParser.swift`
-- Modify: `TokenWatchTests/Providers/Codex/CodexRolloutParserTests.swift`
-
-**Interfaces:**
-- Consumes: data plan 的 last-good cache 语义与 deep snapshot helper。
-- Produces: 所有文件状态迁移下增量结果等于 fresh full scan。
-
-- [ ] **Step 1: 写边界状态表驱动失败测试**
-
-新增测试覆盖以下真实写入序列，并在每一行使用 `ParsedUsageEntryDeepSnapshot.sorted(_:)` 排序比较：
+同一步先加入所有将由增量 cache 实现的边界测试；metadata/read failure、prune 和 unchanged 零读取继续复用数据计划已经落地的测试：
 
 ```swift
 @Test("Codex 增量与 fresh 全量结果深度一致")
@@ -1237,7 +1466,10 @@ func incrementalMatchesFreshFullScanAcrossTransitions() throws {
     )
     let eventStartOffset = provisionalSize - UInt64(event.utf8.count)
     let anchor = try #require(
-        incremental.debugContinuityAnchor(for: fixture.file.url)
+        incremental.debugContinuityAnchor(
+            for: fixture.file.url,
+            pricingSpeed: .fast
+        )
     )
     reader.resetMetrics()
     try appendUTF8("\n", to: fixture.file.url)
@@ -1249,11 +1481,7 @@ func incrementalMatchesFreshFullScanAcrossTransitions() throws {
     #expect(ParsedUsageEntryDeepSnapshot.sorted(provisional) == ParsedUsageEntryDeepSnapshot.sorted(committed))
     #expect(ParsedUsageEntryDeepSnapshot.sorted(committed) == ParsedUsageEntryDeepSnapshot.sorted(fresh))
 }
-```
 
-同一 suite 加入以下两个精确测试；metadata/read failure、prune 和 unchanged 零读取继续运行数据计划已经落地的测试：
-
-```swift
 @Test("Codex 半行不会提前提交 checkpoint")
 func incompleteTailDoesNotCommitCheckpoint() throws {
     let fixture = try makeRolloutFixture(lines: [sessionMeta, turnContextGpt5])
@@ -1270,7 +1498,7 @@ func incompleteTailDoesNotCommitCheckpoint() throws {
     #expect(result.first?.usage.cacheReadInputTokens == 300)
 }
 
-@Test(arguments: ["truncate", "truncate-grow", "replace", "touch", "speed"])
+@Test(arguments: ["truncate", "truncate-grow", "replace", "touch", "service-tier"])
 func codexRebuildTransitionsMatchFreshScan(kind: String) throws {
     let fixture = try makeRolloutFixture(lines: [sessionMeta, turnContextGpt5, normalEvent])
     defer { fixture.cleanup() }
@@ -1280,7 +1508,7 @@ func codexRebuildTransitionsMatchFreshScan(kind: String) throws {
 
     let truncated = [sessionMeta, turnContextGpt55, normalEvent].joined(separator: "\n") + "\n"
     let replacement = [sessionMeta, turnContextGpt55, normalEvent].joined(separator: "\n") + "\n"
-    var speed = CodexPricingSpeed.standard
+    var pricingSpeed = CodexPricingSpeed.standard
     switch kind {
     case "truncate":
         let handle = try FileHandle(forWritingTo: fixture.file.url)
@@ -1299,15 +1527,15 @@ func codexRebuildTransitionsMatchFreshScan(kind: String) throws {
             [.modificationDate: Date().addingTimeInterval(5)],
             ofItemAtPath: fixture.file.url.path
         )
-    case "speed":
-        speed = .fast
+    case "service-tier":
+        pricingSpeed = .fast
     default:
         Issue.record("unexpected transition kind")
     }
 
     reader.resetMetrics()
-    let incremental = try parser.parseAllFiles([fixture.file], pricingSpeed: speed)
-    let fresh = try CodexRolloutParser().parseAllFiles([fixture.file], pricingSpeed: speed)
+    let incremental = try parser.parseAllFiles([fixture.file], pricingSpeed: pricingSpeed)
+    let fresh = try CodexRolloutParser().parseAllFiles([fixture.file], pricingSpeed: pricingSpeed)
     #expect(reader.seekOffsets.contains(0))
     #expect(ParsedUsageEntryDeepSnapshot.sorted(incremental) == ParsedUsageEntryDeepSnapshot.sorted(fresh))
 }
@@ -1341,58 +1569,322 @@ func replayClassificationChangeForcesRebuild() throws {
 }
 ```
 
-- [ ] **Step 2: 运行边界测试确认 provisional checkpoint 或回退失败**
+- [ ] **Step 2: 运行完整 Codex parser suite 并确认真实 RED**
 
 Run:
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/CodexRolloutParserTests/incrementalMatchesFreshFullScanAcrossTransitions -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/CodexRolloutParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: FAIL，任何提前提交 provisional model/total、错误覆盖 last-good 或浅层比较都会暴露。
+Expected: FAIL；append metrics 仍显示从 0 读取，且尚无 committed checkpoint/provisional isolation、pending→replay rebuild 与 service-tier cache invalidation。该 suite 必须在 Step 3 修改 cache/read loop 前观察到至少一个上述语义或 I/O 断言失败。
 
-- [ ] **Step 3: 统一 Codex 原子更新和全局去重**
-
-`parseCachedFile` 只能在 snapshot metadata、replay 分类、anchor/seek/read 和完整状态构建全部成功后替换 cache。Task 5 计算出的 `nextState` 原子写入：
+- [ ] **Step 3: 将 Codex coordinator payload 改为带 checkpoint 的增量状态**
 
 ```swift
-withCacheLock {
-    cachedFiles[cacheKey] = CachedCodexFile(
-        speed: speed,
+private typealias CodexFileState = IncrementalJSONLFileState<CodexUsageCandidate, CodexParserCheckpoint>
+
+private struct CodexIncrementalState: Sendable {
+    let replayClassification: CodexReplayClassification
+    let fileState: CodexFileState
+
+    var returnedCandidates: [CodexUsageCandidate] {
+        fileState.returnedCandidates
+    }
+}
+
+private let fileReader: any JSONLFileReading
+private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
+    CodexIncrementalState,
+    CodexPricingSpeed
+>
+
+init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
+    self.fileReader = fileReader
+    self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
+        CodexIncrementalState,
+        CodexPricingSpeed
+    >(fileReader: fileReader)
+}
+
+var debugCachedFileCount: Int {
+    cacheCoordinator.debugCachedFileCount
+}
+
+var debugCacheHitCount: Int {
+    cacheCoordinator.debugCacheHitCount
+}
+```
+
+读取完整行时对可变 checkpoint 调 `consume(record, sourceOffset: lineStartOffset, pricingSpeed: pricingSpeed)`，每消费一个以换行结束的 line 后更新 `checkpointAtCommittedOffset`。处理 EOF tail 时必须复制 checkpoint：
+
+```swift
+var provisionalCheckpoint = committedCheckpoint
+let provisionalCandidates = parseRecord(buffer).flatMap {
+    provisionalCheckpoint.consume(
+        $0,
+        sourceOffset: committedOffset,
+        pricingSpeed: pricingSpeed
+    )
+}.map { [$0] } ?? []
+```
+
+返回 file state 时保存 `committedCheckpoint`，不能保存 `provisionalCheckpoint`。coordinator 的 build closure 获得同 `pricingSpeed` scope 的 previous `CodexIncrementalState`；provider 只负责 content transition、anchor 与 replay classification：
+
+```swift
+private func buildCodexState(
+    fileInfo: CodexRolloutFileInfo,
+    snapshot: JSONLFileSnapshot,
+    previous: CodexIncrementalState?,
+    pricingSpeed: CodexPricingSpeed
+) throws -> CodexIncrementalState {
+    let previousFileState = previous?.fileState
+    let contentTransition = previousFileState.map {
+        IncrementalJSONLTransition.decide(
+            previous: $0,
+            newMetadata: snapshot.metadata
+        )
+    } ?? .rebuild
+
+    let anchorMatches: Bool
+    if case .append = contentTransition, let previousFileState {
+        anchorMatches = try previousFileState.continuityAnchor.matches(
+            in: snapshot.stream
+        )
+    } else {
+        anchorMatches = false
+    }
+    let contentCanReuseClassification: Bool = {
+        switch contentTransition {
+        case .reuse:
+            return true
+        case .append:
+            return anchorMatches
+        case .rebuild:
+            return false
+        }
+    }()
+
+    let replayClassification: CodexReplayClassification
+    if let previous,
+       contentCanReuseClassification,
+       previous.replayClassification != .pending {
+        replayClassification = previous.replayClassification
+    } else {
+        replayClassification = try CodexReplayDetector.classify(snapshot: snapshot)
+    }
+    let replaySecond = replayClassification.replaySecond
+    let reusableFileState: CodexFileState? = {
+        guard let previousFileState,
+              contentCanReuseClassification,
+              previousFileState.checkpointAtCommittedOffset.replaySecond == replaySecond else {
+            return nil
+        }
+        return previousFileState
+    }()
+    let effectiveTransition = reusableFileState == nil ? .rebuild : contentTransition
+    let nextFileState = try buildCodexFileState(
+        fileInfo: fileInfo,
+        snapshot: snapshot,
+        previous: reusableFileState,
+        transition: effectiveTransition,
+        replaySecond: replaySecond,
+        pricingSpeed: pricingSpeed
+    )
+    return CodexIncrementalState(
         replayClassification: replayClassification,
-        state: nextState
+        fileState: nextFileState
     )
 }
-return nextState.returnedCandidates
 ```
 
-任何失败由 `parseAllFiles` 捕获；只有旧 `CachedCodexFile.speed == 本轮 speed` 时才返回其 `returnedCandidates`，首次失败或跨 speed 失败继续跳过。最终 dedup 始终对所有文件 state 的 stable + provisional `CodexUsageCandidate` 执行：
+config 从 standard 切到 fast 时 coordinator 以 scope 不匹配向 build 传 `previous == nil`，因此从 0 重建并更新所有 entry 的 `usage.serviceTier`，同时 `usage.speed` 继续为空；parser 不再自行比较或存储 pricing scope。
+
+`CodexReplayDetector.classify` 复用数据计划的 pinned 规则。对带 marker 但尚不足两条 usage 的文件返回 `.pending`；第二条同秒 usage 追加后分类从 pending 变为 replay，replaySecond 不匹配会令 `reusableFileState == nil` 并从 0 重建，撤销上一轮 provisional/stable 的第一条历史 candidate。
+
+`buildCodexFileState` 与底层读取循环只构建 provider state，确保每个完整行之后的 checkpoint 与 committed offset 同步推进：
 
 ```swift
-var seen: Set<CodexEventDedupKey> = []
-let entries = allCandidates.compactMap { candidate -> ParsedUsageEntry? in
-    guard seen.insert(candidate.dedupKey).inserted else { return nil }
-    return candidate.entry
+private func buildCodexFileState(
+    fileInfo: CodexRolloutFileInfo,
+    snapshot: JSONLFileSnapshot,
+    previous: CodexFileState?,
+    transition: IncrementalJSONLTransition,
+    replaySecond: String?,
+    pricingSpeed: CodexPricingSpeed
+) throws -> CodexFileState {
+    switch transition {
+    case .reuse:
+        return previous!
+    case .append(let startOffset):
+        return try readState(
+            fileInfo: fileInfo,
+            snapshot: snapshot,
+            startOffset: startOffset,
+            stablePrefix: previous!.stableCandidates,
+            checkpoint: previous!.checkpointAtCommittedOffset,
+            previousAnchor: previous!.continuityAnchor,
+            pricingSpeed: pricingSpeed
+        )
+    case .rebuild:
+        return try readState(
+            fileInfo: fileInfo,
+            snapshot: snapshot,
+            startOffset: 0,
+            stablePrefix: [],
+            checkpoint: .initial(
+                sessionID: fileInfo.sessionID,
+                replaySecond: replaySecond
+            ),
+            previousAnchor: .empty,
+            pricingSpeed: pricingSpeed
+        )
+    }
+}
+
+private func readState(
+    fileInfo: CodexRolloutFileInfo,
+    snapshot: JSONLFileSnapshot,
+    startOffset: UInt64,
+    stablePrefix: [CodexUsageCandidate],
+    checkpoint: CodexParserCheckpoint,
+    previousAnchor: JSONLContinuityAnchor,
+    pricingSpeed: CodexPricingSpeed
+) throws -> CodexFileState {
+    try snapshot.stream.seek(toOffset: startOffset)
+
+    var stable = stablePrefix
+    var committedCheckpoint = checkpoint
+    var buffer = Data()
+    var bufferStartOffset = startOffset
+    var nextReadOffset = startOffset
+    var newlyCommittedBytes = Data()
+
+    while nextReadOffset < snapshot.metadata.size {
+        let count = Int(min(UInt64(64 * 1024), snapshot.metadata.size - nextReadOffset))
+        let chunk = try snapshot.stream.read(upToCount: count)
+        guard !chunk.isEmpty else { throw IncrementalJSONLReadError.unexpectedEOF }
+        nextReadOffset += UInt64(chunk.count)
+        buffer.append(chunk)
+
+        var consumed = buffer.startIndex
+        while let newline = buffer[consumed...].firstIndex(of: 0x0A) {
+            let lineStartOffset = bufferStartOffset + UInt64(consumed)
+            let line = Data(buffer[consumed..<newline])
+            if let record = parseRecord(line),
+               let candidate = committedCheckpoint.consume(
+                    record,
+                    sourceOffset: lineStartOffset,
+                    pricingSpeed: pricingSpeed
+               ) {
+                stable.append(candidate)
+            }
+            consumed = buffer.index(after: newline)
+        }
+        if consumed > buffer.startIndex {
+            newlyCommittedBytes.append(buffer[..<consumed])
+            buffer.removeSubrange(buffer.startIndex..<consumed)
+            bufferStartOffset += UInt64(consumed)
+        }
+    }
+
+    let committedOffset = bufferStartOffset
+    var provisionalCheckpoint = committedCheckpoint
+    let provisionalCandidates = parseRecord(buffer).flatMap {
+        provisionalCheckpoint.consume(
+            $0,
+            sourceOffset: committedOffset,
+            pricingSpeed: pricingSpeed
+        )
+    }.map { [$0] } ?? []
+
+    return CodexFileState(
+        metadata: snapshot.metadata,
+        committedOffset: committedOffset,
+        stableCandidates: stable,
+        provisionalTail: buffer,
+        provisionalCandidates: provisionalCandidates,
+        continuityAnchor: .make(
+            previous: previousAnchor,
+            newlyCommittedBytes: newlyCommittedBytes,
+            committedOffset: committedOffset
+        ),
+        checkpointAtCommittedOffset: committedCheckpoint
+    )
 }
 ```
 
-不能把 per-file 最终 entries 直接 append 到旧去重结果，也不能丢掉 candidate 中的 source total/reasoning/timestamp key。
+`parseRecord(_:)` 只负责 `JSONDecoder` 解码非空单行并返回 optional `CodexRecord`；无效行仍算已提交字节，但不能改变 checkpoint。snapshot metadata、replay 分类、anchor/seek/read 与完整 state build 任一步抛错时，coordinator 不 store，并按 `CodexPricingSpeed` scope 投影 last-good。
+
+`parseAllFiles` 只提供 state build/projection、日志和最终 first-wins 去重：
+
+```swift
+func parseAllFiles(
+    _ files: [CodexRolloutFileInfo],
+    pricingSpeed: CodexPricingSpeed = .standard
+) throws -> [ParsedUsageEntry] {
+    let allCandidates: [CodexUsageCandidate] = cacheCoordinator.loadListedFiles(
+        files,
+        scope: pricingSpeed,
+        cacheKey: { Self.cacheKey(for: $0.url) },
+        urlForFile: { $0.url },
+        build: { [self] fileInfo, snapshot, previous in
+            try buildCodexState(
+                fileInfo: fileInfo,
+                snapshot: snapshot,
+                previous: previous,
+                pricingSpeed: pricingSpeed
+            )
+        },
+        project: \.returnedCandidates,
+        onFailure: { [self] fileInfo, error, reusedLastGood in
+            if reusedLastGood {
+                logger.warning(
+                    "文件暂时不可读，复用上次成功结果: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            } else {
+                logger.warning(
+                    "文件首次读取失败，跳过: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                )
+            }
+        }
+    )
+
+    var seen: Set<CodexEventDedupKey> = []
+    return allCandidates.compactMap { candidate in
+        guard seen.insert(candidate.dedupKey).inserted else { return nil }
+        return candidate.entry
+    }
+}
+
+func debugContinuityAnchor(
+    for url: URL,
+    pricingSpeed: CodexPricingSpeed = .standard
+) -> JSONLContinuityAnchor? {
+    cacheCoordinator.cachedState(
+        for: Self.cacheKey(for: url),
+        scope: pricingSpeed
+    )?.fileState.continuityAnchor
+}
+```
+
+不能把 per-file 最终 entries 直接 append 到旧去重结果，也不能丢掉 candidate 中的 source total/reasoning/timestamp key。parser 只读转发 coordinator state，不访问 coordinator 内部 dictionary 或 lock。
 
 - [ ] **Step 4: 运行两个 parser 的完整定向回归**
 
 Run:
 
 ```bash
-xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -only-testing:TokenWatchTests/JSONLFileReaderTests -only-testing:TokenWatchTests/ClaudeJSONLParserTests -only-testing:TokenWatchTests/ClaudeUsageDeduplicatorTests -only-testing:TokenWatchTests/CodexRolloutParsingStateTests -only-testing:TokenWatchTests/CodexRolloutParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
+xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -only-testing:TokenWatchTests/IncrementalJSONLFileStateTests -only-testing:TokenWatchTests/JSONLFileReaderTests -only-testing:TokenWatchTests/JSONLLastGoodCacheCoordinatorTests -only-testing:TokenWatchTests/ClaudeJSONLParserTests -only-testing:TokenWatchTests/ClaudeUsageDeduplicatorTests -only-testing:TokenWatchTests/CodexRolloutParsingStateTests -only-testing:TokenWatchTests/CodexRolloutParserTests -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-Expected: PASS；所有 deep snapshot、offset、read byte count、tail 和回退测试通过。
+Expected: PASS；所有 deep snapshot、offset/read byte count、tail、pending→replay rebuild、scope-sensitive last-good/prune、service-tier cache invalidation 与 `usage.speed.isEmpty` 断言通过；coordinator suite 证明 state 生命周期仍只有一个实现。
 
-- [ ] **Step 5: 提交 Codex 边界语义**
+- [ ] **Step 5: 提交 Codex 增量边界**
 
 ```bash
 git add TokenWatch/Providers/Codex/CodexRolloutParser.swift TokenWatchTests/Providers/Codex/CodexRolloutParserTests.swift
-git commit -m "fix(codex): 保持增量状态与全量解析一致"
+git commit -m "perf(codex): 增量解析 rollout 边界"
 ```
 
 ## Plan-Wide Verification
