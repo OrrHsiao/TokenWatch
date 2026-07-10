@@ -501,4 +501,102 @@ struct CodexRolloutParserTests {
         #expect(changedEntries.count == 2)
         #expect(parser.debugCacheHitCount == hitCountBeforeChangedParse)
     }
+
+    @Test("已成功 rollout 随后 seek 失败时复用 last-good 并按 scanner prune")
+    func seekFailureReusesLastGoodUntilScannerOmitsRollout() throws {
+        let (file, cleanup) = try makeJsonlFile([sessionMeta, turnContextGpt5, normalEvent])
+        defer { cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = CodexRolloutParser(fileReader: reader)
+        let initial = try parser.parseAllFiles([file])
+        #expect(initial.count == 1)
+
+        let secondEvent = #"{"timestamp":"2026-05-04T08:36:30.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":2000,"cached_input_tokens":500,"output_tokens":300,"reasoning_output_tokens":100,"total_tokens":2300}}}}"#
+        try ([sessionMeta, turnContextGpt5, normalEvent, secondEvent]
+            .joined(separator: "\n") + "\n")
+            .write(to: file.url, atomically: true, encoding: .utf8)
+        reader.failure = .seek
+
+        let fallback = try parser.parseAllFiles([file])
+        #expect(fallback.count == 1)
+        #expect(parser.debugCachedFileCount == 1)
+
+        reader.failure = .none
+        let deleted = try parser.parseAllFiles([])
+        #expect(deleted.isEmpty)
+        #expect(parser.debugCachedFileCount == 0)
+    }
+
+    @Test("从未成功的 missing rollout 保持跳过")
+    func missingRolloutWithoutLastGoodReturnsEmpty() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("missing-\(UUID().uuidString).jsonl")
+        let file = CodexRolloutFileInfo(
+            url: url,
+            sessionID: "missing",
+            isArchived: false
+        )
+        let parser = CodexRolloutParser()
+
+        let entries = try parser.parseAllFiles([file])
+
+        #expect(entries.isEmpty)
+        #expect(parser.debugCachedFileCount == 0)
+    }
+
+    @Test("Codex last-good 不得跨 pricing speed 复用")
+    func lastGoodIsScopedToPricingSpeed() throws {
+        let (file, cleanup) = try makeJsonlFile([sessionMeta, turnContextGpt5, normalEvent])
+        defer { cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = CodexRolloutParser(fileReader: reader)
+        #expect(try parser.parseAllFiles([file], pricingSpeed: .standard).count == 1)
+        reader.failure = .read
+
+        let fast = try parser.parseAllFiles([file], pricingSpeed: .fast)
+
+        #expect(fast.isEmpty)
+    }
+
+    @Test("replay 预检与全量解析共用一个注入 snapshot")
+    func replayPreflightAndFullParseShareOneInjectedSnapshot() throws {
+        let replayMeta = #"{"timestamp":"2026-05-04T08:35:40Z","type":"session_meta","payload":{"id":"child","cwd":"/tmp/project","thread_spawn":{"parent":"root"}}}"#
+        let first = #"{"timestamp":"2026-05-04T08:35:59.100Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":10,"output_tokens":10,"reasoning_output_tokens":1,"total_tokens":110},"last_token_usage":{"input_tokens":100,"cached_input_tokens":10,"output_tokens":10,"reasoning_output_tokens":1,"total_tokens":110}}}}"#
+        let second = #"{"timestamp":"2026-05-04T08:35:59.900Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":200,"cached_input_tokens":20,"output_tokens":20,"reasoning_output_tokens":2,"total_tokens":220},"last_token_usage":{"input_tokens":100,"cached_input_tokens":10,"output_tokens":10,"reasoning_output_tokens":1,"total_tokens":110}}}}"#
+        let next = #"{"timestamp":"2026-05-04T08:36:00.100Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":250,"cached_input_tokens":25,"output_tokens":25,"reasoning_output_tokens":3,"total_tokens":275}}}}"#
+        let (file, cleanup) = try makeJsonlFile([
+            replayMeta, turnContextGpt5, first, second, next,
+        ], sessionID: "child")
+        defer { cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = CodexRolloutParser(fileReader: reader)
+
+        let entries = try parser.parseFile(file)
+
+        #expect(entries.count == 1)
+        #expect(reader.openCount == 1)
+        #expect(reader.seekOffsets.count >= 2)
+        #expect(reader.seekOffsets.allSatisfy { $0 == 0 })
+        #expect(reader.closeCount == 1)
+    }
+
+    @Test("公开单文件入口不会吞掉 replay preflight reader 错误")
+    func singleFileEntryPropagatesReplayPreflightReaderFailure() throws {
+        let (file, cleanup) = try makeJsonlFile([sessionMeta, turnContextGpt5, normalEvent])
+        defer { cleanup() }
+        let reader = RecordingJSONLFileReader()
+        reader.failure = .read
+        let parser = CodexRolloutParser(fileReader: reader)
+
+        do {
+            _ = try parser.parseFile(file)
+            Issue.record("注入 read failure 后单文件入口没有抛错")
+        } catch RecordingJSONLReaderError.injectedReadFailure {
+            // Expected: replay preflight and the full parse share the throwing stream.
+        } catch {
+            Issue.record("收到非预期错误: \(error)")
+        }
+        #expect(reader.openCount == 1)
+        #expect(reader.closeCount == 1)
+    }
 }
