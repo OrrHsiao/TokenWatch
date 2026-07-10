@@ -64,134 +64,183 @@ private final class PricingLookupCache: @unchecked Sendable {
     }
 }
 
-/// 定价计算引擎
+/// 定价来源的请求语义；默认保持 Claude/通用 provider 的既有行为。
+enum PricingSemantics: Sendable, Equatable {
+    case standard
+    case codex
+}
+
+/// 定价计算引擎。
 ///
-/// 参考 ccusage `cost.rs::calculate_cost_from_tokens` + `tiered_cost`：
-/// ```
-/// cost = ( tiered(inputTokens,        inputPrice,         inputPriceAbove200k)
-///        + tiered(outputTokens,       outputPrice,        outputPriceAbove200k)
-///        + tiered(cacheCreate5m,      cacheWritePrice,    cacheWritePriceAbove200k)
-///        + tiered(cacheCreate1h,      inputPrice  × 2,    inputPriceAbove200k × 2)
-///        + tiered(cacheRead,          cacheReadPrice,     cacheReadPriceAbove200k) )
-///      × multiplier
-/// 其中:
-///   tiered(t, base, above) = 200_000 × base + (t - 200_000) × above   (above != nil 且 t > 200k)
-///                          | t × base                                  (其他情形)
-///   multiplier = pricing.fastMultiplier   (usage.speed == "fast")
-///              | 1.0                       (其他情形)
-/// ```
-///
-/// 关键约束：
-/// - 每类 token 的 200k 阈值独立判断（input 跨阈不会让 output 也走 above）
-/// - cache_create_1h 不读 LiteLLM 的 1h above 字段，而是 `input_above × 2.0`
-/// - fastMultiplier 在所有 tiered_cost 之和上整体乘一次,不分类应用
-/// - `cache_creation_input_tokens` 与 `cache_creation.ephemeral_5m/1h` 是
-///   总分关系（同一信息的两种表达），通过 `TokenUsage.cacheCreate5mTokens` /
-///   `cacheCreate1hTokens` 在数据层完成二选一，引擎只负责计费
-///
-/// 简化前提（与 ccusage 当前实现的差异，未来按需扩展）：
-/// - 定价表为 per-1M token USD，故公式中需 `÷ 1_000_000`
+/// `standard` 对无 whole-request 阈值的模型按 token 类别独立应用 200K
+/// marginal tier；有 `longContextThreshold` 时，整条请求统一选择 base/long rate。
+/// `codex` 在此基础上用 pure input + cache read 重建 raw input，并按 Codex 的
+/// implicit cache-read 与 fast/priority 规则计费。
 struct PricingEngine: Sendable {
+    private static let marginalTierThreshold = 200_000
+    private static let cacheCreate1hInputMultiplier = 2.0
 
-    /// 200k tier 阈值（来自 ccusage `cost.rs::tiered_cost::THRESHOLD`）
-    private static let tierThreshold: Int = 200_000
-
-    /// 1h 缓存写入价格相对 input 的乘子（来自 ccusage `CACHE_CREATE_1H_INPUT_MULTIPLIER`）
-    private static let cacheCreate1hInputMultiplier: Double = 2.0
-
-    /// 触发 fastMultiplier 的 speed 字段值(参考 ccusage `Speed` 枚举的
-    /// `#[serde(rename_all = "lowercase")]`,Anthropic 协议使用小写 "fast")
-    private static let fastSpeedValue: String = "fast"
-
-    private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "PricingEngine")
+    private let logger = Logger(
+        subsystem: "com.xiaoao.TokenWatch",
+        category: "PricingEngine"
+    )
     private let missingPricingLogGate: MissingPricingLogOnceGate
+    private let pricingTable: PricingTable
     private let pricingCache = PricingLookupCache()
 
-    var debugCachedPricingCount: Int {
-        pricingCache.count
-    }
+    var debugCachedPricingCount: Int { pricingCache.count }
 
-    init(missingPricingLogGate: MissingPricingLogOnceGate = .shared) {
+    init(
+        pricingTable: PricingTable = .shared,
+        missingPricingLogGate: MissingPricingLogOnceGate = .shared
+    ) {
+        self.pricingTable = pricingTable
         self.missingPricingLogGate = missingPricingLogGate
     }
 
-    /// 阶梯计费：超过 200k 阈值的部分按 above 单价，否则全部按 base 单价
-    /// 单价均为「每百万 token USD」，函数内部完成 ÷ 1e6
-    private static func tieredCost(tokens: Int, base: Double, above: Double?) -> Double {
-        guard tokens > 0 else { return 0.0 }
-        if let above, tokens > tierThreshold {
-            let baseCost = Double(tierThreshold) * base / 1_000_000.0
-            let aboveCost = Double(tokens - tierThreshold) * above / 1_000_000.0
-            return baseCost + aboveCost
+    /// 根据已知定价计算单次调用成本。
+    /// - Parameters:
+    ///   - usage: 单次调用的 token 用量与服务等级。
+    ///   - pricing: 对应模型的每百万 token 定价。
+    ///   - semantics: provider 的计价语义，默认 `.standard` 以兼容既有调用。
+    /// - Returns: 本次调用的 USD 成本。
+    func calculateCost(
+        usage: TokenUsage,
+        pricing: ModelPricing,
+        semantics: PricingSemantics = .standard
+    ) -> Double {
+        let baseCacheRead = semantics == .codex && !pricing.cacheReadPriceIsExplicit
+            ? pricing.inputPrice
+            : pricing.cacheReadPrice
+        let cache1hBase = pricing.inputPrice * Self.cacheCreate1hInputMultiplier
+        let cache1hAbove = pricing.inputPriceAbove200k.map {
+            $0 * Self.cacheCreate1hInputMultiplier
+        }
+
+        let subtotal: Double
+        if let threshold = pricing.longContextThreshold {
+            // Codex 的 input_tokens 已扣除 cached_input_tokens，判断长上下文时需还原。
+            // 对负数先归零，延续 marginal tier 对无效 token 数不计费的保护。
+            let rawInput = semantics == .codex
+                ? Double(max(0, usage.inputTokens))
+                    + Double(max(0, usage.cacheReadInputTokens))
+                : Double(max(0, usage.inputTokens))
+            let isLong = rawInput > Double(threshold)
+            let rate: (Double, Double?) -> Double = { base, above in
+                isLong ? (above ?? base) : base
+            }
+            let inputRate = rate(pricing.inputPrice, pricing.inputPriceAbove200k)
+            let outputRate = rate(pricing.outputPrice, pricing.outputPriceAbove200k)
+            let cacheWriteRate = rate(
+                pricing.cacheWritePrice,
+                pricing.cacheWritePriceAbove200k
+            )
+            let cache1hRate = rate(cache1hBase, cache1hAbove)
+            let cacheReadRate: Double
+            if semantics == .codex && !pricing.cacheReadPriceIsExplicit {
+                cacheReadRate = inputRate
+            } else {
+                cacheReadRate = rate(
+                    baseCacheRead,
+                    pricing.cacheReadPriceAbove200k
+                )
+            }
+            subtotal = (
+                Double(max(0, usage.inputTokens)) * inputRate
+                + Double(max(0, usage.outputTokens)) * outputRate
+                + Double(max(0, usage.cacheCreate5mTokens)) * cacheWriteRate
+                + Double(max(0, usage.cacheCreate1hTokens)) * cache1hRate
+                + Double(max(0, usage.cacheReadInputTokens)) * cacheReadRate
+            ) / 1_000_000.0
+        } else {
+            subtotal = Self.tieredCost(
+                tokens: usage.inputTokens,
+                base: pricing.inputPrice,
+                above: pricing.inputPriceAbove200k
+            ) + Self.tieredCost(
+                tokens: usage.outputTokens,
+                base: pricing.outputPrice,
+                above: pricing.outputPriceAbove200k
+            ) + Self.tieredCost(
+                tokens: usage.cacheCreate5mTokens,
+                base: pricing.cacheWritePrice,
+                above: pricing.cacheWritePriceAbove200k
+            ) + Self.tieredCost(
+                tokens: usage.cacheCreate1hTokens,
+                base: cache1hBase,
+                above: cache1hAbove
+            ) + Self.tieredCost(
+                tokens: usage.cacheReadInputTokens,
+                base: baseCacheRead,
+                above: pricing.cacheReadPriceAbove200k
+            )
+        }
+        return subtotal * multiplier(
+            usage: usage,
+            pricing: pricing,
+            semantics: semantics
+        )
+    }
+
+    /// 查找模型定价并计算单次调用成本。
+    /// - Parameters:
+    ///   - usage: 单次调用的 token 用量与服务等级。
+    ///   - model: 原始模型名称，查找时不区分大小写。
+    ///   - semantics: provider 的计价语义，默认 `.standard` 以兼容既有调用。
+    /// - Returns: USD 成本与命中的定价；未知模型返回 `(0, nil)`。
+    func calculateCost(
+        usage: TokenUsage,
+        model: String,
+        semantics: PricingSemantics = .standard
+    ) -> (cost: Double, pricing: ModelPricing?) {
+        let normalized = model.lowercased()
+        let pricing: ModelPricing?
+        if let cached = pricingCache.cachedValue(for: normalized) {
+            pricing = cached.pricing
+        } else {
+            pricing = pricingTable.pricing(for: normalized)
+            pricingCache.store(pricing, for: normalized)
+        }
+        guard let pricing else {
+            if missingPricingLogGate.shouldLogMiss(for: normalized) {
+                logger.warning("未找到模型定价: \(model)，费用计为 $0.00")
+            }
+            return (0, nil)
+        }
+        return (
+            calculateCost(usage: usage, pricing: pricing, semantics: semantics),
+            pricing
+        )
+    }
+
+    private static func tieredCost(
+        tokens: Int,
+        base: Double,
+        above: Double?
+    ) -> Double {
+        guard tokens > 0 else { return 0 }
+        if let above, tokens > marginalTierThreshold {
+            return (
+                Double(marginalTierThreshold) * base
+                + Double(tokens - marginalTierThreshold) * above
+            ) / 1_000_000.0
         }
         return Double(tokens) * base / 1_000_000.0
     }
 
-    /// 根据已知定价计算单次 assistant 调用的成本
-    /// - Parameters:
-    ///   - usage: assistant 记录的 token 用量(同时携带 speed 字段决定是否走 fast 倍率)
-    ///   - pricing: 对应的模型定价
-    /// - Returns: USD 成本
-    func calculateCost(usage: TokenUsage, pricing: ModelPricing) -> Double {
-        let inputCost = Self.tieredCost(
-            tokens: usage.inputTokens,
-            base: pricing.inputPrice,
-            above: pricing.inputPriceAbove200k
-        )
-        let outputCost = Self.tieredCost(
-            tokens: usage.outputTokens,
-            base: pricing.outputPrice,
-            above: pricing.outputPriceAbove200k
-        )
-        let cache5mCost = Self.tieredCost(
-            tokens: usage.cacheCreate5mTokens,
-            base: pricing.cacheWritePrice,
-            above: pricing.cacheWritePriceAbove200k
-        )
-        // 1h 缓存：base = inputPrice × 2，above = inputPriceAbove200k × 2（无独立字段）
-        let cache1hBase = pricing.inputPrice * Self.cacheCreate1hInputMultiplier
-        let cache1hAbove = pricing.inputPriceAbove200k.map { $0 * Self.cacheCreate1hInputMultiplier }
-        let cache1hCost = Self.tieredCost(
-            tokens: usage.cacheCreate1hTokens,
-            base: cache1hBase,
-            above: cache1hAbove
-        )
-        let cacheReadCost = Self.tieredCost(
-            tokens: usage.cacheReadInputTokens,
-            base: pricing.cacheReadPrice,
-            above: pricing.cacheReadPriceAbove200k
-        )
-
-        let subtotal = inputCost + outputCost + cache5mCost + cache1hCost + cacheReadCost
-
-        // Speed::Fast 整体乘倍 — 必须放在所有 tiered_cost 之和上一次性应用,
-        // 与 ccusage `cost.rs` 末尾 `* multiplier` 的语义对齐
-        let multiplier = (usage.speed == Self.fastSpeedValue) ? pricing.fastMultiplier : 1.0
-        return subtotal * multiplier
-    }
-
-    /// 为模型查找定价并计算成本
-    /// - Parameters:
-    ///   - usage: assistant 记录的 token 用量
-    ///   - model: 模型名称（原始字符串）
-    /// - Returns: (成本 USD, 匹配到的定价条目)
-    ///   如果模型无定价信息，返回 (0.0, nil)
-    func calculateCost(usage: TokenUsage, model: String) -> (cost: Double, pricing: ModelPricing?) {
-        let normalizedModelID = model.lowercased()
-        let pricing: ModelPricing?
-        if let cached = pricingCache.cachedValue(for: normalizedModelID) {
-            pricing = cached.pricing
-        } else {
-            pricing = PricingTable.pricing(for: normalizedModelID)
-            pricingCache.store(pricing, for: normalizedModelID)
-        }
-
-        guard let pricing else {
-            if missingPricingLogGate.shouldLogMiss(for: normalizedModelID) {
-                logger.warning("未找到模型定价: \(model)，费用计为 $0.00")
+    private func multiplier(
+        usage: TokenUsage,
+        pricing: ModelPricing,
+        semantics: PricingSemantics
+    ) -> Double {
+        switch semantics {
+        case .standard:
+            return usage.speed == "fast" ? pricing.fastMultiplier : 1
+        case .codex:
+            guard usage.serviceTier == "fast" || usage.serviceTier == "priority" else {
+                return 1
             }
-            return (0.0, nil)
+            return pricing.fastMultiplier == 1 ? 2 : pricing.fastMultiplier
         }
-        return (calculateCost(usage: usage, pricing: pricing), pricing)
     }
 }
