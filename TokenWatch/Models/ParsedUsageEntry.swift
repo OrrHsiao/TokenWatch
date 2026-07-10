@@ -19,6 +19,10 @@ struct ParsedUsageEntry: Sendable, Hashable {
     let agentId: String?
     let usage: TokenUsage
     let isSubagent: Bool
+    /// 记录本身是否来自 Claude sidechain；与文件级 subagent 身份相互独立。
+    let isSidechain: Bool
+    /// messageId 是否来自源 JSON；false 表示仅为本地稳定 identity，不参与 Claude 去重。
+    let hasSourceMessageID: Bool
     /// 数据源标识（用于将来跨 provider 合并视图区分来源）
     let provider: ProviderID
     /// opencode 的上游 provider 标识(如 "anthropic" / "huoshan-zijie");Claude/Codex 填 nil
@@ -26,6 +30,41 @@ struct ParsedUsageEntry: Sendable, Hashable {
     /// 数据源自带的单条 cost(USD)；Auto 模式下只要非 nil 就优先于本地计价。
     /// Claude 可传播显式 0；OpenCode adapter 只传播大于 0 的值。
     let upstreamCost: Double?
+
+    /// 创建展平后的 provider usage，并为新增的 Claude 去重字段保留旧 call site 默认值。
+    init(
+        recordUUID: String,
+        messageId: String,
+        requestId: String?,
+        sessionID: String,
+        timestamp: Date?,
+        model: String,
+        cwd: String?,
+        agentId: String?,
+        usage: TokenUsage,
+        isSubagent: Bool,
+        isSidechain: Bool = false,
+        hasSourceMessageID: Bool = true,
+        provider: ProviderID,
+        upstreamProviderID: String?,
+        upstreamCost: Double?
+    ) {
+        self.recordUUID = recordUUID
+        self.messageId = messageId
+        self.requestId = requestId
+        self.sessionID = sessionID
+        self.timestamp = timestamp
+        self.model = model
+        self.cwd = cwd
+        self.agentId = agentId
+        self.usage = usage
+        self.isSubagent = isSubagent
+        self.isSidechain = isSidechain
+        self.hasSourceMessageID = hasSourceMessageID
+        self.provider = provider
+        self.upstreamProviderID = upstreamProviderID
+        self.upstreamCost = upstreamCost
+    }
 
     /// 去重键
     /// - Claude:`messageId`(默认)或 `messageId:requestId`(`requestId` 存在时拼接)

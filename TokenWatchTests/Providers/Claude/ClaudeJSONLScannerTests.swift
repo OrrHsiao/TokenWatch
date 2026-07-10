@@ -70,4 +70,34 @@ struct ClaudeJSONLScannerTests {
         let decoded = scanner.decodeProjectPath("-tmp-foo--")
         #expect(decoded == "/tmp/foo-")
     }
+
+    @Test("scanAll 按 standardized full path 严格字典序返回")
+    func scanAllSortsByStandardizedFullPath() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeScanner-\(UUID().uuidString)", isDirectory: true)
+        let projects = root.appendingPathComponent("projects", isDirectory: true)
+        let projectB = projects.appendingPathComponent("-tmp-z-project", isDirectory: true)
+        let projectA = projects.appendingPathComponent("-tmp-a-project", isDirectory: true)
+        let subagents = projectA
+            .appendingPathComponent("session-z", isDirectory: true)
+            .appendingPathComponent("subagents", isDirectory: true)
+        try FileManager.default.createDirectory(at: projectB, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: subagents, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let createdOutOfOrder = [
+            projectB.appendingPathComponent("z-session.jsonl"),
+            subagents.appendingPathComponent("agent-z.jsonl"),
+            projectA.appendingPathComponent("a-session.jsonl"),
+        ]
+        for url in createdOutOfOrder {
+            try Data().write(to: url)
+        }
+
+        let files = try scanner.scanAllJSONLFiles(in: root)
+        let paths = files.map { $0.url.standardizedFileURL.path }
+
+        #expect(paths == paths.sorted())
+        #expect(paths == createdOutOfOrder.map { $0.standardizedFileURL.path }.sorted())
+    }
 }
