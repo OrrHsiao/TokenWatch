@@ -225,6 +225,24 @@ struct TokenStatsViewModelObserverTests {
         #expect(vm.states[.claude]?.entries == firstEntries)
         #expect(vm.states[.claude]?.errorMessage != nil)
     }
+
+    @Test func usageFingerprintIncludesSidechain() {
+        let usage = makeUsage(cacheCreation5m: 0, cacheCreation1h: 0)
+        let parent = makeEntry(id: .claude, usage: usage, isSidechain: false)
+        let sidechain = makeEntry(id: .claude, usage: usage, isSidechain: true)
+
+        #expect(UsageEntriesFingerprint.make(from: [parent]) !=
+            UsageEntriesFingerprint.make(from: [sidechain]))
+    }
+
+    @Test func usageFingerprintIncludesSourceMessagePresence() {
+        let usage = makeUsage(cacheCreation5m: 0, cacheCreation1h: 0)
+        let sourced = makeEntry(id: .claude, usage: usage, hasSourceMessageID: true)
+        let synthetic = makeEntry(id: .claude, usage: usage, hasSourceMessageID: false)
+
+        #expect(UsageEntriesFingerprint.make(from: [sourced]) !=
+            UsageEntriesFingerprint.make(from: [synthetic]))
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
@@ -334,7 +352,12 @@ private struct StubLoadError: LocalizedError {
     var errorDescription: String? { "stub load failed" }
 }
 
-private func makeEntry(id: ProviderID, usage: TokenUsage) -> ParsedUsageEntry {
+private func makeEntry(
+    id: ProviderID,
+    usage: TokenUsage,
+    isSidechain: Bool = false,
+    hasSourceMessageID: Bool = true
+) -> ParsedUsageEntry {
     ParsedUsageEntry(
         recordUUID: "record-1",
         messageId: "message-1",
@@ -346,6 +369,8 @@ private func makeEntry(id: ProviderID, usage: TokenUsage) -> ParsedUsageEntry {
         agentId: nil,
         usage: usage,
         isSubagent: false,
+        isSidechain: isSidechain,
+        hasSourceMessageID: hasSourceMessageID,
         provider: id,
         upstreamProviderID: nil,
         upstreamCost: nil

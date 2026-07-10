@@ -289,6 +289,8 @@ struct UsageEntriesFingerprint: Equatable, Sendable {
             hasher.combine(entry.cwd)
             hasher.combine(entry.agentId)
             hasher.combine(entry.isSubagent)
+            hasher.combine(entry.isSidechain)
+            hasher.combine(entry.hasSourceMessageID)
             hasher.combine(entry.provider)
             hasher.combine(entry.upstreamProviderID)
             hasher.combine(entry.upstreamCost)

@@ -56,7 +56,10 @@ final class ClaudeJSONLScanner: Sendable {
         }
 
         logger.info("扫描完成：共找到 \(results.count) 个 JSONL 文件")
-        return results
+        // daily 单遍 replacement 的结果依赖输入顺序，因此不能沿用文件系统枚举顺序。
+        return results.sorted {
+            $0.url.standardizedFileURL.path < $1.url.standardizedFileURL.path
+        }
     }
 
     // MARK: - Private
