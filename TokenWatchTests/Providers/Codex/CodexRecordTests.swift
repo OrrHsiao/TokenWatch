@@ -7,6 +7,15 @@ struct CodexRecordTests {
 
     private let decoder = JSONDecoder()
 
+    private func decodeLastUsage(_ usage: String) -> CodexTokenCounts? {
+        let json = #"{"timestamp":"2026-05-04T08:35:59.868Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":\#(usage)}}}"#
+        guard let record = try? decoder.decode(CodexRecord.self, from: Data(json.utf8)),
+              case let .eventMsg(event) = record.payload else {
+            return nil
+        }
+        return event.info?.lastTokenUsage
+    }
+
     @Test("解析 session_meta 行")
     func decodeSessionMeta() throws {
         let json = """
@@ -98,5 +107,101 @@ struct CodexRecordTests {
         """
         let record = try decoder.decode(CodexRecord.self, from: Data(json.utf8))
         #expect(record.timestamp == nil)
+    }
+
+    @Test("RFC3339、Unix 秒与 Unix 毫秒解码为同一时刻")
+    func normalizesTimestampRepresentations() throws {
+        let expected = try #require(ISO8601DateFormatterHelper.parse("2026-05-04T08:35:59.000Z"))
+        let timestamps = [
+            #""2026-05-04T08:35:59Z""#,
+            "1777883759",
+            "1777883759000",
+        ]
+
+        for timestamp in timestamps {
+            let json = #"{"timestamp":\#(timestamp),"type":"session_meta","payload":{"id":"timestamp-test"}}"#
+            guard let record = try? decoder.decode(CodexRecord.self, from: Data(json.utf8)) else {
+                Issue.record("timestamp fixture 未解码: \(timestamp)")
+                continue
+            }
+            #expect(record.timestamp == expected)
+        }
+    }
+
+    @Test("数字 timestamp 严格使用 pinned 分界并饱和极值")
+    func normalizesTimestampBoundaryAndExtreme() {
+        let fixtures: [(raw: String, expected: String)] = [
+            ("10000000000", "2286-11-20T17:46:40.000Z"),
+            ("10000000001", "1970-04-26T17:46:40.001Z"),
+        ]
+
+        for fixture in fixtures {
+            let json = #"{"timestamp":\#(fixture.raw),"type":"session_meta","payload":{"id":"timestamp-boundary"}}"#
+            guard let record = try? decoder.decode(CodexRecord.self, from: Data(json.utf8)) else {
+                Issue.record("timestamp boundary fixture 未解码: \(fixture.raw)")
+                continue
+            }
+            #expect(record.timestamp == ISO8601DateFormatterHelper.parse(fixture.expected))
+        }
+
+        let extremeJSON = #"{"timestamp":18446744073709551615,"type":"session_meta","payload":{"id":"timestamp-extreme"}}"#
+        guard let extreme = try? decoder.decode(CodexRecord.self, from: Data(extremeJSON.utf8)) else {
+            Issue.record("UInt64.max timestamp 应饱和解码")
+            return
+        }
+        #expect(extreme.timestamp?.timeIntervalSince1970 == Double(Int64.max) / 1_000)
+    }
+
+    @Test("usage aliases 按优先级 lossy 解码")
+    func decodesUsageAliasesAndLossyNumbers() {
+        let fixtures: [(json: String, expected: CodexTokenCounts)] = [
+            (
+                #"{"input_tokens":1,"prompt_tokens":2,"input":3,"cached_input_tokens":4,"cache_read_input_tokens":5,"cached_tokens":6,"output_tokens":7,"completion_tokens":8,"output":9,"reasoning_output_tokens":10,"reasoning_tokens":11,"total_tokens":12}"#,
+                CodexTokenCounts(inputTokens: 1, cachedInputTokens: 4, outputTokens: 7, reasoningOutputTokens: 10, totalTokens: 12)
+            ),
+            (
+                #"{"input_tokens":-1,"prompt_tokens":" 12 ","cached_input_tokens":1.5,"cache_read_input_tokens":" 3 ","output_tokens":true,"completion_tokens":" 4 ","reasoning_output_tokens":"bad","reasoning_tokens":" 5 ","total_tokens":" 24 "}"#,
+                CodexTokenCounts(inputTokens: 12, cachedInputTokens: 3, outputTokens: 4, reasoningOutputTokens: 5, totalTokens: 24)
+            ),
+            (
+                #"{"input_tokens":-1,"prompt_tokens":1.5,"input":true,"cached_input_tokens":"bad","cache_read_input_tokens":-2,"cached_tokens":false,"output_tokens":2.5,"completion_tokens":-3,"output":"bad","reasoning_output_tokens":false,"reasoning_tokens":-4}"#,
+                .zero
+            ),
+            (
+                #"{"input_tokens":" 20 ","cached_input_tokens":" 4 ","output_tokens":" 5 ","reasoning_output_tokens":" 2 ","total_tokens":" 27 "}"#,
+                CodexTokenCounts(inputTokens: 20, cachedInputTokens: 4, outputTokens: 5, reasoningOutputTokens: 2, totalTokens: 27)
+            ),
+            (
+                #"{"input_tokens":18446744073709551615,"cached_input_tokens":"18446744073709551615","output_tokens":1,"reasoning_output_tokens":1,"total_tokens":18446744073709551615}"#,
+                CodexTokenCounts(inputTokens: .max, cachedInputTokens: .max, outputTokens: 1, reasoningOutputTokens: 1, totalTokens: .max)
+            ),
+        ]
+
+        for fixture in fixtures {
+            guard let usage = decodeLastUsage(fixture.json) else {
+                Issue.record("usage fixture 未解码: \(fixture.json)")
+                continue
+            }
+            #expect(usage == fixture.expected)
+        }
+    }
+
+    @Test("total 缺失或矛盾的显式零回退为饱和字段和")
+    func normalizesTotalTokens() {
+        let fixtures: [(json: String, expectedTotal: Int)] = [
+            (#"{"input_tokens":10,"output_tokens":5,"reasoning_output_tokens":2}"#, 17),
+            (#"{"input_tokens":10,"output_tokens":5,"reasoning_output_tokens":2,"total_tokens":0}"#, 17),
+            (#"{"input_tokens":0,"output_tokens":0,"reasoning_output_tokens":0,"total_tokens":0}"#, 0),
+            (#"{"input_tokens":10,"output_tokens":5,"reasoning_output_tokens":2,"total_tokens":1}"#, 1),
+            (#"{"input_tokens":18446744073709551615,"output_tokens":1,"reasoning_output_tokens":1}"#, .max),
+        ]
+
+        for fixture in fixtures {
+            guard let usage = decodeLastUsage(fixture.json) else {
+                Issue.record("total fixture 未解码: \(fixture.json)")
+                continue
+            }
+            #expect(usage.totalTokens == fixture.expectedTotal)
+        }
     }
 }

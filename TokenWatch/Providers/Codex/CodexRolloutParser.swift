@@ -1,6 +1,35 @@
 import Foundation
 import os.log
 
+/// 与 ccusage loader 对齐的跨文件事件去重键；session ID 故意不参与。
+struct CodexEventDedupKey: Hashable, Sendable {
+    let timestampKey: String
+    let model: String
+    let rawInput: Int
+    let cachedInput: Int
+    let output: Int
+    let reasoning: Int
+    let total: Int
+}
+
+/// 保留展示 entry 与上游原始计数，避免 per-file cache 丢失去重信息。
+struct CodexUsageCandidate: Sendable {
+    let entry: ParsedUsageEntry
+    let dedupKey: CodexEventDedupKey
+}
+
+/// replay 预检结果；`.pending` 为后续增量解析保留未决状态。
+enum CodexReplayClassification: Sendable, Equatable {
+    case notReplay
+    case pending
+    case replay(second: String)
+
+    var replaySecond: String? {
+        guard case .replay(let second) = self else { return nil }
+        return second
+    }
+}
+
 /// 解析 Codex rollout JSONL,提取 token_count 事件 → 统一 ParsedUsageEntry
 ///
 /// 关键策略(参考 ccusage `adapter/codex/parser.rs` + TokenTracker `codex-rollout-parser.js`):
@@ -39,7 +68,7 @@ final class CodexRolloutParser: @unchecked Sendable {
     private struct CachedFile {
         let signature: FileSignature
         let pricingSpeed: CodexPricingSpeed
-        let entries: [ParsedUsageEntry]
+        let candidates: [CodexUsageCandidate]
     }
 
     /// 解析单个 Codex rollout 文件。
@@ -51,25 +80,29 @@ final class CodexRolloutParser: @unchecked Sendable {
         _ fileInfo: CodexRolloutFileInfo,
         pricingSpeed: CodexPricingSpeed = .standard
     ) throws -> [ParsedUsageEntry] {
-        let handle = try FileHandle(forReadingFrom: fileInfo.url)
-        defer { try? handle.close() }
+        try parseCandidates(fileInfo, pricingSpeed: pricingSpeed).map(\.entry)
+    }
 
+    /// 流式解析单个 rollout，并保留 loader 去重所需的 source counts。
+    private func parseCandidates(
+        _ fileInfo: CodexRolloutFileInfo,
+        pricingSpeed: CodexPricingSpeed
+    ) throws -> [CodexUsageCandidate] {
         let decoder = JSONDecoder()
-        let newline: UInt8 = 0x0A
+        let replayClassification = classifyReplay(fileInfo.url, decoder: decoder)
+        let replaySecond = replayClassification.replaySecond
 
-        var entries: [ParsedUsageEntry] = []
+        var candidates: [CodexUsageCandidate] = []
         var currentModel: CodexModelState?
-        var sessionCwd: String? = nil
-        var sessionID = fileInfo.sessionID    // 优先文件名,session_meta 出现时覆盖
-        var previousTotals = CodexTokenCounts.zero
+        var sessionCwd: String?
+        var sessionID = fileInfo.sessionID
+        var previousTotals: CodexTokenCounts?
+        var skippingReplay = replaySecond != nil
 
-        // 流式 64KB 分块,与 Claude 解析保持一致
-        var buffer = Data()
-        let chunkSize = 64 * 1024
-
-        let processLine: (Data) -> Void = { lineData in
-            guard !lineData.isEmpty else { return }
-            guard let record = try? decoder.decode(CodexRecord.self, from: lineData) else { return }
+        try Self.forEachLine(at: fileInfo.url) { lineData in
+            guard let record = try? decoder.decode(CodexRecord.self, from: lineData) else {
+                return true
+            }
 
             switch record.payload {
             case .sessionMeta(let meta):
@@ -77,7 +110,7 @@ final class CodexRolloutParser: @unchecked Sendable {
                 sessionCwd = meta.cwd
 
             case .turnContext(let context):
-                if let model = context.model {
+                if let model = context.preferredModel {
                     _ = CodexModelResolver.resolve(
                         parsedModel: model,
                         eventDate: record.timestamp,
@@ -86,48 +119,47 @@ final class CodexRolloutParser: @unchecked Sendable {
                 }
 
             case .eventMsg(let event):
-                guard event.type == "token_count" else { return }
-                guard let info = event.info else { return }     // info=null 心跳
+                guard event.type == "token_count",
+                      let timestamp = record.normalizedTimestamp else {
+                    return true
+                }
 
-                // 计算 delta:优先 last_token_usage,否则用 total 增量
+                if skippingReplay, let replaySecond {
+                    if Self.timestampSecond(timestamp.key) == replaySecond {
+                        if let total = event.info?.totalTokenUsage {
+                            previousTotals = total
+                        }
+                        return true
+                    }
+                    skippingReplay = false
+                }
+
+                guard let info = event.info else { return true }
                 let delta: CodexTokenCounts
                 if let last = info.lastTokenUsage {
                     delta = last
                 } else if let total = info.totalTokenUsage {
-                    delta = CodexTokenCounts(
-                        inputTokens: max(0, total.inputTokens - previousTotals.inputTokens),
-                        cachedInputTokens: max(0, total.cachedInputTokens - previousTotals.cachedInputTokens),
-                        outputTokens: max(0, total.outputTokens - previousTotals.outputTokens),
-                        reasoningOutputTokens: max(0, total.reasoningOutputTokens - previousTotals.reasoningOutputTokens),
-                        totalTokens: max(0, total.totalTokens - previousTotals.totalTokens)
-                    )
+                    delta = total.subtracting(previousTotals ?? .zero)
                 } else {
-                    return
+                    return true
                 }
-
-                // previousTotals 始终更新(即便后面跳过本条)— 否则 delta 推导会错位
                 if let total = info.totalTokenUsage {
                     previousTotals = total
                 }
-
-                // replay marker / 静默事件 → 跳过 emit,但 prevTotal 已更新
-                guard !delta.isAllZero else { return }
+                guard !delta.isAllZero else { return true }
 
                 let model = CodexModelResolver.resolve(
-                    parsedModel: event.model ?? info.model,
-                    eventDate: record.timestamp,
+                    parsedModel: event.preferredModel ?? info.preferredModel,
+                    eventDate: timestamp.date,
                     current: &currentModel
                 )
-                let rawInput = max(0, delta.inputTokens)
-                // ccusage 先将 cached_input_tokens 夹到 raw input，再拆 pure/cached。
-                let cachedInput = min(max(0, delta.cachedInputTokens), rawInput)
-                let pureInput = rawInput - cachedInput
-
+                let normalized = delta.normalizedForBilling
                 let usage = TokenUsage(
-                    inputTokens: pureInput,
+                    inputTokens: normalized.pureInput,
                     cacheCreationInputTokens: 0,
-                    cacheReadInputTokens: cachedInput,
-                    outputTokens: delta.outputTokens,
+                    cacheReadInputTokens: normalized.cachedInput,
+                    outputTokens: normalized.output,
+                    reasoningTokens: normalized.reasoning,
                     serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
                     serviceTier: pricingSpeed == .fast ? "fast" : "",
                     cacheCreation: nil,
@@ -135,17 +167,13 @@ final class CodexRolloutParser: @unchecked Sendable {
                     iterations: [],
                     speed: ""
                 )
-
-                // 合成 dedup key:sessionId + timestamp ISO8601(无 message.id)
-                let tsKey = record.timestamp.map { Self.iso8601Key($0) } ?? "no-ts-\(UUID().uuidString)"
-                let messageId = "\(sessionID):\(tsKey)"
-
-                entries.append(ParsedUsageEntry(
-                    recordUUID: messageId,
-                    messageId: messageId,
+                let messageID = "\(sessionID):\(timestamp.key)"
+                let entry = ParsedUsageEntry(
+                    recordUUID: messageID,
+                    messageId: messageID,
                     requestId: nil,
                     sessionID: sessionID,
-                    timestamp: record.timestamp,
+                    timestamp: timestamp.date,
                     model: model,
                     cwd: sessionCwd,
                     agentId: nil,
@@ -154,35 +182,107 @@ final class CodexRolloutParser: @unchecked Sendable {
                     provider: .codex,
                     upstreamProviderID: nil,
                     upstreamCost: nil
+                )
+                candidates.append(CodexUsageCandidate(
+                    entry: entry,
+                    dedupKey: CodexEventDedupKey(
+                        timestampKey: timestamp.key,
+                        model: model,
+                        rawInput: normalized.rawInput,
+                        cachedInput: normalized.cachedInput,
+                        output: normalized.output,
+                        reasoning: normalized.reasoning,
+                        total: normalized.total
+                    )
                 ))
 
             case .unknown:
-                return
+                break
             }
+            return true
         }
+        return candidates
+    }
 
+    /// 仅在前 16KiB 含 thread/fork marker 时比较前两条有效 usage 的规范化秒。
+    private func classifyReplay(
+        _ url: URL,
+        decoder: JSONDecoder
+    ) -> CodexReplayClassification {
+        guard Self.hasReplayMarker(inPrefixOf: url) else { return .notReplay }
+
+        var firstSecond: String?
+        var result: CodexReplayClassification = .pending
+        do {
+            try Self.forEachLine(at: url) { lineData in
+                guard let record = try? decoder.decode(CodexRecord.self, from: lineData),
+                      case let .eventMsg(event) = record.payload,
+                      event.type == "token_count",
+                      event.info?.lastTokenUsage != nil || event.info?.totalTokenUsage != nil,
+                      let timestamp = record.normalizedTimestamp,
+                      let second = Self.timestampSecond(timestamp.key) else {
+                    return true
+                }
+                guard let firstSecond else {
+                    firstSecond = second
+                    return true
+                }
+                result = firstSecond == second ? .replay(second: second) : .notReplay
+                return false
+            }
+        } catch {
+            return .pending
+        }
+        return result
+    }
+
+    private static func hasReplayMarker(inPrefixOf url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        guard let prefix = try? handle.read(upToCount: 16 * 1024) else { return false }
+        return prefix.range(of: Data("thread_spawn".utf8)) != nil
+            || prefix.range(of: Data("forked_from_id".utf8)) != nil
+    }
+
+    private static func timestampSecond(_ key: String) -> String? {
+        let prefix = key.utf8.prefix(19)
+        guard prefix.count == 19 else { return nil }
+        return String(decoding: prefix, as: UTF8.self)
+    }
+
+    /// 以 64KiB 分块遍历 JSONL；回调返回 false 时供 replay 预检提前结束。
+    private static func forEachLine(
+        at url: URL,
+        _ body: (Data) -> Bool
+    ) throws {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+
+        let newline: UInt8 = 0x0A
+        var buffer = Data()
         while true {
-            let chunk = try handle.read(upToCount: chunkSize) ?? Data()
+            let chunk = try handle.read(upToCount: 64 * 1024) ?? Data()
             if chunk.isEmpty { break }
             buffer.append(chunk)
 
             var searchStart = buffer.startIndex
-            while let nl = buffer[searchStart..<buffer.endIndex].firstIndex(of: newline) {
-                processLine(Data(buffer[searchStart..<nl]))
-                searchStart = buffer.index(after: nl)
+            while let newlineIndex = buffer[searchStart..<buffer.endIndex].firstIndex(of: newline) {
+                if newlineIndex > searchStart,
+                   !body(Data(buffer[searchStart..<newlineIndex])) {
+                    return
+                }
+                searchStart = buffer.index(after: newlineIndex)
             }
             if searchStart > buffer.startIndex {
                 buffer.removeSubrange(buffer.startIndex..<searchStart)
             }
         }
         if !buffer.isEmpty {
-            processLine(buffer)
+            _ = body(buffer)
         }
-
-        return entries
     }
 
-    /// 批量解析并按 dedupKey 取 magnitude 最大的条目。
+    /// 批量解析并按 upstream event key 保留输入顺序中的第一条。
     /// - Parameters:
     ///   - files: 待解析的 rollout 文件。
     ///   - pricingSpeed: 本批次统一使用的 Codex 计价速度。
@@ -191,7 +291,7 @@ final class CodexRolloutParser: @unchecked Sendable {
         _ files: [CodexRolloutFileInfo],
         pricingSpeed: CodexPricingSpeed = .standard
     ) throws -> [ParsedUsageEntry] {
-        var all: [ParsedUsageEntry] = []
+        var all: [CodexUsageCandidate] = []
         var currentCacheKeys: Set<String> = []
         for f in files {
             let cacheKey = Self.cacheKey(for: f.url)
@@ -208,38 +308,21 @@ final class CodexRolloutParser: @unchecked Sendable {
         }
         pruneCache(keeping: currentCacheKeys)
 
-        var bestByKey: [String: ParsedUsageEntry] = [:]
-        bestByKey.reserveCapacity(all.count)
-        for e in all {
-            let key = e.dedupKey
-            if let existing = bestByKey[key] {
-                if Self.magnitude(e.usage) > Self.magnitude(existing.usage) {
-                    bestByKey[key] = e
-                }
-            } else {
-                bestByKey[key] = e
-            }
+        var seen: Set<CodexEventDedupKey> = []
+        seen.reserveCapacity(all.count)
+        var entries: [ParsedUsageEntry] = []
+        entries.reserveCapacity(all.count)
+        for candidate in all where seen.insert(candidate.dedupKey).inserted {
+            entries.append(candidate.entry)
         }
-        return Array(bestByKey.values)
-    }
-
-    private static func magnitude(_ u: TokenUsage) -> Int {
-        u.inputTokens + u.outputTokens + u.cacheReadInputTokens + u.totalCacheCreationTokens
-    }
-
-    /// 把 Date 转为稳定的字符串,作为 dedup key 的时间分量
-    /// 设计原因:Date 的 hashValue 在不同平台/版本可能差异;ISO8601 字符串可读且稳定
-    private static func iso8601Key(_ date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.string(from: date)
+        return entries
     }
 
     private func parseCachedFile(
         _ fileInfo: CodexRolloutFileInfo,
         cacheKey: String,
         pricingSpeed: CodexPricingSpeed
-    ) throws -> [ParsedUsageEntry] {
+    ) throws -> [CodexUsageCandidate] {
         let signature = try FileSignature(url: fileInfo.url)
         if let cached = cachedFile(
             for: cacheKey,
@@ -249,22 +332,22 @@ final class CodexRolloutParser: @unchecked Sendable {
             return cached
         }
 
-        let entries = try parseFile(fileInfo, pricingSpeed: pricingSpeed)
+        let candidates = try parseCandidates(fileInfo, pricingSpeed: pricingSpeed)
         withCacheLock {
             cachedFiles[cacheKey] = CachedFile(
                 signature: signature,
                 pricingSpeed: pricingSpeed,
-                entries: entries
+                candidates: candidates
             )
         }
-        return entries
+        return candidates
     }
 
     private func cachedFile(
         for cacheKey: String,
         matching signature: FileSignature,
         pricingSpeed: CodexPricingSpeed
-    ) -> [ParsedUsageEntry]? {
+    ) -> [CodexUsageCandidate]? {
         withCacheLock {
             guard let cached = cachedFiles[cacheKey],
                   cached.signature == signature,
@@ -272,7 +355,7 @@ final class CodexRolloutParser: @unchecked Sendable {
                 return nil
             }
             cacheHitCount += 1
-            return cached.entries
+            return cached.candidates
         }
     }
 
