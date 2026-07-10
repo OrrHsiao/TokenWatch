@@ -96,6 +96,31 @@ struct UsageCostResolverTests {
         #expect(abs(cost - 0.00135) < 1e-9)
     }
 
+    @Test("OpenCode gemini alias 与空或 unknown provider 不添加前缀")
+    func openCodeAliasAndUnknownProviderCandidates() {
+        #expect(OpenCodePricingCandidateResolver.candidates(
+            modelKey: "google/gemini-3-pro-high",
+            providerID: "google"
+        ) == [
+            "gemini-3-pro-preview",
+            "google/gemini-3-pro-preview",
+        ])
+        #expect(OpenCodePricingCandidateResolver.candidates(
+            modelKey: "unknown/claude-sonnet-4.5",
+            providerID: "unknown"
+        ) == [
+            "claude-sonnet-4.5",
+            "claude-sonnet-4-5",
+        ])
+        #expect(OpenCodePricingCandidateResolver.candidates(
+            modelKey: "claude-sonnet-4.5",
+            providerID: ""
+        ) == [
+            "claude-sonnet-4.5",
+            "claude-sonnet-4-5",
+        ])
+    }
+
     private func entry(
         model: String,
         provider: ProviderID,
