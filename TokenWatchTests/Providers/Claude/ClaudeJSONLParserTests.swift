@@ -523,6 +523,102 @@ struct ClaudeJSONLParserTests {
         #expect(entries.first?.messageId == "ok-msg")
     }
 
+    @Test("已成功文件的 stat open seek read 失败均复用 last-good，scanner 删除后 prune")
+    func transientReaderFailuresReuseLastGoodUntilScannerOmitsFile() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeLastGood-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let url = dir.appendingPathComponent("session.jsonl")
+        let first = Self.assistantLine(messageId: "first", inputTokens: 10)
+        let second = Self.assistantLine(messageId: "second", inputTokens: 20)
+        try (first + "\n").write(to: url, atomically: true, encoding: .utf8)
+        let info = ClaudeJSONLFileInfo(
+            url: url,
+            sessionID: "session",
+            projectPath: "/project",
+            isSubagent: false,
+            agentId: nil
+        )
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+
+        let initial = try parser.parseAllFiles([info], claudeDataRoot: dir)
+        #expect(initial.map(\.messageId) == ["first"])
+
+        try (first + "\n" + second + "\n").write(
+            to: url,
+            atomically: true,
+            encoding: .utf8
+        )
+        for failure in [
+            RecordingJSONLFileReader.Failure.metadata,
+            .open,
+            .seek,
+            .read,
+        ] {
+            reader.failure = failure
+            let fallback = try parser.parseAllFiles([info], claudeDataRoot: dir)
+            #expect(fallback.map(\.messageId) == ["first"], Comment("failure=\(failure)"))
+            #expect(parser.debugCachedFileCount == 1)
+        }
+
+        reader.failure = .none
+        let deleted = try parser.parseAllFiles([], claudeDataRoot: dir)
+        #expect(deleted.isEmpty)
+        #expect(parser.debugCachedFileCount == 0)
+    }
+
+    @Test("从未成功的文件 metadata 失败时继续跳过")
+    func firstMetadataFailureHasNoLastGoodResult() throws {
+        let dir = FileManager.default.temporaryDirectory
+        let url = dir.appendingPathComponent("never-read-\(UUID().uuidString).jsonl")
+        let info = ClaudeJSONLFileInfo(
+            url: url,
+            sessionID: "missing",
+            projectPath: "/project",
+            isSubagent: false,
+            agentId: nil
+        )
+        let reader = RecordingJSONLFileReader()
+        reader.failure = .metadata
+        let parser = ClaudeJSONLParser(fileReader: reader)
+
+        let entries = try parser.parseAllFiles([info], claudeDataRoot: dir)
+
+        #expect(entries.isEmpty)
+        #expect(parser.debugCachedFileCount == 0)
+    }
+
+    @Test("公开单文件入口使用注入 reader 且读取错误上抛")
+    func singleFileEntryUsesInjectedReaderAndPropagatesFailure() throws {
+        let (file, root, cleanup) = try makeClaudeJSONL([
+            Self.assistantLine(messageId: "single", inputTokens: 10),
+        ])
+        defer { cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+
+        let entries = try parser.parseJSONLFile(file, claudeDataRoot: root)
+
+        #expect(entries.map(\.messageId) == ["single"])
+        #expect(reader.openCount == 1)
+        #expect(reader.seekOffsets == [0])
+        #expect(reader.closeCount == 1)
+
+        reader.failure = .read
+        do {
+            _ = try parser.parseJSONLFile(file, claudeDataRoot: root)
+            Issue.record("注入 read failure 后单文件入口没有抛错")
+        } catch RecordingJSONLReaderError.injectedReadFailure {
+            // Expected: the public single-file API must not swallow reader failures.
+        } catch {
+            Issue.record("收到非预期错误: \(error)")
+        }
+        #expect(reader.closeCount == 2)
+    }
+
     @Test("跳过显式空字符串 message.id 的记录")
     func skipRecordsWithEmptyMessageId() throws {
         // optional 字段缺失可保留，但存在且为空字符串必须按 daily.rs 过滤。

@@ -30,45 +30,35 @@ enum CodexReplayClassification: Sendable, Equatable {
     }
 }
 
-/// 解析 Codex rollout JSONL,提取 token_count 事件 → 统一 ParsedUsageEntry
+/// 解析 Codex rollout JSONL，提取 token_count 事件为统一用量条目。
 ///
-/// 关键策略(参考 ccusage `adapter/codex/parser.rs` + TokenTracker `codex-rollout-parser.js`):
-/// - `last_token_usage` 优先;缺失则 `delta = saturatingSub(total, prevTotal)`
-/// - `previousTotals` 始终更新(包括跳过本条的情形),确保后续 delta 推导正确
-/// - 4 维全 0 的事件视为 replay marker / 心跳,跳过(prevTotals 仍要更新)
-/// - cached input 先夹到 nonnegative raw input，再拆 pure/cache_read，防止双计与负 pure
-/// - `output_tokens` 已含 reasoning,直接进 PricingEngine,reasoning 不另计费
+/// 关键策略参考 ccusage `adapter/codex/parser.rs`：
+/// - `last_token_usage` 优先；缺失则 `delta = saturatingSub(total, previousTotals)`。
+/// - `previousTotals` 始终更新，确保 replay 跳过与后续 delta 的 baseline 正确。
+/// - cached input 夹到 raw input 后拆为 pure/cache-read，跨文件按 raw key first-wins。
 final class CodexRolloutParser: @unchecked Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "CodexRolloutParser")
-    // Parser 会被后台 task 复用;可变缓存统一由 cacheLock 保护。
-    private let cacheLock = NSLock()
-    private var cachedFiles: [String: CachedFile] = [:]
-    private var cacheHitCount = 0
+    private let fileReader: any JSONLFileReading
+    private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
+        CodexUsageCandidate,
+        CodexPricingSpeed
+    >
+
+    init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
+        self.fileReader = fileReader
+        self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
+            CodexUsageCandidate,
+            CodexPricingSpeed
+        >(fileReader: fileReader)
+    }
 
     var debugCachedFileCount: Int {
-        withCacheLock { cachedFiles.count }
+        cacheCoordinator.debugCachedFileCount
     }
 
     var debugCacheHitCount: Int {
-        withCacheLock { cacheHitCount }
-    }
-
-    private struct FileSignature: Equatable {
-        let size: Int
-        let modificationDate: Date
-
-        init(url: URL) throws {
-            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-            size = (attributes[.size] as? NSNumber)?.intValue ?? 0
-            modificationDate = (attributes[.modificationDate] as? Date) ?? .distantPast
-        }
-    }
-
-    private struct CachedFile {
-        let signature: FileSignature
-        let pricingSpeed: CodexPricingSpeed
-        let candidates: [CodexUsageCandidate]
+        cacheCoordinator.debugCacheHitCount
     }
 
     /// 解析单个 Codex rollout 文件。
@@ -80,16 +70,72 @@ final class CodexRolloutParser: @unchecked Sendable {
         _ fileInfo: CodexRolloutFileInfo,
         pricingSpeed: CodexPricingSpeed = .standard
     ) throws -> [ParsedUsageEntry] {
-        try parseCandidates(fileInfo, pricingSpeed: pricingSpeed).map(\.entry)
+        let snapshot = try fileReader.openSnapshot(for: fileInfo.url)
+        defer { snapshot.stream.close() }
+        return try parseCandidates(
+            snapshot.stream,
+            metadata: snapshot.metadata,
+            fileInfo: fileInfo,
+            pricingSpeed: pricingSpeed
+        ).map(\.entry)
     }
 
-    /// 流式解析单个 rollout，并保留 loader 去重所需的 source counts。
+    /// 批量解析并按 upstream event key 保留输入顺序中的第一条。
+    /// - Parameters:
+    ///   - files: 待解析的 rollout 文件。
+    ///   - pricingSpeed: 本批次统一使用的 Codex 计价速度。
+    /// - Returns: 跨文件去重后的 usage 条目。
+    func parseAllFiles(
+        _ files: [CodexRolloutFileInfo],
+        pricingSpeed: CodexPricingSpeed = .standard
+    ) throws -> [ParsedUsageEntry] {
+        let allCandidates = cacheCoordinator.loadListedFiles(
+            files,
+            scope: pricingSpeed,
+            cacheKey: { Self.cacheKey(for: $0.url) },
+            urlForFile: { $0.url },
+            parse: { [self] fileInfo, snapshot in
+                try parseCandidates(
+                    snapshot.stream,
+                    metadata: snapshot.metadata,
+                    fileInfo: fileInfo,
+                    pricingSpeed: pricingSpeed
+                )
+            },
+            onFailure: { [self] fileInfo, error, reusedLastGood in
+                if reusedLastGood {
+                    logger.warning(
+                        "文件暂时不可读，复用上次成功结果: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                    )
+                } else {
+                    logger.warning(
+                        "文件首次读取失败，跳过: \(fileInfo.url.lastPathComponent) — \(error.localizedDescription)"
+                    )
+                }
+            }
+        )
+
+        var seen: Set<CodexEventDedupKey> = []
+        seen.reserveCapacity(allCandidates.count)
+        var entries: [ParsedUsageEntry] = []
+        entries.reserveCapacity(allCandidates.count)
+        for candidate in allCandidates where seen.insert(candidate.dedupKey).inserted {
+            entries.append(candidate.entry)
+        }
+        return entries
+    }
+
+    /// 在同一 descriptor stream 上完成 replay 预检与 provider-specific reducer。
     private func parseCandidates(
-        _ fileInfo: CodexRolloutFileInfo,
+        _ stream: any JSONLByteStream,
+        metadata: JSONLFileMetadata,
+        fileInfo: CodexRolloutFileInfo,
         pricingSpeed: CodexPricingSpeed
     ) throws -> [CodexUsageCandidate] {
+        // metadata 参数是下一阶段增量状态的固定入口；本阶段完整 parse 只消费 stream。
+        _ = metadata
         let decoder = JSONDecoder()
-        let replayClassification = classifyReplay(fileInfo.url, decoder: decoder)
+        let replayClassification = try classifyReplay(stream, decoder: decoder)
         let replaySecond = replayClassification.replaySecond
 
         var candidates: [CodexUsageCandidate] = []
@@ -99,7 +145,7 @@ final class CodexRolloutParser: @unchecked Sendable {
         var previousTotals: CodexTokenCounts?
         var skippingReplay = replaySecond != nil
 
-        try Self.forEachLine(at: fileInfo.url) { lineData in
+        try Self.forEachLine(in: stream) { lineData, _ in
             guard let record = try? decoder.decode(CodexRecord.self, from: lineData) else {
                 return true
             }
@@ -204,42 +250,48 @@ final class CodexRolloutParser: @unchecked Sendable {
         return candidates
     }
 
-    /// 仅在前 16KiB 含 thread/fork marker 时比较前两条有效 usage 的规范化秒。
+    /// 仅在前 16 KiB 含 thread/fork marker 时比较前两条有效 usage 的规范化秒。
+    /// I/O 错误必须上抛，使 coordinator 保留 last-good，而不是误分类为 pending。
     private func classifyReplay(
-        _ url: URL,
+        _ stream: any JSONLByteStream,
         decoder: JSONDecoder
-    ) -> CodexReplayClassification {
-        guard Self.hasReplayMarker(inPrefixOf: url) else { return .notReplay }
+    ) throws -> CodexReplayClassification {
+        guard try Self.hasReplayMarker(inPrefixOf: stream) else {
+            return .notReplay
+        }
 
         var firstSecond: String?
         var result: CodexReplayClassification = .pending
-        do {
-            try Self.forEachLine(at: url) { lineData in
-                guard let record = try? decoder.decode(CodexRecord.self, from: lineData),
-                      case let .eventMsg(event) = record.payload,
-                      event.type == "token_count",
-                      event.info?.lastTokenUsage != nil || event.info?.totalTokenUsage != nil,
-                      let timestamp = record.normalizedTimestamp,
-                      let second = Self.timestampSecond(timestamp.key) else {
-                    return true
-                }
-                guard let firstSecond else {
-                    firstSecond = second
-                    return true
-                }
-                result = firstSecond == second ? .replay(second: second) : .notReplay
-                return false
+        try Self.forEachLine(in: stream) { lineData, _ in
+            guard let record = try? decoder.decode(CodexRecord.self, from: lineData),
+                  case let .eventMsg(event) = record.payload,
+                  event.type == "token_count",
+                  event.info?.lastTokenUsage != nil || event.info?.totalTokenUsage != nil,
+                  let timestamp = record.normalizedTimestamp,
+                  let second = Self.timestampSecond(timestamp.key) else {
+                return true
             }
-        } catch {
-            return .pending
+            guard let firstSecond else {
+                firstSecond = second
+                return true
+            }
+            result = firstSecond == second ? .replay(second: second) : .notReplay
+            return false
         }
         return result
     }
 
-    private static func hasReplayMarker(inPrefixOf url: URL) -> Bool {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
-        defer { try? handle.close() }
-        guard let prefix = try? handle.read(upToCount: 16 * 1024) else { return false }
+    private static func hasReplayMarker(
+        inPrefixOf stream: any JSONLByteStream
+    ) throws -> Bool {
+        try stream.seek(toOffset: 0)
+        var prefix = Data()
+        let limit = 16 * 1024
+        while prefix.count < limit {
+            let chunk = try stream.read(upToCount: limit - prefix.count)
+            if chunk.isEmpty { break }
+            prefix.append(chunk)
+        }
         return prefix.range(of: Data("thread_spawn".utf8)) != nil
             || prefix.range(of: Data("forked_from_id".utf8)) != nil
     }
@@ -250,128 +302,55 @@ final class CodexRolloutParser: @unchecked Sendable {
         return String(decoding: prefix, as: UTF8.self)
     }
 
-    /// 以 64KiB 分块遍历 JSONL；回调返回 false 时供 replay 预检提前结束。
+    /// 从 stream 起点以 64 KiB 分块遍历 JSONL，并传递稳定的绝对行 offset。
+    /// 回调返回 false 时供 replay 预检提前结束。
     private static func forEachLine(
-        at url: URL,
-        _ body: (Data) -> Bool
+        in stream: any JSONLByteStream,
+        _ body: (Data, UInt64) -> Bool
     ) throws {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
+        try stream.seek(toOffset: 0)
 
         let newline: UInt8 = 0x0A
         var buffer = Data()
+        var bufferStartOffset: UInt64 = 0
         while true {
-            let chunk = try handle.read(upToCount: 64 * 1024) ?? Data()
+            let chunk = try stream.read(upToCount: 64 * 1024)
             if chunk.isEmpty { break }
             buffer.append(chunk)
 
             var searchStart = buffer.startIndex
             while let newlineIndex = buffer[searchStart..<buffer.endIndex].firstIndex(of: newline) {
-                if newlineIndex > searchStart,
-                   !body(Data(buffer[searchStart..<newlineIndex])) {
-                    return
+                if newlineIndex > searchStart {
+                    let relativeOffset = buffer.distance(
+                        from: buffer.startIndex,
+                        to: searchStart
+                    )
+                    if !body(
+                        Data(buffer[searchStart..<newlineIndex]),
+                        bufferStartOffset + UInt64(relativeOffset)
+                    ) {
+                        return
+                    }
                 }
                 searchStart = buffer.index(after: newlineIndex)
             }
+
             if searchStart > buffer.startIndex {
+                let consumedByteCount = buffer.distance(
+                    from: buffer.startIndex,
+                    to: searchStart
+                )
                 buffer.removeSubrange(buffer.startIndex..<searchStart)
+                bufferStartOffset += UInt64(consumedByteCount)
             }
         }
+
         if !buffer.isEmpty {
-            _ = body(buffer)
-        }
-    }
-
-    /// 批量解析并按 upstream event key 保留输入顺序中的第一条。
-    /// - Parameters:
-    ///   - files: 待解析的 rollout 文件。
-    ///   - pricingSpeed: 本批次统一使用的 Codex 计价速度。
-    /// - Returns: 跨文件去重后的 usage 条目。
-    func parseAllFiles(
-        _ files: [CodexRolloutFileInfo],
-        pricingSpeed: CodexPricingSpeed = .standard
-    ) throws -> [ParsedUsageEntry] {
-        var all: [CodexUsageCandidate] = []
-        var currentCacheKeys: Set<String> = []
-        for f in files {
-            let cacheKey = Self.cacheKey(for: f.url)
-            currentCacheKeys.insert(cacheKey)
-            do {
-                all.append(contentsOf: try parseCachedFile(
-                    f,
-                    cacheKey: cacheKey,
-                    pricingSpeed: pricingSpeed
-                ))
-            } catch {
-                logger.warning("Codex 文件解析失败: \(f.url.lastPathComponent) — \(error.localizedDescription)")
-            }
-        }
-        pruneCache(keeping: currentCacheKeys)
-
-        var seen: Set<CodexEventDedupKey> = []
-        seen.reserveCapacity(all.count)
-        var entries: [ParsedUsageEntry] = []
-        entries.reserveCapacity(all.count)
-        for candidate in all where seen.insert(candidate.dedupKey).inserted {
-            entries.append(candidate.entry)
-        }
-        return entries
-    }
-
-    private func parseCachedFile(
-        _ fileInfo: CodexRolloutFileInfo,
-        cacheKey: String,
-        pricingSpeed: CodexPricingSpeed
-    ) throws -> [CodexUsageCandidate] {
-        let signature = try FileSignature(url: fileInfo.url)
-        if let cached = cachedFile(
-            for: cacheKey,
-            matching: signature,
-            pricingSpeed: pricingSpeed
-        ) {
-            return cached
-        }
-
-        let candidates = try parseCandidates(fileInfo, pricingSpeed: pricingSpeed)
-        withCacheLock {
-            cachedFiles[cacheKey] = CachedFile(
-                signature: signature,
-                pricingSpeed: pricingSpeed,
-                candidates: candidates
-            )
-        }
-        return candidates
-    }
-
-    private func cachedFile(
-        for cacheKey: String,
-        matching signature: FileSignature,
-        pricingSpeed: CodexPricingSpeed
-    ) -> [CodexUsageCandidate]? {
-        withCacheLock {
-            guard let cached = cachedFiles[cacheKey],
-                  cached.signature == signature,
-                  cached.pricingSpeed == pricingSpeed else {
-                return nil
-            }
-            cacheHitCount += 1
-            return cached.candidates
-        }
-    }
-
-    private func pruneCache(keeping currentKeys: Set<String>) {
-        withCacheLock {
-            cachedFiles = cachedFiles.filter { currentKeys.contains($0.key) }
+            _ = body(buffer, bufferStartOffset)
         }
     }
 
     private static func cacheKey(for url: URL) -> String {
         url.standardizedFileURL.path
-    }
-
-    private func withCacheLock<T>(_ body: () throws -> T) rethrows -> T {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
-        return try body()
     }
 }
