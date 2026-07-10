@@ -66,6 +66,43 @@ struct IncrementalJSONLFileStateTests {
         #expect(secondAnchor.offset == 144)
     }
 
+    @Test func continuityAnchorHandlesCommittedOffsetBoundaries() {
+        let cases: [(committedOffset: UInt64, sourceByteCount: Int)] = [
+            (255, 255),
+            (256, 300),
+            (0, 1),
+        ]
+
+        for boundary in cases {
+            let source = Data(repeating: 0x41, count: boundary.sourceByteCount)
+            let expectedByteCount = min(
+                JSONLContinuityAnchor.maximumByteCount,
+                source.count,
+                Int(boundary.committedOffset)
+            )
+            let anchor = JSONLContinuityAnchor.make(
+                previous: .empty,
+                newlyCommittedBytes: source,
+                committedOffset: boundary.committedOffset
+            )
+
+            #expect(anchor.bytes == Data(source.suffix(expectedByteCount)))
+            #expect(anchor.offset == boundary.committedOffset - UInt64(expectedByteCount))
+        }
+    }
+
+    @Test func continuityAnchorDoesNotUnderflowWhenNewBytesExceedCommittedOffset() {
+        let source = Data("abcd".utf8)
+        let anchor = JSONLContinuityAnchor.make(
+            previous: .empty,
+            newlyCommittedBytes: source,
+            committedOffset: 2
+        )
+
+        #expect(anchor.bytes == Data("cd".utf8))
+        #expect(anchor.offset == 0)
+    }
+
     @Test func continuityAnchorMatchesAndRejectsOpenedStreamBytes() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ContinuityAnchor-\(UUID().uuidString).jsonl")
