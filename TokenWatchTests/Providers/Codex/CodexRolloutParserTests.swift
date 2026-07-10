@@ -125,14 +125,63 @@ struct CodexRolloutParserTests {
         #expect(entries[1].model == "gpt-5.5")
     }
 
-    @Test("currentModel 缺失时跳过 token_count")
-    func skipsWhenNoModel() throws {
-        // 没有 turn_context,直接来 token_count
+    @Test("currentModel 缺失时回退 gpt-5")
+    func fallsBackWhenNoModel() throws {
         let (file, cleanup) = try makeJsonlFile([sessionMeta, normalEvent])
         defer { cleanup() }
 
         let entries = try CodexRolloutParser().parseFile(file)
-        #expect(entries.isEmpty)
+        #expect(entries.count == 1)
+        #expect(entries[0].model == "gpt-5")
+    }
+
+    @Test("event/info 真实模型覆盖先前 fallback")
+    func eventModelOverridesFallback() throws {
+        let fallbackEvent = #"{"timestamp":"2026-01-01T00:00:00Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":10,"output_tokens":1}}}}"#
+        let realEvent = #"{"timestamp":"2026-01-01T00:01:00Z","type":"event_msg","payload":{"type":"token_count","info":{"model":"gpt-real","last_token_usage":{"input_tokens":20,"output_tokens":2}}}}"#
+        let (file, cleanup) = try makeJsonlFile([sessionMeta, fallbackEvent, realEvent])
+        defer { cleanup() }
+
+        let entries = try CodexRolloutParser().parseFile(file)
+            .sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+        #expect(entries.map(\.model) == ["gpt-5", "gpt-real"])
+    }
+
+    @Test("pricing speed 改变时 rollout cache 失效并传播 fast")
+    func pricingSpeedInvalidatesCache() throws {
+        let (file, cleanup) = try makeJsonlFile([sessionMeta, turnContextGpt5, normalEvent])
+        defer { cleanup() }
+        let parser = CodexRolloutParser()
+
+        let standard = try parser.parseAllFiles([file], pricingSpeed: .standard)
+        let hitsBefore = parser.debugCacheHitCount
+        let fast = try parser.parseAllFiles([file], pricingSpeed: .fast)
+
+        #expect(standard.first?.usage.serviceTier == "")
+        #expect(fast.first?.usage.serviceTier == "fast")
+        #expect(parser.debugCacheHitCount == hitsBefore)
+    }
+
+    @Test("cached input 超过 raw input 时夹到 raw input")
+    func clampsCachedInputToRawInput() throws {
+        let overreportedCache = #"{"timestamp":"2026-05-04T08:35:59.868Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":100,"cached_input_tokens":150,"output_tokens":1,"total_tokens":101}}}}"#
+        let (file, cleanup) = try makeJsonlFile([
+            sessionMeta,
+            turnContextGpt5,
+            overreportedCache,
+        ])
+        defer { cleanup() }
+
+        let entry = try #require(CodexRolloutParser().parseFile(file).first)
+        #expect(entry.usage.inputTokens == 0)
+        #expect(entry.usage.cacheReadInputTokens == 100)
+        #expect(entry.usage.inputTokens + entry.usage.cacheReadInputTokens == 100)
+        let cost = PricingEngine().calculateCost(
+            usage: entry.usage,
+            model: "gpt-5",
+            semantics: .codex
+        ).cost
+        #expect(abs(cost - 0.0000225) < 1e-9)
     }
 
     @Test("session_meta 缺失时 cwd 为 nil 不崩")

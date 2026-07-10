@@ -78,9 +78,10 @@ struct CodexTurnContext: Decodable, Sendable {
 struct CodexEventMsg: Decodable, Sendable {
     let type: String                 // 只关心 "token_count"
     let info: CodexTokenCountInfo?
+    let model: String?
 
     enum CodingKeys: String, CodingKey {
-        case type, info
+        case type, info, model
     }
 }
 
@@ -88,10 +89,12 @@ struct CodexEventMsg: Decodable, Sendable {
 struct CodexTokenCountInfo: Decodable, Sendable {
     let lastTokenUsage: CodexTokenCounts?
     let totalTokenUsage: CodexTokenCounts?
+    let model: String?
 
     enum CodingKeys: String, CodingKey {
         case lastTokenUsage = "last_token_usage"
         case totalTokenUsage = "total_token_usage"
+        case model
     }
 }
 

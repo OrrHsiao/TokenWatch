@@ -66,6 +66,18 @@ struct CodexRecordTests {
         #expect(event.info == nil)
     }
 
+    @Test("event payload 与 info model 均可解码")
+    func decodeEventModels() throws {
+        let payloadModel = #"{"timestamp":"2026-05-04T08:35:59Z","type":"event_msg","payload":{"type":"token_count","model":"gpt-payload","info":{"model":"gpt-info","last_token_usage":{"input_tokens":1,"output_tokens":1}}}}"#
+        let record = try decoder.decode(CodexRecord.self, from: Data(payloadModel.utf8))
+        guard case let .eventMsg(event) = record.payload else {
+            Issue.record("payload 应为 eventMsg")
+            return
+        }
+        #expect(event.model == "gpt-payload")
+        #expect(event.info?.model == "gpt-info")
+    }
+
     @Test("无关 type 解析为 unknown 不抛错")
     func decodeUnknownType() throws {
         let json = """
