@@ -819,6 +819,96 @@ extension PricingEngineTests {
         #expect(abs(standard - 0.0192) < 1e-9)
     }
 
+    @Test("Codex 非显式 cache read 的 marginal tier 使用 input ladder")
+    func codexImplicitCacheReadUsesInputMarginalLadder() {
+        let pricing = ModelPricing(
+            modelID: "gpt-marginal",
+            displayName: "gpt-marginal",
+            inputPrice: 10,
+            outputPrice: 30,
+            cacheReadPrice: 1,
+            cacheWritePrice: 12.5,
+            cacheReadPriceIsExplicit: false,
+            inputPriceAbove200k: 20,
+            cacheReadPriceAbove200k: 2
+        )
+        let usage = codexUsage(rawInput: 300_000, cached: 300_000, output: 0)
+
+        let cost = PricingEngine().calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .codex
+        )
+
+        #expect(abs(cost - 4.0) < 1e-9)
+    }
+
+    @Test("whole-request 覆盖 5m/1h cache write 与缺失 above rate 回退")
+    func wholeRequestCacheWritesAndMissingAboveFallbacks() {
+        let pricing = ModelPricing(
+            modelID: "partial-long-rates",
+            displayName: "partial-long-rates",
+            inputPrice: 10,
+            outputPrice: 30,
+            cacheReadPrice: 1,
+            cacheWritePrice: 12,
+            outputPriceAbove200k: 40,
+            longContextThreshold: 100
+        )
+        let usage = TokenUsage(
+            inputTokens: 101,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 20,
+            outputTokens: 10,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "",
+            cacheCreation: CacheCreation(
+                ephemeral1hInputTokens: 2_000,
+                ephemeral5mInputTokens: 1_000
+            ),
+            inferenceGeo: "",
+            iterations: [],
+            speed: ""
+        )
+
+        let cost = PricingEngine().calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .codex
+        )
+
+        #expect(abs(cost - 0.05343) < 1e-9)
+    }
+
+    @Test("model overload 使用注入定价并转发 Codex semantics")
+    func modelOverloadForwardsCodexSemantics() {
+        let pricing = ModelPricing(
+            modelID: "gpt-forwarding-test",
+            displayName: "gpt-forwarding-test",
+            inputPrice: 10,
+            outputPrice: 30,
+            cacheReadPrice: 1,
+            cacheWritePrice: 12.5,
+            cacheReadPriceIsExplicit: false
+        )
+        let table = PricingTable(
+            liteLLMEntries: [:],
+            modelsDevEntries: [:],
+            builtins: [pricing.modelID: pricing]
+        )
+        let usage = codexUsage(rawInput: 1_000, cached: 400, output: 0)
+
+        let result = PricingEngine(pricingTable: table).calculateCost(
+            usage: usage,
+            model: "GPT-FORWARDING-TEST",
+            semantics: .codex
+        )
+
+        #expect(result.pricing != nil)
+        #expect(result.pricing?.modelID == pricing.modelID)
+        #expect(abs(result.cost - 0.01) < 1e-9)
+    }
+
     @Test("standard OpenAI 阈值只看 inputTokens，Codex 才重建 pure 加 cached")
     func standardLongContextUsesRawInputField() {
         let pricing = openAIPrice(
