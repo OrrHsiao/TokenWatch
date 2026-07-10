@@ -44,6 +44,37 @@ struct OpenCodeSQLiteScannerTests {
         #expect(rows[1].directory == "/proj/B")
     }
 
+    @Test("损坏 JSON 被跳过且其他 assistant 行继续返回")
+    func malformedJSONDoesNotAbortAssistantQuery() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try buildMiniDB(
+            at: dir.appendingPathComponent("opencode.db"),
+            sessions: [("ses", "/project")],
+            messages: [
+                (
+                    "valid-before",
+                    "ses",
+                    100,
+                    #"{"role":"assistant","tokens":{"input":1,"output":1,"reasoning":0,"cache":{"read":0,"write":0}}}"#
+                ),
+                ("broken", "ses", 200, "{not-json"),
+                (
+                    "valid-after",
+                    "ses",
+                    300,
+                    #"{"role":"assistant","tokens":{"input":2,"output":2,"reasoning":0,"cache":{"read":0,"write":0}}}"#
+                ),
+                ("user", "ses", 400, #"{"role":"user"}"#),
+            ]
+        )
+
+        let rows = try scanner.scanAll(in: dir)
+
+        #expect(rows.map(\.id) == ["valid-before", "valid-after"])
+    }
+
     // MARK: - 错误路径
 
     @Test("opencode.db 不存在时返回空数组,不抛错")

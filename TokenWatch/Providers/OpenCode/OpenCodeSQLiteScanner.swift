@@ -66,7 +66,11 @@ final class OpenCodeSQLiteScanner: Sendable {
            s.directory
     FROM message AS m
     JOIN session AS s ON m.session_id = s.id
-    WHERE json_extract(m.data, '$.role') = 'assistant'
+    WHERE CASE
+            WHEN json_valid(m.data)
+            THEN json_extract(m.data, '$.role') = 'assistant'
+            ELSE 0
+          END
     ORDER BY m.time_created;
     """
 
