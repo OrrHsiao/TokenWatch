@@ -50,6 +50,7 @@ struct CodexRolloutParserTests {
         // output 不减 reasoning(reasoning 已含在 output 中,但我们记完整 output 由 PricingEngine 计费)
         #expect(e.usage.outputTokens == 200)
         // Codex 无 cache write
+        #expect(e.usage.cacheCreation == nil)
         #expect(e.usage.totalCacheCreationTokens == 0)
     }
 
