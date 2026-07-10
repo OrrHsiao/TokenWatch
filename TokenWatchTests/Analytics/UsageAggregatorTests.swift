@@ -361,18 +361,19 @@ struct UsageAggregatorTests {
         #expect(stats.overall.cost == 0.0)
     }
 
-    @Test("upstreamCost 不污染 PricingEngine 命中的模型 cost")
-    func upstreamCostDoesNotPolluteEngineCost() {
-        // claude-sonnet-4-5 必在 PricingTable 中,即便传了 upstreamCost 也应忽略
-        let claudeEntries = [
-            makeEntry(sessionID: "s1", date: date(2026, 6, 13),
-                      model: "claude-sonnet-4-5", input: 1000, output: 500,
-                      upstreamCost: 999.99),
+    @Test("Auto 模式已知模型也优先 upstreamCost")
+    func upstreamCostWinsForKnownModel() {
+        let entries = [
+            makeEntry(
+                sessionID: "s1",
+                date: date(2026, 6, 13),
+                model: "claude-sonnet-4-5",
+                input: 1_000,
+                output: 500,
+                upstreamCost: 999.99
+            ),
         ]
-        let claudeStats = aggregator.aggregate(claudeEntries)
-        #expect(claudeStats.overall.cost > 0.0)
-        #expect(claudeStats.overall.cost < 100.0,
-                "命中 PricingEngine 应使用引擎计算的小额 cost,而非 upstream 999.99")
+        #expect(aggregator.aggregate(entries).overall.cost == 999.99)
     }
 
     // MARK: - Helpers

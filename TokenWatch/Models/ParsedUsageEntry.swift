@@ -23,7 +23,8 @@ struct ParsedUsageEntry: Sendable, Hashable {
     let provider: ProviderID
     /// opencode 的上游 provider 标识(如 "anthropic" / "huoshan-zijie");Claude/Codex 填 nil
     let upstreamProviderID: String?
-    /// 数据源自带的单条 cost(USD);PricingEngine 查不到模型时作为 fallback;Claude/Codex 填 nil
+    /// 数据源自带的单条 cost(USD)；Auto 模式下只要非 nil 就优先于本地计价。
+    /// Claude 可传播显式 0；OpenCode adapter 只传播大于 0 的值。
     let upstreamCost: Double?
 
     /// 去重键

@@ -132,6 +132,67 @@ struct OpenCodeMessageParserTests {
         #expect(abs(e.timestamp!.timeIntervalSince(expected)) < 0.001)
     }
 
+    @Test("tokens.total-only 把全部缺口并入可计费 output")
+    func totalOnlyFallsBackToBillableOutput() throws {
+        let row = makeRow(
+            id: "total-only",
+            sessionID: "s",
+            timeMs: 0,
+            json: #"{"role":"assistant","modelID":"claude-sonnet-4-5","providerID":"anthropic","tokens":{"total":123}}"#,
+            directory: "/d"
+        )
+
+        let entry = try #require(parser.parseAll([row]).first)
+        #expect(entry.usage.inputTokens == 0)
+        #expect(entry.usage.cacheReadInputTokens == 0)
+        #expect(entry.usage.totalCacheCreationTokens == 0)
+        #expect(entry.usage.outputTokens == 123)
+        #expect(entry.usage.reasoningTokens == 0)
+    }
+
+    @Test("tokens.total 只补 known token 之外的余量，不重复计费")
+    func partialTotalAddsOnlyMissingRemainder() throws {
+        let row = makeRow(
+            id: "partial-total",
+            sessionID: "s",
+            timeMs: 0,
+            json: #"{"role":"assistant","modelID":"claude-sonnet-4-5","providerID":"anthropic","tokens":{"total":200,"input":100,"output":10,"cache":{"read":50,"write":25}}}"#,
+            directory: "/d"
+        )
+
+        let entry = try #require(parser.parseAll([row]).first)
+        #expect(entry.usage.inputTokens == 100)
+        #expect(entry.usage.cacheReadInputTokens == 50)
+        #expect(entry.usage.totalCacheCreationTokens == 25)
+        #expect(entry.usage.outputTokens == 25) // 10 + max(200 - 185, 0)
+        #expect(entry.usage.reasoningTokens == 0)
+    }
+
+    @Test("OpenCode token 坏类型归零而不丢整行，reasoning-only 不计入")
+    func lenientTokenFieldsMatchPinnedAdapter() throws {
+        let usable = makeRow(
+            id: "usable",
+            sessionID: "s",
+            timeMs: 0,
+            json: #"{"role":"assistant","modelID":" claude-sonnet-4-5 ","providerID":"anthropic","cost":"bad","path":5,"tokens":{"input":"100","output":10,"cache":"bad"}}"#,
+            directory: "/d"
+        )
+        let reasoningOnly = makeRow(
+            id: "reasoning-only",
+            sessionID: "s",
+            timeMs: 1,
+            json: #"{"role":"assistant","modelID":"claude-sonnet-4-5","providerID":"anthropic","tokens":{"reasoning":20}}"#,
+            directory: "/d"
+        )
+
+        let entries = parser.parseAll([usable, reasoningOnly])
+
+        #expect(entries.count == 1)
+        #expect(entries.first?.recordUUID == "usable")
+        #expect(entries.first?.usage.inputTokens == 0)
+        #expect(entries.first?.usage.outputTokens == 10)
+    }
+
     // MARK: - 跳过条件
 
     @Test("role != assistant 被跳过")

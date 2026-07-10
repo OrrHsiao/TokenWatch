@@ -7,8 +7,9 @@ import os.log
 /// - model = "{providerID}/{modelID}"(Q4=b,严格区分上游)
 /// - tokens.cache.write → cacheCreationInputTokens 扁平字段(cacheCreation 保持 nil,
 ///   派生属性 totalCacheCreationTokens 自动 fall through 到扁平字段)
-/// - data.cost → upstreamCost(USD,作 PricingEngine miss 的 fallback)
-/// - 跳过条件:role != assistant / tokens 缺失 / 5 维全 0 placeholder
+/// - tokens.total 中未被已知类别覆盖的余量 → outputTokens
+/// - data.cost > 0 → authoritative upstreamCost；其余交给本地定价
+/// - 跳过条件:role != assistant / tokens 缺失 / 可计费 token 全 0
 final class OpenCodeMessageParser: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "OpenCodeMessageParser")
@@ -53,7 +54,7 @@ final class OpenCodeMessageParser: Sendable {
                 inputTokens: tokens.input,
                 cacheCreationInputTokens: tokens.cache.write,
                 cacheReadInputTokens: tokens.cache.read,
-                outputTokens: tokens.output,
+                outputTokens: tokens.billableOutputTokens,
                 reasoningTokens: tokens.reasoning,
                 serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
                 serviceTier: "",
@@ -75,7 +76,8 @@ final class OpenCodeMessageParser: Sendable {
             // cwd:优先 data.path.cwd,否则 session.directory
             let cwd = parsed.path?.cwd ?? row.directory
 
-            // upstreamCost:0 视为缺省(opencode 算不出会写 0)
+            // OpenCode provider-specific 规则：只有严格大于 0 的 cost 才 authoritative；
+            // 0 与缺失都保持 nil，让 UsageCostResolver 尝试本地 token 计价。
             let upstreamCost: Double? = parsed.cost.flatMap { $0 > 0 ? $0 : nil }
 
             entries.append(ParsedUsageEntry(
