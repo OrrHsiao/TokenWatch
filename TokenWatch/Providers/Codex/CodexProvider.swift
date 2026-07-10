@@ -13,8 +13,19 @@ struct CodexProvider: UsageProvider {
     /// Codex 的 reasoning 已并入 output_tokens,不单列维度
     let hasReasoningDimension = false
 
-    private let scanner = CodexRolloutScanner()
-    private let parser = CodexRolloutParser()
+    private let scanner: CodexRolloutScanner
+    private let parser: CodexRolloutParser
+    private let serviceTierResolver: CodexServiceTierResolver
+
+    init(
+        scanner: CodexRolloutScanner = CodexRolloutScanner(),
+        parser: CodexRolloutParser = CodexRolloutParser(),
+        serviceTierResolver: CodexServiceTierResolver = CodexServiceTierResolver()
+    ) {
+        self.scanner = scanner
+        self.parser = parser
+        self.serviceTierResolver = serviceTierResolver
+    }
 
     /// 扫描 Codex 目录下所有 rollout JSONL 文件并解析为统一条目
     /// - Parameter rootURL: 已授权的用户目录
@@ -22,6 +33,7 @@ struct CodexProvider: UsageProvider {
     func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
         let codexRoot = rootURL.appendingPathComponent(".codex", isDirectory: true)
         let files = try scanner.scanAll(in: codexRoot)
-        return try parser.parseAllFiles(files)
+        let speed = serviceTierResolver.pricingSpeed(at: codexRoot)
+        return try parser.parseAllFiles(files, pricingSpeed: speed)
     }
 }

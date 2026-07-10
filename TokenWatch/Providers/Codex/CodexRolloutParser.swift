@@ -7,7 +7,7 @@ import os.log
 /// - `last_token_usage` 优先;缺失则 `delta = saturatingSub(total, prevTotal)`
 /// - `previousTotals` 始终更新(包括跳过本条的情形),确保后续 delta 推导正确
 /// - 4 维全 0 的事件视为 replay marker / 心跳,跳过(prevTotals 仍要更新)
-/// - `pure_input = max(0, input - cached_input)` 防止与 cache_read 双计
+/// - cached input 先夹到 nonnegative raw input，再拆 pure/cache_read，防止双计与负 pure
 /// - `output_tokens` 已含 reasoning,直接进 PricingEngine,reasoning 不另计费
 final class CodexRolloutParser: @unchecked Sendable {
 
@@ -38,11 +38,19 @@ final class CodexRolloutParser: @unchecked Sendable {
 
     private struct CachedFile {
         let signature: FileSignature
+        let pricingSpeed: CodexPricingSpeed
         let entries: [ParsedUsageEntry]
     }
 
-    /// 解析单文件
-    func parseFile(_ fileInfo: CodexRolloutFileInfo) throws -> [ParsedUsageEntry] {
+    /// 解析单个 Codex rollout 文件。
+    /// - Parameters:
+    ///   - fileInfo: rollout 文件元数据。
+    ///   - pricingSpeed: 写入 usage service tier 的计价速度，默认保持 standard 兼容。
+    /// - Returns: 文件中的有效 token 事件。
+    func parseFile(
+        _ fileInfo: CodexRolloutFileInfo,
+        pricingSpeed: CodexPricingSpeed = .standard
+    ) throws -> [ParsedUsageEntry] {
         let handle = try FileHandle(forReadingFrom: fileInfo.url)
         defer { try? handle.close() }
 
@@ -50,7 +58,7 @@ final class CodexRolloutParser: @unchecked Sendable {
         let newline: UInt8 = 0x0A
 
         var entries: [ParsedUsageEntry] = []
-        var currentModel: String? = nil
+        var currentModel: CodexModelState?
         var sessionCwd: String? = nil
         var sessionID = fileInfo.sessionID    // 优先文件名,session_meta 出现时覆盖
         var previousTotals = CodexTokenCounts.zero
@@ -68,8 +76,14 @@ final class CodexRolloutParser: @unchecked Sendable {
                 sessionID = meta.id
                 sessionCwd = meta.cwd
 
-            case .turnContext(let ctx):
-                if let m = ctx.model { currentModel = m }
+            case .turnContext(let context):
+                if let model = context.model {
+                    _ = CodexModelResolver.resolve(
+                        parsedModel: model,
+                        eventDate: record.timestamp,
+                        current: &currentModel
+                    )
+                }
 
             case .eventMsg(let event):
                 guard event.type == "token_count" else { return }
@@ -99,21 +113,23 @@ final class CodexRolloutParser: @unchecked Sendable {
                 // replay marker / 静默事件 → 跳过 emit,但 prevTotal 已更新
                 guard !delta.isAllZero else { return }
 
-                // 模型未确定无法计价 → 跳过
-                guard let model = currentModel else {
-                    return
-                }
-
-                // 防双计:input 已含 cached,扣减后才是 pure 新 token
-                let pureInput = max(0, delta.inputTokens - delta.cachedInputTokens)
+                let model = CodexModelResolver.resolve(
+                    parsedModel: event.model ?? info.model,
+                    eventDate: record.timestamp,
+                    current: &currentModel
+                )
+                let rawInput = max(0, delta.inputTokens)
+                // ccusage 先将 cached_input_tokens 夹到 raw input，再拆 pure/cached。
+                let cachedInput = min(max(0, delta.cachedInputTokens), rawInput)
+                let pureInput = rawInput - cachedInput
 
                 let usage = TokenUsage(
                     inputTokens: pureInput,
                     cacheCreationInputTokens: 0,
-                    cacheReadInputTokens: delta.cachedInputTokens,
+                    cacheReadInputTokens: cachedInput,
                     outputTokens: delta.outputTokens,
                     serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
-                    serviceTier: "",
+                    serviceTier: pricingSpeed == .fast ? "fast" : "",
                     cacheCreation: nil,
                     inferenceGeo: "",
                     iterations: [],
@@ -166,15 +182,26 @@ final class CodexRolloutParser: @unchecked Sendable {
         return entries
     }
 
-    /// 批量解析并按 dedupKey 取 magnitude 最大那条(沿用 Claude 的策略)
-    func parseAllFiles(_ files: [CodexRolloutFileInfo]) throws -> [ParsedUsageEntry] {
+    /// 批量解析并按 dedupKey 取 magnitude 最大的条目。
+    /// - Parameters:
+    ///   - files: 待解析的 rollout 文件。
+    ///   - pricingSpeed: 本批次统一使用的 Codex 计价速度。
+    /// - Returns: 跨文件去重后的 usage 条目。
+    func parseAllFiles(
+        _ files: [CodexRolloutFileInfo],
+        pricingSpeed: CodexPricingSpeed = .standard
+    ) throws -> [ParsedUsageEntry] {
         var all: [ParsedUsageEntry] = []
         var currentCacheKeys: Set<String> = []
         for f in files {
             let cacheKey = Self.cacheKey(for: f.url)
             currentCacheKeys.insert(cacheKey)
             do {
-                all.append(contentsOf: try parseCachedFile(f, cacheKey: cacheKey))
+                all.append(contentsOf: try parseCachedFile(
+                    f,
+                    cacheKey: cacheKey,
+                    pricingSpeed: pricingSpeed
+                ))
             } catch {
                 logger.warning("Codex 文件解析失败: \(f.url.lastPathComponent) — \(error.localizedDescription)")
             }
@@ -208,23 +235,40 @@ final class CodexRolloutParser: @unchecked Sendable {
         return formatter.string(from: date)
     }
 
-    private func parseCachedFile(_ fileInfo: CodexRolloutFileInfo, cacheKey: String) throws -> [ParsedUsageEntry] {
+    private func parseCachedFile(
+        _ fileInfo: CodexRolloutFileInfo,
+        cacheKey: String,
+        pricingSpeed: CodexPricingSpeed
+    ) throws -> [ParsedUsageEntry] {
         let signature = try FileSignature(url: fileInfo.url)
-        if let cached = cachedFile(for: cacheKey, matching: signature) {
+        if let cached = cachedFile(
+            for: cacheKey,
+            matching: signature,
+            pricingSpeed: pricingSpeed
+        ) {
             return cached
         }
 
-        let entries = try parseFile(fileInfo)
+        let entries = try parseFile(fileInfo, pricingSpeed: pricingSpeed)
         withCacheLock {
-            cachedFiles[cacheKey] = CachedFile(signature: signature, entries: entries)
+            cachedFiles[cacheKey] = CachedFile(
+                signature: signature,
+                pricingSpeed: pricingSpeed,
+                entries: entries
+            )
         }
         return entries
     }
 
-    private func cachedFile(for cacheKey: String, matching signature: FileSignature) -> [ParsedUsageEntry]? {
+    private func cachedFile(
+        for cacheKey: String,
+        matching signature: FileSignature,
+        pricingSpeed: CodexPricingSpeed
+    ) -> [ParsedUsageEntry]? {
         withCacheLock {
             guard let cached = cachedFiles[cacheKey],
-                  cached.signature == signature else {
+                  cached.signature == signature,
+                  cached.pricingSpeed == pricingSpeed else {
                 return nil
             }
             cacheHitCount += 1
