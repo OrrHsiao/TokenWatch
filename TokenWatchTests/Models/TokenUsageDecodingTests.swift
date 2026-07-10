@@ -41,8 +41,8 @@ struct TokenUsageDecodingTests {
         #expect(usage.serverToolUse.webSearchRequests == 2)
         #expect(usage.serverToolUse.webFetchRequests == 1)
         #expect(usage.serviceTier == "standard")
-        #expect(usage.cacheCreation.ephemeral1hInputTokens == 0)
-        #expect(usage.cacheCreation.ephemeral5mInputTokens == 0)
+        #expect(usage.cacheCreation?.ephemeral1hInputTokens == 0)
+        #expect(usage.cacheCreation?.ephemeral5mInputTokens == 0)
         #expect(usage.speed == "standard")
     }
 
@@ -92,7 +92,63 @@ struct TokenUsageDecodingTests {
         #expect(usage.cacheCreationInputTokens == 0)
         #expect(usage.cacheReadInputTokens == 0)
         #expect(usage.serviceTier == "")
-        #expect(usage.cacheCreation.ephemeral1hInputTokens == 0)
+        #expect(usage.cacheCreation?.ephemeral1hInputTokens == nil)
+    }
+
+    @Test("缺失 cache_creation 时保留 nil 并回退扁平字段")
+    func missingCacheCreationFallsBackToFlatTokens() throws {
+        let json = """
+        {
+            "input_tokens": 1,
+            "output_tokens": 2,
+            "cache_creation_input_tokens": 500
+        }
+        """
+
+        let usage = try JSONDecoder().decode(TokenUsage.self, from: Data(json.utf8))
+
+        #expect(usage.cacheCreation == nil)
+        #expect(usage.cacheCreate5mTokens == 500)
+        #expect(usage.cacheCreate1hTokens == 0)
+        #expect(usage.totalCacheCreationTokens == 500)
+    }
+
+    @Test("cache_creation 对象存在时即使全零也不回退扁平字段")
+    func presentEmptyCacheCreationSuppressesFlatFallback() throws {
+        let json = """
+        {
+            "input_tokens": 1,
+            "output_tokens": 2,
+            "cache_creation_input_tokens": 500,
+            "cache_creation": {}
+        }
+        """
+
+        let usage = try JSONDecoder().decode(TokenUsage.self, from: Data(json.utf8))
+
+        #expect(usage.cacheCreation != nil)
+        #expect(usage.cacheCreation?.ephemeral1hInputTokens == 0)
+        #expect(usage.cacheCreation?.ephemeral5mInputTokens == 0)
+        #expect(usage.totalCacheCreationTokens == 0)
+    }
+
+    @Test("server_tool_use 和 cache_creation 的单个缺失子字段解码为零")
+    func partialNestedUsageObjectsDefaultMissingMembersToZero() throws {
+        let json = """
+        {
+            "input_tokens": 1,
+            "output_tokens": 2,
+            "server_tool_use": {"web_search_requests": 3},
+            "cache_creation": {"ephemeral_1h_input_tokens": 4}
+        }
+        """
+
+        let usage = try JSONDecoder().decode(TokenUsage.self, from: Data(json.utf8))
+
+        #expect(usage.serverToolUse.webSearchRequests == 3)
+        #expect(usage.serverToolUse.webFetchRequests == 0)
+        #expect(usage.cacheCreation?.ephemeral1hInputTokens == 4)
+        #expect(usage.cacheCreation?.ephemeral5mInputTokens == 0)
     }
 
     @Test("解析含 reasoning_tokens 字段(opencode/GPT-5 系列)")
@@ -146,7 +202,7 @@ struct TokenUsageDecodingTests {
             cacheReadInputTokens: 0, outputTokens: 0,
             serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
             serviceTier: "standard",
-            cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+            cacheCreation: nil,
             inferenceGeo: "", iterations: [], speed: "standard"
         )
         #expect(usage.cacheCreate5mTokens == 500)

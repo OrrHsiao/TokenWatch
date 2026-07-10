@@ -114,7 +114,7 @@ final class CodexRolloutParser: @unchecked Sendable {
                     outputTokens: delta.outputTokens,
                     serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
                     serviceTier: "",
-                    cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+                    cacheCreation: nil,
                     inferenceGeo: "",
                     iterations: [],
                     speed: ""

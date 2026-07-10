@@ -408,7 +408,7 @@ struct UsageAggregatorTests {
                 reasoningTokens: reasoning,
                 serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
                 serviceTier: "standard",
-                cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+                cacheCreation: nil,
                 inferenceGeo: "",
                 iterations: [],
                 speed: "standard"

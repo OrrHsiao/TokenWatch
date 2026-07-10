@@ -10,7 +10,7 @@ struct TokenUsage: Decodable, Sendable {
     let reasoningTokens: Int
     let serverToolUse: ServerToolUse
     let serviceTier: String
-    let cacheCreation: CacheCreation
+    let cacheCreation: CacheCreation?
     let inferenceGeo: String
     let iterations: [String]  // 实际数据中始终为空数组
     let speed: String
@@ -42,8 +42,8 @@ struct TokenUsage: Decodable, Sendable {
         serverToolUse = try container.decodeIfPresent(ServerToolUse.self, forKey: .serverToolUse)
             ?? ServerToolUse(webSearchRequests: 0, webFetchRequests: 0)
         serviceTier = try container.decodeIfPresent(String.self, forKey: .serviceTier) ?? ""
+        // 对象是否存在决定细分是否权威；缺失或 null 必须保留为 nil，供扁平字段回退。
         cacheCreation = try container.decodeIfPresent(CacheCreation.self, forKey: .cacheCreation)
-            ?? CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0)
         inferenceGeo = try container.decodeIfPresent(String.self, forKey: .inferenceGeo) ?? ""
         // iterations 始终为空数组，跳过实际解码避免类型不匹配
         iterations = []
@@ -59,7 +59,7 @@ struct TokenUsage: Decodable, Sendable {
         reasoningTokens: Int = 0,
         serverToolUse: ServerToolUse,
         serviceTier: String,
-        cacheCreation: CacheCreation,
+        cacheCreation: CacheCreation?,
         inferenceGeo: String,
         iterations: [String],
         speed: String
@@ -87,6 +87,18 @@ struct ServerToolUse: Decodable, Sendable {
         case webSearchRequests = "web_search_requests"
         case webFetchRequests = "web_fetch_requests"
     }
+
+    init(webSearchRequests: Int, webFetchRequests: Int) {
+        self.webSearchRequests = webSearchRequests
+        self.webFetchRequests = webFetchRequests
+    }
+
+    /// 宽容解码部分 server_tool_use 对象，缺失成员按 0 处理。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        webSearchRequests = try container.decodeIfPresent(Int.self, forKey: .webSearchRequests) ?? 0
+        webFetchRequests = try container.decodeIfPresent(Int.self, forKey: .webFetchRequests) ?? 0
+    }
 }
 
 /// cache_creation 子结构
@@ -98,6 +110,18 @@ struct CacheCreation: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case ephemeral1hInputTokens = "ephemeral_1h_input_tokens"
         case ephemeral5mInputTokens = "ephemeral_5m_input_tokens"
+    }
+
+    init(ephemeral1hInputTokens: Int, ephemeral5mInputTokens: Int) {
+        self.ephemeral1hInputTokens = ephemeral1hInputTokens
+        self.ephemeral5mInputTokens = ephemeral5mInputTokens
+    }
+
+    /// 宽容解码部分 cache_creation 对象；对象 presence 仍由 TokenUsage 保留。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        ephemeral1hInputTokens = try container.decodeIfPresent(Int.self, forKey: .ephemeral1hInputTokens) ?? 0
+        ephemeral5mInputTokens = try container.decodeIfPresent(Int.self, forKey: .ephemeral5mInputTokens) ?? 0
     }
 }
 
@@ -113,15 +137,13 @@ struct CacheCreation: Decodable, Sendable {
 extension TokenUsage {
     /// 5 分钟缓存写入 token 数（按 `cacheWritePrice` 计费）
     var cacheCreate5mTokens: Int {
-        if cacheCreation.ephemeral5mInputTokens > 0 || cacheCreation.ephemeral1hInputTokens > 0 {
-            return cacheCreation.ephemeral5mInputTokens
-        }
-        return cacheCreationInputTokens
+        guard let cacheCreation else { return cacheCreationInputTokens }
+        return cacheCreation.ephemeral5mInputTokens
     }
 
     /// 1 小时缓存写入 token 数（按 `inputPrice × 2` 计费）
     var cacheCreate1hTokens: Int {
-        cacheCreation.ephemeral1hInputTokens
+        cacheCreation?.ephemeral1hInputTokens ?? 0
     }
 
     /// cache 写入 token 总量（用于展示／聚合，不会重复计入扁平字段）

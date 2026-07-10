@@ -78,6 +78,7 @@ struct OpenCodeMessageParserTests {
         #expect(e.usage.cacheReadInputTokens == 10)
         // cache.write → cacheCreationInputTokens 扁平字段;派生属性走 fallback 拿 5m
         #expect(e.usage.cacheCreationInputTokens == 20)
+        #expect(e.usage.cacheCreation == nil)
         #expect(e.usage.totalCacheCreationTokens == 20)
     }
 
