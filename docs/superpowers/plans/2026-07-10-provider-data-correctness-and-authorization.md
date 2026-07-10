@@ -1739,7 +1739,7 @@ let normalized = delta.normalizedForBilling
 
 在 `CodexTurnContext`、event payload 与 `CodexTokenCountInfo` 上实现 `preferredModel`，每一层按 `model → model_name → metadata.model` 取 trim 后的第一个非空值；event payload miss 才读 info，不得让空 payload model 遮蔽 info 真值。
 
-`CodexRecord` 将 timestamp 解码为保留 normalized RFC3339-millis 文本与 `Date` 的小值类型：字符串按现有 RFC3339 规则规范，数字 `< 10^12` 按 Unix 秒、否则按毫秒，并 saturate 到可表示范围。session token_count 的 nil/空/无效 timestamp 跳过，不合成 UUID 或 offset；`timestampKey` 直接用 normalized 文本。
+`CodexRecord` 将 timestamp 解码为保留 normalized RFC3339-millis 文本与 `Date` 的小值类型：字符串按现有 RFC3339 规则规范；数字严格复制 pinned ccusage 分界，`raw > 10_000_000_000` 时按 Unix 毫秒，否则按 Unix 秒，并 saturate 到可表示范围。session token_count 的 nil/空/无效 timestamp 跳过，不合成 UUID 或 offset；`timestampKey` 直接用 normalized 文本。测试必须包含分界值及其相邻值，避免回退到错误的 `10^12` 启发式。
 
 `CodexRecord` 将原 `let timestamp: Date?` 替换为 `let normalizedTimestamp: CodexNormalizedTimestamp?`，并提供兼容计算属性 `var timestamp: Date? { normalizedTimestamp?.date }`；`CodingKeys.timestamp` 保持不变。
 
