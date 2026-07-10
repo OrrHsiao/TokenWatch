@@ -58,6 +58,26 @@ struct TokenStatsViewModelObserverTests {
         #expect(Set(received) == Set(ProviderRegistry.allProviders.map(\.id)))
     }
 
+    @Test func failedAuthorizationDoesNotMarkAuthorizedOrRefresh() async {
+        let provider = StubUsageProvider(id: .claude)
+        let bookmarkManager = StubBookmarkManager(
+            rootURL: URL(fileURLWithPath: NSTemporaryDirectory()),
+            promptSucceeds: false
+        )
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        let didAuthorize = await vm.requestAuthorization(for: .claude)
+
+        #expect(!didAuthorize)
+        #expect(vm.states[.claude]?.needsAuthorization == true)
+        #expect(aggregator.aggregateCallCount == 0)
+    }
+
     /// 同一 provider 已在刷新时,后续刷新请求应被挡掉;不同 provider 不互相影响
     @Test func providerLoadGateRejectsDuplicateInFlightLoads() {
         var gate = ProviderLoadGate()
@@ -380,9 +400,11 @@ private func makeEntry(
 @MainActor
 private final class StubBookmarkManager: BookmarkAccessManaging {
     private let rootURL: URL
+    private let promptSucceeds: Bool
 
-    init(rootURL: URL) {
+    init(rootURL: URL, promptSucceeds: Bool = true) {
         self.rootURL = rootURL
+        self.promptSucceeds = promptSucceeds
     }
 
     func hasBookmark(forKey key: String) -> Bool {
@@ -390,7 +412,7 @@ private final class StubBookmarkManager: BookmarkAccessManaging {
     }
 
     func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL? {
-        rootURL
+        promptSucceeds ? rootURL : nil
     }
 
     func restoreBookmarkAndAccess(forKey key: String) -> URL? {
