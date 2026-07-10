@@ -168,6 +168,43 @@ struct OpenCodeMessageParserTests {
         #expect(entry.usage.reasoningTokens == 0)
     }
 
+    @Test("复合 UInt64 极值饱和到 Int.max 且 total 不重复补量")
+    func saturatesCompositeMaximumTokensWithoutOverflow() throws {
+        let row = makeRow(
+            id: "maximum-tokens",
+            sessionID: "s",
+            timeMs: 0,
+            json: #"{"role":"assistant","modelID":"claude-sonnet-4-5","providerID":"anthropic","tokens":{"input":18446744073709551615,"output":18446744073709551615,"total":18446744073709551615,"cache":{"read":18446744073709551615,"write":18446744073709551615}}}"#,
+            directory: "/d"
+        )
+
+        let entry = try #require(parser.parseAll([row]).first)
+        #expect(entry.usage.inputTokens == Int.max)
+        #expect(entry.usage.outputTokens == Int.max)
+        #expect(entry.usage.cacheReadInputTokens == Int.max)
+        #expect(entry.usage.totalCacheCreationTokens == Int.max)
+    }
+
+    @Test("OpenCode token null 与负数归零且保留其余可用字段")
+    func nullAndNegativeTokenFieldsBecomeZero() throws {
+        let row = makeRow(
+            id: "null-negative",
+            sessionID: "s",
+            timeMs: 0,
+            json: #"{"role":"assistant","modelID":"claude-sonnet-4-5","providerID":"anthropic","cost":0.25,"path":{"cwd":"/valid"},"tokens":{"input":null,"output":10,"reasoning":-1,"total":null,"cache":{"read":-1,"write":null}}}"#,
+            directory: "/fallback"
+        )
+
+        let entry = try #require(parser.parseAll([row]).first)
+        #expect(entry.usage.inputTokens == 0)
+        #expect(entry.usage.outputTokens == 10)
+        #expect(entry.usage.reasoningTokens == 0)
+        #expect(entry.usage.cacheReadInputTokens == 0)
+        #expect(entry.usage.totalCacheCreationTokens == 0)
+        #expect(entry.upstreamCost == 0.25)
+        #expect(entry.cwd == "/valid")
+    }
+
     @Test("OpenCode token 坏类型归零而不丢整行，reasoning-only 不计入")
     func lenientTokenFieldsMatchPinnedAdapter() throws {
         let usable = makeRow(

@@ -52,8 +52,10 @@ struct OpenCodeTokens: Decodable {
     /// ccusage `apply_total_token_fallback` 将 total 中未被已知类别覆盖的余量
     /// 按 output rate 计费。TokenWatch 没有 extra-total 维度，因此并入 output。
     var billableOutputTokens: Int {
-        let known = input + output + cache.read + cache.write
-        return output + max(total - known, 0)
+        let known = [input, output, cache.read, cache.write]
+            .reduce(0, Self.saturatingAdd)
+        let missing = max(total - known, 0)
+        return Self.saturatingAdd(output, missing)
     }
 
     /// 已应用 total fallback 后仍全 0 才是可跳过的空 usage。
@@ -62,6 +64,12 @@ struct OpenCodeTokens: Decodable {
         // total 若包含它，会由 total fallback 以 output rate 计价。
         input == 0 && billableOutputTokens == 0
             && cache.read == 0 && cache.write == 0
+    }
+
+    /// token 字段均为非负 Int；复合极值相加溢出时夹到 Int.max。
+    private static func saturatingAdd(_ lhs: Int, _ rhs: Int) -> Int {
+        let (sum, overflow) = lhs.addingReportingOverflow(rhs)
+        return overflow ? Int.max : sum
     }
 }
 
