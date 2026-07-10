@@ -29,7 +29,11 @@ struct JSONLContinuityAnchor: Sendable, Equatable {
         committedOffset: UInt64
     ) -> JSONLContinuityAnchor {
         let combined = previous.bytes + newlyCommittedBytes
-        let bytes = Data(combined.suffix(maximumByteCount))
+        let retainedCount = Int(min(
+            UInt64(min(maximumByteCount, combined.count)),
+            committedOffset
+        ))
+        let bytes = Data(combined.suffix(retainedCount))
         return JSONLContinuityAnchor(
             offset: committedOffset - UInt64(bytes.count),
             bytes: bytes
