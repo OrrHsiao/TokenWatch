@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import os.log
 
 /// ViewModel 需要的 Bookmark 访问能力。
 /// 生产实现仍由 `SecurityScopedBookmarkManager` 提供,测试可注入轻量 fake。
@@ -71,8 +72,23 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
         let prompt: String
     }
 
+    private let bookmarkDataCreator: any BookmarkDataCreating
+    private let bookmarkStore: any BookmarkDataStoring
+    private let logger = Logger(
+        subsystem: "com.xiaoao.TokenWatch",
+        category: "SecurityScopedBookmarkManager"
+    )
+
     /// 每个 key 对应的会话状态(已恢复的 URL + 当前逻辑访问次数)
     private var sessions = SecurityScopedAccessSessions()
+
+    init(
+        bookmarkDataCreator: any BookmarkDataCreating = SecurityScopedBookmarkDataCreator(),
+        bookmarkStore: any BookmarkDataStoring = UserDefaultsBookmarkStore()
+    ) {
+        self.bookmarkDataCreator = bookmarkDataCreator
+        self.bookmarkStore = bookmarkStore
+    }
 
     nonisolated static func openPanelCopy(language: AppLanguage) -> OpenPanelCopy {
         OpenPanelCopy(
@@ -85,7 +101,7 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
 
     /// 是否已存储该 key 对应的 Bookmark
     func hasBookmark(forKey key: String) -> Bool {
-        UserDefaults.standard.data(forKey: key) != nil
+        bookmarkStore.data(forKey: key) != nil
     }
 
     // MARK: - 授权流程
@@ -118,9 +134,29 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
                     continuation.resume(returning: nil)
                     return
                 }
-                self?.createAndSaveBookmark(for: url, key: key)
-                continuation.resume(returning: url)
+                continuation.resume(
+                    returning: self?.persistSelectedDirectory(url, forKey: key)
+                )
             }
+        }
+    }
+
+    /// 创建并验证保存所选目录的 bookmark；失败时不返回假授权 URL。
+    /// - Parameters:
+    ///   - url: 用户选中的目录。
+    ///   - key: 保存 bookmark data 的键。
+    /// - Returns: 创建与保存均成功时返回原目录，否则返回 nil。
+    func persistSelectedDirectory(_ url: URL, forKey key: String) -> URL? {
+        do {
+            let data = try bookmarkDataCreator.createBookmarkData(for: url)
+            guard bookmarkStore.save(data, forKey: key) else {
+                logger.error("Bookmark 保存验证失败: \(key)")
+                return nil
+            }
+            return url
+        } catch {
+            logger.error("Bookmark 创建失败: \(error.localizedDescription)")
+            return nil
         }
     }
 
@@ -134,7 +170,7 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
             return url
         }
 
-        guard let bookmarkData = UserDefaults.standard.data(forKey: key) else {
+        guard let bookmarkData = bookmarkStore.data(forKey: key) else {
             return nil
         }
 
@@ -145,22 +181,23 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
             relativeTo: nil,
             bookmarkDataIsStale: &isStale
         ) else {
-            UserDefaults.standard.removeObject(forKey: key)
+            bookmarkStore.removeData(forKey: key)
             return nil
         }
 
         guard url.startAccessingSecurityScopedResource() else {
-            UserDefaults.standard.removeObject(forKey: key)
+            bookmarkStore.removeData(forKey: key)
             return nil
         }
 
         if isStale {
-            if let fresh = try? url.bookmarkData(
-                options: .withSecurityScope,
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            ) {
-                UserDefaults.standard.set(fresh, forKey: key)
+            do {
+                let fresh = try bookmarkDataCreator.createBookmarkData(for: url)
+                if !bookmarkStore.save(fresh, forKey: key) {
+                    logger.error("过期 Bookmark 重存验证失败: \(key)")
+                }
+            } catch {
+                logger.error("过期 Bookmark 重建失败: \(error.localizedDescription)")
             }
         }
 
@@ -181,16 +218,4 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
         }
     }
 
-    // MARK: - Private
-
-    private func createAndSaveBookmark(for url: URL, key: String) {
-        guard let bookmarkData = try? url.bookmarkData(
-            options: .withSecurityScope,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        ) else {
-            return
-        }
-        UserDefaults.standard.set(bookmarkData, forKey: key)
-    }
 }

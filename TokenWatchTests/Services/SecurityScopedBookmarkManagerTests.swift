@@ -28,4 +28,40 @@ struct SecurityScopedBookmarkManagerTests {
         #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .en).message == "TokenWatch wants to access your home folder")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .en).prompt == "Authorize")
     }
+
+    @MainActor
+    @Test("无效 bookmark 恢复失败时清除注入 store")
+    func invalidBookmarkRemovalUsesInjectedStore() {
+        let key = "InvalidBookmark"
+        let store = ManagerBookmarkStore(values: [key: Data([0])])
+        let manager = SecurityScopedBookmarkManager(bookmarkStore: store)
+
+        #expect(manager.hasBookmark(forKey: key))
+        #expect(manager.restoreBookmarkAndAccess(forKey: key) == nil)
+        #expect(!manager.hasBookmark(forKey: key))
+        #expect(store.removedKeys == [key])
+    }
+}
+
+private final class ManagerBookmarkStore: BookmarkDataStoring, @unchecked Sendable {
+    private var values: [String: Data]
+    private(set) var removedKeys: [String] = []
+
+    init(values: [String: Data]) {
+        self.values = values
+    }
+
+    func data(forKey key: String) -> Data? {
+        values[key]
+    }
+
+    func save(_ data: Data, forKey key: String) -> Bool {
+        values[key] = data
+        return values[key] == data
+    }
+
+    func removeData(forKey key: String) {
+        values[key] = nil
+        removedKeys.append(key)
+    }
 }
