@@ -7,16 +7,16 @@ struct JSONLUnscopedCacheScope: Sendable, Equatable {
     private init() {}
 }
 
-/// 统一协调 scanner 已列出文件的 snapshot、cache hit、last-good 与 prune。
-/// `Candidate` 和 `Scope` 由 provider 指定；行解析和全局去重留在 provider。
+/// 统一协调 scanner 已列出文件的 snapshot、state cache、last-good 与 prune。
+/// Provider 只通过 build/project closure 定义状态迁移和候选投影。
 final class JSONLLastGoodCacheCoordinator<
-    Candidate: Sendable,
+    State: Sendable,
     Scope: Sendable & Equatable
 >: @unchecked Sendable {
     private struct CachedFile {
         let metadata: JSONLFileMetadata
         let scope: Scope
-        let candidates: [Candidate]
+        let state: State
     }
 
     private let fileReader: any JSONLFileReading
@@ -36,22 +36,25 @@ final class JSONLLastGoodCacheCoordinator<
         withLock { cacheHitCount }
     }
 
-    /// 读取 scanner 本轮列出的文件，返回仍未做 provider 全局去重的 candidates。
-    /// 只有完整 parse 成功才原子替换 cache；失败时仅复用同 scope 的 last-good。
-    /// - Parameters:
-    ///   - files: scanner 本轮列出的文件描述。
-    ///   - scope: provider 定义的 cache 兼容范围。
-    ///   - cacheKey: 将文件描述映射为稳定路径 key。
-    ///   - urlForFile: 返回文件的实际 URL。
-    ///   - parse: 使用已打开 snapshot 完整构建 per-file candidates。
-    ///   - onFailure: 报告错误及是否复用了存在的 last-good。
-    /// - Returns: 按输入文件顺序汇总的 provider-specific candidates。
-    func loadListedFiles<FileInfo>(
+    /// 返回同 scope 的只读 state 副本，供 parser 的定向 debug accessor 转发。
+    func cachedState(for key: String, scope: Scope) -> State? {
+        withLock {
+            guard let cached = cachedFiles[key], cached.scope == scope else {
+                return nil
+            }
+            return cached.state
+        }
+    }
+
+    /// 这是唯一 listed-file 协调循环。只有 build 完整成功才原子替换 state；
+    /// 失败时只投影同 scope last-good，scanner 未列出的 key 在本轮末尾 prune。
+    func loadListedFiles<FileInfo, Candidate: Sendable>(
         _ files: [FileInfo],
         scope: Scope,
         cacheKey: (FileInfo) -> String,
         urlForFile: (FileInfo) -> URL,
-        parse: (FileInfo, JSONLFileSnapshot) throws -> [Candidate],
+        build: (FileInfo, JSONLFileSnapshot, State?) throws -> State,
+        project: (State) -> [Candidate],
         onFailure: (FileInfo, Error, Bool) -> Void
     ) -> [Candidate] {
         var allCandidates: [Candidate] = []
@@ -62,30 +65,33 @@ final class JSONLLastGoodCacheCoordinator<
             listedKeys.insert(key)
 
             do {
-                let snapshot = try fileReader.openSnapshot(for: urlForFile(fileInfo))
+                let snapshot = try fileReader.openSnapshot(
+                    for: urlForFile(fileInfo)
+                )
                 defer { snapshot.stream.close() }
 
-                if let cached = cachedCandidates(
+                if let unchanged = unchangedState(
                     for: key,
                     matching: snapshot.metadata,
                     scope: scope
                 ) {
-                    allCandidates.append(contentsOf: cached)
+                    allCandidates.append(contentsOf: project(unchanged))
                     continue
                 }
 
-                let parsed = try parse(fileInfo, snapshot)
+                let previous = cachedState(for: key, scope: scope)
+                let next = try build(fileInfo, snapshot, previous)
                 store(
-                    parsed,
+                    next,
                     metadata: snapshot.metadata,
                     scope: scope,
                     for: key
                 )
-                allCandidates.append(contentsOf: parsed)
+                allCandidates.append(contentsOf: project(next))
             } catch {
-                let lastGood = lastGoodCandidates(for: key, scope: scope)
+                let lastGood = cachedState(for: key, scope: scope)
                 if let lastGood {
-                    allCandidates.append(contentsOf: lastGood)
+                    allCandidates.append(contentsOf: project(lastGood))
                 }
                 onFailure(fileInfo, error, lastGood != nil)
             }
@@ -95,11 +101,11 @@ final class JSONLLastGoodCacheCoordinator<
         return allCandidates
     }
 
-    private func cachedCandidates(
+    private func unchangedState(
         for key: String,
         matching metadata: JSONLFileMetadata,
         scope: Scope
-    ) -> [Candidate]? {
+    ) -> State? {
         withLock {
             // 没有 descriptor identity 时无法证明两次 snapshot 指向同一文件。
             guard metadata.identity != nil,
@@ -109,26 +115,12 @@ final class JSONLLastGoodCacheCoordinator<
                 return nil
             }
             cacheHitCount += 1
-            return cached.candidates
-        }
-    }
-
-    private func lastGoodCandidates(
-        for key: String,
-        scope: Scope
-    ) -> [Candidate]? {
-        withLock {
-            guard let cached = cachedFiles[key],
-                  cached.scope == scope else {
-                return nil
-            }
-            // Optional array preserves the distinction between no cache and cached empty output.
-            return cached.candidates
+            return cached.state
         }
     }
 
     private func store(
-        _ candidates: [Candidate],
+        _ state: State,
         metadata: JSONLFileMetadata,
         scope: Scope,
         for key: String
@@ -137,7 +129,7 @@ final class JSONLLastGoodCacheCoordinator<
             cachedFiles[key] = CachedFile(
                 metadata: metadata,
                 scope: scope,
-                candidates: candidates
+                state: state
             )
         }
     }

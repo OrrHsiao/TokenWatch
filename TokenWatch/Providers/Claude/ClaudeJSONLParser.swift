@@ -7,14 +7,14 @@ final class ClaudeJSONLParser: @unchecked Sendable {
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLParser")
     private let fileReader: any JSONLFileReading
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
-        ParsedUsageEntry,
+        [ParsedUsageEntry],
         JSONLUnscopedCacheScope
     >
 
     init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
         self.fileReader = fileReader
         self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
-            ParsedUsageEntry,
+            [ParsedUsageEntry],
             JSONLUnscopedCacheScope
         >(fileReader: fileReader)
     }
@@ -54,18 +54,19 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         _ files: [ClaudeJSONLFileInfo],
         claudeDataRoot: URL
     ) throws -> [ParsedUsageEntry] {
-        let allCandidates = cacheCoordinator.loadListedFiles(
+        let allCandidates: [ParsedUsageEntry] = cacheCoordinator.loadListedFiles(
             files,
             scope: .shared,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
-            parse: { [self] fileInfo, snapshot in
+            build: { [self] fileInfo, snapshot, _ in
                 try parseJSONLStream(
                     snapshot.stream,
                     fileInfo: fileInfo,
                     claudeDataRoot: claudeDataRoot
                 )
             },
+            project: { $0 },
             onFailure: { [self] fileInfo, error, reusedLastGood in
                 if reusedLastGood {
                     logger.warning(
