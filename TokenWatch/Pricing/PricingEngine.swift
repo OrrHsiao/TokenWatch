@@ -109,9 +109,14 @@ struct PricingEngine: Sendable {
         pricing: ModelPricing,
         semantics: PricingSemantics = .standard
     ) -> Double {
-        let baseCacheRead = semantics == .codex && !pricing.cacheReadPriceIsExplicit
+        let usesInputRatesForCacheRead = semantics == .codex
+            && !pricing.cacheReadPriceIsExplicit
+        let baseCacheRead = usesInputRatesForCacheRead
             ? pricing.inputPrice
             : pricing.cacheReadPrice
+        let aboveCacheRead = usesInputRatesForCacheRead
+            ? pricing.inputPriceAbove200k
+            : pricing.cacheReadPriceAbove200k
         let cache1hBase = pricing.inputPrice * Self.cacheCreate1hInputMultiplier
         let cache1hAbove = pricing.inputPriceAbove200k.map {
             $0 * Self.cacheCreate1hInputMultiplier
@@ -172,7 +177,7 @@ struct PricingEngine: Sendable {
             ) + Self.tieredCost(
                 tokens: usage.cacheReadInputTokens,
                 base: baseCacheRead,
-                above: pricing.cacheReadPriceAbove200k
+                above: aboveCacheRead
             )
         }
         return subtotal * multiplier(
