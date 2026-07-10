@@ -731,3 +731,231 @@ struct PricingEngineTests {
         #expect(PricingTable.pricing(for: "gpt-5") != nil)
     }
 }
+
+extension PricingEngineTests {
+    @Test("Codex raw input 超过 272K 时整请求使用 long-context rates")
+    func codexWholeRequestLongContext() {
+        let pricing = openAIPrice(
+            id: "gpt-5.4",
+            input: 2.5,
+            output: 15,
+            cacheRead: 0.25,
+            longInput: 5,
+            longOutput: 22.5,
+            longCacheRead: 0.5,
+            fast: 2
+        )
+        let usage = codexUsage(rawInput: 300_000, cached: 100_000, output: 1_000)
+
+        let cost = PricingEngine().calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .codex
+        )
+
+        #expect(abs(cost - 1.0725) < 1e-9)
+    }
+
+    @Test("恰好 272K 保持 base，且两条短请求不能先聚合后切档")
+    func codexLongContextIsPerRequestAndStrictlyAboveThreshold() {
+        let pricing = openAIPrice(
+            id: "gpt-5.4",
+            input: 2.5,
+            output: 15,
+            cacheRead: 0.25,
+            longInput: 5,
+            longOutput: 22.5,
+            longCacheRead: 0.5,
+            fast: 2
+        )
+        let exactlyThreshold = codexUsage(rawInput: 272_000, cached: 0, output: 0)
+        let first = codexUsage(rawInput: 150_000, cached: 0, output: 0)
+        let second = codexUsage(rawInput: 150_000, cached: 0, output: 0)
+        let engine = PricingEngine()
+
+        #expect(abs(engine.calculateCost(
+            usage: exactlyThreshold,
+            pricing: pricing,
+            semantics: .codex
+        ) - 0.68) < 1e-9)
+        let separate = engine.calculateCost(
+            usage: first,
+            pricing: pricing,
+            semantics: .codex
+        ) + engine.calculateCost(
+            usage: second,
+            pricing: pricing,
+            semantics: .codex
+        )
+        #expect(abs(separate - 0.75) < 1e-9)
+    }
+
+    @Test("Codex 非显式 cache read 使用完整 input price，standard 仍使用推导 cache price")
+    func codexImplicitCacheReadUsesInputPrice() {
+        let pricing = ModelPricing(
+            modelID: "gpt-4",
+            displayName: "gpt-4",
+            inputPrice: 30,
+            outputPrice: 60,
+            cacheReadPrice: 3,
+            cacheWritePrice: 37.5,
+            cacheReadPriceIsExplicit: false
+        )
+        let usage = codexUsage(rawInput: 1_000, cached: 400, output: 0)
+        let engine = PricingEngine()
+
+        let codex = engine.calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .codex
+        )
+        let standard = engine.calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .standard
+        )
+
+        #expect(abs(codex - 0.03) < 1e-9)
+        #expect(abs(standard - 0.0192) < 1e-9)
+    }
+
+    @Test("standard OpenAI 阈值只看 inputTokens，Codex 才重建 pure 加 cached")
+    func standardLongContextUsesRawInputField() {
+        let pricing = openAIPrice(
+            id: "gpt-5.4",
+            input: 2.5,
+            output: 15,
+            cacheRead: 0.25,
+            longInput: 5,
+            longOutput: 22.5,
+            longCacheRead: 0.5,
+            fast: 2
+        )
+        let usage = codexUsage(rawInput: 300_000, cached: 100_000, output: 0)
+        let engine = PricingEngine()
+
+        let standard = engine.calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .standard
+        )
+        let codex = engine.calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .codex
+        )
+
+        #expect(abs(standard - 0.525) < 1e-9)
+        #expect(abs(codex - 1.05) < 1e-9)
+    }
+
+    @Test("Codex fast 使用模型 multiplier，缺失模型 multiplier 时默认 2")
+    func codexFastMultipliers() {
+        let gpt54 = openAIPrice(
+            id: "gpt-5.4",
+            input: 2.5,
+            output: 15,
+            cacheRead: 0.25,
+            longInput: 5,
+            longOutput: 22.5,
+            longCacheRead: 0.5,
+            fast: 2
+        )
+        let gpt55 = openAIPrice(
+            id: "gpt-5.5",
+            input: 5,
+            output: 30,
+            cacheRead: 0.5,
+            longInput: 10,
+            longOutput: 45,
+            longCacheRead: 1,
+            fast: 2.5
+        )
+        let noOverride = ModelPricing(
+            modelID: "gpt-private",
+            displayName: "gpt-private",
+            inputPrice: 1,
+            outputPrice: 4,
+            cacheReadPrice: 0.1,
+            cacheWritePrice: 1.25
+        )
+        let usage = codexUsage(
+            rawInput: 100_000,
+            cached: 40_000,
+            output: 1_000,
+            serviceTier: "fast"
+        )
+        let defaultUsage = codexUsage(
+            rawInput: 100_000,
+            cached: 0,
+            output: 0,
+            serviceTier: "priority"
+        )
+        let engine = PricingEngine()
+
+        #expect(abs(engine.calculateCost(
+            usage: usage,
+            pricing: gpt54,
+            semantics: .codex
+        ) - 0.35) < 1e-9)
+        #expect(abs(engine.calculateCost(
+            usage: usage,
+            pricing: gpt55,
+            semantics: .codex
+        ) - 0.875) < 1e-9)
+        #expect(abs(engine.calculateCost(
+            usage: defaultUsage,
+            pricing: noOverride,
+            semantics: .codex
+        ) - 0.2) < 1e-9)
+    }
+
+    private func openAIPrice(
+        id: String,
+        input: Double,
+        output: Double,
+        cacheRead: Double,
+        longInput: Double,
+        longOutput: Double,
+        longCacheRead: Double,
+        fast: Double
+    ) -> ModelPricing {
+        ModelPricing(
+            modelID: id,
+            displayName: id,
+            inputPrice: input,
+            outputPrice: output,
+            cacheReadPrice: cacheRead,
+            cacheWritePrice: input,
+            cacheReadPriceIsExplicit: true,
+            inputPriceAbove200k: longInput,
+            outputPriceAbove200k: longOutput,
+            cacheReadPriceAbove200k: longCacheRead,
+            cacheWritePriceAbove200k: longInput,
+            longContextThreshold: 272_000,
+            fastMultiplier: fast
+        )
+    }
+
+    private func codexUsage(
+        rawInput: Int,
+        cached: Int,
+        output: Int,
+        serviceTier: String = ""
+    ) -> TokenUsage {
+        let boundedRawInput = max(0, rawInput)
+        let boundedCached = min(max(0, cached), boundedRawInput)
+        return TokenUsage(
+            inputTokens: boundedRawInput - boundedCached,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: boundedCached,
+            outputTokens: output,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: serviceTier,
+            cacheCreation: nil,
+            inferenceGeo: "",
+            iterations: [],
+            speed: ""
+        )
+    }
+}
