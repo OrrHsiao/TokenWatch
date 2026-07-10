@@ -64,7 +64,11 @@ final class UsageAggregator: UsageAggregating {
             overallByModel[entry.model, default: UsageSummaryAccumulator()].add(entry, cost: cost)
             overallByProject[projectKey, default: UsageSummaryAccumulator()].add(entry, cost: cost)
 
-            byHour.add(key: hourKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
+            byHour.add(
+                key: LocalHourBucketDescriptor.key(for: entry.timestamp, calendar: calendar),
+                entry: entry,
+                cost: cost
+            )
             byDay.add(key: dayKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
             byWeek.add(key: weekKey(from: entry.timestamp, calendar: isoCalendar), entry: entry, cost: cost)
             byMonth.add(key: monthKey(from: entry.timestamp, calendar: calendar), entry: entry, cost: cost)
@@ -129,21 +133,6 @@ final class UsageAggregator: UsageAggregating {
         return String(format: "%d-W%02d", year, week)
     }
 
-    /// 生成小时 key,格式: "yyyy-MM-ddTHH"(如 "2026-06-13T14")
-    /// 设计原因:与 dayKey 共用同一份本地 Calendar,保证 byHour 的所有 key 都能与
-    /// byDay 的 key 通过 prefix("yyyy-MM-dd") 完全匹配,UI 取数零歧义。
-    /// 与 ISO 8601 datetime 同款分隔符 'T',字符串字典序即时间序。
-    private func hourKey(from date: Date?, calendar: Calendar) -> String {
-        guard let date = date else { return "unknown" }
-        let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
-        guard let year = components.year,
-              let month = components.month,
-              let day = components.day,
-              let hour = components.hour else {
-            return "unknown"
-        }
-        return String(format: "%04d-%02d-%02dT%02d", year, month, day, hour)
-    }
 }
 
 private struct UsageSummaryAccumulator {
