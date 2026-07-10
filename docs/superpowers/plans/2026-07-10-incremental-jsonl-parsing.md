@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 Claude 与 Codex JSONL 在文件追加时只读取 committed offset 之后的字节，并在尾行、截断、替换和暂时读取失败时保持与全量解析完全一致的结果。
+**Goal:** 让 Claude 与 Codex JSONL 在可证明仍为原内容追加时只读取 committed offset 之后的字节，并在尾行、截断、替换和暂时读取失败时保持与全量解析完全一致的结果。
 
 **Architecture:** 数据正确性计划先提供 `JSONLFileReading`、文件 identity/size/mtime 元数据、共享 `JSONLLastGoodCacheCoordinator`、Claude 全局去重器和 Codex 可选累计状态。本计划把该 coordinator 的泛型 payload 从候选数组演进为 provider-specific `State`，由同一个 `loadListedFiles` 循环继续唯一负责 snapshot、cache hit、scope-sensitive last-good、成功后的原子替换与 prune；Claude/Codex 只提供 previous-state transition/build 和 candidate projection closure。每个 state 保存 stable raw candidates、未提交尾段和 committed checkpoint，只有完整换行才推进 offset。
 
@@ -15,7 +15,7 @@
 - 保留 Codex 的 `CodexUsageCandidate`、loader dedup key、replay classifier、resolved model/source、service tier、session metadata 与 `previousTotals`；config 的 fast/priority 只写 `TokenUsage.serviceTier`，Codex 的 `TokenUsage.speed` 始终为空。
 - `JSONLLastGoodCacheCoordinator<State, Scope>.loadListedFiles(...)` 必须继续是 Claude/Codex 唯一的 listed-file、open snapshot、unchanged hit、scope-sensitive last-good、原子替换和 prune 协调循环；parser 不得重新声明 `cachedFiles`、cache lock/hit counter、per-file catch 或 prune。
 - identity/size/mtime 全同才允许零读取复用；identity 不可验证时必须全量重建。
-- 所有 metadata 必须来自与 stream 相同的 opened descriptor snapshot；append 前校验有界 continuity anchor，以识别同 inode truncate 后重写为更大文件。
+- 所有 metadata 必须来自与 stream 相同的 opened descriptor snapshot；append 前校验 continuity anchor。只有 anchor 从 offset 0 覆盖整个 committed prefix 时，匹配结果才足以证明可安全复用；超过 256 bytes 的 committed prefix 一律从 0 重建。
 - EOF 无换行的完整 JSON 只作为 provisional candidate 返回，不能推进 offset 或 checkpoint。
 - 测试比较必须使用 deep snapshot，不能使用只比较 `dedupKey` 的 `ParsedUsageEntry.==`。
 - 不引入第三方流式解析、数据库或运行时网络依赖。
@@ -23,6 +23,19 @@
 - 测试使用 `.build/DerivedData`；app-hosted test 在沙盒中需要提升权限。
 - test/build-for-testing 命令统一使用 `CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=-` 的临时 ad-hoc 签名；纯 build/analyze 使用 `CODE_SIGNING_ALLOWED=NO`。
 - Commit 使用中文并遵循 `<type>(<scope>): <summary>`。
+
+## 2026-07-11 Correctness Amendment
+
+Task 2 的真实 RED/GREEN 运行证明：单一 256-byte suffix anchor 无法可靠区分合法 append 与“同 inode truncate 后重写成更大文件”。测试 fixture 的旧/新行均为 580 bytes，所有差异位于 offsets 28...270，而旧 suffix anchor 为 324..<580；因此 metadata、anchor 和 committed-offset 后缀读取在两种历史下完全同构。任何只依赖该有界样本的实现都可能复用已经不存在的旧 candidate。
+
+本计划因此采用 correctness-first 规则，并覆盖下文较早的示例：
+
+- `.append` 只有在 `anchor.offset == 0` 且 `anchor.bytes.count == committedOffset` 时才允许复用 stable candidates/checkpoint；随后还必须逐字节匹配完整 committed prefix。
+- committed prefix 超过 256 bytes 时，即使 suffix anchor 匹配也必须 seek 0 重建。不可修改 fixture 或删除 deep-snapshot/seek-0 断言来掩盖碰撞。
+- unchanged metadata 仍为 0-byte/0-seek cache hit；完整 committed prefix 不超过 256 bytes 的小文件仍走 anchor + suffix 增量路径。
+- Claude/Codex 的 append 性能测试必须使用小于等于 256 bytes 的有效 compact fixture；大文件测试只断言正确重建与 fresh full scan 一致。
+
+该修正牺牲大文件 append 的增量收益，但避免计价和用量残留被重写的历史记录。若以后要恢复大文件 suffix-only 性能，必须引入能够证明整个 committed prefix 连续性的独立文件世代信号或完整内容验证，不能重新依赖单个有界样本。
 
 ## File Structure
 
@@ -640,7 +653,8 @@ func appendReadsOnlySuffix() throws {
     defer { fixture.cleanup() }
     let reader = RecordingJSONLFileReader()
     let parser = ClaudeJSONLParser(fileReader: reader)
-    let firstLine = Self.assistantLine(messageId: "m1", inputTokens: 10)
+    // 该性能用例必须使用完整 committed prefix <= 256 bytes 的有效 compact 行。
+    let firstLine = Self.minimalAssistantLine(messageId: "m1", inputTokens: 10)
     try (firstLine + "\n").write(to: fixture.file.url, atomically: false, encoding: .utf8)
 
     let first = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
@@ -653,7 +667,7 @@ func appendReadsOnlySuffix() throws {
     #expect(reader.totalBytesRead == 0)
     #expect(reader.seekOffsets.isEmpty)
 
-    let secondLine = Self.assistantLine(messageId: "m2", inputTokens: 20)
+    let secondLine = Self.minimalAssistantLine(messageId: "m2", inputTokens: 20)
     let anchor = try #require(parser.debugContinuityAnchor(for: fixture.file.url))
     try appendUTF8(secondLine + "\n", to: fixture.file.url)
     reader.resetMetrics()
@@ -955,7 +969,10 @@ private func buildClaudeState(
     case .reuse:
         return previous
     case .append(let startOffset):
-        guard try previous.continuityAnchor.matches(in: snapshot.stream) else {
+        let anchorCoversCommittedPrefix = previous.continuityAnchor.offset == 0
+            && UInt64(previous.continuityAnchor.bytes.count) == previous.committedOffset
+        guard anchorCoversCommittedPrefix,
+              try previous.continuityAnchor.matches(in: snapshot.stream) else {
             return try rebuild()
         }
         return try readCandidates(
@@ -1386,7 +1403,9 @@ git commit -m "refactor(codex): 抽出可恢复的 rollout 状态"
 ```swift
 @Test("Codex append 从 committed checkpoint 恢复")
 func appendReadsOnlySuffixAndRestoresCheckpoint() throws {
-    let fixture = try makeRolloutFixture(lines: [sessionMeta, turnContextGpt5, normalEvent])
+    // 保持首轮 committed prefix <= 256 bytes，才能被完整 anchor 证明连续。
+    let compactInitialEvent = #"{"timestamp":"2026-05-04T08:35:46Z","type":"event_msg","payload":{"type":"token_count","model":"gpt-5","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200}}}}"#
+    let fixture = try makeRolloutFixture(lines: [compactInitialEvent])
     defer { fixture.cleanup() }
     let reader = RecordingJSONLFileReader()
     let parser = CodexRolloutParser(fileReader: reader)
@@ -1648,9 +1667,11 @@ private func buildCodexState(
 
     let anchorMatches: Bool
     if case .append = contentTransition, let previousFileState {
-        anchorMatches = try previousFileState.continuityAnchor.matches(
-            in: snapshot.stream
-        )
+        let anchor = previousFileState.continuityAnchor
+        let anchorCoversCommittedPrefix = anchor.offset == 0
+            && UInt64(anchor.bytes.count) == previousFileState.committedOffset
+        anchorMatches = anchorCoversCommittedPrefix
+            && (try anchor.matches(in: snapshot.stream))
     } else {
         anchorMatches = false
     }
@@ -1906,8 +1927,9 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Debug
 最后确认增量性能契约：
 
 - 未变化文件：打开 1 个 descriptor snapshot 以取无 TOCTOU metadata，0 byte read、0 次 seek。
-- 普通追加文件：先 seek/read 不超过 256 bytes 的 continuity anchor，再 seek committed offset 并只读 provisional tail + suffix；解析新 candidate 的起点仍是 committed offset。
-- Codex replay `.pending` 文件：允许为重新分类额外读取 pinned replay probe；分类一旦稳定，后续追加回到上一条有界 I/O 契约。
-- 截断、替换、同 size 改写，以及同 inode truncate 后重写成更大文件：最终 seek 0 全量重建；最后一种允许先读 anchor 发现不匹配。
+- committed prefix <= 256 bytes 的普通追加：先 seek/read 覆盖整个 prefix 的 continuity anchor，再 seek committed offset 并只读 provisional tail + suffix；解析新 candidate 的起点仍是 committed offset。
+- committed prefix > 256 bytes 的普通追加：有界 anchor 不能证明整个历史未被同 inode 重写，因此 correctness-first seek 0 全量重建。
+- Codex replay `.pending` 文件：允许为重新分类额外读取 pinned replay probe；只有完整 committed prefix 可由 anchor 证明连续时，分类稳定后的追加才走后缀路径。
+- 截断、替换、同 size 改写，以及同 inode truncate 后重写成更大文件：最终 seek 0 全量重建；不得因 suffix anchor 碰撞复用旧 candidate/checkpoint。
 - Claude/Codex 的 incremental 与 fresh full scan deep snapshots 完全一致。
 - `git status --short` 只包含本计划预期文件，且每个任务已有独立中文 commit。
