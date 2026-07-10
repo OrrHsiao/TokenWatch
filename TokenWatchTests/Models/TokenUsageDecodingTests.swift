@@ -113,6 +113,25 @@ struct TokenUsageDecodingTests {
         #expect(usage.totalCacheCreationTokens == 500)
     }
 
+    @Test("cache_creation 为 null 时保留 nil 并回退扁平字段")
+    func nullCacheCreationFallsBackToFlatTokens() throws {
+        let json = """
+        {
+            "input_tokens": 1,
+            "output_tokens": 2,
+            "cache_creation_input_tokens": 500,
+            "cache_creation": null
+        }
+        """
+
+        let usage = try JSONDecoder().decode(TokenUsage.self, from: Data(json.utf8))
+
+        #expect(usage.cacheCreation == nil)
+        #expect(usage.cacheCreate5mTokens == 500)
+        #expect(usage.cacheCreate1hTokens == 0)
+        #expect(usage.totalCacheCreationTokens == 500)
+    }
+
     @Test("cache_creation 对象存在时即使全零也不回退扁平字段")
     func presentEmptyCacheCreationSuppressesFlatFallback() throws {
         let json = """
