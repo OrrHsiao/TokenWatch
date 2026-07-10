@@ -705,10 +705,317 @@ struct ClaudeJSONLParserTests {
         #expect(parser.debugCacheHitCount == hitCountBeforeChangedParse)
     }
 
-    private static func assistantLine(messageId: String, inputTokens: Int) -> String {
+    @Test("Claude 未变化文件零读取，追加从 committed offset 开始")
+    func appendReadsOnlySuffix() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+        // 仅当 continuity anchor 覆盖全部 committed prefix 时才验证增量追加。
+        let firstLine = Self.minimalAssistantLine(
+            messageId: "m1",
+            inputTokens: 10
+        )
+        try (firstLine + "\n").write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+
+        let first = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        let committedOffset = UInt64((firstLine + "\n").utf8.count)
+        #expect(first.count == 1)
+        #expect(
+            committedOffset <= UInt64(JSONLContinuityAnchor.maximumByteCount)
+        )
+
+        reader.resetMetrics()
+        _ = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        #expect(reader.openCount == 1)
+        #expect(reader.totalBytesRead == 0)
+        #expect(reader.seekOffsets.isEmpty)
+
+        let secondLine = Self.minimalAssistantLine(
+            messageId: "m2",
+            inputTokens: 20
+        )
+        let anchor = try #require(
+            parser.debugContinuityAnchor(for: fixture.file.url)
+        )
+        try appendUTF8(secondLine + "\n", to: fixture.file.url)
+        reader.resetMetrics()
+        let appended = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        #expect(appended.map(\.messageId).sorted() == ["m1", "m2"])
+        #expect(reader.seekOffsets == [anchor.offset, committedOffset])
+        #expect(
+            reader.totalBytesRead
+                == anchor.bytes.count + (secondLine + "\n").utf8.count
+        )
+    }
+
+    @Test("Claude provisional 尾行重读后不重复")
+    func provisionalTailIsReplacedWhenNewlineArrives() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+        let line = Self.assistantLine(messageId: "tail", inputTokens: 42)
+        try line.write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+
+        let provisional = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        #expect(provisional.count == 1)
+        #expect(parser.debugCommittedOffset(for: fixture.file.url) == 0)
+
+        reader.resetMetrics()
+        try appendUTF8("\n", to: fixture.file.url)
+        let committed = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        #expect(committed.count == 1)
+        #expect(committed.first?.messageId == "tail")
+        #expect(
+            parser.debugCommittedOffset(for: fixture.file.url)
+                == UInt64((line + "\n").utf8.count)
+        )
+        #expect(reader.seekOffsets == [0])
+        #expect(reader.totalBytesRead == (line + "\n").utf8.count)
+    }
+
+    @Test("Claude 追加 parent 可替换 stable sidechain")
+    func appendedParentReplacesStableSidechain() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let parser = ClaudeJSONLParser()
+        let sidechain = Self.assistantLine(
+            messageId: "shared",
+            requestId: "side",
+            inputTokens: 500,
+            isSidechain: true
+        )
+        let parent = Self.assistantLine(
+            messageId: "shared",
+            requestId: "parent",
+            inputTokens: 5,
+            isSidechain: false
+        )
+        try (sidechain + "\n").write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+        _ = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        try appendUTF8(parent + "\n", to: fixture.file.url)
+
+        let result = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        #expect(result.count == 1)
+        #expect(result.first?.requestId == "parent")
+        #expect(result.first?.usage.inputTokens == 5)
+    }
+
+    @Test("Claude 缺 source message ID 的绝对 offset 在 provisional/commit/append 中稳定")
+    func missingMessageIDUsesStableAbsoluteOffset() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let parser = ClaudeJSONLParser()
+        let first = #"{"timestamp":"2026-06-13T12:00:00.000Z","message":{"model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1}}}"#
+        let second = #"{"timestamp":"2026-06-13T12:00:01.000Z","message":{"model":"claude-sonnet-4-5","usage":{"input_tokens":2,"output_tokens":1}}}"#
+        try first.write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+        let provisional = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        try appendUTF8("\n" + second + "\n", to: fixture.file.url)
+        let incremental = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        let fresh = try ClaudeJSONLParser().parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        #expect(provisional.first?.messageId == incremental.first?.messageId)
+        #expect(Set(incremental.map(\.messageId)).count == 2)
+        #expect(incremental.allSatisfy { !$0.hasSourceMessageID })
+        #expect(
+            ParsedUsageEntryDeepSnapshot.sorted(incremental)
+                == ParsedUsageEntryDeepSnapshot.sorted(fresh)
+        )
+    }
+
+    @Test("Claude 半行续写只在完整后返回")
+    func incompleteTailWaitsForCompletion() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let parser = ClaudeJSONLParser()
+        let line = Self.assistantLine(messageId: "partial", inputTokens: 9)
+        let split = line.utf8.index(
+            line.utf8.startIndex,
+            offsetBy: line.utf8.count / 2
+        )
+        let firstHalf = String(decoding: line.utf8[..<split], as: UTF8.self)
+        let secondHalf = String(decoding: line.utf8[split...], as: UTF8.self)
+        try firstHalf.write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+        #expect(try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        ).isEmpty)
+        try appendUTF8(secondHalf + "\n", to: fixture.file.url)
+        #expect(try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        ).map(\.messageId) == ["partial"])
+    }
+
+    @Test(arguments: ["truncate", "truncate-grow", "replace", "touch"])
+    func rebuildTransitionsReadFromZero(kind: String) throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+        let original = Self.assistantLine(messageId: "old", inputTokens: 10) + "\n"
+        try original.write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+        _ = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        let replacement = Self.assistantLine(
+            messageId: "new",
+            inputTokens: 20
+        ) + "\n"
+        switch kind {
+        case "truncate":
+            let handle = try FileHandle(forWritingTo: fixture.file.url)
+            try handle.truncate(atOffset: 0)
+            try handle.close()
+        case "truncate-grow":
+            let handle = try FileHandle(forWritingTo: fixture.file.url)
+            try handle.truncate(atOffset: 0)
+            try handle.write(contentsOf: Data((replacement + replacement).utf8))
+            try handle.close()
+        case "replace":
+            try replacement.write(
+                to: fixture.file.url,
+                atomically: true,
+                encoding: .utf8
+            )
+        case "touch":
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date().addingTimeInterval(5)],
+                ofItemAtPath: fixture.file.url.path
+            )
+        default:
+            Issue.record("unexpected transition kind")
+        }
+
+        reader.resetMetrics()
+        let incremental = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        let fresh = try ClaudeJSONLParser().parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        #expect(reader.seekOffsets.contains(0))
+        #expect(
+            ParsedUsageEntryDeepSnapshot.sorted(incremental)
+                == ParsedUsageEntryDeepSnapshot.sorted(fresh)
+        )
+    }
+
+    private static func assistantLine(
+        messageId: String,
+        requestId: String? = nil,
+        inputTokens: Int,
+        isSidechain: Bool = false
+    ) -> String {
+        let requestField = requestId.map { ",\"requestId\":\"\($0)\"" } ?? ""
+        return """
+        {"type":"assistant","uuid":"\(messageId)-uuid","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z"\(requestField),"isSidechain":\(isSidechain),"message":{"id":"\(messageId)","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":\(inputTokens),"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
         """
-        {"type":"assistant","uuid":"\(messageId)-uuid","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","message":{"id":"\(messageId)","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":\(inputTokens),"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}
-        """
+    }
+
+    private static func minimalAssistantLine(
+        messageId: String,
+        inputTokens: Int
+    ) -> String {
+        #"{"timestamp":"2026-06-13T12:00:00.000Z","message":{"id":"\#(messageId)","model":"m","usage":{"input_tokens":\#(inputTokens),"output_tokens":1}}}"#
+    }
+
+    private func appendUTF8(_ text: String, to url: URL) throws {
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(text.utf8))
+    }
+
+    private struct ClaudeFixture {
+        let root: URL
+        let file: ClaudeJSONLFileInfo
+        let cleanup: () -> Void
+    }
+
+    private func makeClaudeFixture() throws -> ClaudeFixture {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "ClaudeIncremental-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true
+        )
+        let url = root.appendingPathComponent("session.jsonl")
+        try Data().write(to: url)
+        return ClaudeFixture(
+            root: root,
+            file: ClaudeJSONLFileInfo(
+                url: url,
+                sessionID: "session",
+                projectPath: "/project",
+                isSubagent: false,
+                agentId: nil
+            ),
+            cleanup: { try? FileManager.default.removeItem(at: root) }
+        )
     }
 
     private func makeClaudeJSONL(
