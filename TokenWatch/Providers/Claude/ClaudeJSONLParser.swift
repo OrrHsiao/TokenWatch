@@ -4,17 +4,22 @@ import os.log
 /// 流式解析 Claude direct / AgentProgress billing 行，并在批量入口统一执行 daily 去重。
 final class ClaudeJSONLParser: @unchecked Sendable {
 
+    private typealias ClaudeFileState = IncrementalJSONLFileState<
+        ParsedUsageEntry,
+        StatelessJSONLCheckpoint
+    >
+
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLParser")
     private let fileReader: any JSONLFileReading
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
-        [ParsedUsageEntry],
+        ClaudeFileState,
         JSONLUnscopedCacheScope
     >
 
     init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
         self.fileReader = fileReader
         self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
-            [ParsedUsageEntry],
+            ClaudeFileState,
             JSONLUnscopedCacheScope
         >(fileReader: fileReader)
     }
@@ -25,6 +30,20 @@ final class ClaudeJSONLParser: @unchecked Sendable {
 
     var debugCacheHitCount: Int {
         cacheCoordinator.debugCacheHitCount
+    }
+
+    func debugCommittedOffset(for url: URL) -> UInt64? {
+        cacheCoordinator.cachedState(
+            for: Self.cacheKey(for: url),
+            scope: .shared
+        )?.committedOffset
+    }
+
+    func debugContinuityAnchor(for url: URL) -> JSONLContinuityAnchor? {
+        cacheCoordinator.cachedState(
+            for: Self.cacheKey(for: url),
+            scope: .shared
+        )?.continuityAnchor
     }
 
     /// 解析单个 JSONL 文件，返回尚未执行跨文件去重的 billing candidates。
@@ -59,14 +78,14 @@ final class ClaudeJSONLParser: @unchecked Sendable {
             scope: .shared,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
-            build: { [self] fileInfo, snapshot, _ in
-                try parseJSONLStream(
-                    snapshot.stream,
+            build: { [self] fileInfo, snapshot, previous in
+                try buildClaudeState(
                     fileInfo: fileInfo,
-                    claudeDataRoot: claudeDataRoot
+                    snapshot: snapshot,
+                    previous: previous
                 )
             },
-            project: { $0 },
+            project: \.returnedCandidates,
             onFailure: { [self] fileInfo, error, reusedLastGood in
                 if reusedLastGood {
                     logger.warning(
@@ -102,41 +121,19 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         var candidates: [ParsedUsageEntry] = []
         let decoder = JSONDecoder()
         let newline: UInt8 = 0x0A
-        let fileKey = Self.cacheKey(for: fileInfo.url)
         var buffer = Data()
         var bufferStartOffset: UInt64 = 0
         let chunkSize = 64 * 1024
 
-        let processLine: (Data, UInt64) -> Void = { lineData, lineStartOffset in
-            guard !lineData.isEmpty else { return }
-            guard ClaudeUsageLine.passesRawPrefilter(lineData),
-                  let usageLine = try? decoder.decode(ClaudeUsageLine.self, from: lineData),
-                  let normalized = usageLine.normalized,
-                  normalized.isValidDailyUsageRecord else {
-                return
+        let processLine: (Data, UInt64) -> Void = { [self] lineData, lineStartOffset in
+            if let candidate = parseCandidate(
+                lineData,
+                fileInfo: fileInfo,
+                sourceOffset: lineStartOffset,
+                decoder: decoder
+            ) {
+                candidates.append(candidate)
             }
-
-            let recordUUID = normalized.recordUUID
-                ?? "missing-record:\(fileKey):\(lineStartOffset)"
-            let messageID = normalized.messageID
-                ?? "missing-message:\(fileKey):\(lineStartOffset)"
-            candidates.append(ParsedUsageEntry(
-                recordUUID: recordUUID,
-                messageId: messageID,
-                requestId: normalized.requestID,
-                sessionID: normalized.sessionID ?? fileInfo.sessionID,
-                timestamp: normalized.timestamp,
-                model: normalized.model ?? "",
-                cwd: normalized.cwd,
-                agentId: fileInfo.agentId,
-                usage: normalized.usage.tokenUsage,
-                isSubagent: fileInfo.isSubagent,
-                isSidechain: normalized.isSidechain,
-                hasSourceMessageID: normalized.messageID != nil,
-                provider: .claude,
-                upstreamProviderID: nil,
-                upstreamCost: normalized.costUSD
-            ))
         }
 
         while true {
@@ -171,6 +168,169 @@ final class ClaudeJSONLParser: @unchecked Sendable {
             processLine(buffer, bufferStartOffset)
         }
         return candidates
+    }
+
+    /// 根据当前 descriptor snapshot 与同 scope previous state 构建下一版文件状态。
+    /// append 只有在 continuity anchor 覆盖并匹配完整 committed prefix 后才复用。
+    private func buildClaudeState(
+        fileInfo: ClaudeJSONLFileInfo,
+        snapshot: JSONLFileSnapshot,
+        previous: ClaudeFileState?
+    ) throws -> ClaudeFileState {
+        func rebuild() throws -> ClaudeFileState {
+            try readCandidates(
+                from: fileInfo,
+                snapshot: snapshot,
+                startOffset: 0,
+                stablePrefix: [],
+                previousAnchor: .empty
+            )
+        }
+
+        guard let previous else { return try rebuild() }
+        switch IncrementalJSONLTransition.decide(
+            previous: previous,
+            newMetadata: snapshot.metadata
+        ) {
+        case .reuse:
+            return previous
+        case .append(let startOffset):
+            let anchorCoversCommittedPrefix = previous.continuityAnchor.offset == 0
+                && UInt64(previous.continuityAnchor.bytes.count)
+                    == previous.committedOffset
+            guard anchorCoversCommittedPrefix,
+                  try previous.continuityAnchor.matches(in: snapshot.stream) else {
+                return try rebuild()
+            }
+            return try readCandidates(
+                from: fileInfo,
+                snapshot: snapshot,
+                startOffset: startOffset,
+                stablePrefix: previous.stableCandidates,
+                previousAnchor: previous.continuityAnchor
+            )
+        case .rebuild:
+            return try rebuild()
+        }
+    }
+
+    /// 读取 snapshot metadata.size 内的字节，只在完整换行后推进 committed state。
+    /// EOF 尾段只生成 provisional candidate，下一次 append 会从 committed offset 重读。
+    private func readCandidates(
+        from fileInfo: ClaudeJSONLFileInfo,
+        snapshot: JSONLFileSnapshot,
+        startOffset: UInt64,
+        stablePrefix: [ParsedUsageEntry],
+        previousAnchor: JSONLContinuityAnchor
+    ) throws -> ClaudeFileState {
+        try snapshot.stream.seek(toOffset: startOffset)
+
+        var stableCandidates = stablePrefix
+        var committedOffset = startOffset
+        var nextReadOffset = startOffset
+        var buffer = Data()
+        var continuityAnchor = previousAnchor
+        let decoder = JSONDecoder()
+        let newline: UInt8 = 0x0A
+        let chunkSize = 64 * 1024
+
+        while nextReadOffset < snapshot.metadata.size {
+            let remainingByteCount = snapshot.metadata.size - nextReadOffset
+            let count = Int(min(UInt64(chunkSize), remainingByteCount))
+            let chunk = try snapshot.stream.read(upToCount: count)
+            guard !chunk.isEmpty else {
+                throw IncrementalJSONLReadError.unexpectedEOF
+            }
+            nextReadOffset += UInt64(chunk.count)
+            buffer.append(chunk)
+
+            var searchStart = buffer.startIndex
+            while let newlineIndex = buffer[searchStart..<buffer.endIndex]
+                .firstIndex(of: newline) {
+                let relativeOffset = buffer.distance(
+                    from: buffer.startIndex,
+                    to: searchStart
+                )
+                if let candidate = parseCandidate(
+                    Data(buffer[searchStart..<newlineIndex]),
+                    fileInfo: fileInfo,
+                    sourceOffset: committedOffset + UInt64(relativeOffset),
+                    decoder: decoder
+                ) {
+                    stableCandidates.append(candidate)
+                }
+                searchStart = buffer.index(after: newlineIndex)
+            }
+
+            if searchStart > buffer.startIndex {
+                let consumedByteCount = buffer.distance(
+                    from: buffer.startIndex,
+                    to: searchStart
+                )
+                committedOffset += UInt64(consumedByteCount)
+                continuityAnchor = .make(
+                    previous: continuityAnchor,
+                    newlyCommittedBytes: Data(buffer[..<searchStart]),
+                    committedOffset: committedOffset
+                )
+                buffer.removeSubrange(buffer.startIndex..<searchStart)
+            }
+        }
+
+        let provisionalCandidates = parseCandidate(
+            buffer,
+            fileInfo: fileInfo,
+            sourceOffset: committedOffset,
+            decoder: decoder
+        ).map { [$0] } ?? []
+        return ClaudeFileState(
+            metadata: snapshot.metadata,
+            committedOffset: committedOffset,
+            stableCandidates: stableCandidates,
+            provisionalTail: buffer,
+            provisionalCandidates: provisionalCandidates,
+            continuityAnchor: continuityAnchor,
+            checkpointAtCommittedOffset: StatelessJSONLCheckpoint()
+        )
+    }
+
+    /// 解析单条 Claude billing 行；缺失 source ID 时使用文件 key 与绝对 offset。
+    private func parseCandidate(
+        _ lineData: Data,
+        fileInfo: ClaudeJSONLFileInfo,
+        sourceOffset: UInt64,
+        decoder: JSONDecoder
+    ) -> ParsedUsageEntry? {
+        guard !lineData.isEmpty,
+              ClaudeUsageLine.passesRawPrefilter(lineData),
+              let usageLine = try? decoder.decode(ClaudeUsageLine.self, from: lineData),
+              let normalized = usageLine.normalized,
+              normalized.isValidDailyUsageRecord else {
+            return nil
+        }
+
+        let fileKey = Self.cacheKey(for: fileInfo.url)
+        let recordUUID = normalized.recordUUID
+            ?? "missing-record:\(fileKey):\(sourceOffset)"
+        let messageID = normalized.messageID
+            ?? "missing-message:\(fileKey):\(sourceOffset)"
+        return ParsedUsageEntry(
+            recordUUID: recordUUID,
+            messageId: messageID,
+            requestId: normalized.requestID,
+            sessionID: normalized.sessionID ?? fileInfo.sessionID,
+            timestamp: normalized.timestamp,
+            model: normalized.model ?? "",
+            cwd: normalized.cwd,
+            agentId: fileInfo.agentId,
+            usage: normalized.usage.tokenUsage,
+            isSubagent: fileInfo.isSubagent,
+            isSidechain: normalized.isSidechain,
+            hasSourceMessageID: normalized.messageID != nil,
+            provider: .claude,
+            upstreamProviderID: nil,
+            upstreamCost: normalized.costUSD
+        )
     }
 
     private static func cacheKey(for url: URL) -> String {
