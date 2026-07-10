@@ -41,14 +41,14 @@ final class CodexRolloutParser: @unchecked Sendable {
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "CodexRolloutParser")
     private let fileReader: any JSONLFileReading
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
-        CodexUsageCandidate,
+        [CodexUsageCandidate],
         CodexPricingSpeed
     >
 
     init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
         self.fileReader = fileReader
         self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
-            CodexUsageCandidate,
+            [CodexUsageCandidate],
             CodexPricingSpeed
         >(fileReader: fileReader)
     }
@@ -89,12 +89,12 @@ final class CodexRolloutParser: @unchecked Sendable {
         _ files: [CodexRolloutFileInfo],
         pricingSpeed: CodexPricingSpeed = .standard
     ) throws -> [ParsedUsageEntry] {
-        let allCandidates = cacheCoordinator.loadListedFiles(
+        let allCandidates: [CodexUsageCandidate] = cacheCoordinator.loadListedFiles(
             files,
             scope: pricingSpeed,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
-            parse: { [self] fileInfo, snapshot in
+            build: { [self] fileInfo, snapshot, _ in
                 try parseCandidates(
                     snapshot.stream,
                     metadata: snapshot.metadata,
@@ -102,6 +102,7 @@ final class CodexRolloutParser: @unchecked Sendable {
                     pricingSpeed: pricingSpeed
                 )
             },
+            project: { $0 },
             onFailure: { [self] fileInfo, error, reusedLastGood in
                 if reusedLastGood {
                     logger.warning(

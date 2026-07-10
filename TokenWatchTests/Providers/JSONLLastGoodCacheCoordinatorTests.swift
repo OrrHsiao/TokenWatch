@@ -13,6 +13,11 @@ struct JSONLLastGoodCacheCoordinatorTests {
         case fast
     }
 
+    private struct IncrementalCoordinatorState: Sendable, Equatable {
+        let revision: Int
+        let lines: [String]
+    }
+
     @Test("统一处理 unchanged hit、scope-sensitive last-good、成功替换与 prune")
     func coordinatesCacheLifecycleWithoutKnowingProviderCandidates() throws {
         let url = FileManager.default.temporaryDirectory
@@ -22,7 +27,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
 
         let listed = ListedFile(url: url)
         let reader = RecordingJSONLFileReader()
-        let coordinator = JSONLLastGoodCacheCoordinator<String, Scope>(
+        let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
             fileReader: reader
         )
         var fallbackFlags: [Bool] = []
@@ -33,9 +38,10 @@ struct JSONLLastGoodCacheCoordinatorTests {
                 scope: scope,
                 cacheKey: { $0.url.standardizedFileURL.path },
                 urlForFile: \.url,
-                parse: { _, snapshot in
+                build: { _, snapshot, _ in
                     try readLines(from: snapshot.stream)
                 },
+                project: { $0 },
                 onFailure: { _, _, reusedLastGood in
                     fallbackFlags.append(reusedLastGood)
                 }
@@ -79,7 +85,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
 
         let listed = ListedFile(url: url)
         let reader = RecordingJSONLFileReader()
-        let coordinator = JSONLLastGoodCacheCoordinator<String, Scope>(fileReader: reader)
+        let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(fileReader: reader)
         var fallbackFlags: [Bool] = []
 
         func load() -> [String] {
@@ -88,9 +94,10 @@ struct JSONLLastGoodCacheCoordinatorTests {
                 scope: .standard,
                 cacheKey: { $0.url.standardizedFileURL.path },
                 urlForFile: \.url,
-                parse: { _, snapshot in
+                build: { _, snapshot, _ in
                     try readLines(from: snapshot.stream)
                 },
+                project: { $0 },
                 onFailure: { _, _, reusedLastGood in
                     fallbackFlags.append(reusedLastGood)
                 }
@@ -117,7 +124,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
 
         let listed = ListedFile(url: url)
         let reader = NilIdentityJSONLFileReader()
-        let coordinator = JSONLLastGoodCacheCoordinator<String, Scope>(fileReader: reader)
+        let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(fileReader: reader)
         var parseCount = 0
         var reusedLastGood: Bool?
 
@@ -127,10 +134,11 @@ struct JSONLLastGoodCacheCoordinatorTests {
                 scope: .standard,
                 cacheKey: { $0.url.standardizedFileURL.path },
                 urlForFile: \.url,
-                parse: { _, snapshot in
+                build: { _, snapshot, _ in
                     parseCount += 1
                     return try readLines(from: snapshot.stream)
                 },
+                project: { $0 },
                 onFailure: { _, _, reused in reusedLastGood = reused }
             )
         }
@@ -143,6 +151,69 @@ struct JSONLLastGoodCacheCoordinatorTests {
         reader.shouldFail = true
         #expect(load() == ["value"])
         #expect(reusedLastGood == true)
+    }
+
+    @Test("协调器把同 scope previous state 交给 build，并继续唯一处理 hit fallback prune")
+    func coordinatorBuildsAndProjectsProviderStateAtomically() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLIncrementalCoordinator-\(UUID().uuidString).jsonl")
+        try Data("first\n".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let listed = ListedFile(url: url)
+        let key = url.standardizedFileURL.path
+        let reader = RecordingJSONLFileReader()
+        let coordinator = JSONLLastGoodCacheCoordinator<
+            IncrementalCoordinatorState,
+            Scope
+        >(fileReader: reader)
+        var receivedPreviousRevisions: [Int?] = []
+
+        func load(_ files: [ListedFile], scope: Scope) -> [String] {
+            coordinator.loadListedFiles(
+                files,
+                scope: scope,
+                cacheKey: { $0.url.standardizedFileURL.path },
+                urlForFile: \.url,
+                build: { _, snapshot, previous in
+                    receivedPreviousRevisions.append(previous?.revision)
+                    return IncrementalCoordinatorState(
+                        revision: (previous?.revision ?? 0) + 1,
+                        lines: try readLines(from: snapshot.stream)
+                    )
+                },
+                project: \.lines,
+                onFailure: { _, _, _ in }
+            )
+        }
+
+        #expect(load([listed], scope: .standard) == ["first"])
+        #expect(receivedPreviousRevisions == [nil])
+
+        reader.resetMetrics()
+        #expect(load([listed], scope: .standard) == ["first"])
+        #expect(reader.totalBytesRead == 0)
+        #expect(receivedPreviousRevisions == [nil])
+
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("second\n".utf8))
+        try handle.close()
+        #expect(load([listed], scope: .standard) == ["first", "second"])
+        #expect(receivedPreviousRevisions == [nil, 1])
+        #expect(coordinator.cachedState(for: key, scope: .standard)?.revision == 2)
+
+        let failingHandle = try FileHandle(forWritingTo: url)
+        try failingHandle.seekToEnd()
+        try failingHandle.write(contentsOf: Data("third\n".utf8))
+        try failingHandle.close()
+        reader.failure = .read
+        #expect(load([listed], scope: .standard) == ["first", "second"])
+        #expect(load([listed], scope: .fast).isEmpty)
+
+        reader.failure = .none
+        #expect(load([], scope: .standard).isEmpty)
+        #expect(coordinator.debugCachedFileCount == 0)
     }
 
     private func readLines(from stream: any JSONLByteStream) throws -> [String] {
