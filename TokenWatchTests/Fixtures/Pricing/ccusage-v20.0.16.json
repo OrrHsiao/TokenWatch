@@ -1,0 +1,36 @@
+{
+  "baseline": {
+    "ccusageVersion": "v20.0.16",
+    "ccusageCommit": "e32cc4820df1e13f4399560e03f3858869738dc8",
+    "costMode": "auto",
+    "offline": true,
+    "liteLLMRevision": "49ca04d8c3ddea336237ce6f3082dbc26d19e944",
+    "liteLLMSourceSHA256": "ae4532ba0c5da03ed694f37fffa050a65e0e250b816dcdb475bee0b7b7b1aa97",
+    "modelsDevSourceSHA256": "5d61cc3148100cd670d3289033b5e2fb05c4244cbe32f92888ef7bd2df1abf67",
+    "fastOverridesSHA256": "647b3ae8e44349455f32ce9f4633910b5151b08cda1707601a97701927490762",
+    "autoReviewFallbacksSHA256": "344d2438312beed608c19e616031d1b194f3c6efdfcbd0925f39f4df9008c037"
+  },
+  "cases": [
+    {"name":"sonnet-45-input-250k","provider":"claude","model":"claude-sonnet-4-5","usage":{"inputTokens":250000,"outputTokens":0},"expectedUSD":0.9},
+    {"name":"sonnet-45-independent-tiers","provider":"claude","model":"claude-sonnet-4-5","usage":{"inputTokens":100000,"outputTokens":300000},"expectedUSD":5.55},
+    {"name":"sonnet-45-cache-breakdown","provider":"claude","model":"claude-sonnet-4-5","usage":{"inputTokens":0,"outputTokens":0,"cacheReadTokens":30,"cacheCreate5mTokens":10,"cacheCreate1hTokens":20},"expectedUSD":0.0001665},
+    {"name":"opus-48-fast","provider":"claude","model":"claude-opus-4-8","usage":{"inputTokens":1000000,"outputTokens":1000000,"speed":"fast"},"expectedUSD":60.0},
+    {"name":"gpt-5-mini","provider":"codex","model":"gpt-5-mini","usage":{"inputTokens":1000000,"cachedInputTokens":0,"outputTokens":1000000},"expectedUSD":2.25},
+    {"name":"gpt-5-nano","provider":"codex","model":"gpt-5-nano","usage":{"inputTokens":1000000,"cachedInputTokens":0,"outputTokens":1000000},"expectedUSD":0.45},
+    {"name":"gpt-54-long-context","provider":"codex","model":"gpt-5.4","usage":{"inputTokens":300000,"cachedInputTokens":100000,"outputTokens":1000},"expectedUSD":1.0725},
+    {"name":"gpt-55-long-context","provider":"codex","model":"gpt-5.5","usage":{"inputTokens":300000,"cachedInputTokens":100000,"outputTokens":1000},"expectedUSD":2.145},
+    {"name":"gpt-56-sol-long-context","provider":"codex","model":"gpt-5.6-sol","usage":{"inputTokens":300000,"cachedInputTokens":100000,"outputTokens":1000},"expectedUSD":2.145},
+    {"name":"gpt-54-fast","provider":"codex","model":"gpt-5.4","usage":{"inputTokens":100000,"cachedInputTokens":40000,"outputTokens":1000,"serviceTier":"fast"},"expectedUSD":0.35},
+    {"name":"gpt-55-fast","provider":"codex","model":"gpt-5.5","usage":{"inputTokens":100000,"cachedInputTokens":40000,"outputTokens":1000,"serviceTier":"fast"},"expectedUSD":0.875},
+    {"name":"claude-35-haiku-history","provider":"claude","model":"claude-3-5-haiku-20241022","usage":{"inputTokens":1000000,"outputTokens":1000000},"expectedUSD":4.8},
+    {"name":"gpt-53-spark-alias","provider":"codex","model":"gpt-5.3-spark","usage":{"inputTokens":1000000,"cachedInputTokens":0,"outputTokens":1000000},"expectedUSD":15.75},
+    {"name":"claude-known-upstream","provider":"claude","model":"claude-sonnet-4-5","sourceUpstreamCost":0.123,"usage":{"inputTokens":1,"outputTokens":1},"expectedUSD":0.123},
+    {"name":"claude-known-upstream-zero","provider":"claude","model":"claude-sonnet-4-5","sourceUpstreamCost":0,"usage":{"inputTokens":1000000,"outputTokens":1000000},"expectedUSD":0},
+    {"name":"claude-unknown-upstream","provider":"claude","model":"private-unknown","sourceUpstreamCost":0.123,"usage":{"inputTokens":1,"outputTokens":1},"expectedUSD":0.123},
+    {"name":"claude-unknown-no-upstream","provider":"claude","model":"private-unknown","usage":{"inputTokens":1000,"outputTokens":100},"expectedUSD":0},
+    {"name":"opencode-zero-recalculates","provider":"opencode","model":"claude-sonnet-4-5","sourceUpstreamCost":0,"usage":{"inputTokens":1000,"outputTokens":100},"expectedUSD":0.0045},
+    {"name":"opencode-k2p6-alias","provider":"opencode","model":"kimi-for-coding/k2p6","upstreamProviderID":"kimi-for-coding","usage":{"inputTokens":1000000,"outputTokens":1000000},"expectedUSD":4.95},
+    {"name":"opencode-total-only-fallback","provider":"opencode","model":"anthropic/claude-sonnet-4-5","upstreamProviderID":"anthropic","usage":{"inputTokens":0,"outputTokens":0,"sourceTotalTokens":1000},"expectedUSD":0.015},
+    {"name":"codex-gpt4-implicit-cache","provider":"codex","model":"gpt-4","usage":{"inputTokens":1000,"cachedInputTokens":400,"outputTokens":0},"expectedUSD":0.03}
+  ]
+}
