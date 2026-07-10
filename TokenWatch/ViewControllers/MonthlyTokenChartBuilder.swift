@@ -103,7 +103,7 @@ enum UsageStatsPeriod: Sendable, Equatable {
         case .recent7Days, .recent30Days:
             return Self.dayKey(for: date, calendar: calendar)
         case .today:
-            return Self.hourKey(for: date, calendar: calendar)
+            return LocalHourBucketDescriptor.key(for: date, calendar: calendar)
         }
     }
 
@@ -117,16 +117,10 @@ enum UsageStatsPeriod: Sendable, Equatable {
             return "\(components.month ?? 0)/\(components.day ?? 0)"
         case .today:
             let hour = calendar.component(.hour, from: date)
-            switch language {
-            case .zhHans, .zhHant:
-                return "\(hour)时"
-            case .ja:
-                return "\(hour)時"
-            case .ko:
-                return "\(hour)시"
-            case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-                return "\(hour)"
-            }
+            return LocalHourBucketDescriptor(
+                hour: hour,
+                key: LocalHourBucketDescriptor.key(for: date, calendar: calendar)
+            ).label(language: language)
         }
     }
 
@@ -176,17 +170,6 @@ enum UsageStatsPeriod: Sendable, Equatable {
             components.year ?? 0,
             components.month ?? 0,
             components.day ?? 0
-        )
-    }
-
-    private static func hourKey(for date: Date, calendar: Calendar) -> String {
-        let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
-        return String(
-            format: "%04d-%02d-%02dT%02d",
-            components.year ?? 0,
-            components.month ?? 0,
-            components.day ?? 0,
-            components.hour ?? 0
         )
     }
 
@@ -316,10 +299,30 @@ enum MonthlyTokenChartBuilder {
     ) -> MonthlyTokenChartSnapshot {
         let currentBucketStart = period.currentBucketStart(now: now, calendar: calendar)
         let windowStart = period.windowStart(currentBucketStart: currentBucketStart, now: now, calendar: calendar)
-        let bucketStarts = (0..<period.bucketCount).compactMap { offset in
-            calendar.date(byAdding: period.calendarComponent, value: offset, to: windowStart)
+        let bucketStarts: [Date]
+        let hourBuckets: [LocalHourBucketDescriptor]
+        if period == .today {
+            bucketStarts = []
+            hourBuckets = LocalHourBucketDescriptor.buckets(
+                forDayContaining: now,
+                calendar: calendar
+            )
+        } else {
+            bucketStarts = (0..<period.bucketCount).compactMap { offset in
+                calendar.date(byAdding: period.calendarComponent, value: offset, to: windowStart)
+            }
+            hourBuckets = []
         }
-        let bucketKeys = bucketStarts.map { period.bucketKey(for: $0, calendar: calendar) }
+        let bucketKeys = period == .today
+            ? hourBuckets.map(\.key)
+            : bucketStarts.map { period.bucketKey(for: $0, calendar: calendar) }
+        let labelByKey = period == .today
+            ? Dictionary(uniqueKeysWithValues: hourBuckets.map { ($0.key, $0.label(language: language)) })
+            : Dictionary(uniqueKeysWithValues: bucketStarts.map {
+                let key = period.bucketKey(for: $0, calendar: calendar)
+                return (key, period.bucketLabel(for: $0, calendar: calendar, language: language))
+            })
+        let currentKey = LocalHourBucketDescriptor.key(for: now, calendar: calendar)
         var totals = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, 0) })
         var costs = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, 0.0) })
         var modelTotalsByBucket = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, [String: Int]()) })
@@ -370,8 +373,7 @@ enum MonthlyTokenChartBuilder {
             modelTotals,
             otherModelSegmentName: AppStrings.text(.shareOther, language: language)
         )
-        let buckets = bucketStarts.map { bucketStart in
-            let key = period.bucketKey(for: bucketStart, calendar: calendar)
+        let buckets = bucketKeys.map { key in
             let totalTokens = totals[key, default: 0]
             let totalCost = costs[key, default: 0]
             let normalizedHeight = maxMonthlyTokens > 0
@@ -383,12 +385,14 @@ enum MonthlyTokenChartBuilder {
             return MonthlyTokenBucket(
                 id: key,
                 monthKey: key,
-                monthLabel: period.bucketLabel(for: bucketStart, calendar: calendar, language: language),
+                monthLabel: labelByKey[key, default: key],
                 totalTokens: totalTokens,
                 totalCost: totalCost,
                 normalizedHeight: normalizedHeight,
                 normalizedCostHeight: normalizedCostHeight,
-                isCurrentMonth: key == period.bucketKey(for: currentBucketStart, calendar: calendar),
+                isCurrentMonth: period == .today
+                    ? key == currentKey
+                    : key == period.bucketKey(for: currentBucketStart, calendar: calendar),
                 modelSegments: buildModelSegments(
                     modelTotalsByBucket[key, default: [:]],
                     costs: modelCostsByBucket[key, default: [:]],

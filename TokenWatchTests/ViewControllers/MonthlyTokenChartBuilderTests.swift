@@ -86,6 +86,41 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.bucket("2026-06-20T13")?.isCurrentMonth == false)
     }
 
+    @Test("春季跳时日本日图仍展示 24 桶且不存在的 02 点为零")
+    func todaySpringForwardUsesWallClockBuckets() throws {
+        let calendar = losAngelesCalendar()
+        let now = try #require(calendar.date(from: DateComponents(
+            year: 2026, month: 3, day: 8, hour: 14
+        )))
+        let stats = makeStats(
+            byHour: [
+                "2026-03-08T01": makeSummary(total: 10),
+                "2026-03-08T03": makeSummary(total: 30),
+                "2026-03-09T00": makeSummary(total: 999),
+            ],
+            byDay: [:],
+            byMonth: [:]
+        )
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [.claude: .init(
+                stats: stats,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            )],
+            period: .today,
+            now: now,
+            calendar: calendar
+        )
+
+        #expect(snapshot.monthBuckets.count == 24)
+        #expect(snapshot.bucket("2026-03-08T02")?.totalTokens == 0)
+        #expect(snapshot.bucket("2026-03-08T03")?.totalTokens == 30)
+        #expect(snapshot.bucket("2026-03-09T00") == nil)
+        #expect(snapshot.totalTokens == 40)
+    }
+
     @Test("英文标题、说明、空状态和小时标签")
     func periodTextUsesEnglish() {
         let calendar = utcCalendar()
@@ -575,6 +610,12 @@ struct MonthlyTokenChartBuilderTests {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         calendar.firstWeekday = 2
+        return calendar
+    }
+
+    private func losAngelesCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
         return calendar
     }
 

@@ -29,6 +29,12 @@ enum DashboardNavigationItem: String, CaseIterable {
     }
 }
 
+fileprivate struct DashboardRangeBucketDescriptor {
+    let key: String
+    let label: String
+    let isCurrent: Bool
+}
+
 enum DashboardRange: String, CaseIterable {
     case day
     case sevenDays
@@ -86,14 +92,7 @@ enum DashboardRange: String, CaseIterable {
     func bucketKey(for date: Date, calendar: Calendar) -> String {
         switch self {
         case .day:
-            let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
-            return String(
-                format: "%04d-%02d-%02dT%02d",
-                components.year ?? 0,
-                components.month ?? 0,
-                components.day ?? 0,
-                components.hour ?? 0
-            )
+            return LocalHourBucketDescriptor.key(for: date, calendar: calendar)
         case .sevenDays, .month:
             return Self.dayKey(for: date, calendar: calendar)
         case .all:
@@ -106,22 +105,44 @@ enum DashboardRange: String, CaseIterable {
         switch self {
         case .day:
             let hour = calendar.component(.hour, from: date)
-            switch language {
-            case .zhHans, .zhHant:
-                return "\(hour)时"
-            case .ja:
-                return "\(hour)時"
-            case .ko:
-                return "\(hour)시"
-            case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-                return "\(hour)"
-            }
+            return LocalHourBucketDescriptor(
+                hour: hour,
+                key: LocalHourBucketDescriptor.key(for: date, calendar: calendar)
+            ).label(language: language)
         case .sevenDays, .month:
             let components = calendar.dateComponents([.month, .day], from: date)
             return "\(components.month ?? 0)/\(components.day ?? 0)"
         case .all:
             let components = calendar.dateComponents([.year, .month], from: date)
             return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
+        }
+    }
+
+    fileprivate func buckets(
+        now: Date,
+        calendar: Calendar,
+        language: AppLanguage
+    ) -> [DashboardRangeBucketDescriptor] {
+        if self == .day {
+            let currentKey = LocalHourBucketDescriptor.key(for: now, calendar: calendar)
+            return LocalHourBucketDescriptor
+                .buckets(forDayContaining: now, calendar: calendar)
+                .map { bucket in
+                    DashboardRangeBucketDescriptor(
+                        key: bucket.key,
+                        label: bucket.label(language: language),
+                        isCurrent: bucket.key == currentKey
+                    )
+                }
+        }
+
+        return bucketStarts(now: now, calendar: calendar).map { date in
+            let key = bucketKey(for: date, calendar: calendar)
+            return DashboardRangeBucketDescriptor(
+                key: key,
+                label: bucketLabel(for: date, calendar: calendar, language: language),
+                isCurrent: key == bucketKey(for: now, calendar: calendar)
+            )
         }
     }
 
@@ -183,9 +204,8 @@ struct DashboardRangeSnapshot {
         calendar: Calendar,
         language: AppLanguage
     ) -> DashboardRangeSnapshot {
-        let bucketStarts = range.bucketStarts(now: now, calendar: calendar)
-        let bucketKeys = bucketStarts.map { range.bucketKey(for: $0, calendar: calendar) }
-        let currentKey = range.bucketKey(for: now, calendar: calendar)
+        let bucketDescriptors = range.buckets(now: now, calendar: calendar, language: language)
+        let bucketKeys = bucketDescriptors.map(\.key)
 
         var summaries = Dictionary(uniqueKeysWithValues: bucketKeys.map { ($0, UsageSummary.zero) })
         var toolTotals: [ProviderID: Int] = [:]
@@ -224,22 +244,25 @@ struct DashboardRangeSnapshot {
 
         let maxTokens = summaries.values.map(\.totalTokens).max() ?? 0
         let maxCost = summaries.values.map(\.cost).max() ?? 0
-        let bucketRows = zip(bucketStarts, bucketKeys).map { bucketStart, key in
-            let summary = summaries[key, default: .zero]
-            let label = range.bucketLabel(for: bucketStart, calendar: calendar, language: language)
+        let bucketRows = bucketDescriptors.map { descriptor in
+            let summary = summaries[descriptor.key, default: .zero]
             return DashboardTrendBucket(
-                id: key,
-                key: key,
-                label: label,
+                id: descriptor.key,
+                key: descriptor.key,
+                label: descriptor.label,
                 totalTokens: summary.totalTokens,
                 totalCost: summary.cost,
                 normalizedHeight: maxTokens > 0 ? Double(summary.totalTokens) / Double(maxTokens) : 0,
                 normalizedCostHeight: maxCost > 0 ? summary.cost / maxCost : 0,
-                isCurrent: key == currentKey
+                isCurrent: descriptor.isCurrent
             )
         }
-        let orderedSummaries = bucketKeys.map { key in
-            (key: key, label: bucketRows.first(where: { $0.key == key })?.label ?? key, summary: summaries[key, default: .zero])
+        let orderedSummaries = bucketDescriptors.map { descriptor in
+            (
+                key: descriptor.key,
+                label: descriptor.label,
+                summary: summaries[descriptor.key, default: .zero]
+            )
         }
         let summary = makeWindowSummary(
             orderedSummaries: orderedSummaries,
