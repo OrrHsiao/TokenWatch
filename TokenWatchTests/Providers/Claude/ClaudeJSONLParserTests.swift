@@ -100,6 +100,37 @@ struct ClaudeJSONLParserTests {
         try? FileManager.default.removeItem(at: fileURL)
     }
 
+    @Test("Claude 顶层 costUSD 正数和显式零原样传播")
+    func propagatesCostUSDIncludingZero() throws {
+        let lines = [
+            #"{"type":"assistant","uuid":"u1","sessionId":"s1","timestamp":"2026-06-13T12:00:00Z","costUSD":0.123,"message":{"id":"m1","role":"assistant","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"type":"assistant","uuid":"u2","sessionId":"s1","timestamp":"2026-06-13T12:01:00Z","costUSD":0,"message":{"id":"m2","role":"assistant","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+        ]
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeCostUSD-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("cost.jsonl")
+        try (lines.joined(separator: "\n") + "\n").write(
+            to: url,
+            atomically: true,
+            encoding: .utf8
+        )
+        let info = ClaudeJSONLFileInfo(
+            url: url,
+            sessionID: "s1",
+            projectPath: "/tmp",
+            isSubagent: false,
+            agentId: nil
+        )
+
+        let entries = try ClaudeJSONLParser()
+            .parseJSONLFile(info, claudeDataRoot: dir)
+            .sorted { $0.messageId < $1.messageId }
+
+        #expect(entries.map(\.upstreamCost) == [0.123, 0])
+    }
+
     // MARK: - 去重
 
     @Test("Set 去重 - 相同 messageId 只保留一条")

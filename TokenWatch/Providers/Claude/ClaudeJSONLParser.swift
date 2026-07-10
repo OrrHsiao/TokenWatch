@@ -95,7 +95,7 @@ final class ClaudeJSONLParser: @unchecked Sendable {
                 isSubagent: fileInfo.isSubagent,
                 provider: .claude,
                 upstreamProviderID: nil,
-                upstreamCost: nil
+                upstreamCost: record.costUSD
             ))
         }
 
