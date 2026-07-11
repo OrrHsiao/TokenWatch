@@ -46,6 +46,7 @@ Task 4 审查证明 `.notReplay` 本身不一定能跨 append 复用：短文件
 - 找到 marker 且已观察到前两条有效 usage 后，`.replay` 或“异秒 `.notReplay`”均稳定。
 - marker probe 未找到 marker 时，只有已完整覆盖 pinned 16 KiB probe window 才稳定；短文件的 `.notReplay` 不稳定。
 - `.pending` 永远不稳定。
+- detector 的稳定证据必须全部位于 newline-committed prefix；若 marker/usage 证据来自 EOF provisional tail，state 仍标记为不稳定。保守实现可要求 `fileState.committedOffset >= min(snapshot.metadata.size, 16 KiB)` 后才保存 detector 的稳定标记。
 - append 只有在 content continuity 与 replay decision stability 同时成立时才复用分类；否则重新分类。若 `replaySecond` 改变，必须从 0 重建。
 - 回归测试必须包含“partial marker -> append 补全 marker -> 同秒 replay”，并使用 committed prefix <= 256 bytes 的 fixture 真正经过 reuse-eligible 路径。
 - provisional checkpoint 和 `.pending -> .replay` 测试同样必须使用 committed prefix <= 256 bytes；不能靠 correctness gate 的无条件全量重建让断言偶然通过。
@@ -1736,9 +1737,15 @@ private func buildCodexState(
         replaySecond: replaySecond,
         pricingSpeed: pricingSpeed
     )
+    let committedReplayProbeLength = min(
+        snapshot.metadata.size,
+        UInt64(16 * 1024)
+    )
     return CodexIncrementalState(
         replayClassification: replayClassification,
-        replayClassificationIsStableUnderAppend: replayDecision.isStableUnderAppend,
+        replayClassificationIsStableUnderAppend:
+            replayDecision.isStableUnderAppend
+                && nextFileState.committedOffset >= committedReplayProbeLength,
         fileState: nextFileState
     )
 }
