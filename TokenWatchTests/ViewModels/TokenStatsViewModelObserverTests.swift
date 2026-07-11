@@ -190,6 +190,41 @@ struct TokenStatsViewModelObserverTests {
         #expect(firstCost != secondCost)
     }
 
+    /// Codex 的 service tier 会改变倍率；仅该字段变化时也必须重新聚合。
+    @Test func silentRefreshReloadsWhenCodexServiceTierChanges() async throws {
+        let provider = MutableUsageProvider(
+            id: .codex,
+            usage: makeUsage(
+                cacheCreation5m: 0,
+                cacheCreation1h: 0,
+                serviceTier: "standard"
+            )
+        )
+        let bookmarkManager = StubBookmarkManager(
+            rootURL: URL(fileURLWithPath: NSTemporaryDirectory())
+        )
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: bookmarkManager,
+            aggregator: aggregator
+        )
+
+        await vm.loadStats(for: .codex, mode: .silentIfUnchanged)
+        let standardCost = vm.states[.codex]?.stats?.overall.cost
+
+        provider.updateUsage(makeUsage(
+            cacheCreation5m: 0,
+            cacheCreation1h: 0,
+            serviceTier: "priority"
+        ))
+        await vm.loadStats(for: .codex, mode: .silentIfUnchanged)
+        let priorityCost = vm.states[.codex]?.stats?.overall.cost
+
+        #expect(aggregator.aggregateCallCount == 2)
+        #expect((priorityCost ?? 0) > (standardCost ?? 0))
+    }
+
     @Test func successfulLoadStoresLatestEntries() async throws {
         let provider = StubUsageProvider(id: .claude)
         let bookmarkManager = StubBookmarkManager(rootURL: URL(fileURLWithPath: NSTemporaryDirectory()))
@@ -263,6 +298,28 @@ struct TokenStatsViewModelObserverTests {
         #expect(UsageEntriesFingerprint.make(from: [sourced]) !=
             UsageEntriesFingerprint.make(from: [synthetic]))
     }
+
+    @Test func usageFingerprintIncludesServiceTier() {
+        let standard = makeEntry(
+            id: .codex,
+            usage: makeUsage(
+                cacheCreation5m: 0,
+                cacheCreation1h: 0,
+                serviceTier: "standard"
+            )
+        )
+        let priority = makeEntry(
+            id: .codex,
+            usage: makeUsage(
+                cacheCreation5m: 0,
+                cacheCreation1h: 0,
+                serviceTier: "priority"
+            )
+        )
+
+        #expect(UsageEntriesFingerprint.make(from: [standard]) !=
+            UsageEntriesFingerprint.make(from: [priority]))
+    }
 }
 
 private struct StubLocalizedError: LocalizedError {
@@ -270,14 +327,18 @@ private struct StubLocalizedError: LocalizedError {
     var errorDescription: String? { description }
 }
 
-private func makeUsage(cacheCreation5m: Int, cacheCreation1h: Int) -> TokenUsage {
+private func makeUsage(
+    cacheCreation5m: Int,
+    cacheCreation1h: Int,
+    serviceTier: String = "standard"
+) -> TokenUsage {
     TokenUsage(
         inputTokens: 100,
         cacheCreationInputTokens: cacheCreation5m + cacheCreation1h,
         cacheReadInputTokens: 0,
         outputTokens: 50,
         serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
-        serviceTier: "standard",
+        serviceTier: serviceTier,
         cacheCreation: CacheCreation(
             ephemeral1hInputTokens: cacheCreation1h,
             ephemeral5mInputTokens: cacheCreation5m

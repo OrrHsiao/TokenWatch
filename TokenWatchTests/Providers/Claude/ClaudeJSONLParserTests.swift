@@ -97,6 +97,29 @@ struct ClaudeJSONLParserTests {
         #expect(entries.count == 1)
         #expect(entries.first?.model == "")
 
+        let emptyKeyPricing = ModelPricing(
+            modelID: "empty",
+            displayName: "empty",
+            inputPrice: 1,
+            outputPrice: 4,
+            cacheReadPrice: 0.1,
+            cacheWritePrice: 1.25
+        )
+        let table = PricingTable(
+            liteLLMEntries: [
+                "": CatalogPricingEntry(
+                    pricing: emptyKeyPricing,
+                    explicitFastMultiplier: nil
+                ),
+            ],
+            modelsDevEntries: [:],
+            builtins: [:]
+        )
+        let resolver = UsageCostResolver(
+            pricingEngine: PricingEngine(pricingTable: table)
+        )
+        #expect(resolver.resolvedCost(for: try #require(entries.first)) == 0)
+
         try? FileManager.default.removeItem(at: fileURL)
     }
 

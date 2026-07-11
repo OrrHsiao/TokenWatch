@@ -105,6 +105,28 @@ extension PricingTableTests {
         #expect(table.pricing(for: "gpt-5-mini")?.modelID == "gpt-5-mini")
     }
 
+    @Test("空 model 不命中空定价 key")
+    func emptyModelDoesNotMatchEmptyPricingKey() {
+        let table = PricingTable(
+            liteLLMEntries: ["": catalogEntry(id: "empty", input: 1.0)],
+            modelsDevEntries: [:],
+            builtins: [:]
+        )
+
+        #expect(table.pricing(for: "") == nil)
+    }
+
+    @Test("空定价 key 不参与非空 model 的模糊匹配")
+    func emptyPricingKeyDoesNotFuzzyMatchModel() {
+        let table = PricingTable(
+            liteLLMEntries: ["": catalogEntry(id: "empty", input: 1.0)],
+            modelsDevEntries: [:],
+            builtins: [:]
+        )
+
+        #expect(table.pricing(for: "claude-sonnet-4-5") == nil)
+    }
+
     @Test("fuzzy 多候选先最长，等长取 canonical 字典序最小")
     func deterministicFuzzySelection() {
         let table = PricingTable(

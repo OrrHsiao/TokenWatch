@@ -101,6 +101,7 @@ struct PricingTable: Sendable {
         _ model: String,
         in entries: [String: ModelPricing]
     ) -> ModelPricing? {
+        guard !model.isEmpty else { return nil }
         if let exact = entries[model] { return exact }
         return entries
             .filter { keyMatches(candidate: $0.key, model: model) }
@@ -126,6 +127,7 @@ struct PricingTable: Sendable {
     }
 
     private static func containsPricingKey(_ value: String, key: String) -> Bool {
+        guard !key.isEmpty else { return false }
         var search = value.startIndex..<value.endIndex
         while let range = value.range(of: key, range: search) {
             let before = range.lowerBound == value.startIndex

@@ -301,6 +301,7 @@ struct UsageEntriesFingerprint: Equatable, Sendable {
             hasher.combine(entry.usage.cacheCreate5mTokens)
             hasher.combine(entry.usage.cacheCreate1hTokens)
             hasher.combine(entry.usage.reasoningTokens)
+            hasher.combine(entry.usage.serviceTier)
             hasher.combine(entry.usage.speed)
 
             let value = hasher.finalize()
