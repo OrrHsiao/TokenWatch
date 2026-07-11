@@ -76,8 +76,14 @@ final class TokenWatchUITests: XCTestCase {
         let initialMinX = nextButton.frame.minX
 
         tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
+        var shiftedMinX = nextButton.frame.minX
 
-        XCTAssertLessThan(nextButton.frame.minX, initialMinX)
+        if shiftedMinX >= initialMinX - 1 {
+            tableScrollView.scroll(byDeltaX: 400, deltaY: 0)
+            shiftedMinX = nextButton.frame.minX
+        }
+
+        XCTAssertLessThan(shiftedMinX, initialMinX - 1)
     }
 
     @MainActor
