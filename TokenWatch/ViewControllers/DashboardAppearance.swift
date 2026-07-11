@@ -99,9 +99,15 @@ protocol DashboardAppearanceRefreshable: AnyObject {
 
 final class DashboardBackgroundView: NSView, DashboardAppearanceRefreshable {
     private let backgroundColor: NSColor
+    private let allowsFirstResponder: Bool
 
-    init(frame frameRect: NSRect = .zero, backgroundColor: NSColor) {
+    init(
+        frame frameRect: NSRect = .zero,
+        backgroundColor: NSColor,
+        acceptsFirstResponder: Bool = false
+    ) {
         self.backgroundColor = backgroundColor
+        self.allowsFirstResponder = acceptsFirstResponder
         super.init(frame: frameRect)
         wantsLayer = true
         updateLayerColors()
@@ -114,6 +120,10 @@ final class DashboardBackgroundView: NSView, DashboardAppearanceRefreshable {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         refreshDashboardAppearance()
+    }
+
+    override var acceptsFirstResponder: Bool {
+        allowsFirstResponder
     }
 
     func refreshDashboardAppearance() {

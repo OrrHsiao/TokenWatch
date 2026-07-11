@@ -154,11 +154,15 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func mainWindowFactoryBuildsVisibleMainWindowShape() throws {
-        let windowController = MainWindowFactory.makeWindowController(languageSettings: zhHansLanguageSettings())
+        let windowController = MainWindowFactory.makeWindowController(
+            languageSettings: zhHansLanguageSettings()
+        )
         let window = try #require(windowController.window)
         defer { window.close() }
+        let rootView = try #require(window.contentViewController?.view)
 
-        #expect(window.title == "")
+        #expect(window.title == "TokenWatch")
+        #expect(window.titleVisibility == .hidden)
         #expect(window.styleMask.contains(.titled))
         #expect(window.styleMask.contains(.closable))
         #expect(window.styleMask.contains(.miniaturizable))
@@ -166,6 +170,20 @@ struct TokenWatchTests {
         #expect(window.isReleasedWhenClosed == false)
         #expect(window.contentViewController is ViewController)
         #expect(window.contentView?.frame.size == MainWindowFactory.contentSize)
+        #expect(rootView.acceptsFirstResponder)
+        #expect(!(rootView is NSControl))
+        #expect(window.initialFirstResponder === rootView)
+
+        let ordinaryBackground = DashboardBackgroundView(
+            backgroundColor: DashboardPalette.panelBackground
+        )
+        #expect(!ordinaryBackground.acceptsFirstResponder)
+
+        windowController.showWindow(nil)
+        #expect(window.isVisible)
+        #expect(window.firstResponder === rootView)
+        #expect(window.makeFirstResponder(rootView))
+        #expect(window.firstResponder === rootView)
     }
 
     @MainActor
@@ -342,14 +360,122 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardRangeButtonsDoNotBecomeFirstResponderOnStartup() throws {
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
-        viewController.loadViewIfNeeded()
-
-        for range in ["day", "sevenDays", "month", "all"] {
-            let button = try #require(viewController.view.button(identifier: "DashboardRange.\(range)"))
-            #expect(!button.acceptsFirstResponder)
+    @Test func dashboardActionButtonsSupportKeyboardFocusAndFocusRings() throws {
+        let languageSettings = zhHansLanguageSettings()
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 15, minute: 0, calendar: calendar)
+        let entries = (0..<11).map { index in
+            makeDashboardEntry(
+                sessionID: "focus-session-\(index)",
+                date: dateTime(2026, 6, 20, hour: 14, minute: 59 - index, calendar: calendar),
+                model: "focus-model",
+                input: 100 + index,
+                cwd: "/work/focus-\(index)"
+            )
         }
+        let stats = UsageAggregator().aggregate(entries)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(
+                isAuthorized: { false },
+                languageSettings: languageSettings
+            ),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    entries: entries,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: languageSettings
+        )
+        viewController.loadViewIfNeeded()
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = viewController
+        defer { window.close() }
+        window.makeKeyAndOrderFront(nil)
+        #expect(window.isVisible)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        func assertFocusable(_ identifiers: [String]) throws {
+            for identifier in identifiers {
+                let button = try #require(viewController.view.button(identifier: identifier))
+                #expect(button.isEnabled, "\(identifier) must be enabled before requesting focus")
+                #expect(button.acceptsFirstResponder, "\(identifier) must accept keyboard focus")
+                #expect(button.focusRingType != .none, "\(identifier) must show a focus ring")
+                if button is DashboardNavigationButton || button is DashboardSessionButton {
+                    #expect(!button.focusRingMaskBounds.isEmpty, "\(identifier) must provide a custom focus-ring mask")
+                }
+                #expect(window.makeFirstResponder(button), "\(identifier) must become first responder")
+                #expect(window.firstResponder === button)
+            }
+        }
+
+        func assertDisabledAndRejectsKeyboardFocus(_ buttons: [NSButton]) {
+            for button in buttons {
+                let identifier = button.identifier?.rawValue ?? button.title
+                #expect(!button.isEnabled, "\(identifier) must remain disabled")
+                #expect(!button.acceptsFirstResponder, "\(identifier) must reject keyboard focus")
+            }
+        }
+
+        try assertFocusable([
+            "DashboardNav.overview",
+            "DashboardNav.sessions",
+            "DashboardNav.settings",
+            "DashboardRange.day",
+            "DashboardRange.sevenDays",
+            "DashboardRange.month",
+            "DashboardRange.all",
+            "DashboardRefreshButton",
+        ])
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let firstPagePrevious = try #require(
+            viewController.view.button(identifier: "DashboardSessionsPagination.previous")
+        )
+        let firstPageCurrent = try #require(
+            viewController.view.button(identifier: "DashboardSessionsPagination.page.1")
+        )
+        let firstPageNext = try #require(
+            viewController.view.button(identifier: "DashboardSessionsPagination.next")
+        )
+        assertDisabledAndRejectsKeyboardFocus([firstPagePrevious, firstPageCurrent])
+        #expect(firstPageNext.isEnabled)
+        try assertFocusable(["DashboardSessionsPagination.next"])
+
+        _ = firstPageNext.sendAction(firstPageNext.action, to: firstPageNext.target)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let secondPagePrevious = try #require(
+            viewController.view.button(identifier: "DashboardSessionsPagination.previous")
+        )
+        let secondPageCurrent = try #require(
+            viewController.view.button(identifier: "DashboardSessionsPagination.page.2")
+        )
+        let secondPageNext = try #require(
+            viewController.view.button(identifier: "DashboardSessionsPagination.next")
+        )
+        #expect(secondPagePrevious.isEnabled)
+        assertDisabledAndRejectsKeyboardFocus([secondPageCurrent, secondPageNext])
+        try assertFocusable(["DashboardSessionsPagination.previous"])
+
+        let settingsButton = try #require(viewController.view.button(identifier: "DashboardNav.settings"))
+        _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
+        viewController.view.layoutSubtreeIfNeeded()
+        try assertFocusable(["AuthorizationActionButton", "RefreshAllDataButton"])
     }
 
     @MainActor
@@ -606,7 +732,8 @@ struct TokenWatchTests {
             let iconFrame = icon.convert(icon.bounds, to: button)
             let titleFrame = title.convert(title.bounds, to: button)
 
-            #expect(button.focusRingType == .none)
+            #expect(button.focusRingType != .none)
+            #expect(!button.focusRingMaskBounds.isEmpty)
             #expect(iconFrame.minX >= 12)
             #expect(iconFrame.minX <= 16)
             #expect(titleFrame.minX - iconFrame.maxX >= 8)
