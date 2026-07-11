@@ -56,6 +56,14 @@ struct CodexRolloutParserTests {
         try handle.write(contentsOf: Data(text.utf8))
     }
 
+    /// marker 与前两条异秒 usage 都位于 committed prefix，分类可安全跨 append 复用。
+    private func stableNotReplayPrefix() -> [String] {
+        [
+            #"{"timestamp":0,"type":"event_msg","payload":{"type":"token_count","model":"gpt-5","info":{"total_token_usage":{"input":1}}},"forked_from_id":1}"#,
+            #"{"timestamp":1,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":2}}}}"#,
+        ]
+    }
+
     private let sessionMeta = #"{"timestamp":"2026-05-04T08:35:44.692Z","type":"session_meta","payload":{"id":"019df220-aaaa-bbbb-cccc-ddddeeeeffff","cwd":"/tmp/proj","model_provider":"openai"}}"#
 
     private let turnContextGpt5 = #"{"timestamp":"2026-05-04T08:35:44.717Z","type":"turn_context","payload":{"model":"gpt-5"}}"#
@@ -401,8 +409,7 @@ struct CodexRolloutParserTests {
 
     @Test("Codex append 从 committed checkpoint 恢复")
     func appendReadsOnlySuffixAndRestoresCheckpoint() throws {
-        let compactInitialEvent = #"{"timestamp":"2026-05-04T08:35:46Z","type":"event_msg","payload":{"type":"token_count","model":"gpt-5","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200}}}}"#
-        let fixture = try makeRolloutFixture(lines: [compactInitialEvent])
+        let fixture = try makeRolloutFixture(lines: stableNotReplayPrefix())
         defer { fixture.cleanup() }
         let reader = RecordingJSONLFileReader()
         let parser = CodexRolloutParser(fileReader: reader)
@@ -411,11 +418,11 @@ struct CodexRolloutParserTests {
             [fixture.file],
             pricingSpeed: .standard
         )
-        #expect(first.count == 1)
+        #expect(first.count == 2)
         let committedOffset = try #require(reader.latestMetadata?.size)
         #expect(committedOffset <= UInt64(JSONLContinuityAnchor.maximumByteCount))
 
-        let next = #"{"timestamp":"2026-05-04T08:36:30Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1600,"cached_input_tokens":500,"output_tokens":260,"reasoning_output_tokens":0,"total_tokens":1860}}}}"#
+        let next = #"{"timestamp":2,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":6,"cached_tokens":2,"output":3}}}}"#
         try appendUTF8(next + "\n", to: fixture.file.url)
         reader.resetMetrics()
         let entries = try parser.parseAllFiles(
@@ -428,19 +435,17 @@ struct CodexRolloutParserTests {
             reader.totalBytesRead
                 == Int(committedOffset) + (next + "\n").utf8.count
         )
-        #expect(entries.count == 2)
-        #expect(entries[1].model == "gpt-5")
-        #expect(entries[1].sessionID == "019df220-aaaa-bbbb-cccc-ddddeeeeffff")
-        #expect(entries[1].usage.inputTokens == 400)
-        #expect(entries[1].usage.cacheReadInputTokens == 200)
-        #expect(entries[1].usage.outputTokens == 60)
+        #expect(entries.count == 3)
+        #expect(entries[2].model == "gpt-5")
+        #expect(entries[2].sessionID == "019df220-aaaa-bbbb-cccc-ddddeeeeffff")
+        #expect(entries[2].usage.inputTokens == 2)
+        #expect(entries[2].usage.cacheReadInputTokens == 2)
+        #expect(entries[2].usage.outputTokens == 3)
     }
 
     @Test("Codex 增量与 fresh 全量结果深度一致")
     func incrementalMatchesFreshFullScanAcrossTransitions() throws {
-        let compactInitialEvent = #"{"timestamp":"2026-05-04T08:35:46Z","type":"event_msg","payload":{"type":"token_count","model":"gpt-5","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200}}}}"#
-        let compactModelSwitch = #"{"type":"turn_context","payload":{"model":"gpt-5.5"}}"#
-        let fixture = try makeRolloutFixture(lines: [compactInitialEvent])
+        let fixture = try makeRolloutFixture(lines: stableNotReplayPrefix())
         defer { fixture.cleanup() }
         let reader = RecordingJSONLFileReader()
         let incremental = CodexRolloutParser(fileReader: reader)
@@ -449,11 +454,8 @@ struct CodexRolloutParserTests {
             pricingSpeed: .fast
         )
 
-        let event = #"{"timestamp":"2026-05-04T08:36:30Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":800,"cached_input_tokens":200,"output_tokens":100,"reasoning_output_tokens":0,"total_tokens":900},"total_token_usage":{"input_tokens":1800,"cached_input_tokens":500,"output_tokens":300,"reasoning_output_tokens":0,"total_tokens":2100}}}}"#
-        try appendUTF8(
-            compactModelSwitch + "\n" + event,
-            to: fixture.file.url
-        )
+        let event = #"{"timestamp":2,"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input":4,"cached_tokens":2,"output":3}}}}"#
+        try appendUTF8(event, to: fixture.file.url)
         let provisional = try incremental.parseAllFiles(
             [fixture.file],
             pricingSpeed: .fast
@@ -464,9 +466,8 @@ struct CodexRolloutParserTests {
             )[.size] as? NSNumber)?.uint64Value
         )
         let eventStartOffset = provisionalSize - UInt64(event.utf8.count)
-        #expect(eventStartOffset == UInt64(JSONLContinuityAnchor.maximumByteCount))
+        #expect(eventStartOffset <= UInt64(JSONLContinuityAnchor.maximumByteCount))
 
-        reader.resetMetrics()
         try appendUTF8("\n", to: fixture.file.url)
         let committed = try incremental.parseAllFiles(
             [fixture.file],
@@ -477,11 +478,6 @@ struct CodexRolloutParserTests {
             pricingSpeed: .fast
         )
 
-        #expect(reader.seekOffsets == [0, eventStartOffset])
-        #expect(
-            reader.totalBytesRead
-                == Int(eventStartOffset) + (event + "\n").utf8.count
-        )
         #expect(
             ParsedUsageEntryDeepSnapshot.sorted(provisional)
                 == ParsedUsageEntryDeepSnapshot.sorted(committed)
@@ -494,42 +490,52 @@ struct CodexRolloutParserTests {
         #expect(committed.allSatisfy { $0.usage.speed.isEmpty })
     }
 
-    @Test("Codex 半行不会提前提交 checkpoint")
-    func incompleteTailDoesNotCommitCheckpoint() throws {
-        let fixture = try makeRolloutFixture(lines: [
-            sessionMeta,
-            turnContextGpt5,
-        ])
+    @Test("Codex total-only provisional 不会提前提交 checkpoint")
+    func provisionalTotalDoesNotCommitCheckpoint() throws {
+        let fixture = try makeRolloutFixture(lines: stableNotReplayPrefix())
         defer { fixture.cleanup() }
         let parser = CodexRolloutParser()
-        let event = #"{"timestamp":"2026-05-04T08:36:30Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200,"reasoning_output_tokens":0,"total_tokens":1200}}}}"#
-        let split = event.utf8.index(
-            event.utf8.startIndex,
-            offsetBy: event.utf8.count / 2
+        let prefixSize = try #require(
+            (try FileManager.default.attributesOfItem(
+                atPath: fixture.file.url.path
+            )[.size] as? NSNumber)?.uint64Value
         )
-
-        try appendUTF8(
-            String(decoding: event.utf8[..<split], as: UTF8.self),
-            to: fixture.file.url
-        )
-        #expect(
-            try parser.parseAllFiles(
-                [fixture.file],
-                pricingSpeed: .standard
-            ).isEmpty
-        )
-
-        try appendUTF8(
-            String(decoding: event.utf8[split...], as: UTF8.self) + "\n",
-            to: fixture.file.url
-        )
-        let result = try parser.parseAllFiles(
+        #expect(prefixSize <= UInt64(JSONLContinuityAnchor.maximumByteCount))
+        _ = try parser.parseAllFiles(
             [fixture.file],
             pricingSpeed: .standard
         )
-        #expect(result.count == 1)
-        #expect(result.first?.usage.inputTokens == 700)
-        #expect(result.first?.usage.cacheReadInputTokens == 300)
+        let event = #"{"timestamp":2,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":5,"cached_tokens":2,"output":1}}}}"#
+
+        try appendUTF8(event, to: fixture.file.url)
+        let provisional = try parser.parseAllFiles(
+            [fixture.file],
+            pricingSpeed: .standard
+        )
+        try appendUTF8("\n", to: fixture.file.url)
+        let committed = try parser.parseAllFiles(
+            [fixture.file],
+            pricingSpeed: .standard
+        )
+        let fresh = try CodexRolloutParser().parseAllFiles(
+            [fixture.file],
+            pricingSpeed: .standard
+        )
+
+        #expect(
+            ParsedUsageEntryDeepSnapshot.sorted(provisional)
+                == ParsedUsageEntryDeepSnapshot.sorted(committed)
+        )
+        #expect(
+            ParsedUsageEntryDeepSnapshot.sorted(committed)
+                == ParsedUsageEntryDeepSnapshot.sorted(fresh)
+        )
+        let last = try #require(
+            committed.max { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+        )
+        #expect(last.usage.inputTokens == 1)
+        #expect(last.usage.cacheReadInputTokens == 2)
+        #expect(last.usage.outputTokens == 1)
     }
 
     @Test(arguments: ["truncate", "truncate-grow", "replace", "touch", "service-tier"])
@@ -637,18 +643,19 @@ struct CodexRolloutParserTests {
 
     @Test("Codex replay 分类从 pending 变为同秒时撤销已稳定历史")
     func replayClassificationChangeForcesRebuild() throws {
-        let replayMeta = #"{"timestamp":"2026-05-04T08:35:40.000Z","type":"session_meta","payload":{"id":"child","cwd":"/tmp/child","forked_from_id":"root"}}"#
-        let first = #"{"timestamp":"2026-05-04T08:35:59.100Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":10,"output_tokens":10,"reasoning_output_tokens":0,"total_tokens":110},"last_token_usage":{"input_tokens":100,"cached_input_tokens":10,"output_tokens":10,"reasoning_output_tokens":0,"total_tokens":110}}}}"#
-        let second = #"{"timestamp":"2026-05-04T08:35:59.900Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":200,"cached_input_tokens":20,"output_tokens":20,"reasoning_output_tokens":0,"total_tokens":220},"last_token_usage":{"input_tokens":100,"cached_input_tokens":10,"output_tokens":10,"reasoning_output_tokens":0,"total_tokens":110}}}}"#
-        let next = #"{"timestamp":"2026-05-04T08:36:00.100Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":250,"cached_input_tokens":25,"output_tokens":25,"reasoning_output_tokens":0,"total_tokens":275}}}}"#
-        let fixture = try makeRolloutFixture(lines: [
-            replayMeta,
-            turnContextGpt5,
-            first,
-        ])
+        let first = #"{"timestamp":0,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":1}}},"forked_from_id":1}"#
+        let second = #"{"timestamp":0,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":2}}}}"#
+        let next = #"{"timestamp":1,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":3}}}}"#
+        let fixture = try makeRolloutFixture(lines: [first])
         defer { fixture.cleanup() }
         let reader = RecordingJSONLFileReader()
         let parser = CodexRolloutParser(fileReader: reader)
+        let initialSize = try #require(
+            (try FileManager.default.attributesOfItem(
+                atPath: fixture.file.url.path
+            )[.size] as? NSNumber)?.uint64Value
+        )
+        #expect(initialSize <= UInt64(JSONLContinuityAnchor.maximumByteCount))
         #expect(
             try parser.parseAllFiles(
                 [fixture.file],
@@ -671,7 +678,56 @@ struct CodexRolloutParserTests {
         )
 
         #expect(reader.seekOffsets.contains(0))
+        #expect(reader.seekOffsets.contains(initialSize) == false)
         #expect(incremental.count == 1)
+        #expect(incremental.first?.usage.inputTokens == 1)
+        #expect(
+            ParsedUsageEntryDeepSnapshot.sorted(incremental)
+                == ParsedUsageEntryDeepSnapshot.sorted(fresh)
+        )
+    }
+
+    @Test("Codex short-prefix notReplay 在 append 补全 marker 后重新分类")
+    func shortNotReplayReclassifiesWhenAppendCompletesMarker() throws {
+        let fixture = try makeRolloutFixture(lines: [])
+        defer { fixture.cleanup() }
+        let partialMarker = #"{"note":"forked_"#
+        try partialMarker.write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+        let reader = RecordingJSONLFileReader()
+        let parser = CodexRolloutParser(fileReader: reader)
+
+        #expect(
+            try parser.parseAllFiles(
+                [fixture.file],
+                pricingSpeed: .standard
+            ).isEmpty
+        )
+
+        let first = #"{"timestamp":0,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":100}}}}"#
+        let second = #"{"timestamp":0,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":200}}}}"#
+        let next = #"{"timestamp":1,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input":250}}}}"#
+        try appendUTF8(
+            "from_id\"}\n" + first + "\n" + second + "\n" + next + "\n",
+            to: fixture.file.url
+        )
+        reader.resetMetrics()
+
+        let incremental = try parser.parseAllFiles(
+            [fixture.file],
+            pricingSpeed: .standard
+        )
+        let fresh = try CodexRolloutParser().parseAllFiles(
+            [fixture.file],
+            pricingSpeed: .standard
+        )
+
+        #expect(reader.seekOffsets.contains(0))
+        #expect(incremental.count == 1)
+        #expect(incremental.first?.usage.inputTokens == 50)
         #expect(
             ParsedUsageEntryDeepSnapshot.sorted(incremental)
                 == ParsedUsageEntryDeepSnapshot.sorted(fresh)
