@@ -1,5 +1,7 @@
 # TokenWatch 全工程正确性与 ccusage 计价对齐设计
 
+> **2026-07-11 superseding amendment:** 本文记录的 v20.0.16 实施历史仍保留；当前兼容与计价契约已升级为 `ccusage v20.0.17 / 88cdfa4fb201c92b163a34d0bbb097b68d3185cf`。v20.0.16→v20.0.17 定价资源与规则无变化；新增行为、非重复 token total 与验收以 [ccusage v20.0.17 对齐设计](2026-07-11-ccusage-v20.0.17-alignment-design.md) 和 [实施计划](../plans/2026-07-11-ccusage-v20.0.17-alignment.md) 为准。
+
 **日期**：2026-07-10
 **状态**：已确认
 **范围**：修复全工程 review 中除 Release 签名外的问题，并让计价结果与固定版本 ccusage 一致
