@@ -345,7 +345,7 @@ struct UsageAggregatorTests {
 
     // MARK: - Reasoning 聚合
 
-    @Test("reasoningTokens 参与 byModel/byDay/overall 求和与 totalTokens")
+    @Test("reasoningTokens 独立聚合但不重复加入 totalTokens")
     func reasoningAggregation() {
         let entries = [
             makeEntry(sessionID: "s1", date: date(2026, 6, 13), model: "gpt-5",
@@ -359,16 +359,32 @@ struct UsageAggregatorTests {
         let stats = aggregator.aggregate(entries)
 
         #expect(stats.overall.reasoningTokens == 630)
-        // totalTokens 包含 reasoning:300+150+30 input/output + 0 cache + 630 reasoning = 1110
-        #expect(stats.overall.totalTokens
-                == stats.overall.inputTokens + stats.overall.outputTokens
-                 + stats.overall.cacheReadTokens + stats.overall.cacheCreationTokens
-                 + stats.overall.reasoningTokens)
-
+        #expect(stats.overall.totalTokens == 520)
         #expect(stats.byModel["gpt-5"]?.reasoningTokens == 600)
+        #expect(stats.byModel["gpt-5"]?.totalTokens == 450)
         #expect(stats.byModel["gpt-5-mini"]?.reasoningTokens == 30)
+        #expect(stats.byModel["gpt-5-mini"]?.totalTokens == 70)
         #expect(stats.byDay["2026-06-13"]?.reasoningTokens == 600)
+        #expect(stats.byDay["2026-06-13"]?.totalTokens == 450)
         #expect(stats.byDay["2026-06-14"]?.reasoningTokens == 30)
+        #expect(stats.byDay["2026-06-14"]?.totalTokens == 70)
+    }
+
+    @Test("reasoning 极值不会用饱和掩盖重复计数")
+    func reasoningExtremeDoesNotAffectTotal() {
+        let entry = makeEntry(
+            sessionID: "s",
+            date: date(2026, 6, 13),
+            model: "gpt-5",
+            input: 1,
+            output: 1,
+            reasoning: .max
+        )
+
+        let stats = aggregator.aggregate([entry])
+
+        #expect(stats.overall.reasoningTokens == .max)
+        #expect(stats.overall.totalTokens == 2)
     }
 
     @Test("reasoning=0 时不影响既有维度求和(向后兼容)")

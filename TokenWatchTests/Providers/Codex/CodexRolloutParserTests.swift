@@ -98,6 +98,13 @@ struct CodexRolloutParserTests {
         // Codex 无 cache write
         #expect(e.usage.cacheCreation == nil)
         #expect(e.usage.totalCacheCreationTokens == 0)
+
+        let summary = UsageAggregator().aggregate(entries).overall
+        #expect(summary.inputTokens == 700)
+        #expect(summary.cacheReadTokens == 300)
+        #expect(summary.outputTokens == 200)
+        #expect(summary.reasoningTokens == 50)
+        #expect(summary.totalTokens == 1_200)
     }
 
     @Test("相同 total 仍优先发出非零 last_token_usage")

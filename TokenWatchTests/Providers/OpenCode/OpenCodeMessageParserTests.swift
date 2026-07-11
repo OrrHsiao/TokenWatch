@@ -80,6 +80,35 @@ struct OpenCodeMessageParserTests {
         #expect(e.usage.cacheCreationInputTokens == 20)
         #expect(e.usage.cacheCreation == nil)
         #expect(e.usage.totalCacheCreationTokens == 20)
+
+        let summary = UsageAggregator().aggregate([e]).overall
+        #expect(summary.inputTokens == 100)
+        #expect(summary.outputTokens == 50)
+        #expect(summary.cacheReadTokens == 10)
+        #expect(summary.cacheCreationTokens == 20)
+        #expect(summary.reasoningTokens == 200)
+        #expect(summary.totalTokens == 180)
+    }
+
+    @Test("source total 缺口并入 output 后不再重复加入 reasoning")
+    func sourceTotalFallbackIsNotInflatedByReasoning() {
+        let row = makeRow(
+            id: "msg-total",
+            sessionID: "s",
+            timeMs: 1_700_000_000_000,
+            json: """
+            {"role":"assistant","modelID":"m","providerID":"p",
+             "tokens":{"input":100,"output":50,"reasoning":200,"total":380,
+                       "cache":{"read":10,"write":20}}}
+            """,
+            directory: "/d"
+        )
+        let entry = parser.parseAll([row])[0]
+        let summary = UsageAggregator().aggregate([entry]).overall
+
+        #expect(entry.usage.outputTokens == 250)
+        #expect(summary.reasoningTokens == 200)
+        #expect(summary.totalTokens == 380)
     }
 
     @Test("model fallback:仅 modelID 时只用 modelID;仅 providerID 时只用 providerID")
