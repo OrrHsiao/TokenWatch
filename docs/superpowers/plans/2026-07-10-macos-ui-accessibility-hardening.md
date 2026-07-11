@@ -193,6 +193,12 @@ git commit -m "fix(formatter): 对齐 Dashboard 紧凑数字边界"
     #expect(tableScrollView.documentView === table)
     #expect(table.frame.width >= 1_108)
     #expect(table.frame.width > tableScrollView.contentView.bounds.width)
+
+    viewController.view.setFrameSize(NSSize(width: 1_500, height: MainWindowFactory.contentSize.height))
+    viewController.view.layoutSubtreeIfNeeded()
+
+    #expect(tableScrollView.contentView.bounds.width >= 1_108)
+    #expect(abs(table.frame.width - tableScrollView.contentView.bounds.width) < 1)
 }
 ```
 
@@ -216,10 +222,18 @@ func testSessionTableScrollsHorizontally() throws {
     let initialMinX = nextButton.frame.minX
 
     tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
+    var shiftedMinX = nextButton.frame.minX
 
-    XCTAssertLessThan(nextButton.frame.minX, initialMinX)
+    if shiftedMinX >= initialMinX - 1 {
+        tableScrollView.scroll(byDeltaX: 400, deltaY: 0)
+        shiftedMinX = nextButton.frame.minX
+    }
+
+    XCTAssertLessThan(shiftedMinX, initialMinX - 1)
 }
 ```
+
+UI 测试必须在首个方向没有产生至少 1pt 位移时尝试相反方向；macOS 滚轮方向会受用户偏好影响，测试不得假定固定的 `deltaX` 符号。
 
 - [ ] **Step 2: 运行两个测试并确认 RED**
 

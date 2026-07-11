@@ -667,6 +667,12 @@ struct TokenWatchTests {
         #expect(tableScrollView.documentView === table)
         #expect(table.frame.width >= 1_108)
         #expect(table.frame.width > tableScrollView.contentView.bounds.width)
+
+        viewController.view.setFrameSize(NSSize(width: 1_500, height: MainWindowFactory.contentSize.height))
+        viewController.view.layoutSubtreeIfNeeded()
+
+        #expect(tableScrollView.contentView.bounds.width >= 1_108)
+        #expect(abs(table.frame.width - tableScrollView.contentView.bounds.width) < 1)
     }
 
     @MainActor
