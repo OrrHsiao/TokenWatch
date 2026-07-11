@@ -60,6 +60,27 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
+    func testSessionTableScrollsHorizontally() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting()
+
+        let sessionsButton = app.buttons["DashboardNav.sessions"]
+        XCTAssertTrue(sessionsButton.waitForExistence(timeout: 5))
+        sessionsButton.click()
+
+        let tableScrollView = app.scrollViews["DashboardSessionsTableScrollView"]
+        XCTAssertTrue(tableScrollView.waitForExistence(timeout: 5))
+
+        let nextButton = app.buttons["DashboardSessionsPagination.next"]
+        XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
+        let initialMinX = nextButton.frame.minX
+
+        tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
+
+        XCTAssertLessThan(nextButton.frame.minX, initialMinX)
+    }
+
+    @MainActor
     func testSettingsPageExposesActionControls() throws {
         let app = XCUIApplication()
         app.launchForUITesting()

@@ -7,6 +7,7 @@ final class DashboardViewController: NSViewController {
     private static let rowGap: CGFloat = 18
     private static let minimumContentWidth: CGFloat = 860
     private static let sessionTableColumnWidths: [CGFloat] = [150, 150, 126, 190, 150, 104, 84, 66]
+    private static let sessionTableMinimumWidth: CGFloat = 1_108
     private static let sessionPageSize = 10
     private static let sessionTableHeaderHeight: CGFloat = 44
     private static let sessionTableRowHeight: CGFloat = 48
@@ -30,6 +31,7 @@ final class DashboardViewController: NSViewController {
     private let overviewContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
     private let overviewStack = NSStackView()
     private let sessionScrollView = NSScrollView()
+    private let sessionTableScrollView = NSScrollView()
     private let sessionContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
     private let sessionStack = NSStackView()
     private let navButtonsStack = NSStackView()
@@ -285,9 +287,12 @@ final class DashboardViewController: NSViewController {
 
     private func setupSessionContent() {
         sessionScrollView.userInterfaceLayoutDirection = .leftToRight
+        sessionScrollView.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPageScrollView")
+        sessionScrollView.setAccessibilityIdentifier("DashboardSessionsPageScrollView")
         sessionScrollView.drawsBackground = false
         sessionScrollView.borderType = .noBorder
         sessionScrollView.hasVerticalScroller = true
+        sessionScrollView.hasHorizontalScroller = false
         sessionScrollView.autohidesScrollers = true
         sessionScrollView.scrollerStyle = .overlay
         sessionScrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -306,7 +311,7 @@ final class DashboardViewController: NSViewController {
 
         addFullWidthArrangedSubview(makeSessionHeaderView(), to: sessionStack)
         addFullWidthArrangedSubview(makeSessionMetricRow(), to: sessionStack)
-        addFullWidthArrangedSubview(makeSessionTable(), to: sessionStack)
+        addFullWidthArrangedSubview(makeSessionTableScrollView(), to: sessionStack)
         addFullWidthArrangedSubview(sessionStatusLabel, to: sessionStack)
         configureBodyStatusLabel(sessionStatusLabel)
 
@@ -910,6 +915,34 @@ final class DashboardViewController: NSViewController {
             content.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         return panel
+    }
+
+    private func makeSessionTableScrollView() -> NSScrollView {
+        let table = makeSessionTable()
+        let clipView = sessionTableScrollView.contentView
+
+        sessionTableScrollView.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsTableScrollView")
+        sessionTableScrollView.setAccessibilityIdentifier("DashboardSessionsTableScrollView")
+        sessionTableScrollView.drawsBackground = false
+        sessionTableScrollView.borderType = .noBorder
+        sessionTableScrollView.hasHorizontalScroller = true
+        sessionTableScrollView.hasVerticalScroller = false
+        sessionTableScrollView.autohidesScrollers = true
+        sessionTableScrollView.scrollerStyle = .overlay
+        sessionTableScrollView.documentView = table
+
+        table.translatesAutoresizingMaskIntoConstraints = false
+        let coverViewportWidth = table.widthAnchor.constraint(greaterThanOrEqualTo: clipView.widthAnchor)
+
+        NSLayoutConstraint.activate([
+            sessionTableScrollView.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
+            table.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
+            table.topAnchor.constraint(equalTo: clipView.topAnchor),
+            table.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.sessionTableMinimumWidth),
+            table.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
+            coverViewportWidth,
+        ])
+        return sessionTableScrollView
     }
 
     private func makeSessionTable() -> NSView {
