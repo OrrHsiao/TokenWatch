@@ -1,5 +1,7 @@
 # Provider 数据正确性与授权 Implementation Plan
 
+> **2026-07-11 superseding amendment:** 本文记录的 v20.0.16 实施历史仍保留；当前兼容与计价契约已升级为 `ccusage v20.0.17 / 88cdfa4fb201c92b163a34d0bbb097b68d3185cf`。v20.0.16→v20.0.17 定价资源与规则无变化；新增行为、非重复 token total 与验收以 [ccusage v20.0.17 对齐设计](../specs/2026-07-11-ccusage-v20.0.17-alignment-design.md) 和 [实施计划](2026-07-11-ccusage-v20.0.17-alignment.md) 为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 修复 DST 小时桶、usage presence 解码、Claude/Codex/OpenCode 边界数据、瞬时文件失败与 bookmark 假成功，并为下一阶段增量 JSONL 解析建立可复用的文件读取接口。

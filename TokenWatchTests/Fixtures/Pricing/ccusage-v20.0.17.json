@@ -1,7 +1,7 @@
 {
   "baseline": {
-    "ccusageVersion": "v20.0.16",
-    "ccusageCommit": "e32cc4820df1e13f4399560e03f3858869738dc8",
+    "ccusageVersion": "v20.0.17",
+    "ccusageCommit": "88cdfa4fb201c92b163a34d0bbb097b68d3185cf",
     "costMode": "auto",
     "offline": true,
     "liteLLMRevision": "49ca04d8c3ddea336237ce6f3082dbc26d19e944",

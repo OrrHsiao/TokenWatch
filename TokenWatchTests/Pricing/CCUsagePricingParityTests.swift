@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import TokenWatch
 
-@Suite("ccusage v20.0.16 Pricing Parity")
+@Suite("ccusage v20.0.17 Pricing Parity")
 struct CCUsagePricingParityTests {
     private struct Fixture: Decodable {
         let baseline: Baseline
@@ -46,8 +46,8 @@ struct CCUsagePricingParityTests {
     @Test("固定 fixture 全部金额与 ccusage offline Auto 一致")
     func fixedAmounts() throws {
         let fixture = try loadFixture()
-        #expect(fixture.baseline.ccusageVersion == "v20.0.16")
-        #expect(fixture.baseline.ccusageCommit == "e32cc4820df1e13f4399560e03f3858869738dc8")
+        #expect(fixture.baseline.ccusageVersion == "v20.0.17")
+        #expect(fixture.baseline.ccusageCommit == "88cdfa4fb201c92b163a34d0bbb097b68d3185cf")
         #expect(fixture.baseline.costMode == "auto")
         #expect(fixture.baseline.offline)
         #expect(fixture.baseline.liteLLMRevision == "49ca04d8c3ddea336237ce6f3082dbc26d19e944")
@@ -72,7 +72,7 @@ struct CCUsagePricingParityTests {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/Pricing/ccusage-v20.0.16.json")
+            .appendingPathComponent("Fixtures/Pricing/ccusage-v20.0.17.json")
         return try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url))
     }
 
