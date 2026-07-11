@@ -376,7 +376,17 @@ final class SettingsViewController: NSViewController {
     }
 
     private func renderLaunchAtLoginState() {
-        launchAtLoginSwitch.state = loginItemSettings.isEnabled ? .on : .off
+        switch loginItemSettings.state {
+        case .notRegistered:
+            launchAtLoginSwitch.state = .off
+            launchAtLoginSwitch.isEnabled = true
+        case .enabled, .requiresApproval:
+            launchAtLoginSwitch.state = .on
+            launchAtLoginSwitch.isEnabled = true
+        case .unavailable:
+            launchAtLoginSwitch.state = .off
+            launchAtLoginSwitch.isEnabled = false
+        }
     }
 
     @objc private func autoRefreshIntervalChanged() {
