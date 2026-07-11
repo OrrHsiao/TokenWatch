@@ -126,14 +126,12 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         let chunkSize = 64 * 1024
 
         let processLine: (Data, UInt64) -> Void = { [self] lineData, lineStartOffset in
-            if let candidate = parseCandidate(
+            candidates.append(contentsOf: parseCandidates(
                 lineData,
                 fileInfo: fileInfo,
                 sourceOffset: lineStartOffset,
                 decoder: decoder
-            ) {
-                candidates.append(candidate)
-            }
+            ))
         }
 
         while true {
@@ -251,14 +249,12 @@ final class ClaudeJSONLParser: @unchecked Sendable {
                     from: buffer.startIndex,
                     to: searchStart
                 )
-                if let candidate = parseCandidate(
+                stableCandidates.append(contentsOf: parseCandidates(
                     Data(buffer[searchStart..<newlineIndex]),
                     fileInfo: fileInfo,
                     sourceOffset: committedOffset + UInt64(relativeOffset),
                     decoder: decoder
-                ) {
-                    stableCandidates.append(candidate)
-                }
+                ))
                 searchStart = buffer.index(after: newlineIndex)
             }
 
@@ -277,12 +273,12 @@ final class ClaudeJSONLParser: @unchecked Sendable {
             }
         }
 
-        let provisionalCandidates = parseCandidate(
+        let provisionalCandidates = parseCandidates(
             buffer,
             fileInfo: fileInfo,
             sourceOffset: committedOffset,
             decoder: decoder
-        ).map { [$0] } ?? []
+        )
         return ClaudeFileState(
             metadata: snapshot.metadata,
             committedOffset: committedOffset,
@@ -294,19 +290,19 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         )
     }
 
-    /// 解析单条 Claude billing 行；缺失 source ID 时使用文件 key 与绝对 offset。
-    private func parseCandidate(
+    /// 解析单条 Claude billing 行及其 advisors；缺失 source ID 时使用文件 key 与绝对 offset。
+    private func parseCandidates(
         _ lineData: Data,
         fileInfo: ClaudeJSONLFileInfo,
         sourceOffset: UInt64,
         decoder: JSONDecoder
-    ) -> ParsedUsageEntry? {
+    ) -> [ParsedUsageEntry] {
         guard !lineData.isEmpty,
               ClaudeUsageLine.passesRawPrefilter(lineData),
               let usageLine = try? decoder.decode(ClaudeUsageLine.self, from: lineData),
               let normalized = usageLine.normalized,
               normalized.isValidDailyUsageRecord else {
-            return nil
+            return []
         }
 
         let fileKey = Self.cacheKey(for: fileInfo.url)
@@ -314,7 +310,7 @@ final class ClaudeJSONLParser: @unchecked Sendable {
             ?? "missing-record:\(fileKey):\(sourceOffset)"
         let messageID = normalized.messageID
             ?? "missing-message:\(fileKey):\(sourceOffset)"
-        return ParsedUsageEntry(
+        let main = ParsedUsageEntry(
             recordUUID: recordUUID,
             messageId: messageID,
             requestId: normalized.requestID,
@@ -331,6 +327,29 @@ final class ClaudeJSONLParser: @unchecked Sendable {
             upstreamProviderID: nil,
             upstreamCost: normalized.costUSD
         )
+        let advisors = ClaudeAdvisorUsageDecoder.decode(
+            from: lineData,
+            using: decoder
+        ).enumerated().map { index, advisor in
+            ParsedUsageEntry(
+                recordUUID: "\(recordUUID):advisor:\(index)",
+                messageId: "\(messageID):advisor:\(index)",
+                requestId: main.requestId,
+                sessionID: main.sessionID,
+                timestamp: main.timestamp,
+                model: advisor.model,
+                cwd: main.cwd,
+                agentId: main.agentId,
+                usage: advisor.usage.tokenUsage,
+                isSubagent: main.isSubagent,
+                isSidechain: main.isSidechain,
+                hasSourceMessageID: main.hasSourceMessageID,
+                provider: .claude,
+                upstreamProviderID: nil,
+                upstreamCost: nil
+            )
+        }
+        return [main] + advisors
     }
 
     private static func cacheKey(for url: URL) -> String {

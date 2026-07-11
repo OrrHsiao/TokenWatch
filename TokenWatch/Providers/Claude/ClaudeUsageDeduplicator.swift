@@ -1,6 +1,6 @@
 import Foundation
 
-/// 复刻 ccusage v20.0.16 daily.rs 的 exact-first / sidechain-fallback 单遍索引。
+/// 复刻 ccusage v20.0.17 daily.rs 的 exact-first / sidechain-fallback 单遍索引。
 enum ClaudeUsageDeduplicator {
     private struct ExactKey: Hashable {
         let messageID: String

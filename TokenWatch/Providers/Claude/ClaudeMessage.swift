@@ -170,3 +170,65 @@ struct ClaudeBillingCacheCreation: Decodable, Sendable {
         return value
     }
 }
+
+/// 顶层 Claude iteration 中可单独计费的 advisor usage。
+struct ClaudeAdvisorUsage: Sendable {
+    let model: String
+    let usage: ClaudeBillingUsage
+}
+
+/// 独立解码顶层 message.usage.iterations；失败时由调用方只忽略 advisors。
+enum ClaudeAdvisorUsageDecoder {
+    private static let marker = Data(#""advisor_message""#.utf8)
+
+    static func decode(
+        from lineData: Data,
+        using decoder: JSONDecoder
+    ) -> [ClaudeAdvisorUsage] {
+        guard lineData.range(of: marker) != nil,
+              let envelope = try? decoder.decode(
+                  ClaudeAdvisorEnvelope.self,
+                  from: lineData
+              ) else {
+            return []
+        }
+        return envelope.message.usage.iterations.compactMap(\.advisorUsage)
+    }
+}
+
+private struct ClaudeAdvisorEnvelope: Decodable {
+    let message: Message
+
+    struct Message: Decodable {
+        let usage: Usage
+    }
+
+    struct Usage: Decodable {
+        let iterations: [Iteration]
+    }
+
+    struct Iteration: Decodable {
+        let advisorUsage: ClaudeAdvisorUsage?
+
+        private enum CodingKeys: String, CodingKey {
+            case type, model
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(String.self, forKey: .type)
+            let model = try container.decodeIfPresent(String.self, forKey: .model)
+            let usage = try ClaudeBillingUsage(from: decoder)
+            guard type == "advisor_message",
+                  let model,
+                  !model.isEmpty else {
+                advisorUsage = nil
+                return
+            }
+            advisorUsage = ClaudeAdvisorUsage(
+                model: model,
+                usage: usage
+            )
+        }
+    }
+}
