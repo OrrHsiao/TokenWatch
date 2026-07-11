@@ -1321,7 +1321,8 @@ extension CodexUsageCandidate {
         pricingSpeed: CodexPricingSpeed
     ) -> CodexUsageCandidate {
         let normalized = counts.normalizedForBilling
-        let messageID = "\(sessionID):\(timestamp.key):\(sourceOffset)"
+        let messageID = "\(sessionID):\(timestamp.key)"
+        let recordUUID = "\(messageID):\(sourceOffset)"
         let usage = TokenUsage(
             inputTokens: normalized.pureInput,
             cacheCreationInputTokens: 0,
@@ -1336,7 +1337,7 @@ extension CodexUsageCandidate {
             speed: ""
         )
         let entry = ParsedUsageEntry(
-            recordUUID: messageID,
+            recordUUID: recordUUID,
             messageId: messageID,
             requestId: nil,
             sessionID: sessionID,
