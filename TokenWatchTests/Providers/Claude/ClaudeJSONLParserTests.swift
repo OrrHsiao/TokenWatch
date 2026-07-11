@@ -7,6 +7,7 @@ import Testing
 struct ClaudeJSONLParserTests {
 
     let parser = ClaudeJSONLParser()
+    private static let advisorLine = #"{"timestamp":"2026-06-13T12:00:00Z","message":{"id":"a","usage":{"input_tokens":1,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"m","input_tokens":2,"output_tokens":1}]}}}"#
 
     // MARK: - 解析
 
@@ -198,6 +199,171 @@ struct ClaudeJSONLParserTests {
         #expect(entries[1].requestId == "inner-request")
         #expect(entries[1].isSidechain)
         #expect(entries[1].upstreamCost == 0.2)
+    }
+
+    @Test("Claude advisor 展开为独立 entry 并按自身模型计价")
+    func expandsAdvisorUsageWithInheritedMetadataAndLocalCost() throws {
+        let line = #"{"type":"assistant","uuid":"main-record","sessionId":"main-session","timestamp":"2026-06-13T12:00:00.000Z","requestId":"main-request","isSidechain":true,"cwd":"/main-project","costUSD":1.23,"message":{"id":"main-message","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"iterations":[{"type":"tool_result","model":"ignored","input_tokens":99,"output_tokens":99},{"type":"advisor_message","model":"claude-3-5-haiku-20241022","input_tokens":10,"output_tokens":2},{"type":"advisor_message","model":"","input_tokens":50,"output_tokens":5}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([line])
+        defer { cleanup() }
+
+        let entries = try ClaudeJSONLParser().parseJSONLFile(file, claudeDataRoot: root)
+        let main = try #require(entries.first { $0.messageId == "main-message" })
+        let advisor = try #require(entries.first {
+            $0.messageId == "main-message:advisor:0"
+        })
+
+        #expect(entries.count == 2)
+        #expect(main.recordUUID == "main-record")
+        #expect(main.upstreamCost == 1.23)
+        #expect(advisor.recordUUID == "main-record:advisor:0")
+        #expect(advisor.model == "claude-3-5-haiku-20241022")
+        #expect(advisor.usage.inputTokens == 10)
+        #expect(advisor.usage.outputTokens == 2)
+        #expect(advisor.sessionID == "main-session")
+        #expect(advisor.requestId == "main-request")
+        #expect(advisor.timestamp == main.timestamp)
+        #expect(advisor.cwd == "/main-project")
+        #expect(advisor.isSidechain)
+        #expect(advisor.hasSourceMessageID)
+        #expect(advisor.upstreamCost == nil)
+        #expect(abs(UsageCostResolver().resolvedCost(for: advisor) - 0.000016) < 1e-12)
+    }
+
+    @Test("损坏 advisor envelope 只丢 advisors 不丢合法主记录")
+    func malformedAdvisorDoesNotRejectMainUsage() throws {
+        let valid = #"{"uuid":"valid-record","timestamp":"2026-06-13T12:00:00.000Z","message":{"id":"valid-main","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"claude-3-5-haiku-20241022","input_tokens":10,"output_tokens":2}]}}}"#
+        let malformed = #"{"uuid":"malformed-record","timestamp":"2026-06-13T12:01:00.000Z","message":{"id":"malformed-main","model":"claude-sonnet-4-5","usage":{"input_tokens":3,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"claude-3-5-haiku-20241022","input_tokens":5,"output_tokens":1},{"type":"advisor_message","model":"claude-3-5-haiku-20241022","input_tokens":10,"output_tokens":"bad"}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([valid, malformed])
+        defer { cleanup() }
+
+        let entries = try ClaudeJSONLParser().parseJSONLFile(file, claudeDataRoot: root)
+
+        #expect(entries.count == 3)
+        #expect(Set(entries.map(\.messageId)) == [
+            "valid-main",
+            "valid-main:advisor:0",
+            "malformed-main",
+        ])
+        #expect(entries.first { $0.messageId == "malformed-main" }?.usage.inputTokens == 3)
+    }
+
+    @Test("advisor 内 unsupported compact null 仍触发 pinned raw guard")
+    func advisorCompactNullPreservesWholeLineGuard() throws {
+        let line = #"{"timestamp":"2026-06-13T12:02:00.000Z","message":{"id":"guarded-main","model":"claude-sonnet-4-5","usage":{"input_tokens":7,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"claude-3-5-haiku-20241022","input_tokens":5,"output_tokens":1,"cache_read_input_tokens":null}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([line])
+        defer { cleanup() }
+
+        #expect(try ClaudeJSONLParser()
+            .parseJSONLFile(file, claudeDataRoot: root)
+            .isEmpty)
+    }
+
+    @Test("iteration 缺 type 使整份 advisor envelope 失效但保留 main")
+    func missingIterationTypeRejectsAllAdvisorsOnly() throws {
+        let line = #"{"timestamp":"2026-06-13T12:03:00.000Z","message":{"id":"missing-type-main","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"m","input_tokens":2,"output_tokens":1},{"model":"m","input_tokens":3,"output_tokens":1}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([line])
+        defer { cleanup() }
+
+        let entries = try ClaudeJSONLParser().parseJSONLFile(file, claudeDataRoot: root)
+
+        #expect(entries.map(\.messageId) == ["missing-type-main"])
+    }
+
+    @Test("普通 iteration 坏 token 也使整份 advisor envelope 失效")
+    func malformedNonAdvisorIterationRejectsAllAdvisorsOnly() throws {
+        let line = #"{"timestamp":"2026-06-13T12:04:00.000Z","message":{"id":"bad-normal-main","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"iterations":[{"type":"tool_result","model":"ignored","input_tokens":99,"output_tokens":"bad"},{"type":"advisor_message","model":"m","input_tokens":2,"output_tokens":1}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([line])
+        defer { cleanup() }
+
+        let entries = try ClaudeJSONLParser().parseJSONLFile(file, claudeDataRoot: root)
+
+        #expect(entries.map(\.messageId) == ["bad-normal-main"])
+    }
+
+    @Test("重复 Claude 文件中的 main 与 advisor 都只保留一次")
+    func duplicateFilesDeduplicateMainAndAdvisor() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeAdvisorDuplicate-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let firstURL = root.appendingPathComponent("first.jsonl")
+        let secondURL = root.appendingPathComponent("second.jsonl")
+        try (Self.advisorLine + "\n").write(to: firstURL, atomically: true, encoding: .utf8)
+        try (Self.advisorLine + "\n").write(to: secondURL, atomically: true, encoding: .utf8)
+        let files = [firstURL, secondURL].map {
+            ClaudeJSONLFileInfo(
+                url: $0,
+                sessionID: "file-session",
+                projectPath: "/project",
+                isSubagent: false,
+                agentId: nil
+            )
+        }
+
+        let entries = try ClaudeJSONLParser().parseAllFiles(files, claudeDataRoot: root)
+
+        #expect(entries.map(\.messageId).sorted() == [
+            "a",
+            "a:advisor:0",
+        ])
+    }
+
+    @Test("sidechain parent replacement 同时替换 main 与 advisor")
+    func sidechainParentReplacesAdvisorPair() throws {
+        let sidechain = #"{"uuid":"side-record","timestamp":"2026-06-13T12:00:00Z","requestId":"side","isSidechain":true,"message":{"id":"shared","usage":{"input_tokens":10,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"m","input_tokens":20,"output_tokens":1}]}}}"#
+        let parent = #"{"uuid":"parent-record","timestamp":"2026-06-13T12:00:01Z","requestId":"parent","isSidechain":false,"message":{"id":"shared","usage":{"input_tokens":1,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"m","input_tokens":2,"output_tokens":1}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([sidechain, parent])
+        defer { cleanup() }
+
+        let entries = try ClaudeJSONLParser().parseAllFiles([file], claudeDataRoot: root)
+        let main = try #require(entries.first { $0.messageId == "shared" })
+        let advisor = try #require(entries.first {
+            $0.messageId == "shared:advisor:0"
+        })
+
+        #expect(entries.count == 2)
+        #expect(main.requestId == "parent")
+        #expect(main.usage.inputTokens == 1)
+        #expect(!main.isSidechain)
+        #expect(advisor.requestId == "parent")
+        #expect(advisor.usage.inputTokens == 2)
+        #expect(!advisor.isSidechain)
+    }
+
+    @Test("advisor provisional、committed 与 fresh 解析深度一致")
+    func advisorIncrementalLifecycleMatchesFreshParse() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+        try Self.advisorLine.write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+
+        let provisional = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+        try appendUTF8("\n", to: fixture.file.url)
+        let committed = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+        let committedOffset = UInt64((Self.advisorLine + "\n").utf8.count)
+        #expect(committedOffset <= UInt64(JSONLContinuityAnchor.maximumByteCount))
+        let next = Self.minimalAssistantLine(messageId: "after-advisor", inputTokens: 3)
+        try appendUTF8(next + "\n", to: fixture.file.url)
+        reader.resetMetrics()
+        let incremental = try parser.parseAllFiles([fixture.file], claudeDataRoot: fixture.root)
+        let fresh = try ClaudeJSONLParser().parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        #expect(provisional.count == 2)
+        #expect(ParsedUsageEntryDeepSnapshot.sorted(provisional)
+                == ParsedUsageEntryDeepSnapshot.sorted(committed))
+        #expect(incremental.count == 3)
+        #expect(reader.seekOffsets == [0, committedOffset])
+        #expect(ParsedUsageEntryDeepSnapshot.sorted(incremental)
+                == ParsedUsageEntryDeepSnapshot.sorted(fresh))
     }
 
     @Test("optional 缺失可接受，显式空值与非 semver version 被过滤")
