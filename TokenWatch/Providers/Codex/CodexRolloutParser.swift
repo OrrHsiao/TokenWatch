@@ -140,111 +140,21 @@ final class CodexRolloutParser: @unchecked Sendable {
         let replaySecond = replayClassification.replaySecond
 
         var candidates: [CodexUsageCandidate] = []
-        var currentModel: CodexModelState?
-        var sessionCwd: String?
-        var sessionID = fileInfo.sessionID
-        var previousTotals: CodexTokenCounts?
-        var skippingReplay = replaySecond != nil
+        var checkpoint = CodexParserCheckpoint.initial(
+            sessionID: fileInfo.sessionID,
+            replaySecond: replaySecond
+        )
 
-        try Self.forEachLine(in: stream) { lineData, _ in
+        try Self.forEachLine(in: stream) { lineData, sourceOffset in
             guard let record = try? decoder.decode(CodexRecord.self, from: lineData) else {
                 return true
             }
-
-            switch record.payload {
-            case .sessionMeta(let meta):
-                sessionID = meta.id
-                sessionCwd = meta.cwd
-
-            case .turnContext(let context):
-                if let model = context.preferredModel {
-                    _ = CodexModelResolver.resolve(
-                        parsedModel: model,
-                        eventDate: record.timestamp,
-                        current: &currentModel
-                    )
-                }
-
-            case .eventMsg(let event):
-                guard event.type == "token_count",
-                      let timestamp = record.normalizedTimestamp else {
-                    return true
-                }
-
-                if skippingReplay, let replaySecond {
-                    if Self.timestampSecond(timestamp.key) == replaySecond {
-                        if let total = event.info?.totalTokenUsage {
-                            previousTotals = total
-                        }
-                        return true
-                    }
-                    skippingReplay = false
-                }
-
-                guard let info = event.info else { return true }
-                let delta: CodexTokenCounts
-                if let last = info.lastTokenUsage {
-                    delta = last
-                } else if let total = info.totalTokenUsage {
-                    delta = total.subtracting(previousTotals ?? .zero)
-                } else {
-                    return true
-                }
-                if let total = info.totalTokenUsage {
-                    previousTotals = total
-                }
-                guard !delta.isAllZero else { return true }
-
-                let model = CodexModelResolver.resolve(
-                    parsedModel: event.preferredModel ?? info.preferredModel,
-                    eventDate: timestamp.date,
-                    current: &currentModel
-                )
-                let normalized = delta.normalizedForBilling
-                let usage = TokenUsage(
-                    inputTokens: normalized.pureInput,
-                    cacheCreationInputTokens: 0,
-                    cacheReadInputTokens: normalized.cachedInput,
-                    outputTokens: normalized.output,
-                    reasoningTokens: normalized.reasoning,
-                    serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
-                    serviceTier: pricingSpeed == .fast ? "fast" : "",
-                    cacheCreation: nil,
-                    inferenceGeo: "",
-                    iterations: [],
-                    speed: ""
-                )
-                let messageID = "\(sessionID):\(timestamp.key)"
-                let entry = ParsedUsageEntry(
-                    recordUUID: messageID,
-                    messageId: messageID,
-                    requestId: nil,
-                    sessionID: sessionID,
-                    timestamp: timestamp.date,
-                    model: model,
-                    cwd: sessionCwd,
-                    agentId: nil,
-                    usage: usage,
-                    isSubagent: false,
-                    provider: .codex,
-                    upstreamProviderID: nil,
-                    upstreamCost: nil
-                )
-                candidates.append(CodexUsageCandidate(
-                    entry: entry,
-                    dedupKey: CodexEventDedupKey(
-                        timestampKey: timestamp.key,
-                        model: model,
-                        rawInput: normalized.rawInput,
-                        cachedInput: normalized.cachedInput,
-                        output: normalized.output,
-                        reasoning: normalized.reasoning,
-                        total: normalized.total
-                    )
-                ))
-
-            case .unknown:
-                break
+            if let candidate = checkpoint.consume(
+                record,
+                sourceOffset: sourceOffset,
+                pricingSpeed: pricingSpeed
+            ) {
+                candidates.append(candidate)
             }
             return true
         }
