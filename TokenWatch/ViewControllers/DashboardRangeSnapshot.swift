@@ -232,13 +232,15 @@ struct DashboardRangeSnapshot {
             for key in bucketKeys {
                 guard let summary = range.summary(in: stats, for: key) else { continue }
                 summaries[key, default: .zero] = summaries[key, default: .zero].merged(with: summary)
-                providerVisibleTokens += summary.totalTokens
+                providerVisibleTokens = providerVisibleTokens.addingSaturated(summary.totalTokens)
                 for (project, projectSummary) in summary.projectBreakdown {
-                    projectTotals[project, default: 0] += projectSummary.totalTokens
+                    projectTotals[project, default: 0] = projectTotals[project, default: 0]
+                        .addingSaturated(projectSummary.totalTokens)
                 }
             }
             if providerVisibleTokens > 0 {
-                toolTotals[providerID, default: 0] += providerVisibleTokens
+                toolTotals[providerID, default: 0] = toolTotals[providerID, default: 0]
+                    .addingSaturated(providerVisibleTokens)
             }
         }
 
@@ -303,7 +305,8 @@ struct DashboardRangeSnapshot {
 
             loadedProviderCount += 1
             if stats.overall.totalTokens > 0 {
-                toolTotals[providerID, default: 0] += stats.overall.totalTokens
+                toolTotals[providerID, default: 0] = toolTotals[providerID, default: 0]
+                    .addingSaturated(stats.overall.totalTokens)
             }
             for (month, summary) in stats.byMonth {
                 monthSummaries[month, default: .zero] = monthSummaries[month, default: .zero].merged(with: summary)
@@ -377,10 +380,10 @@ struct DashboardRangeSnapshot {
     }
 
     private static func makeToolShareSlices(_ totals: [ProviderID: Int]) -> [UsageShareSlice] {
-        let totalTokens = totals.values.reduce(0, +)
-        guard totalTokens > 0 else { return [] }
-        return totals
-            .filter { $0.value > 0 }
+        let visibleTotals = totals.filter { $0.value > 0 }
+        let proportionalTotal = visibleTotals.values.reduce(0.0) { $0 + Double($1) }
+        guard proportionalTotal > 0 else { return [] }
+        return visibleTotals
             .sorted { lhs, rhs in
                 if lhs.value != rhs.value {
                     return lhs.value > rhs.value
@@ -392,7 +395,7 @@ struct DashboardRangeSnapshot {
                     id: providerID.rawValue,
                     label: providerName(providerID),
                     totalTokens: tokens,
-                    percentage: Double(tokens) / Double(totalTokens)
+                    percentage: Double(tokens) / proportionalTotal
                 )
             }
     }
@@ -431,12 +434,14 @@ struct DashboardUsageSummary {
 
         for (_, state) in states {
             guard let stats = state.stats else { continue }
-            inputTokens += stats.overall.inputTokens
-            outputTokens += stats.overall.outputTokens
-            cacheReadTokens += stats.overall.cacheReadTokens
-            cacheCreationTokens += stats.overall.cacheCreationTokens
-            reasoningTokens += stats.overall.reasoningTokens
-            totalTokens += stats.overall.totalTokens
+            inputTokens = inputTokens.addingSaturated(stats.overall.inputTokens)
+            outputTokens = outputTokens.addingSaturated(stats.overall.outputTokens)
+            cacheReadTokens = cacheReadTokens.addingSaturated(stats.overall.cacheReadTokens)
+            cacheCreationTokens = cacheCreationTokens.addingSaturated(
+                stats.overall.cacheCreationTokens
+            )
+            reasoningTokens = reasoningTokens.addingSaturated(stats.overall.reasoningTokens)
+            totalTokens = totalTokens.addingSaturated(stats.overall.totalTokens)
             cost += stats.overall.cost
             entryCount += stats.overall.entryCount
             for (project, summary) in stats.byProject {
@@ -518,7 +523,8 @@ private enum DashboardProjectRows {
         var totals: [String: Int] = [:]
         for (project, tokens) in projects where tokens > 0 {
             guard let displayName = displayNameOrNil(for: project) else { continue }
-            totals[displayName, default: 0] += tokens
+            totals[displayName, default: 0] = totals[displayName, default: 0]
+                .addingSaturated(tokens)
         }
         return totals
     }
@@ -566,12 +572,12 @@ private enum DashboardProjectRows {
 private extension UsageSummary {
     func merged(with other: UsageSummary) -> UsageSummary {
         UsageSummary(
-            inputTokens: inputTokens + other.inputTokens,
-            outputTokens: outputTokens + other.outputTokens,
-            cacheReadTokens: cacheReadTokens + other.cacheReadTokens,
-            cacheCreationTokens: cacheCreationTokens + other.cacheCreationTokens,
-            reasoningTokens: reasoningTokens + other.reasoningTokens,
-            totalTokens: totalTokens + other.totalTokens,
+            inputTokens: inputTokens.addingSaturated(other.inputTokens),
+            outputTokens: outputTokens.addingSaturated(other.outputTokens),
+            cacheReadTokens: cacheReadTokens.addingSaturated(other.cacheReadTokens),
+            cacheCreationTokens: cacheCreationTokens.addingSaturated(other.cacheCreationTokens),
+            reasoningTokens: reasoningTokens.addingSaturated(other.reasoningTokens),
+            totalTokens: totalTokens.addingSaturated(other.totalTokens),
             cost: cost + other.cost,
             entryCount: entryCount + other.entryCount,
             modelBreakdown: modelBreakdown.merging(other.modelBreakdown) { $0.merged(with: $1) },

@@ -89,7 +89,8 @@ enum CalendarHeatmapBuilder {
 
             for (dateKey, summary) in stats.byDay
             where dateKey >= rangeStartKey && dateKey <= rangeEndKey {
-                dayTotals[dateKey, default: 0] += summary.totalTokens
+                dayTotals[dateKey, default: 0] = dayTotals[dateKey, default: 0]
+                    .addingSaturated(summary.totalTokens)
             }
         }
 
@@ -98,7 +99,7 @@ enum CalendarHeatmapBuilder {
             let key = dateKey(for: date, calendar: calendar)
             return dayTotals[key, default: 0]
         }
-        let monthTotalTokens = effectiveTotals.reduce(0, +)
+        let monthTotalTokens = effectiveTotals.reduce(0) { $0.addingSaturated($1) }
         let maxDailyTokens = effectiveTotals.max() ?? 0
 
         var placeholderIndex = 0
@@ -199,10 +200,11 @@ enum CalendarHeatmapBuilder {
     ) -> Int {
         states.values.reduce(0) { total, state in
             guard let stats = state.stats else { return total }
-            return total + stats.byDay.reduce(0) { partial, entry in
+            let providerTotal = stats.byDay.reduce(0) { partial, entry in
                 guard entry.key >= startKey, entry.key <= endKey else { return partial }
-                return partial + entry.value.totalTokens
+                return partial.addingSaturated(entry.value.totalTokens)
             }
+            return total.addingSaturated(providerTotal)
         }
     }
 
@@ -211,7 +213,7 @@ enum CalendarHeatmapBuilder {
         on dateKey: String
     ) -> Int {
         states.values.reduce(0) { total, state in
-            total + (state.stats?.byDay[dateKey]?.totalTokens ?? 0)
+            total.addingSaturated(state.stats?.byDay[dateKey]?.totalTokens ?? 0)
         }
     }
 

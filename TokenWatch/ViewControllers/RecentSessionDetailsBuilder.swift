@@ -170,7 +170,7 @@ enum RecentSessionDetailsBuilder {
         return RecentSessionDetailsSnapshot(
             rows: rows,
             totalSessionCount: rows.count,
-            totalTokens: rows.reduce(0) { $0 + $1.totalTokens },
+            totalTokens: rows.reduce(0) { $0.addingSaturated($1.totalTokens) },
             totalCost: rows.reduce(0) { $0 + $1.cost },
             loadedProviderCount: loadedProviderCount,
             loadingProviderCount: loadingProviderCount,
@@ -273,15 +273,23 @@ private struct RecentSessionUsageAccumulator {
     private(set) var entryCount = 0
 
     var totalTokens: Int {
-        inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens + reasoningTokens
+        [
+            inputTokens,
+            outputTokens,
+            cacheReadTokens,
+            cacheCreationTokens,
+            reasoningTokens,
+        ].reduce(0) { $0.addingSaturated($1) }
     }
 
     mutating func add(_ entry: ParsedUsageEntry, cost entryCost: Double) {
-        inputTokens += entry.usage.inputTokens
-        outputTokens += entry.usage.outputTokens
-        cacheReadTokens += entry.usage.cacheReadInputTokens
-        cacheCreationTokens += entry.usage.totalCacheCreationTokens
-        reasoningTokens += entry.usage.reasoningTokens
+        inputTokens = inputTokens.addingSaturated(entry.usage.inputTokens)
+        outputTokens = outputTokens.addingSaturated(entry.usage.outputTokens)
+        cacheReadTokens = cacheReadTokens.addingSaturated(entry.usage.cacheReadInputTokens)
+        cacheCreationTokens = cacheCreationTokens.addingSaturated(
+            entry.usage.totalCacheCreationTokens
+        )
+        reasoningTokens = reasoningTokens.addingSaturated(entry.usage.reasoningTokens)
         cost += entryCost
         entryCount += 1
     }

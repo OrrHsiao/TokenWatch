@@ -47,12 +47,12 @@ enum TotalStatsBuilder {
             guard let stats = state.stats else { continue }
 
             loadedProviderCount += 1
-            totalTokens += stats.overall.totalTokens
+            totalTokens = totalTokens.addingSaturated(stats.overall.totalTokens)
             totalCost += stats.overall.cost
             for (model, summary) in stats.byModel {
                 let current = modelTotals[model] ?? (tokens: 0, cost: 0)
                 modelTotals[model] = (
-                    tokens: current.tokens + summary.totalTokens,
+                    tokens: current.tokens.addingSaturated(summary.totalTokens),
                     cost: current.cost + summary.cost
                 )
             }

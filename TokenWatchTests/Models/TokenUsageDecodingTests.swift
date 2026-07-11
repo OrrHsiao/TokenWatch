@@ -6,6 +6,15 @@ import Testing
 /// 验证 JSONL 中 usage 对象的正确解析
 struct TokenUsageDecodingTests {
 
+    @Test("饱和加法同时覆盖正负溢出方向")
+    func saturatedAdditionClampsBothOverflowDirections() {
+        #expect(Int.max.addingSaturated(1) == Int.max)
+        #expect(Int.min.addingSaturated(-1) == Int.min)
+        #expect(Int.max.addingSaturated(-1) == Int.max - 1)
+        #expect(Int.min.addingSaturated(1) == Int.min + 1)
+        #expect(40.addingSaturated(2) == 42)
+    }
+
     // MARK: - TokenUsage 解码
 
     @Test("解析完整 usage JSON")
@@ -227,6 +236,23 @@ struct TokenUsageDecodingTests {
         #expect(usage.cacheCreate5mTokens == 500)
         #expect(usage.cacheCreate1hTokens == 0)
         #expect(usage.totalCacheCreationTokens == 500)
+    }
+
+    @Test("cache creation 细分之和溢出时饱和到 Int.max")
+    func cacheCreationBreakdownSaturatesAtIntMax() {
+        let usage = TokenUsage(
+            inputTokens: 0, cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0, outputTokens: 0,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "standard",
+            cacheCreation: CacheCreation(
+                ephemeral1hInputTokens: .max,
+                ephemeral5mInputTokens: 1
+            ),
+            inferenceGeo: "", iterations: [], speed: "standard"
+        )
+
+        #expect(usage.totalCacheCreationTokens == Int.max)
     }
 
     // MARK: - ClaudeRecord 解码

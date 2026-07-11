@@ -50,10 +50,10 @@ enum StatusBarTitleBuilder {
         states.values.reduce(0) { acc, state in
             guard let summary = state.stats?.byDay[todayKey] else { return acc }
             return acc
-                + summary.inputTokens
-                + summary.outputTokens
-                + summary.cacheReadTokens
-                + summary.cacheCreationTokens
+                .addingSaturated(summary.inputTokens)
+                .addingSaturated(summary.outputTokens)
+                .addingSaturated(summary.cacheReadTokens)
+                .addingSaturated(summary.cacheCreationTokens)
         }
     }
 

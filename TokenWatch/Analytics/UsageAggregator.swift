@@ -145,13 +145,15 @@ private struct UsageSummaryAccumulator {
     private(set) var entryCount = 0
 
     mutating func add(_ entry: ParsedUsageEntry, cost entryCost: Double) {
-        inputTokens += entry.usage.inputTokens
-        outputTokens += entry.usage.outputTokens
-        cacheReadTokens += entry.usage.cacheReadInputTokens
+        inputTokens = inputTokens.addingSaturated(entry.usage.inputTokens)
+        outputTokens = outputTokens.addingSaturated(entry.usage.outputTokens)
+        cacheReadTokens = cacheReadTokens.addingSaturated(entry.usage.cacheReadInputTokens)
         // cache_creation_input_tokens 与 ephemeral_5m/1h 是总分关系
         // 由 TokenUsage.totalCacheCreationTokens 统一处理，避免 double-count
-        cacheCreationTokens += entry.usage.totalCacheCreationTokens
-        reasoningTokens += entry.usage.reasoningTokens
+        cacheCreationTokens = cacheCreationTokens.addingSaturated(
+            entry.usage.totalCacheCreationTokens
+        )
+        reasoningTokens = reasoningTokens.addingSaturated(entry.usage.reasoningTokens)
         cost += entryCost
         entryCount += 1
     }
@@ -166,7 +168,13 @@ private struct UsageSummaryAccumulator {
             cacheReadTokens: cacheReadTokens,
             cacheCreationTokens: cacheCreationTokens,
             reasoningTokens: reasoningTokens,
-            totalTokens: inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens + reasoningTokens,
+            totalTokens: [
+                inputTokens,
+                outputTokens,
+                cacheReadTokens,
+                cacheCreationTokens,
+                reasoningTokens,
+            ].reduce(0) { $0.addingSaturated($1) },
             cost: cost,
             entryCount: entryCount,
             modelBreakdown: modelBreakdown,

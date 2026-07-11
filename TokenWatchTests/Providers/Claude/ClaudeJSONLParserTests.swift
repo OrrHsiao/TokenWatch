@@ -265,11 +265,18 @@ struct ClaudeJSONLParserTests {
             #"{"timestamp":"2026-06-13T12:00:00.123Z","message":{"id":"z-millis","usage":{"input_tokens":1,"output_tokens":1}}}"#,
             #"{"timestamp":"2026-06-13T12:00:00+08:00","message":{"id":"offset-seconds","usage":{"input_tokens":1,"output_tokens":1}}}"#,
             #"{"timestamp":"2026-06-13T12:00:00.123-07:30","message":{"id":"offset-millis","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00+23:59","message":{"id":"positive-max-offset","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00-23:59","message":{"id":"negative-max-offset","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00-00:00","message":{"id":"negative-zero-offset","usage":{"input_tokens":1,"output_tokens":1}}}"#,
         ]
         let rejected = [
             #"{"timestamp":"2026-06-13T12:00:00.1Z","message":{"id":"one-digit","usage":{"input_tokens":1,"output_tokens":1}}}"#,
             #"{"timestamp":"2026-06-13T12:00:00.123456Z","message":{"id":"six-digits","usage":{"input_tokens":1,"output_tokens":1}}}"#,
             #"{"timestamp":"2026-06-13T12:00:00+0800","message":{"id":"compact-offset","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00+24:00","message":{"id":"positive-hour-overflow","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00-24:00","message":{"id":"negative-hour-overflow","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00+00:60","message":{"id":"positive-minute-overflow","usage":{"input_tokens":1,"output_tokens":1}}}"#,
+            #"{"timestamp":"2026-06-13T12:00:00-00:60","message":{"id":"negative-minute-overflow","usage":{"input_tokens":1,"output_tokens":1}}}"#,
         ]
         let (file, root, cleanup) = try makeClaudeJSONL(accepted + rejected)
         defer { cleanup() }
@@ -278,7 +285,48 @@ struct ClaudeJSONLParserTests {
 
         #expect(Set(entries.map(\.messageId)) == Set([
             "z-seconds", "z-millis", "offset-seconds", "offset-millis",
+            "positive-max-offset", "negative-max-offset", "negative-zero-offset",
         ]))
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        func expectedDate(
+            year: Int = 2026,
+            month: Int = 6,
+            day: Int,
+            hour: Int,
+            minute: Int,
+            nanosecond: Int = 0
+        ) throws -> Date {
+            try #require(calendar.date(from: DateComponents(
+                year: year,
+                month: month,
+                day: day,
+                hour: hour,
+                minute: minute,
+                second: 0,
+                nanosecond: nanosecond
+            )))
+        }
+        func timestamp(for id: String) throws -> Date {
+            try #require(entries.first { $0.messageId == id }?.timestamp)
+        }
+
+        #expect(abs(try timestamp(for: "offset-seconds").timeIntervalSince(
+            expectedDate(day: 13, hour: 4, minute: 0)
+        )) < 0.000_001)
+        #expect(abs(try timestamp(for: "offset-millis").timeIntervalSince(
+            expectedDate(day: 13, hour: 19, minute: 30, nanosecond: 123_000_000)
+        )) < 0.000_001)
+        #expect(abs(try timestamp(for: "positive-max-offset").timeIntervalSince(
+            expectedDate(day: 12, hour: 12, minute: 1)
+        )) < 0.000_001)
+        #expect(abs(try timestamp(for: "negative-max-offset").timeIntervalSince(
+            expectedDate(day: 14, hour: 11, minute: 59)
+        )) < 0.000_001)
+        #expect(abs(try timestamp(for: "negative-zero-offset").timeIntervalSince(
+            expectedDate(day: 13, hour: 12, minute: 0)
+        )) < 0.000_001)
     }
 
     @Test("cache breakdown 子字段缺失按零，显式 null 或负数使行失败")

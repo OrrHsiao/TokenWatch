@@ -43,17 +43,31 @@ enum MonthlyBarChartStyle {
     }
 
     static func tokenAxisLabel(for value: Double) -> String {
-        let tokens = max(0, Int(value.rounded()))
+        guard value.isFinite, value > 0 else { return "0" }
+        let tokens = value.rounded()
         if tokens < 1_000 {
-            return String(tokens)
+            return String(format: "%.0f", locale: Locale(identifier: "en_US_POSIX"), tokens)
         }
         if tokens < 1_000_000 {
-            return "\(Int((Double(tokens) / 1_000).rounded()))k"
+            return String(
+                format: "%.0fk",
+                locale: Locale(identifier: "en_US_POSIX"),
+                (tokens / 1_000).rounded()
+            )
         }
-        return "\(Int((Double(tokens) / 1_000_000).rounded()))M"
+        return String(
+            format: "%.0fM",
+            locale: Locale(identifier: "en_US_POSIX"),
+            (tokens / 1_000_000).rounded()
+        )
     }
 
     static func costAxisLabel(for value: Double) -> String {
-        "$\(max(0, Int(value.rounded())))"
+        guard value.isFinite, value > 0 else { return "$0" }
+        return String(
+            format: "$%.0f",
+            locale: Locale(identifier: "en_US_POSIX"),
+            value.rounded()
+        )
     }
 }

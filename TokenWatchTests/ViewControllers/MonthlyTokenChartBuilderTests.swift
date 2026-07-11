@@ -433,6 +433,58 @@ struct MonthlyTokenChartBuilderTests {
         #expect(!snapshot.modelShareSlices.map(\.label).contains("old-model"))
     }
 
+    @Test("极值 bucket、模型段与占比汇总饱和到 Int.max")
+    func extremeTokenReducersSaturateAtIntMax() {
+        let calendar = utcCalendar()
+        let extremeModels = Dictionary(uniqueKeysWithValues: ["a", "b", "c", "d", "e", "f"].map {
+            ($0, Int.max)
+        })
+        let claudeStats = makeStats(byMonth: [
+            "2026-06": makeSummary(total: .max, modelBreakdown: extremeModels),
+        ])
+        let codexStats = makeStats(byMonth: [
+            "2026-06": makeSummary(total: 1, modelBreakdown: ["a": 1]),
+        ])
+
+        let snapshot = MonthlyTokenChartBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            ],
+            now: date(2026, 6, 20, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.totalTokens == Int.max)
+        #expect(snapshot.bucket("2026-06")?.totalTokens == Int.max)
+        #expect(snapshot.modelShareSlices.first { $0.id == "a" }?.totalTokens == Int.max)
+        #expect(snapshot.modelShareSlices.allSatisfy { $0.percentage.isFinite })
+        #expect(abs(snapshot.modelShareSlices.reduce(0) { $0 + $1.percentage } - 1) < 0.000_001)
+        #expect(snapshot.modelShareSlices.allSatisfy { 0...1 ~= $0.percentage })
+        #expect(snapshot.bucket("2026-06")?.modelSegments.last?.isOverflow == true)
+        #expect(snapshot.bucket("2026-06")?.modelSegments.last?.totalTokens == Int.max)
+        let segmentPercentages = snapshot.bucket("2026-06")?.modelSegments.map(\.percentage) ?? []
+        #expect(abs(segmentPercentages.reduce(0, +) - 1) < 0.000_001)
+        #expect(segmentPercentages.allSatisfy { 0...1 ~= $0 })
+        #expect(snapshot.toolShareSlices.allSatisfy { $0.percentage.isFinite })
+        #expect(abs(snapshot.toolShareSlices.reduce(0) { $0 + $1.percentage } - 1) < 0.000_001)
+        #expect(snapshot.toolShareSlices.allSatisfy { 0...1 ~= $0.percentage })
+    }
+
+    @Test("极值 token 轴标签不执行越界 Int 转换")
+    func extremeTokenAxisLabelDoesNotTrap() {
+        #expect(MonthlyBarChartStyle.tokenAxisLabel(for: Double(Int.max)) == "9223372036855M")
+        #expect(MonthlyBarChartStyle.costAxisLabel(for: Double(Int.max)).hasPrefix("$922337203685"))
+        #expect(MonthlyBarChartStyle.tokenAxisLabel(for: .greatestFiniteMagnitude).hasSuffix("M"))
+        #expect(MonthlyBarChartStyle.costAxisLabel(for: .greatestFiniteMagnitude).hasPrefix("$"))
+        #expect(MonthlyBarChartStyle.tokenAxisLabel(for: .infinity) == "0")
+        #expect(MonthlyBarChartStyle.tokenAxisLabel(for: -.infinity) == "0")
+        #expect(MonthlyBarChartStyle.tokenAxisLabel(for: .nan) == "0")
+        #expect(MonthlyBarChartStyle.costAxisLabel(for: .infinity) == "$0")
+        #expect(MonthlyBarChartStyle.costAxisLabel(for: -.infinity) == "$0")
+        #expect(MonthlyBarChartStyle.costAxisLabel(for: .nan) == "$0")
+    }
+
     @Test("每个月 bucket 包含按模型拆分的 token 段")
     func buildsMonthlyModelSegmentsForStackedBars() {
         let calendar = utcCalendar()

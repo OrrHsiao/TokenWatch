@@ -1,5 +1,14 @@
 import Foundation
 
+extension Int {
+    /// 返回饱和加法结果；发生溢出时按溢出方向夹到 Int 的对应边界。
+    func addingSaturated(_ other: Int) -> Int {
+        let (sum, overflow) = addingReportingOverflow(other)
+        guard overflow else { return sum }
+        return other >= 0 ? .max : .min
+    }
+}
+
 /// Claude Code JSONL 中 assistant 记录的 usage 对象完整字段映射
 /// 参考 ccusage 的数据模型设计
 struct TokenUsage: Decodable, Sendable {
@@ -148,6 +157,6 @@ extension TokenUsage {
 
     /// cache 写入 token 总量（用于展示／聚合，不会重复计入扁平字段）
     var totalCacheCreationTokens: Int {
-        cacheCreate5mTokens + cacheCreate1hTokens
+        cacheCreate5mTokens.addingSaturated(cacheCreate1hTokens)
     }
 }

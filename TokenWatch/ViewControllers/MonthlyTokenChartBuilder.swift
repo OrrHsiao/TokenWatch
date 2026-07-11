@@ -352,18 +352,23 @@ enum MonthlyTokenChartBuilder {
             for bucketKey in bucketKeys {
                 let summary = period.summary(in: stats, for: bucketKey)
                 let monthTokens = summary?.totalTokens ?? 0
-                providerVisibleTokens += monthTokens
-                totals[bucketKey, default: 0] += monthTokens
+                providerVisibleTokens = providerVisibleTokens.addingSaturated(monthTokens)
+                totals[bucketKey, default: 0] = totals[bucketKey, default: 0]
+                    .addingSaturated(monthTokens)
                 costs[bucketKey, default: 0] += summary?.cost ?? 0
 
                 for (model, modelSummary) in summary?.modelBreakdown ?? [:] {
-                    modelTotals[model, default: 0] += modelSummary.totalTokens
-                    modelTotalsByBucket[bucketKey, default: [:]][model, default: 0] += modelSummary.totalTokens
+                    modelTotals[model, default: 0] = modelTotals[model, default: 0]
+                        .addingSaturated(modelSummary.totalTokens)
+                    let currentBucketModelTotal = modelTotalsByBucket[bucketKey]?[model] ?? 0
+                    modelTotalsByBucket[bucketKey, default: [:]][model] = currentBucketModelTotal
+                        .addingSaturated(modelSummary.totalTokens)
                     modelCostsByBucket[bucketKey, default: [:]][model, default: 0] += modelSummary.cost
                 }
             }
             if providerVisibleTokens > 0 {
-                toolTotals[providerID, default: 0] += providerVisibleTokens
+                toolTotals[providerID, default: 0] = toolTotals[providerID, default: 0]
+                    .addingSaturated(providerVisibleTokens)
             }
         }
 
@@ -404,7 +409,7 @@ enum MonthlyTokenChartBuilder {
 
         return MonthlyTokenChartSnapshot(
             monthBuckets: buckets,
-            totalTokens: buckets.reduce(0) { $0 + $1.totalTokens },
+            totalTokens: buckets.reduce(0) { $0.addingSaturated($1.totalTokens) },
             totalCost: buckets.reduce(0) { $0 + $1.totalCost },
             maxMonthlyTokens: maxMonthlyTokens,
             maxMonthlyCost: maxMonthlyCost,
@@ -444,16 +449,21 @@ enum MonthlyTokenChartBuilder {
         guard monthTotalTokens > 0, !legendEntries.isEmpty else { return [] }
         let leadingModelNames = legendEntries.filter { !$0.isOverflow }.map(\.modelName)
         let leadingModelNameSet = Set(leadingModelNames)
+        let attributedTokenTotal = totals.values.reduce(0.0) { partialResult, tokens in
+            tokens > 0 ? partialResult + Double(tokens) : partialResult
+        }
+        let proportionalTotal = max(Double(monthTotalTokens), attributedTokenTotal)
 
         return legendEntries.compactMap { entry in
             let totalTokens: Int
             let totalCost: Double
+            let proportionalTokens: Double
             if entry.isOverflow {
                 totalTokens = totals.reduce(0) { partialResult, entry in
                     guard !leadingModelNameSet.contains(entry.key), entry.value > 0 else {
                         return partialResult
                     }
-                    return partialResult + entry.value
+                    return partialResult.addingSaturated(entry.value)
                 }
                 totalCost = costs.reduce(0) { partialResult, entry in
                     guard !leadingModelNameSet.contains(entry.key), entry.value > 0 else {
@@ -461,9 +471,16 @@ enum MonthlyTokenChartBuilder {
                     }
                     return partialResult + entry.value
                 }
+                proportionalTokens = totals.reduce(0.0) { partialResult, entry in
+                    guard !leadingModelNameSet.contains(entry.key), entry.value > 0 else {
+                        return partialResult
+                    }
+                    return partialResult + Double(entry.value)
+                }
             } else {
                 totalTokens = totals[entry.modelName, default: 0]
                 totalCost = costs[entry.modelName, default: 0]
+                proportionalTokens = Double(max(0, totalTokens))
             }
 
             guard totalTokens > 0 else { return nil }
@@ -472,7 +489,7 @@ enum MonthlyTokenChartBuilder {
                 modelName: entry.modelName,
                 totalTokens: totalTokens,
                 totalCost: totalCost,
-                percentage: Double(totalTokens) / Double(monthTotalTokens),
+                percentage: proportionalTokens / proportionalTotal,
                 isOverflow: entry.isOverflow
             )
         }
@@ -482,8 +499,8 @@ enum MonthlyTokenChartBuilder {
         _ values: [(id: String, label: String, totalTokens: Int)]
     ) -> [UsageShareSlice] {
         let visibleValues = values.filter { $0.totalTokens > 0 }
-        let grandTotal = visibleValues.reduce(0) { $0 + $1.totalTokens }
-        guard grandTotal > 0 else { return [] }
+        let proportionalTotal = visibleValues.reduce(0.0) { $0 + Double($1.totalTokens) }
+        guard proportionalTotal > 0 else { return [] }
 
         return visibleValues.sorted { lhs, rhs in
             if lhs.totalTokens != rhs.totalTokens {
@@ -495,7 +512,7 @@ enum MonthlyTokenChartBuilder {
                 id: value.id,
                 label: value.label,
                 totalTokens: value.totalTokens,
-                percentage: Double(value.totalTokens) / Double(grandTotal)
+                percentage: Double(value.totalTokens) / proportionalTotal
             )
         }
     }

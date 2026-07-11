@@ -52,6 +52,37 @@ struct StatusBarTitleBuilderTests {
         #expect(StatusBarTitleBuilder.build(states: states, todayKey: today) == "410.0k")
     }
 
+    @Test("单日字段与跨 provider 极值汇总饱和到 Int.max")
+    func extremeTokenReducersSaturateAtIntMax() {
+        let extreme = UsageSummary(
+            inputTokens: .max,
+            outputTokens: 1,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: .max,
+            cost: 0,
+            entryCount: 1,
+            modelBreakdown: [:]
+        )
+        let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(
+                stats: makeStats(byDay: [today: extreme]),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            ),
+            .codex: .init(
+                stats: makeStats(byDay: [today: makeSummary(input: 1)]),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            ),
+        ]
+
+        #expect(StatusBarTitleBuilder.totalTokens(states: states, todayKey: today) == Int.max)
+    }
+
     /// 某 provider 的 byDay 没有 today key → 视作 0,其它正常累加
     @Test func missingTodayBucketTreatedAsZero() {
         let claudeStats = makeStats(byDay: [today: makeSummary(input: 1_500, output: 0)])
