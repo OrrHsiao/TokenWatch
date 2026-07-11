@@ -100,4 +100,23 @@ struct ClaudeJSONLScannerTests {
         #expect(paths == paths.sorted())
         #expect(paths == createdOutOfOrder.map { $0.standardizedFileURL.path }.sorted())
     }
+
+    @Test("目录枚举失败向上抛出,不伪装成空扫描")
+    func scanAllPropagatesEnumerationFailure() {
+        let scanner = ClaudeJSONLScanner(directoryLister: FailingJSONLDirectoryLister())
+
+        #expect(throws: InjectedDirectoryListingError.self) {
+            try scanner.scanAllJSONLFiles(in: URL(fileURLWithPath: "/tmp/claude-enumeration-failure"))
+        }
+    }
+}
+
+private enum InjectedDirectoryListingError: Error {
+    case failed
+}
+
+private struct FailingJSONLDirectoryLister: JSONLDirectoryListing {
+    func recursiveFileURLs(in directory: URL) throws -> [URL] {
+        throw InjectedDirectoryListingError.failed
+    }
 }

@@ -32,6 +32,101 @@ protocol JSONLFileReading: Sendable {
     func openSnapshot(for url: URL) throws -> JSONLFileSnapshot
 }
 
+/// Claude/Codex 共享的递归目录枚举入口；完整枚举失败时必须抛错，不能把部分结果当成功。
+protocol JSONLDirectoryListing: Sendable {
+    func recursiveFileURLs(in directory: URL) throws -> [URL]
+}
+
+/// 目录枚举适配层；测试可确定性模拟“已返回部分 URL 后才失败”。
+protocol JSONLDirectoryEnumerating: Sendable {
+    func recursiveFileURLs(
+        in directory: URL,
+        errorHandler: @escaping (URL, Error) -> Bool
+    ) -> [URL]?
+}
+
+enum JSONLDirectoryListingError: LocalizedError {
+    case notDirectory(URL)
+    case unableToEnumerate(URL)
+
+    var errorDescription: String? {
+        switch self {
+        case .notDirectory(let url):
+            return "目标不是目录: \(url.path)"
+        case .unableToEnumerate(let url):
+            return "无法枚举目录: \(url.path)"
+        }
+    }
+}
+
+/// 仅在完整走完 DirectoryEnumerator 后返回结果；任一 EACCES/I/O 错误都会丢弃部分列表并上抛。
+struct SystemJSONLDirectoryEnumerator: JSONLDirectoryEnumerating {
+    func recursiveFileURLs(
+        in directory: URL,
+        errorHandler: @escaping (URL, Error) -> Bool
+    ) -> [URL]? {
+        guard let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants],
+            errorHandler: errorHandler
+        ) else {
+            return nil
+        }
+
+        var urls: [URL] = []
+        for case let url as URL in enumerator {
+            urls.append(url)
+        }
+        return urls
+    }
+}
+
+struct SystemJSONLDirectoryLister: JSONLDirectoryListing {
+    private let directoryEnumerator: any JSONLDirectoryEnumerating
+
+    init(directoryEnumerator: any JSONLDirectoryEnumerating = SystemJSONLDirectoryEnumerator()) {
+        self.directoryEnumerator = directoryEnumerator
+    }
+
+    func recursiveFileURLs(in directory: URL) throws -> [URL] {
+        do {
+            let values = try directory.resourceValues(forKeys: [.isDirectoryKey])
+            guard values.isDirectory == true else {
+                throw JSONLDirectoryListingError.notDirectory(directory)
+            }
+        } catch {
+            if isMissingDirectoryError(error) {
+                return []
+            }
+            throw error
+        }
+
+        var enumerationError: Error?
+        guard let urls = directoryEnumerator.recursiveFileURLs(
+            in: directory,
+            errorHandler: { _, error in
+                enumerationError = error
+                return false
+            }
+        ) else {
+            throw JSONLDirectoryListingError.unableToEnumerate(directory)
+        }
+
+        if let enumerationError {
+            throw enumerationError
+        }
+        return urls
+    }
+
+    private func isMissingDirectoryError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return (nsError.domain == NSCocoaErrorDomain
+            && nsError.code == CocoaError.fileReadNoSuchFile.rawValue)
+            || (nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT))
+    }
+}
+
 /// 使用 `FileHandle` 打开生产 JSONL 文件，并从同一 descriptor 读取 metadata。
 struct SystemJSONLFileReader: JSONLFileReading {
     /// 先打开文件再对同一 descriptor 执行 `fstat`，返回一致的 metadata 与 stream。

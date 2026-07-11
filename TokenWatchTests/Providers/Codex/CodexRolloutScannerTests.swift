@@ -79,4 +79,124 @@ struct CodexRolloutScannerTests {
         let files = try scanner.scanAll(in: nonExistent)
         #expect(files.isEmpty)
     }
+
+    @Test("目录枚举失败向上抛出,不伪装成空扫描")
+    func enumerationFailureIsPropagated() {
+        let scanner = CodexRolloutScanner(directoryLister: FailingCodexDirectoryLister())
+
+        #expect(throws: InjectedCodexDirectoryListingError.self) {
+            try scanner.scanAll(in: URL(fileURLWithPath: "/tmp/codex-enumeration-failure"))
+        }
+    }
+
+    @Test("live 枚举成功但 archived 失败时整次扫描失败")
+    func archivedEnumerationFailureDiscardsLiveResults() {
+        let root = URL(fileURLWithPath: "/tmp/codex-archived-enumeration-failure", isDirectory: true)
+        let sessions = root.appendingPathComponent("sessions", isDirectory: true)
+        let liveFile = sessions.appendingPathComponent(
+            "2026/05/04/rollout-live-00000000-0000-0000-0000-000000000001.jsonl"
+        )
+        let scanner = CodexRolloutScanner(
+            directoryLister: ArchivedFailingCodexDirectoryLister(liveFile: liveFile)
+        )
+
+        #expect(throws: InjectedCodexDirectoryListingError.self) {
+            try scanner.scanAll(in: root)
+        }
+    }
+
+    @Test("live 与 archived 各自按路径排序且 live 保持优先")
+    func scanOrderIsDeterministicAcrossDirectoryEnumerationOrder() throws {
+        let root = URL(fileURLWithPath: "/tmp/codex-deterministic-order", isDirectory: true)
+        let sessions = root.appendingPathComponent("sessions", isDirectory: true)
+        let archived = root.appendingPathComponent("archived_sessions", isDirectory: true)
+        let liveA = sessions.appendingPathComponent(
+            "2026/05/04/rollout-a-00000000-0000-0000-0000-000000000001.jsonl"
+        )
+        let liveZ = sessions.appendingPathComponent(
+            "2026/05/04/rollout-z-00000000-0000-0000-0000-000000000002.jsonl"
+        )
+        let archivedB = archived.appendingPathComponent(
+            "2026/05/04/rollout-b-00000000-0000-0000-0000-000000000003.jsonl"
+        )
+        let archivedY = archived.appendingPathComponent(
+            "2026/05/04/rollout-y-00000000-0000-0000-0000-000000000004.jsonl"
+        )
+        let lister = StubCodexDirectoryLister(listings: [
+            sessions.standardizedFileURL.path: [liveZ, liveA],
+            archived.standardizedFileURL.path: [archivedY, archivedB],
+        ])
+
+        let files = try CodexRolloutScanner(directoryLister: lister).scanAll(in: root)
+
+        #expect(files.map(\.url) == [liveA, liveZ, archivedB, archivedY])
+        #expect(files.map(\.isArchived) == [false, false, true, true])
+    }
+
+    @Test("逆序枚举经 scanner 到 parser 后仍由字典序文件稳定赢得 first-wins")
+    func deterministicScanOrderStabilizesParserAttribution() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CodexScannerAttribution-\(UUID().uuidString)", isDirectory: true)
+        let sessions = root.appendingPathComponent("sessions", isDirectory: true)
+        let liveA = sessions.appendingPathComponent(
+            "2026/05/04/rollout-a-00000000-0000-0000-0000-000000000001.jsonl"
+        )
+        let liveZ = sessions.appendingPathComponent(
+            "2026/05/04/rollout-z-00000000-0000-0000-0000-000000000002.jsonl"
+        )
+        try FileManager.default.createDirectory(
+            at: liveA.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let turnContext = #"{"timestamp":"2026-05-04T08:35:44.717Z","type":"turn_context","payload":{"model":"gpt-5"}}"#
+        let usageEvent = #"{"timestamp":"2026-05-04T08:35:59.868Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200,"reasoning_output_tokens":50,"total_tokens":1200}}}}"#
+        func writeSession(to url: URL, id: String, cwd: String) throws {
+            let metadata = #"{"timestamp":"2026-05-04T08:35:44.692Z","type":"session_meta","payload":{"id":"\#(id)","cwd":"\#(cwd)","model_provider":"openai"}}"#
+            try ([metadata, turnContext, usageEvent].joined(separator: "\n") + "\n")
+                .write(to: url, atomically: true, encoding: .utf8)
+        }
+        try writeSession(to: liveA, id: "session-a", cwd: "/project/a")
+        try writeSession(to: liveZ, id: "session-z", cwd: "/project/z")
+
+        let lister = StubCodexDirectoryLister(listings: [
+            sessions.standardizedFileURL.path: [liveZ, liveA],
+        ])
+        let files = try CodexRolloutScanner(directoryLister: lister).scanAll(in: root)
+        let entries = try CodexRolloutParser().parseAllFiles(files)
+
+        #expect(entries.count == 1)
+        #expect(entries.first?.sessionID == "session-a")
+        #expect(entries.first?.cwd == "/project/a")
+    }
+}
+
+private enum InjectedCodexDirectoryListingError: Error {
+    case failed
+}
+
+private struct FailingCodexDirectoryLister: JSONLDirectoryListing {
+    func recursiveFileURLs(in directory: URL) throws -> [URL] {
+        throw InjectedCodexDirectoryListingError.failed
+    }
+}
+
+private struct ArchivedFailingCodexDirectoryLister: JSONLDirectoryListing {
+    let liveFile: URL
+
+    func recursiveFileURLs(in directory: URL) throws -> [URL] {
+        if directory.lastPathComponent == "archived_sessions" {
+            throw InjectedCodexDirectoryListingError.failed
+        }
+        return [liveFile]
+    }
+}
+
+private struct StubCodexDirectoryLister: JSONLDirectoryListing {
+    let listings: [String: [URL]]
+
+    func recursiveFileURLs(in directory: URL) throws -> [URL] {
+        listings[directory.standardizedFileURL.path] ?? []
+    }
 }
