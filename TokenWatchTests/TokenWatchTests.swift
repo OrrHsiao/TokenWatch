@@ -1767,6 +1767,38 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func settingsMapsRequiresApprovalToEnabledOnSwitch() throws {
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: FakeLoginItemSettings(state: .requiresApproval),
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        let toggle = try #require(
+            controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+        )
+        #expect(toggle.state == .on)
+        #expect(toggle.isEnabled)
+    }
+
+    @MainActor
+    @Test func settingsMapsUnavailableToDisabledOffSwitch() throws {
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: FakeLoginItemSettings(state: .unavailable),
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        let toggle = try #require(
+            controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+        )
+        #expect(toggle.state == .off)
+        #expect(!toggle.isEnabled)
+    }
+
+    @MainActor
     @Test func togglingLaunchAtLoginSwitchUpdatesLoginItemSetting() throws {
         let loginItemSettings = FakeLoginItemSettings(isEnabled: false)
         let settingsViewController = SettingsViewController(
@@ -2092,11 +2124,16 @@ private final class FakeLoginItemSettings: LoginItemSettingsControlling {
     }
 
     private(set) var requestedStates: [Bool] = []
+    private(set) var openSystemSettingsCallCount = 0
     var errorToThrow: Error?
-    var isEnabled: Bool
+    var state: LoginItemSettingsState
 
-    init(isEnabled: Bool) {
-        self.isEnabled = isEnabled
+    init(state: LoginItemSettingsState) {
+        self.state = state
+    }
+
+    convenience init(isEnabled: Bool) {
+        self.init(state: isEnabled ? .enabled : .notRegistered)
     }
 
     func setEnabled(_ enabled: Bool) throws {
@@ -2104,7 +2141,11 @@ private final class FakeLoginItemSettings: LoginItemSettingsControlling {
         if let errorToThrow {
             throw errorToThrow
         }
-        isEnabled = enabled
+        state = enabled ? .enabled : .notRegistered
+    }
+
+    func openSystemSettings() {
+        openSystemSettingsCallCount += 1
     }
 }
 
