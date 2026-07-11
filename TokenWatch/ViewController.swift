@@ -149,6 +149,8 @@ final class SettingsViewController: NSViewController {
     private let autoRefreshIntervalPopUpButton = SettingsPopUpButton()
     private let launchAtLoginLabel = NSTextField(labelWithString: "")
     private let launchAtLoginSwitch = NSSwitch(frame: .zero)
+    private let launchAtLoginStatusLabel = NSTextField(labelWithString: "")
+    private let openLoginItemsSettingsButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let languageLabel = NSTextField(labelWithString: "")
     private let languagePopUpButton = SettingsPopUpButton()
     private let isAuthorized: @MainActor () -> Bool
@@ -195,7 +197,14 @@ final class SettingsViewController: NSViewController {
         super.viewDidLoad()
         setupSubviews()
         subscribeToLanguageSettings()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActive(_:)),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
         renderAuthorizationState()
+        renderLaunchAtLoginState()
     }
 
     override func viewWillAppear() {
@@ -231,6 +240,19 @@ final class SettingsViewController: NSViewController {
         launchAtLoginSwitch.target = self
         launchAtLoginSwitch.action = #selector(launchAtLoginSwitchChanged)
 
+        launchAtLoginStatusLabel.font = .systemFont(ofSize: 12)
+        launchAtLoginStatusLabel.textColor = DashboardPalette.secondaryText
+        launchAtLoginStatusLabel.maximumNumberOfLines = 0
+        launchAtLoginStatusLabel.lineBreakMode = .byWordWrapping
+        launchAtLoginStatusLabel.identifier = NSUserInterfaceItemIdentifier("LaunchAtLoginStatusLabel")
+        launchAtLoginStatusLabel.setAccessibilityIdentifier("LaunchAtLoginStatusLabel")
+
+        configureSettingsButton(openLoginItemsSettingsButton)
+        openLoginItemsSettingsButton.identifier = NSUserInterfaceItemIdentifier("OpenLoginItemsSettingsButton")
+        openLoginItemsSettingsButton.setAccessibilityIdentifier("OpenLoginItemsSettingsButton")
+        openLoginItemsSettingsButton.target = self
+        openLoginItemsSettingsButton.action = #selector(openLoginItemsSettingsButtonClicked)
+
         languageLabel.font = .systemFont(ofSize: 13)
         languageLabel.textColor = DashboardPalette.primaryText
         languagePopUpButton.identifier = NSUserInterfaceItemIdentifier("LanguagePreferencePopUpButton")
@@ -263,10 +285,19 @@ final class SettingsViewController: NSViewController {
         autoRefreshIntervalStack.alignment = .centerY
         autoRefreshIntervalStack.spacing = 8
 
-        let launchAtLoginStack = NSStackView(views: [launchAtLoginLabel, launchAtLoginSwitch])
-        launchAtLoginStack.orientation = .horizontal
-        launchAtLoginStack.alignment = .centerY
-        launchAtLoginStack.spacing = 8
+        let launchAtLoginControlRow = NSStackView(views: [launchAtLoginLabel, launchAtLoginSwitch])
+        launchAtLoginControlRow.orientation = .horizontal
+        launchAtLoginControlRow.alignment = .centerY
+        launchAtLoginControlRow.spacing = 8
+
+        let launchAtLoginSettingsStack = NSStackView(views: [
+            launchAtLoginControlRow,
+            launchAtLoginStatusLabel,
+            openLoginItemsSettingsButton,
+        ])
+        launchAtLoginSettingsStack.orientation = .vertical
+        launchAtLoginSettingsStack.alignment = .leading
+        launchAtLoginSettingsStack.spacing = 8
 
         let languageStack = NSStackView(views: [languageLabel, languagePopUpButton])
         languageStack.orientation = .horizontal
@@ -283,7 +314,7 @@ final class SettingsViewController: NSViewController {
             descriptionLabel,
             authorizationStack,
             autoRefreshIntervalStack,
-            launchAtLoginStack,
+            launchAtLoginSettingsStack,
             languageStack,
             buttonStack,
         ])
@@ -337,6 +368,7 @@ final class SettingsViewController: NSViewController {
         textColor: NSColor
     ) {
         button.title = title
+        button.setAccessibilityLabel(title)
         button.setDashboardLayerColors(backgroundColor: backgroundColor, borderColor: borderColor)
         button.contentTintColor = textColor
         button.attributedTitle = NSAttributedString(
@@ -376,17 +408,43 @@ final class SettingsViewController: NSViewController {
     }
 
     private func renderLaunchAtLoginState() {
+        let statusKey: AppStringKey?
+        let showsOpenSettings: Bool
+
         switch loginItemSettings.state {
         case .notRegistered:
             launchAtLoginSwitch.state = .off
             launchAtLoginSwitch.isEnabled = true
-        case .enabled, .requiresApproval:
+            statusKey = nil
+            showsOpenSettings = false
+        case .enabled:
             launchAtLoginSwitch.state = .on
             launchAtLoginSwitch.isEnabled = true
+            statusKey = nil
+            showsOpenSettings = false
+        case .requiresApproval:
+            launchAtLoginSwitch.state = .on
+            launchAtLoginSwitch.isEnabled = true
+            statusKey = .settingsLaunchAtLoginRequiresApproval
+            showsOpenSettings = true
         case .unavailable:
             launchAtLoginSwitch.state = .off
             launchAtLoginSwitch.isEnabled = false
+            statusKey = .settingsLaunchAtLoginUnavailable
+            showsOpenSettings = false
         }
+
+        if let statusKey {
+            launchAtLoginStatusLabel.stringValue = AppStrings.text(
+                statusKey,
+                language: languageSettings.resolvedLanguage
+            )
+            launchAtLoginStatusLabel.isHidden = false
+        } else {
+            launchAtLoginStatusLabel.stringValue = ""
+            launchAtLoginStatusLabel.isHidden = true
+        }
+        openLoginItemsSettingsButton.isHidden = !showsOpenSettings
     }
 
     @objc private func autoRefreshIntervalChanged() {
@@ -402,12 +460,24 @@ final class SettingsViewController: NSViewController {
     }
 
     @objc private func launchAtLoginSwitchChanged() {
-        let shouldEnable = launchAtLoginSwitch.state == .on
+        guard launchAtLoginSwitch.isEnabled else {
+            renderLaunchAtLoginState()
+            return
+        }
+
         do {
-            try loginItemSettings.setEnabled(shouldEnable)
+            try loginItemSettings.setEnabled(launchAtLoginSwitch.state == .on)
         } catch {
             NSLog("TokenWatch failed to update launch-at-login setting: \(error)")
         }
+        renderLaunchAtLoginState()
+    }
+
+    @objc private func openLoginItemsSettingsButtonClicked() {
+        loginItemSettings.openSystemSettings()
+    }
+
+    @objc private func applicationDidBecomeActive(_ notification: Notification) {
         renderLaunchAtLoginState()
     }
 
@@ -443,8 +513,24 @@ final class SettingsViewController: NSViewController {
             textColor: DashboardPalette.primaryText
         )
         autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
+        autoRefreshIntervalPopUpButton.setAccessibilityLabel(
+            AppStrings.text(.settingsAutoRefreshInterval, language: language)
+        )
         launchAtLoginLabel.stringValue = AppStrings.text(.settingsLaunchAtLogin, language: language)
+        launchAtLoginSwitch.setAccessibilityLabel(
+            AppStrings.text(.settingsLaunchAtLogin, language: language)
+        )
         languageLabel.stringValue = AppStrings.text(.settingsLanguage, language: language)
+        languagePopUpButton.setAccessibilityLabel(
+            AppStrings.text(.settingsLanguage, language: language)
+        )
+        applySettingsButtonStyle(
+            openLoginItemsSettingsButton,
+            title: AppStrings.text(.settingsOpenLoginItemsSettings, language: language),
+            backgroundColor: DashboardPalette.panelBackground,
+            borderColor: DashboardPalette.border,
+            textColor: DashboardPalette.primaryText
+        )
         reloadAutoRefreshIntervalPopUp(language: language)
         reloadLanguagePopUp(language: language)
         renderAuthorizationState()
@@ -479,6 +565,7 @@ final class SettingsViewController: NSViewController {
 
     deinit {
         MainActor.assumeIsolated {
+            NotificationCenter.default.removeObserver(self)
             if let token = languageSettingsObserverToken {
                 languageSettings.removeObserver(token)
             }

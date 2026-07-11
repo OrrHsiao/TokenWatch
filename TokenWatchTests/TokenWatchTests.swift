@@ -1147,7 +1147,16 @@ struct TokenWatchTests {
     @Test func settingsPageReappliesLightColorsWhenOpenedAfterAppearanceOverride() throws {
         let dark = try #require(NSAppearance(named: .darkAqua))
         let aqua = try #require(NSAppearance(named: .aqua))
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        let languageSettings = zhHansLanguageSettings()
+        let settingsViewController = SettingsViewController(
+            isAuthorized: { false },
+            languageSettings: languageSettings
+        )
+        let viewController = DashboardViewController(
+            settingsViewController: settingsViewController,
+            refreshAction: {},
+            languageSettings: languageSettings
+        )
         dark.performAsCurrentDrawingAppearance {
             viewController.loadViewIfNeeded()
         }
@@ -1176,6 +1185,24 @@ struct TokenWatchTests {
         #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
         #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
         #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xD8DEE8)
+    }
+
+    @MainActor
+    @Test func settingsAuthorizedButtonUsesNeutralLightColors() throws {
+        let appearance = try #require(NSAppearance(named: .aqua))
+        let controller = SettingsViewController(
+            isAuthorized: { true },
+            languageSettings: zhHansLanguageSettings()
+        )
+        appearance.performAsCurrentDrawingAppearance {
+            controller.loadViewIfNeeded()
+        }
+
+        let button = try #require(controller.view.button(identifier: "AuthorizationActionButton"))
+        #expect(!button.isEnabled)
+        #expect(rgbHex(try #require(button.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(button.layer?.borderColor)) == 0xD8DEE8)
+        #expect(try rgbHex(try #require(button.contentTintColor), appearance: .aqua) == 0x6B7280)
     }
 
     @MainActor
@@ -1796,6 +1823,107 @@ struct TokenWatchTests {
         )
         #expect(toggle.state == .off)
         #expect(!toggle.isEnabled)
+    }
+
+    @MainActor
+    @Test func settingsShowsRequiresApprovalGuidanceAndOpensSystemSettings() throws {
+        let loginItemSettings = FakeLoginItemSettings(state: .requiresApproval)
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: loginItemSettings,
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        let status = try #require(
+            controller.view.firstDescendant(identifier: "LaunchAtLoginStatusLabel") as? NSTextField
+        )
+        let openButton = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
+
+        #expect(status.stringValue == "需要在系统设置中批准开机自启动。")
+        #expect(!status.isHidden)
+        #expect(!openButton.isHidden)
+
+        _ = openButton.sendAction(openButton.action, to: openButton.target)
+        #expect(loginItemSettings.openSystemSettingsCallCount == 1)
+        #expect(loginItemSettings.requestedStates.isEmpty)
+    }
+
+    @MainActor
+    @Test func settingsShowsUnavailableGuidanceAndRefreshesWhenAppBecomesActive() throws {
+        let loginItemSettings = FakeLoginItemSettings(state: .unavailable)
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            loginItemSettings: loginItemSettings,
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        let toggle = try #require(controller.view.switchControl(identifier: "LaunchAtLoginSwitch"))
+        let status = try #require(
+            controller.view.firstDescendant(identifier: "LaunchAtLoginStatusLabel") as? NSTextField
+        )
+        let openButton = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
+
+        #expect(status.stringValue == "当前无法使用开机自启动。")
+        #expect(!status.isHidden)
+        #expect(openButton.isHidden)
+
+        toggle.state = .on
+        _ = toggle.sendAction(toggle.action, to: toggle.target)
+        #expect(loginItemSettings.requestedStates.isEmpty)
+        #expect(toggle.state == .off)
+        #expect(!toggle.isEnabled)
+
+        loginItemSettings.state = .enabled
+        NotificationCenter.default.post(
+            name: NSApplication.didBecomeActiveNotification,
+            object: NSApp
+        )
+
+        #expect(toggle.state == .on)
+        #expect(toggle.isEnabled)
+        #expect(status.isHidden)
+    }
+
+    @MainActor
+    @Test func settingsRefreshesLocalizedAccessibilityLabels() throws {
+        try withTemporaryDefaults { defaults in
+            let languageSettings = AppLanguageSettings(
+                defaults: defaults,
+                preferredLanguagesProvider: { ["zh-Hans"] }
+            )
+            let controller = SettingsViewController(
+                isAuthorized: { false },
+                loginItemSettings: FakeLoginItemSettings(state: .notRegistered),
+                autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+                languageSettings: languageSettings
+            )
+            controller.loadViewIfNeeded()
+
+            let autoRefresh = try #require(controller.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
+            let launchAtLogin = try #require(controller.view.switchControl(identifier: "LaunchAtLoginSwitch"))
+            let language = try #require(controller.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+            let authorize = try #require(controller.view.button(identifier: "AuthorizationActionButton"))
+            let refresh = try #require(controller.view.button(identifier: "RefreshAllDataButton"))
+            let openSettings = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
+
+            #expect(autoRefresh.accessibilityLabel() == "自动刷新间隔")
+            #expect(launchAtLogin.accessibilityLabel() == "开机自启动")
+            #expect(language.accessibilityLabel() == "语言")
+            #expect(authorize.accessibilityLabel() == "去授权")
+            #expect(refresh.accessibilityLabel() == "刷新全部数据")
+            #expect(openSettings.accessibilityLabel() == "打开登录项设置")
+
+            languageSettings.selectedPreference = .en
+
+            #expect(autoRefresh.accessibilityLabel() == "Auto Refresh Interval")
+            #expect(launchAtLogin.accessibilityLabel() == "Launch at Login")
+            #expect(language.accessibilityLabel() == "Language")
+            #expect(authorize.accessibilityLabel() == "Authorize")
+            #expect(refresh.accessibilityLabel() == "Refresh All Data")
+            #expect(openSettings.accessibilityLabel() == "Open Login Items Settings")
+        }
     }
 
     @MainActor
