@@ -53,7 +53,13 @@ struct CodexParserCheckpoint: Sendable {
 
         case .eventMsg(let event):
             guard event.type == "token_count",
-                  let timestamp = record.normalizedTimestamp else {
+                  let info = event.info else { return nil }
+            guard let timestamp = record.normalizedTimestamp else {
+                // 坏时间戳不产生可去重条目，但 total 仍是上游累计真值。
+                // 不推进 baseline 会让下一条有效记录重复计入该区间。
+                if let total = info.totalTokenUsage {
+                    previousTotals = total
+                }
                 return nil
             }
 
@@ -67,7 +73,6 @@ struct CodexParserCheckpoint: Sendable {
                 isSkippingReplay = false
             }
 
-            guard let info = event.info else { return nil }
             let delta = info.lastTokenUsage
                 ?? info.totalTokenUsage.map { $0.subtracting(previousTotals ?? .zero) }
             if let total = info.totalTokenUsage {

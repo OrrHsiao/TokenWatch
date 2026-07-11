@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Testing
 @testable import TokenWatch
@@ -17,14 +18,19 @@ struct CCUsagePricingParityTests {
         let liteLLMRevision: String
         let liteLLMSourceSHA256: String
         let modelsDevSourceSHA256: String
-        let fastOverridesSHA256: String
-        let autoReviewFallbacksSHA256: String
+        let liteLLMArtifactSHA256: String
+        let modelsDevArtifactSHA256: String
+        let fastOverridesSourceSHA256: String
+        let autoReviewFallbacksSourceSHA256: String
+        let fastOverridesArtifactSHA256: String
+        let autoReviewFallbacksArtifactSHA256: String
     }
 
     private struct Case: Decodable {
         let name: String
         let provider: ProviderID
         let model: String
+        let upstreamModelID: String?
         let sourceUpstreamCost: Double?
         let upstreamProviderID: String?
         let usage: Usage
@@ -53,8 +59,8 @@ struct CCUsagePricingParityTests {
         #expect(fixture.baseline.liteLLMRevision == "49ca04d8c3ddea336237ce6f3082dbc26d19e944")
         #expect(fixture.baseline.liteLLMSourceSHA256 == "ae4532ba0c5da03ed694f37fffa050a65e0e250b816dcdb475bee0b7b7b1aa97")
         #expect(fixture.baseline.modelsDevSourceSHA256 == "5d61cc3148100cd670d3289033b5e2fb05c4244cbe32f92888ef7bd2df1abf67")
-        #expect(fixture.baseline.fastOverridesSHA256 == "647b3ae8e44349455f32ce9f4633910b5151b08cda1707601a97701927490762")
-        #expect(fixture.baseline.autoReviewFallbacksSHA256 == "344d2438312beed608c19e616031d1b194f3c6efdfcbd0925f39f4df9008c037")
+        #expect(fixture.baseline.fastOverridesSourceSHA256 == "647b3ae8e44349455f32ce9f4633910b5151b08cda1707601a97701927490762")
+        #expect(fixture.baseline.autoReviewFallbacksSourceSHA256 == "344d2438312beed608c19e616031d1b194f3c6efdfcbd0925f39f4df9008c037")
         #expect(fixture.cases.count == 21)
         #expect(Set(fixture.cases.map(\.name)).count == fixture.cases.count)
 
@@ -68,12 +74,46 @@ struct CCUsagePricingParityTests {
         }
     }
 
+    @Test("实际 bundle 定价资源与固定产物哈希一致")
+    func bundledPricingArtifacts() throws {
+        let fixture = try loadFixture()
+
+        #expect(try bundledSHA256(resource: "litellm_prices")
+            == fixture.baseline.liteLLMArtifactSHA256)
+        #expect(try bundledSHA256(resource: "models-dev-pricing")
+            == fixture.baseline.modelsDevArtifactSHA256)
+    }
+
+    @Test("生产 fast 与 auto-review 映射的规范序列化哈希固定")
+    func productionMappingArtifacts() throws {
+        let fixture = try loadFixture()
+
+        #expect(sha256(PricingTable.canonicalFastMultiplierOverrides)
+            == fixture.baseline.fastOverridesArtifactSHA256)
+        #expect(sha256(CodexModelResolver.canonicalAutoReviewFallbacks)
+            == fixture.baseline.autoReviewFallbacksArtifactSHA256)
+    }
+
     private func loadFixture() throws -> Fixture {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("Fixtures/Pricing/ccusage-v20.0.17.json")
         return try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url))
+    }
+
+    private func bundledSHA256(resource: String) throws -> String {
+        let url = try #require(Bundle.main.url(
+            forResource: resource,
+            withExtension: "json"
+        ))
+        return sha256(try Data(contentsOf: url))
+    }
+
+    private func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 
     private func entry(from testCase: Case) -> ParsedUsageEntry {
@@ -111,6 +151,7 @@ struct CCUsagePricingParityTests {
             sessionID: "fixture",
             timestamp: Date(timeIntervalSince1970: 0),
             model: testCase.model,
+            upstreamModelID: testCase.upstreamModelID,
             cwd: "/fixture",
             agentId: nil,
             usage: TokenUsage(

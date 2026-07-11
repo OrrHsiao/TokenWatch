@@ -125,4 +125,43 @@ struct CodexRolloutParsingStateTests {
             pricingSpeed: .standard
         )?.entry == nil)
     }
+
+    @Test("坏 timestamp 仍推进 total baseline，且不更新模型")
+    func invalidTimestampAdvancesTotalBaselineWithoutUpdatingModel() throws {
+        let decoder = JSONDecoder()
+
+        func finalEntry(
+            invalidTotal: Int,
+            finalTotal: Int
+        ) throws -> ParsedUsageEntry {
+            var checkpoint = CodexParserCheckpoint.initial(
+                sessionID: "session",
+                replaySecond: nil
+            )
+            let lines = [
+                #"{"timestamp":"2026-05-04T08:35:46Z","type":"event_msg","payload":{"type":"token_count","model":"gpt-5.4","info":{"total_token_usage":{"input_tokens":100,"total_tokens":100}}}}"#,
+                #"{"timestamp":"not-a-date","type":"event_msg","payload":{"type":"token_count","model":"gpt-5.5","info":{"total_token_usage":{"input_tokens":\#(invalidTotal),"total_tokens":\#(invalidTotal)}}}}"#,
+                #"{"timestamp":"2026-05-04T08:35:48Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":\#(finalTotal),"total_tokens":\#(finalTotal)}}}}"#,
+            ]
+            let candidates = try lines.enumerated().compactMap { index, line in
+                let record = try decoder.decode(CodexRecord.self, from: Data(line.utf8))
+                return checkpoint.consume(
+                    record,
+                    sourceOffset: UInt64(index),
+                    pricingSpeed: .standard
+                )?.entry
+            }
+
+            #expect(candidates.count == 2)
+            return try #require(candidates.last)
+        }
+
+        let increasing = try finalEntry(invalidTotal: 200, finalTotal: 250)
+        #expect(increasing.usage.inputTokens == 50)
+        #expect(increasing.model == "gpt-5.4")
+
+        let reset = try finalEntry(invalidTotal: 20, finalTotal: 50)
+        #expect(reset.usage.inputTokens == 30)
+        #expect(reset.model == "gpt-5.4")
+    }
 }

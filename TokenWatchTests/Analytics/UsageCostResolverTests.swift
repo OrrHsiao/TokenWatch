@@ -77,7 +77,7 @@ struct UsageCostResolverTests {
     @Test("OpenCode 按 ccusage 候选顺序解析 provider 与 k2p6 alias")
     func openCodeProviderAndAliasCandidates() {
         #expect(OpenCodePricingCandidateResolver.candidates(
-            modelKey: "github-copilot/claude-sonnet-4.5",
+            modelID: "claude-sonnet-4.5",
             providerID: "github-copilot"
         ) == [
             "claude-sonnet-4.5",
@@ -90,6 +90,7 @@ struct UsageCostResolverTests {
             model: "kimi-for-coding/k2p6",
             provider: .opencode,
             upstreamCost: nil,
+            upstreamModelID: "k2p6",
             upstreamProviderID: "kimi-for-coding"
         ))
         // helper 固定 input=1_000/output=100：0.95/M + 4.0/M = 0.00135。
@@ -99,21 +100,21 @@ struct UsageCostResolverTests {
     @Test("OpenCode gemini alias 与空或 unknown provider 不添加前缀")
     func openCodeAliasAndUnknownProviderCandidates() {
         #expect(OpenCodePricingCandidateResolver.candidates(
-            modelKey: "google/gemini-3-pro-high",
+            modelID: "gemini-3-pro-high",
             providerID: "google"
         ) == [
             "gemini-3-pro-preview",
             "google/gemini-3-pro-preview",
         ])
         #expect(OpenCodePricingCandidateResolver.candidates(
-            modelKey: "unknown/claude-sonnet-4.5",
+            modelID: "claude-sonnet-4.5",
             providerID: "unknown"
         ) == [
             "claude-sonnet-4.5",
             "claude-sonnet-4-5",
         ])
         #expect(OpenCodePricingCandidateResolver.candidates(
-            modelKey: "claude-sonnet-4.5",
+            modelID: "claude-sonnet-4.5",
             providerID: ""
         ) == [
             "claude-sonnet-4.5",
@@ -125,6 +126,7 @@ struct UsageCostResolverTests {
         model: String,
         provider: ProviderID,
         upstreamCost: Double?,
+        upstreamModelID: String? = nil,
         upstreamProviderID: String? = nil
     ) -> ParsedUsageEntry {
         ParsedUsageEntry(
@@ -134,6 +136,7 @@ struct UsageCostResolverTests {
             sessionID: "session",
             timestamp: Date(timeIntervalSince1970: 0),
             model: model,
+            upstreamModelID: upstreamModelID,
             cwd: "/tmp",
             agentId: nil,
             usage: TokenUsage(

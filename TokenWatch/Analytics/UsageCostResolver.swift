@@ -17,7 +17,7 @@ struct UsageCostResolver: Sendable {
         }
         if entry.provider == .opencode {
             for candidate in OpenCodePricingCandidateResolver.candidates(
-                modelKey: entry.model,
+                modelID: entry.upstreamModelID,
                 providerID: entry.upstreamProviderID
             ) {
                 let result = pricingEngine.calculateCost(

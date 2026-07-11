@@ -7,8 +7,12 @@
     "liteLLMRevision": "49ca04d8c3ddea336237ce6f3082dbc26d19e944",
     "liteLLMSourceSHA256": "ae4532ba0c5da03ed694f37fffa050a65e0e250b816dcdb475bee0b7b7b1aa97",
     "modelsDevSourceSHA256": "5d61cc3148100cd670d3289033b5e2fb05c4244cbe32f92888ef7bd2df1abf67",
-    "fastOverridesSHA256": "647b3ae8e44349455f32ce9f4633910b5151b08cda1707601a97701927490762",
-    "autoReviewFallbacksSHA256": "344d2438312beed608c19e616031d1b194f3c6efdfcbd0925f39f4df9008c037"
+    "liteLLMArtifactSHA256": "352d89699f90ee787859764270dbd3f991358d4ac78371c073d68e707290d205",
+    "modelsDevArtifactSHA256": "5d61cc3148100cd670d3289033b5e2fb05c4244cbe32f92888ef7bd2df1abf67",
+    "fastOverridesSourceSHA256": "647b3ae8e44349455f32ce9f4633910b5151b08cda1707601a97701927490762",
+    "autoReviewFallbacksSourceSHA256": "344d2438312beed608c19e616031d1b194f3c6efdfcbd0925f39f4df9008c037",
+    "fastOverridesArtifactSHA256": "7095a2e0f3d7d9d7d46a7054b0ffe3be441c941ed36df5e7214bc5bae1aab4d5",
+    "autoReviewFallbacksArtifactSHA256": "35df64ccbaec40e344a73f8aed9932fff8449f17d952441b93566d1d6e3cf069"
   },
   "cases": [
     {"name":"sonnet-45-input-250k","provider":"claude","model":"claude-sonnet-4-5","usage":{"inputTokens":250000,"outputTokens":0},"expectedUSD":0.9},
@@ -28,9 +32,9 @@
     {"name":"claude-known-upstream-zero","provider":"claude","model":"claude-sonnet-4-5","sourceUpstreamCost":0,"usage":{"inputTokens":1000000,"outputTokens":1000000},"expectedUSD":0},
     {"name":"claude-unknown-upstream","provider":"claude","model":"private-unknown","sourceUpstreamCost":0.123,"usage":{"inputTokens":1,"outputTokens":1},"expectedUSD":0.123},
     {"name":"claude-unknown-no-upstream","provider":"claude","model":"private-unknown","usage":{"inputTokens":1000,"outputTokens":100},"expectedUSD":0},
-    {"name":"opencode-zero-recalculates","provider":"opencode","model":"claude-sonnet-4-5","sourceUpstreamCost":0,"usage":{"inputTokens":1000,"outputTokens":100},"expectedUSD":0.0045},
-    {"name":"opencode-k2p6-alias","provider":"opencode","model":"kimi-for-coding/k2p6","upstreamProviderID":"kimi-for-coding","usage":{"inputTokens":1000000,"outputTokens":1000000},"expectedUSD":4.95},
-    {"name":"opencode-total-only-fallback","provider":"opencode","model":"anthropic/claude-sonnet-4-5","upstreamProviderID":"anthropic","usage":{"inputTokens":0,"outputTokens":0,"sourceTotalTokens":1000},"expectedUSD":0.015},
+    {"name":"opencode-zero-recalculates","provider":"opencode","model":"claude-sonnet-4-5","upstreamModelID":"claude-sonnet-4-5","sourceUpstreamCost":0,"usage":{"inputTokens":1000,"outputTokens":100},"expectedUSD":0.0045},
+    {"name":"opencode-k2p6-alias","provider":"opencode","model":"kimi-for-coding/k2p6","upstreamModelID":"k2p6","upstreamProviderID":"kimi-for-coding","usage":{"inputTokens":1000000,"outputTokens":1000000},"expectedUSD":4.95},
+    {"name":"opencode-total-only-fallback","provider":"opencode","model":"anthropic/claude-sonnet-4-5","upstreamModelID":"claude-sonnet-4-5","upstreamProviderID":"anthropic","usage":{"inputTokens":0,"outputTokens":0,"sourceTotalTokens":1000},"expectedUSD":0.015},
     {"name":"codex-gpt4-implicit-cache","provider":"codex","model":"gpt-4","usage":{"inputTokens":1000,"cachedInputTokens":400,"outputTokens":0},"expectedUSD":0.03}
   ]
 }
