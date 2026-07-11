@@ -7,7 +7,7 @@ import Testing
 struct AppLanguageSettingsTests {
     @Test("缺失值回落到跟随系统")
     func missingPreferenceFallsBackToSystem() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
 
             #expect(settings.selectedPreference == .system)
@@ -17,7 +17,7 @@ struct AppLanguageSettingsTests {
 
     @Test("非法值回落到跟随系统")
     func invalidPreferenceFallsBackToSystem() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             defaults.set("xx", forKey: AppLanguageSettings.storageKey)
             let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["en-US"] })
 
@@ -28,7 +28,7 @@ struct AppLanguageSettingsTests {
 
     @Test("中文系统语言解析为中文")
     func systemChineseResolvesToChinese() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hant-TW"] })
 
             #expect(settings.resolvedLanguage == .zhHant)
@@ -37,7 +37,7 @@ struct AppLanguageSettingsTests {
 
     @Test("英文系统语言解析为英文")
     func systemEnglishResolvesToEnglish() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["en-US"] })
 
             #expect(settings.resolvedLanguage == .en)
@@ -67,7 +67,7 @@ struct AppLanguageSettingsTests {
 
     @Test("其他系统语言回落到英文")
     func unsupportedSystemLanguageFallsBackToEnglish() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["sv-SE"] })
 
             #expect(settings.resolvedLanguage == .en)
@@ -95,7 +95,7 @@ struct AppLanguageSettingsTests {
 
     @Test("选择英文会持久化并通知观察者")
     func selectingEnglishPersistsAndNotifies() throws {
-        try withTemporaryDefaults { defaults in
+        withTemporaryDefaults { defaults in
             let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
             var notificationCount = 0
             let token = settings.observe { notificationCount += 1 }
