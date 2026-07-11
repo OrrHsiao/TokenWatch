@@ -8,8 +8,15 @@ struct CalendarHeatmapCellStyle: Equatable {
     let isHidden: Bool
     let alpha: CGFloat
     let intensity: Int
+    let isAccessibilityElement: Bool
+    let accessibilityLabel: String?
+    let accessibilityValue: String?
 
-    static func make(for cell: CalendarHeatmapCell, language: AppLanguage = .zhHans) -> CalendarHeatmapCellStyle {
+    static func make(
+        for cell: CalendarHeatmapCell,
+        language: AppLanguage = .zhHans,
+        calendar: Calendar = .current
+    ) -> CalendarHeatmapCellStyle {
         switch cell {
         case .placeholder:
             return CalendarHeatmapCellStyle(
@@ -17,17 +24,43 @@ struct CalendarHeatmapCellStyle: Equatable {
                 toolTip: nil,
                 isHidden: true,
                 alpha: 0,
-                intensity: 0
+                intensity: 0,
+                isAccessibilityElement: false,
+                accessibilityLabel: nil,
+                accessibilityValue: nil
             )
         case .day(let day):
+            let formattedTokens = CompactNumberFormatter.formatHoverTokens(day.totalTokens)
+            let tokenUnit = AppStrings.text(.statusBarTokenUnit, language: language)
             return CalendarHeatmapCellStyle(
                 title: "",
-                toolTip: "\(day.dateKey) · \(CompactNumberFormatter.formatHoverTokens(day.totalTokens))",
+                toolTip: "\(day.dateKey) · \(formattedTokens)",
                 isHidden: false,
                 alpha: day.isFuture ? 0.45 : 1.0,
-                intensity: day.intensity
+                intensity: day.intensity,
+                isAccessibilityElement: true,
+                accessibilityLabel: localizedDate(
+                    day.date,
+                    language: language,
+                    calendar: calendar
+                ),
+                accessibilityValue: "\(formattedTokens) \(tokenUnit)"
             )
         }
+    }
+
+    private static func localizedDate(
+        _ date: Date,
+        language: AppLanguage,
+        calendar: Calendar
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: language.localeIdentifier)
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
 
@@ -66,14 +99,34 @@ final class CalendarHeatmapCollectionViewItem: NSCollectionViewItem {
         ])
     }
 
-    func configure(with cell: CalendarHeatmapCell, language: AppLanguage = .zhHans) {
-        let style = CalendarHeatmapCellStyle.make(for: cell, language: language)
+    func configure(
+        with cell: CalendarHeatmapCell,
+        language: AppLanguage = .zhHans,
+        calendar: Calendar = .current
+    ) {
+        let style = CalendarHeatmapCellStyle.make(
+            for: cell,
+            language: language,
+            calendar: calendar
+        )
         dayLabel.stringValue = style.title
         view.toolTip = style.toolTip
         view.isHidden = style.isHidden
         view.alphaValue = style.alpha
         cellView.heatmapBackgroundColor = CalendarHeatmapGitHubPalette.color(forIntensity: style.intensity)
         cellView.hoverText = style.toolTip
+
+        view.setAccessibilityElement(style.isAccessibilityElement)
+        if style.isAccessibilityElement {
+            view.setAccessibilityRole(.staticText)
+            view.setAccessibilityLabel(style.accessibilityLabel)
+            view.setAccessibilityValue(style.accessibilityValue)
+        } else {
+            view.setAccessibilityRole(nil)
+            view.setAccessibilityLabel(nil)
+            view.setAccessibilityValue(nil)
+        }
+
         if style.toolTip == nil {
             onHoverTextChange?(nil)
         }

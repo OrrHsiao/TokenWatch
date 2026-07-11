@@ -100,6 +100,31 @@ struct CalendarHeatmapCollectionViewItemTests {
         #expect(CalendarHeatmapCellStyle.make(for: .day(thresholdDay)).toolTip == "2026-06-16 · 0.1M")
     }
 
+    @Test("day style 使用调用方 calendar 和时区格式化辅助功能日期")
+    func styleUsesProvidedCalendarAndTimeZone() throws {
+        var calendar = Calendar(identifier: .buddhist)
+        calendar.timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))
+        let date = try #require(ISO8601DateFormatter().date(from: "2026-06-10T01:00:00Z"))
+        let day = CalendarHeatmapDay(
+            id: "2026-06-09",
+            date: date,
+            dateKey: "2026-06-09",
+            dayNumber: 9,
+            totalTokens: 0,
+            intensity: 0,
+            isToday: true,
+            isFuture: false
+        )
+
+        let style = CalendarHeatmapCellStyle.make(
+            for: .day(day),
+            language: .en,
+            calendar: calendar
+        )
+
+        #expect(style.accessibilityLabel == "June 9, 2569 BE")
+    }
+
     @MainActor
     @Test("cell 使用 GitHub 风格小方块")
     func cellUsesGitHubStyleSquareTile() {
@@ -262,6 +287,121 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         #expect(configuredComponents != nil)
         #expect(refreshedComponents == configuredComponents)
+    }
+
+    @MainActor
+    @Test("day cell 暴露本地化日期和 token 辅助功能语义")
+    func dayCellExposesLocalizedAccessibilitySemantics() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = try #require(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 6,
+            day: 10
+        )))
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: date,
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 12_345,
+            intensity: 3,
+            isToday: false,
+            isFuture: false
+        )
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+
+        item.configure(with: .day(day), language: .en, calendar: calendar)
+
+        #expect(item.view.isAccessibilityElement())
+        #expect(item.view.accessibilityRole() == .staticText)
+        #expect(item.view.accessibilityLabel() == "June 10, 2026")
+        #expect(item.view.accessibilityValue() as? String == "12.3k Tokens")
+
+        item.configure(with: .day(day), language: .zhHans, calendar: calendar)
+        #expect(item.view.accessibilityLabel() == "2026年6月10日")
+        #expect(item.view.accessibilityValue() as? String == "12.3k Tokens")
+    }
+
+    @MainActor
+    @Test("placeholder 退出辅助功能树并清除复用残留")
+    func placeholderClearsReusedAccessibilityState() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = try #require(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 6,
+            day: 10
+        )))
+        let day = CalendarHeatmapDay(
+            id: "2026-06-10",
+            date: date,
+            dateKey: "2026-06-10",
+            dayNumber: 10,
+            totalTokens: 12_345,
+            intensity: 3,
+            isToday: false,
+            isFuture: false
+        )
+        let item = CalendarHeatmapCollectionViewItem()
+        item.loadView()
+        item.configure(with: .day(day), language: .en, calendar: calendar)
+
+        item.configure(with: .placeholder(id: "p0"), language: .en, calendar: calendar)
+
+        #expect(!item.view.isAccessibilityElement())
+        #expect(item.view.accessibilityRole() == nil)
+        #expect(item.view.accessibilityLabel() == nil)
+        #expect(item.view.accessibilityValue() == nil)
+        #expect(item.view.isHidden)
+    }
+
+    @MainActor
+    @Test("popover data source 透传语言、calendar 和时区")
+    func popoverDataSourcePassesLanguageAndCalendar() throws {
+        let suiteName = "CalendarHeatmapCollectionViewItemTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["en-US"] }
+        )
+        languageSettings.selectedPreference = .en
+
+        var calendar = Calendar(identifier: .buddhist)
+        calendar.timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))
+        let now = try #require(ISO8601DateFormatter().date(from: "2026-06-10T01:00:00Z"))
+        let controller = StatusPopoverViewController(
+            viewModel: TokenStatsViewModel(
+                languageSettings: languageSettings,
+                providers: []
+            ),
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: languageSettings
+        )
+        let snapshot = CalendarHeatmapBuilder.build(
+            states: [:],
+            month: now,
+            now: now,
+            calendar: calendar,
+            language: .en
+        )
+        let dayIndex = try #require(snapshot.cells.lastIndex { cell in
+            if case .day = cell { return true }
+            return false
+        })
+
+        controller.loadViewIfNeeded()
+        let collectionView = try #require(controller.debugCollectionView)
+        let item = try #require(controller.collectionView(
+            collectionView,
+            itemForRepresentedObjectAt: IndexPath(item: dayIndex, section: 0)
+        ) as? CalendarHeatmapCollectionViewItem)
+
+        #expect(item.view.accessibilityLabel() == "June 9, 2569 BE")
+        #expect(item.view.accessibilityValue() as? String == "0.0M Tokens")
     }
 }
 
