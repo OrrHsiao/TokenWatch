@@ -5,6 +5,28 @@ import Testing
 @Suite("TotalStatsBuilder")
 struct TotalStatsBuilderTests {
 
+    @Test("跨 provider 总量与同模型极值汇总饱和到 Int.max")
+    func extremeTokenReducersSaturateAtIntMax() throws {
+        let snapshot = TotalStatsBuilder.build(states: [
+            .claude: .init(
+                stats: makeStats(total: .max, byModel: ["shared": .max]),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            ),
+            .codex: .init(
+                stats: makeStats(total: 1, byModel: ["shared": 1]),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            ),
+        ])
+        let shared = try #require(snapshot.modelRows.first { $0.modelName == "shared" })
+
+        #expect(snapshot.totalTokens == Int.max)
+        #expect(shared.totalTokens == Int.max)
+    }
+
     @Test("跨 provider 汇总总 token、费用和同模型 token、费用")
     func sumsTotalsAndMergesModelsAcrossProviders() {
         let claudeStats = makeStats(

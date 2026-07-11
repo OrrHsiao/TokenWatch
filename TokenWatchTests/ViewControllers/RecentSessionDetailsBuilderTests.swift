@@ -5,6 +5,54 @@ import Testing
 @Suite("RecentSessionDetailsBuilder")
 struct RecentSessionDetailsBuilderTests {
 
+    @Test("会话内与跨会话极值 token 汇总饱和到 Int.max")
+    func extremeSessionTokenReducersSaturateAtIntMax() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar)
+        let timestamp = dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar)
+        let entries = [
+            makeEntry(
+                provider: .claude,
+                sessionID: "extreme",
+                timestamp: timestamp,
+                input: .max,
+                output: 0
+            ),
+            makeEntry(
+                provider: .claude,
+                sessionID: "extreme",
+                timestamp: timestamp,
+                input: 1,
+                output: 0
+            ),
+            makeEntry(
+                provider: .claude,
+                sessionID: "other",
+                timestamp: timestamp,
+                input: 1,
+                output: 0
+            ),
+        ]
+
+        let snapshot = RecentSessionDetailsBuilder.build(
+            states: [.claude: .init(
+                stats: nil,
+                entries: entries,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            )],
+            period: .recent7Days,
+            now: now,
+            calendar: calendar
+        )
+        let row = try #require(snapshot.rows.first { $0.sessionID == "extreme" })
+
+        #expect(row.inputTokens == Int.max)
+        #expect(row.totalTokens == Int.max)
+        #expect(snapshot.totalTokens == Int.max)
+    }
+
     @Test("同名 session 按 provider 隔离分组")
     func groupsByProviderAndSessionID() {
         let calendar = utcCalendar()

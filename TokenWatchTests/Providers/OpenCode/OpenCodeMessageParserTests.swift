@@ -183,6 +183,16 @@ struct OpenCodeMessageParserTests {
         #expect(entry.usage.outputTokens == Int.max)
         #expect(entry.usage.cacheReadInputTokens == Int.max)
         #expect(entry.usage.totalCacheCreationTokens == Int.max)
+
+        let fingerprint = UsageEntriesFingerprint.make(from: [entry])
+        #expect(fingerprint == UsageEntriesFingerprint.make(from: [entry]))
+
+        let stats = UsageAggregator().aggregate([entry])
+        #expect(stats.overall.inputTokens == Int.max)
+        #expect(stats.overall.outputTokens == Int.max)
+        #expect(stats.overall.cacheReadTokens == Int.max)
+        #expect(stats.overall.cacheCreationTokens == Int.max)
+        #expect(stats.overall.totalTokens == Int.max)
     }
 
     @Test("OpenCode token null 与负数归零且保留其余可用字段")

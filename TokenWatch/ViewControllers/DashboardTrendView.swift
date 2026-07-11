@@ -536,7 +536,8 @@ final class DashboardDonutView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         let rect = bounds.insetBy(dx: 10, dy: 10)
-        let total = slices.reduce(0) { $0 + $1.totalTokens }
+        // 绘图比例使用 Double 汇总，避免多个 Int.max 被展示层饱和后各自画成整圆。
+        let total = slices.reduce(0.0) { $0 + Double($1.totalTokens) }
         guard total > 0 else {
             DashboardPalette.subtleBorder.setStroke()
             NSBezierPath(ovalIn: rect).stroke()
@@ -545,7 +546,7 @@ final class DashboardDonutView: NSView {
 
         var startAngle: CGFloat = 90
         for (index, slice) in slices.enumerated() {
-            let sweep = CGFloat(slice.totalTokens) / CGFloat(total) * 360
+            let sweep = CGFloat(Double(slice.totalTokens) / total) * 360
             let path = NSBezierPath()
             let center = NSPoint(x: rect.midX, y: rect.midY)
             path.move(to: center)

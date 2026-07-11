@@ -340,7 +340,9 @@ private enum ClaudeDailyTimestampParser {
               bytes[0] == 0x2B || bytes[0] == 0x2D,
               bytes[3] == 0x3A,
               let hours = digits(bytes, range: 1..<3),
-              let minutes = digits(bytes, range: 4..<6)
+              let minutes = digits(bytes, range: 4..<6),
+              hours <= 23,
+              minutes <= 59
         else {
             return nil
         }

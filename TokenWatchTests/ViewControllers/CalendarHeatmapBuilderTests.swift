@@ -154,6 +154,35 @@ struct CalendarHeatmapBuilderTests {
         #expect(snapshot.monthTotalTokens == 125)
     }
 
+    @Test("跨 provider 日、窗口与摘要极值汇总饱和到 Int.max")
+    func extremeTokenReducersSaturateAtIntMax() {
+        let calendar = utcCalendar(firstWeekday: 2)
+        let claudeStats = makeStats(
+            byDay: ["2026-06-17": makeSummary(total: .max)],
+            byMonth: [:]
+        )
+        let codexStats = makeStats(
+            byDay: ["2026-06-17": makeSummary(total: 1)],
+            byMonth: [:]
+        )
+
+        let snapshot = CalendarHeatmapBuilder.build(
+            states: [
+                .claude: .init(stats: claudeStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+                .codex: .init(stats: codexStats, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            ],
+            month: date(2026, 6, 17, calendar: calendar),
+            now: date(2026, 6, 17, calendar: calendar),
+            calendar: calendar
+        )
+
+        #expect(snapshot.day("2026-06-17")?.totalTokens == Int.max)
+        #expect(snapshot.monthTotalTokens == Int.max)
+        #expect(snapshot.summary.monthTokens == Int.max)
+        #expect(snapshot.summary.weekTokens == Int.max)
+        #expect(snapshot.summary.todayTokens == Int.max)
+    }
+
     @Test("摘要统计本月本周今日和本月至今日日均 token")
     func summaryTotalsUseCurrentCalendarPeriods() {
         let calendar = utcCalendar(firstWeekday: 2)

@@ -78,6 +78,51 @@ struct UsageAggregatorTests {
         #expect(stats.byModel["deepseek-v4-flash"]?.inputTokens == 500)
     }
 
+    @Test("极值 token 累加与总量计算饱和到 Int.max")
+    func extremeTokenAggregationSaturatesAtIntMax() {
+        let entries = [
+            makeEntry(
+                sessionID: "s1",
+                date: date(2026, 6, 13),
+                model: "private-unknown-model",
+                input: .max,
+                output: .max,
+                cacheRead: .max,
+                cacheCreation: .max,
+                reasoning: .max,
+                upstreamCost: 0
+            ),
+            makeEntry(
+                sessionID: "s1",
+                date: date(2026, 6, 13),
+                model: "private-unknown-model",
+                input: 1,
+                output: 1,
+                cacheRead: 1,
+                cacheCreation: 1,
+                reasoning: 1,
+                upstreamCost: 0
+            ),
+        ]
+
+        let stats = aggregator.aggregate(entries)
+        let day = stats.byDay["2026-06-13"]
+
+        #expect(stats.overall.inputTokens == Int.max)
+        #expect(stats.overall.outputTokens == Int.max)
+        #expect(stats.overall.cacheReadTokens == Int.max)
+        #expect(stats.overall.cacheCreationTokens == Int.max)
+        #expect(stats.overall.reasoningTokens == Int.max)
+        #expect(stats.overall.totalTokens == Int.max)
+        #expect(day?.inputTokens == Int.max)
+        #expect(day?.outputTokens == Int.max)
+        #expect(day?.cacheReadTokens == Int.max)
+        #expect(day?.cacheCreationTokens == Int.max)
+        #expect(day?.reasoningTokens == Int.max)
+        #expect(day?.totalTokens == Int.max)
+        #expect(stats.overall.entryCount == 2)
+    }
+
     // MARK: - 按维度聚合
 
     @Test("按日聚合")

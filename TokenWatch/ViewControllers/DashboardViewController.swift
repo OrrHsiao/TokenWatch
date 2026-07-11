@@ -1848,9 +1848,9 @@ final class DashboardViewController: NSViewController {
             "\(localized(.dashboardInput)) \(CompactNumberFormatter.formatMillions(summary.inputTokens))",
             "\(localized(.dashboardOutput)) \(CompactNumberFormatter.formatMillions(summary.outputTokens))",
         ]
-        let cacheTokens = summary.cacheReadTokens + summary.cacheCreationTokens
+        let cacheTokens = summary.cacheReadTokens.addingSaturated(summary.cacheCreationTokens)
         let cacheText = CompactNumberFormatter.formatMillions(cacheTokens)
-        let cacheHitRateText = localizedParenthetical(formatCacheHitRate(summary, cacheTokens: cacheTokens))
+        let cacheHitRateText = localizedParenthetical(formatCacheHitRate(summary))
         parts.append("\(localized(.dashboardCache)) \(cacheText)\(cacheHitRateText)")
         if summary.reasoningTokens > 0 {
             parts.append("\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
@@ -1867,22 +1867,31 @@ final class DashboardViewController: NSViewController {
         }
     }
 
-    private func formatCacheHitRate(_ summary: DashboardUsageSummary, cacheTokens: Int) -> String {
-        let base = summary.inputTokens + summary.outputTokens + summary.reasoningTokens + cacheTokens
+    private func formatCacheHitRate(_ summary: DashboardUsageSummary) -> String {
+        // 比例使用 Double 汇总，展示用 Int 饱和不能作为分母，否则极值会产生超过 100% 的占比。
+        let cacheTokens = Double(summary.cacheReadTokens) + Double(summary.cacheCreationTokens)
+        let base = Double(summary.inputTokens)
+            + Double(summary.outputTokens)
+            + Double(summary.reasoningTokens)
+            + cacheTokens
         guard base > 0 else { return "0%" }
-        return formatPercentage(Double(cacheTokens) / Double(base))
+        return formatPercentage(cacheTokens / base)
     }
 
     private func formatCostBreakdown(_ summary: DashboardUsageSummary) -> String {
-        let inputBillableTokens = summary.inputTokens + summary.cacheReadTokens + summary.cacheCreationTokens
-        let billableTokens = inputBillableTokens + summary.outputTokens + summary.reasoningTokens
+        let inputBillableTokens = Double(summary.inputTokens)
+            + Double(summary.cacheReadTokens)
+            + Double(summary.cacheCreationTokens)
+        let outputTokens = Double(summary.outputTokens)
+        let reasoningTokens = Double(summary.reasoningTokens)
+        let billableTokens = inputBillableTokens + outputTokens + reasoningTokens
         guard billableTokens > 0, summary.cost > 0 else {
             return "\(localized(.dashboardInput)) $0.00 / \(localized(.dashboardOutput)) $0.00 / \(localized(.dashboardReasoning)) $0.00"
         }
 
-        let inputCost = summary.cost * Double(inputBillableTokens) / Double(billableTokens)
-        let outputCost = summary.cost * Double(summary.outputTokens) / Double(billableTokens)
-        let reasoningCost = summary.cost * Double(summary.reasoningTokens) / Double(billableTokens)
+        let inputCost = summary.cost * (inputBillableTokens / billableTokens)
+        let outputCost = summary.cost * (outputTokens / billableTokens)
+        let reasoningCost = summary.cost * (reasoningTokens / billableTokens)
         return "\(localized(.dashboardInput)) \(formatCurrency(inputCost)) / \(localized(.dashboardOutput)) \(formatCurrency(outputCost)) / \(localized(.dashboardReasoning)) \(formatCurrency(reasoningCost))"
     }
 

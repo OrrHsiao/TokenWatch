@@ -509,6 +509,46 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardExtremeTokenRatiosDoNotUseSaturatedDenominator() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    .claude: .init(
+                        stats: makeDashboardStats(
+                            byDay: [
+                                "2026-06-20": makeDashboardSummary(
+                                    total: .max,
+                                    input: .max,
+                                    output: .max,
+                                    reasoning: .max,
+                                    cacheRead: .max,
+                                    cost: 120
+                                ),
+                            ]
+                        ),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+
+        viewController.loadViewIfNeeded()
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains { $0.contains("（25.0%）") })
+        #expect(labels.contains("输入 $60.00 / 输出 $30.00 / 推理 $30.00"))
+    }
+
+    @MainActor
     @Test func dashboardTotalTokenDetailShowsAllTokenBuckets() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
