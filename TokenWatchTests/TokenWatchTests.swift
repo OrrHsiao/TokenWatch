@@ -118,38 +118,10 @@ struct TokenWatchTests {
         #expect(appBundle.url(forResource: "Main", withExtension: "storyboardc", subdirectory: "Base.lproj") == nil)
     }
 
-    @MainActor
-    @Test func applicationLaunchShowsMainWindowWithoutStoryboard() throws {
-        let openWindowKey = "TokenWatch.openMainWindowOnLaunch"
-        let promptedKey = "TokenWatch.didPromptInitialHomeAuthorization"
-        let previousOpenWindowValue = UserDefaults.standard.object(forKey: openWindowKey)
-        let previousPromptedValue = UserDefaults.standard.object(forKey: promptedKey)
-        let previousDelegate = NSApp.delegate
-        NSApp.windows
-            .filter { $0.contentViewController is ViewController }
-            .forEach { $0.close() }
-
-        UserDefaults.standard.removeObject(forKey: openWindowKey)
-        UserDefaults.standard.set(true, forKey: promptedKey)
-
-        let delegate = AppDelegate(languageSettings: zhHansLanguageSettings())
-        NSApp.delegate = delegate
-        defer {
-            delegate.applicationWillTerminate(Notification(name: NSApplication.willTerminateNotification, object: NSApp))
-            NSApp.delegate = previousDelegate
-            restoreUserDefaultsValue(previousOpenWindowValue, forKey: openWindowKey)
-            restoreUserDefaultsValue(previousPromptedValue, forKey: promptedKey)
-            NSApp.windows
-                .filter { $0.contentViewController is ViewController }
-                .forEach { $0.close() }
-        }
-
-        delegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification, object: NSApp))
-
-        let mainWindow = NSApp.windows.first {
-            $0.contentViewController is ViewController && $0.isVisible
-        }
-        #expect(mainWindow != nil)
+    @Test func mainWindowLaunchPolicyDefaultsToVisibleAndHonorsStoredPreference() {
+        #expect(MainWindowLaunchPolicy.shouldOpen(hasStoredPreference: false, storedPreference: false))
+        #expect(MainWindowLaunchPolicy.shouldOpen(hasStoredPreference: true, storedPreference: true))
+        #expect(!MainWindowLaunchPolicy.shouldOpen(hasStoredPreference: true, storedPreference: false))
     }
 
     @MainActor

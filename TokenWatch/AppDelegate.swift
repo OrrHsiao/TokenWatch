@@ -141,15 +141,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static func shouldOpenMainWindowOnLaunch() -> Bool {
-        guard UserDefaults.standard.object(forKey: openMainWindowOnLaunchKey) != nil else {
-            return true
-        }
-        return UserDefaults.standard.bool(forKey: openMainWindowOnLaunchKey)
+        let defaults = UserDefaults.standard
+        return MainWindowLaunchPolicy.shouldOpen(
+            hasStoredPreference: defaults.object(forKey: openMainWindowOnLaunchKey) != nil,
+            storedPreference: defaults.bool(forKey: openMainWindowOnLaunchKey)
+        )
     }
 
     private static func hasPromptedInitialAuthorization() -> Bool {
         UserDefaults.standard.bool(forKey: initialAuthorizationPromptedKey)
             || ProcessInfo.processInfo.arguments.contains("-\(initialAuthorizationPromptedKey)")
+    }
+}
+
+/// 将持久化的启动偏好转换为窗口展示决策；未保存过偏好时保持默认打开。
+enum MainWindowLaunchPolicy {
+    static func shouldOpen(hasStoredPreference: Bool, storedPreference: Bool) -> Bool {
+        hasStoredPreference ? storedPreference : true
     }
 }
 
