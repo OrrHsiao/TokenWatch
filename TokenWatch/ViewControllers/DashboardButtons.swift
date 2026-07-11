@@ -24,7 +24,6 @@ final class DashboardNavigationButton: NSButton, DashboardAppearanceRefreshable 
 
         alignment = .left
         bezelStyle = .regularSquare
-        focusRingType = .none
         isBordered = false
         font = .systemFont(ofSize: 13, weight: .medium)
         wantsLayer = true
@@ -48,8 +47,18 @@ final class DashboardNavigationButton: NSButton, DashboardAppearanceRefreshable 
         // 内容由子视图排版，避免 AppKit 默认按钮绘制吞掉设计稿里的内边距。
     }
 
-    override var acceptsFirstResponder: Bool {
-        false
+    // 自绘 draw(_:) 不调用 super；显式提供 mask，让 AppKit 在独立绘制阶段保留系统 focus ring。
+    override var focusRingMaskBounds: NSRect {
+        bounds
+    }
+
+    override func drawFocusRingMask() {
+        let cornerRadius = layer?.cornerRadius ?? 0
+        NSBezierPath(
+            roundedRect: bounds,
+            xRadius: cornerRadius,
+            yRadius: cornerRadius
+        ).fill()
     }
 
     func setVisualTint(_ color: NSColor) {
@@ -135,10 +144,6 @@ final class DashboardRangeButton: NSButton, DashboardAppearanceRefreshable {
         refreshDashboardAppearance()
     }
 
-    override var acceptsFirstResponder: Bool {
-        false
-    }
-
     func setDashboardLayerColors(backgroundColor: NSColor, borderColor: NSColor) {
         dashboardBackgroundColor = backgroundColor
         dashboardBorderColor = borderColor
@@ -185,7 +190,6 @@ final class DashboardSessionButton: NSButton, DashboardAppearanceRefreshable {
 
         isBordered = false
         bezelStyle = .regularSquare
-        focusRingType = .none
         wantsLayer = true
         layer?.masksToBounds = true
 
@@ -223,8 +227,18 @@ final class DashboardSessionButton: NSButton, DashboardAppearanceRefreshable {
         // 会话页按钮由 layer 和子视图绘制，避免 NSButtonCell 在外观切换后保留系统深色样式。
     }
 
-    override var acceptsFirstResponder: Bool {
-        false
+    // 自绘 draw(_:) 不调用 super；显式提供 mask，让 AppKit 在独立绘制阶段保留系统 focus ring。
+    override var focusRingMaskBounds: NSRect {
+        bounds
+    }
+
+    override func drawFocusRingMask() {
+        let cornerRadius = layer?.cornerRadius ?? 0
+        NSBezierPath(
+            roundedRect: bounds,
+            xRadius: cornerRadius,
+            yRadius: cornerRadius
+        ).fill()
     }
 
     func setDashboardTitle(_ title: String) {

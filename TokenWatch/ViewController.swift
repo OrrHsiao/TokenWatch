@@ -50,7 +50,8 @@ class ViewController: NSViewController {
     override func loadView() {
         view = DashboardBackgroundView(
             frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
-            backgroundColor: DashboardPalette.appBackground
+            backgroundColor: DashboardPalette.appBackground,
+            acceptsFirstResponder: true
         )
         view.setAccessibilityIdentifier("DashboardRootView")
     }
@@ -317,7 +318,6 @@ final class SettingsViewController: NSViewController {
 
     private func configureSettingsButton(_ button: DashboardRangeButton) {
         button.bezelStyle = .regularSquare
-        button.focusRingType = .none
         button.isBordered = false
         button.alignment = .center
         button.wantsLayer = true

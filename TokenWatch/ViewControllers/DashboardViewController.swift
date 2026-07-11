@@ -606,7 +606,6 @@ final class DashboardViewController: NSViewController {
         button.identifier = NSUserInterfaceItemIdentifier("DashboardRange.\(range.rawValue)")
         button.setAccessibilityIdentifier("DashboardRange.\(range.rawValue)")
         button.bezelStyle = .regularSquare
-        button.focusRingType = .none
         button.isBordered = false
         button.font = .systemFont(ofSize: 12, weight: .semibold)
         button.alignment = .center

@@ -167,9 +167,12 @@ enum MainWindowFactory {
             backing: .buffered,
             defer: false
         )
-        window.title = ""
+        let contentController = ViewController(languageSettings: languageSettings)
+        window.title = "TokenWatch"
+        window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
-        window.contentViewController = ViewController(languageSettings: languageSettings)
+        window.contentViewController = contentController
+        window.initialFirstResponder = contentController.view
         window.setContentSize(contentSize)
         window.center()
         return NSWindowController(window: window)
