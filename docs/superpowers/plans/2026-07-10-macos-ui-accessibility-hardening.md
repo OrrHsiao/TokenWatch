@@ -421,6 +421,8 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
     )
     window.contentViewController = viewController
     defer { window.close() }
+    window.makeKeyAndOrderFront(nil)
+    #expect(window.isVisible)
     viewController.view.layoutSubtreeIfNeeded()
 
     func assertFocusable(_ identifiers: [String]) throws {
@@ -489,6 +491,8 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
     try assertFocusable(["AuthorizationActionButton", "RefreshAllDataButton"])
 }
 ```
+
+该测试必须使用真实可见窗口。把完整 Dashboard 层级只挂到从未显示的隐藏 `NSWindow` 后立即销毁，会走入与真实产品不同的 AppKit teardown 路径；可见的 window-backed 上下文也让 focus ring 和 first-responder 断言具备用户界面语义。XCTest app host 不保证测试创建的窗口能成为系统 key window，因此不对 `isKeyWindow` 作环境相关断言。
 
 在 `dashboardNavigationItemsUsePencilIconSpacing` 中把：
 
