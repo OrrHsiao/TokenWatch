@@ -215,7 +215,7 @@ func testSessionTableScrollsHorizontally() throws {
     XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
     let initialMinX = nextButton.frame.minX
 
-    tableScrollView.scroll(byDeltaX: 400, deltaY: 0)
+    tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
 
     XCTAssertLessThan(nextButton.frame.minX, initialMinX)
 }
@@ -272,8 +272,7 @@ private func makeSessionTableScrollView() -> NSScrollView {
     sessionTableScrollView.documentView = table
 
     table.translatesAutoresizingMaskIntoConstraints = false
-    let fillViewportWidth = table.widthAnchor.constraint(equalTo: clipView.widthAnchor)
-    fillViewportWidth.priority = .defaultHigh
+    let coverViewportWidth = table.widthAnchor.constraint(greaterThanOrEqualTo: clipView.widthAnchor)
 
     NSLayoutConstraint.activate([
         sessionTableScrollView.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
@@ -281,13 +280,14 @@ private func makeSessionTableScrollView() -> NSScrollView {
         table.topAnchor.constraint(equalTo: clipView.topAnchor),
         table.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.sessionTableMinimumWidth),
         table.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
-        fillViewportWidth,
+        coverViewportWidth,
     ])
     return sessionTableScrollView
 }
 ```
 
 不要给 table 增加 required trailing-to-clip constraint；该约束会与 1108pt 最小宽度冲突并重新压缩列。
+`coverViewportWidth` 必须保持为单向下界；若改成等宽软约束，窗口 fitting 会把内层 viewport 和整棵 Dashboard 反向撑到 1108pt，导致不再产生横向滚动范围。
 
 - [ ] **Step 4: 运行会话布局、分页、外观和 UI 测试并确认 GREEN**
 
