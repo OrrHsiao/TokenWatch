@@ -332,12 +332,12 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
 - Test: `TokenWatchUITests/TokenWatchUITests.swift:16-30`
 
 **Interfaces:**
-- Consumes: AppKit 默认 `NSButton.acceptsFirstResponder == true` 与 `NSFocusRingType.default`。
-- Produces: `DashboardBackgroundView.init(frame:backgroundColor:acceptsFirstResponder:)` 默认参数为 `false`；`ViewController` 的根背景 view 显式传 `true`；`MainWindowFactory.makeWindowController(languageSettings:) -> NSWindowController` 返回逻辑标题为 `TokenWatch`、视觉标题隐藏、`initialFirstResponder` 指向该非操作根视图且能够实际成为 `window.firstResponder` 的窗口。
+- Consumes: enabled AppKit `NSButton` 的默认 first-responder 行为与 `NSFocusRingType.default`；disabled/current-page 控件继续不可聚焦；覆盖 `draw(_:)` 的 layer-backed 自绘按钮必须通过 `focusRingMaskBounds` / `drawFocusRingMask()` 提供系统 ring mask。
+- Produces: `DashboardBackgroundView.init(frame:backgroundColor:acceptsFirstResponder:)` 默认参数为 `false`；`ViewController` 的根背景 view 显式传 `true`；`DashboardNavigationButton` 与 `DashboardSessionButton` 提供圆角 focus-ring mask；`MainWindowFactory.makeWindowController(languageSettings:) -> NSWindowController` 返回逻辑标题为 `TokenWatch`、视觉标题隐藏、`initialFirstResponder` 指向该非操作根视图且首次显示后实际成为 `window.firstResponder` 的窗口。
 
 - [ ] **Step 1: 替换拒绝焦点的断言并增加真实窗口 responder 测试**
 
-将 `mainWindowFactoryBuildsVisibleMainWindowShape` 替换为完整测试；除了检查配置属性，还必须显示窗口、显式请求根 view 成为 first responder，并读取 `window.firstResponder` 验证结果：
+将 `mainWindowFactoryBuildsVisibleMainWindowShape` 替换为完整测试；除了检查配置属性，还必须显示窗口并先验证 `initialFirstResponder` 自动成为实际 first responder，再显式验证 responder 请求：
 
 ```swift
 @MainActor
@@ -369,6 +369,7 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
 
     windowController.showWindow(nil)
     #expect(window.isVisible)
+    #expect(window.firstResponder === rootView)
     #expect(window.makeFirstResponder(rootView))
     #expect(window.firstResponder === rootView)
 }
@@ -380,12 +381,35 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
 @MainActor
 @Test func dashboardActionButtonsSupportKeyboardFocusAndFocusRings() throws {
     let languageSettings = zhHansLanguageSettings()
+    let calendar = utcCalendar()
+    let now = dateTime(2026, 6, 20, hour: 15, minute: 0, calendar: calendar)
+    let entries = (0..<11).map { index in
+        makeDashboardEntry(
+            sessionID: "focus-session-\(index)",
+            date: dateTime(2026, 6, 20, hour: 14, minute: 59 - index, calendar: calendar),
+            model: "focus-model",
+            input: 100 + index,
+            cwd: "/work/focus-\(index)"
+        )
+    }
+    let stats = UsageAggregator().aggregate(entries)
     let viewController = DashboardViewController(
         settingsViewController: SettingsViewController(
             isAuthorized: { false },
             languageSettings: languageSettings
         ),
+        stateProvider: {
+            [.claude: .init(
+                stats: stats,
+                entries: entries,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            )]
+        },
         refreshAction: {},
+        nowProvider: { now },
+        calendar: calendar,
         languageSettings: languageSettings
     )
     viewController.loadViewIfNeeded()
@@ -396,12 +420,18 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
         defer: false
     )
     window.contentViewController = viewController
+    defer { window.close() }
+    viewController.view.layoutSubtreeIfNeeded()
 
     func assertFocusable(_ identifiers: [String]) throws {
         for identifier in identifiers {
             let button = try #require(viewController.view.button(identifier: identifier))
+            #expect(button.isEnabled, "\(identifier) must be enabled before requesting focus")
             #expect(button.acceptsFirstResponder, "\(identifier) must accept keyboard focus")
             #expect(button.focusRingType != .none, "\(identifier) must show a focus ring")
+            if button is DashboardNavigationButton || button is DashboardSessionButton {
+                #expect(!button.focusRingMaskBounds.isEmpty, "\(identifier) must provide a custom focus-ring mask")
+            }
             #expect(window.makeFirstResponder(button), "\(identifier) must become first responder")
             #expect(window.firstResponder === button)
         }
@@ -420,14 +450,42 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
 
     let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
     _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
-    try assertFocusable([
-        "DashboardSessionsPagination.previous",
-        "DashboardSessionsPagination.page.1",
-        "DashboardSessionsPagination.next",
-    ])
+    viewController.view.layoutSubtreeIfNeeded()
+
+    let firstPagePrevious = try #require(
+        viewController.view.button(identifier: "DashboardSessionsPagination.previous")
+    )
+    let firstPageCurrent = try #require(
+        viewController.view.button(identifier: "DashboardSessionsPagination.page.1")
+    )
+    let firstPageNext = try #require(
+        viewController.view.button(identifier: "DashboardSessionsPagination.next")
+    )
+    #expect(!firstPagePrevious.isEnabled)
+    #expect(!firstPageCurrent.isEnabled)
+    #expect(firstPageNext.isEnabled)
+    try assertFocusable(["DashboardSessionsPagination.next"])
+
+    _ = firstPageNext.sendAction(firstPageNext.action, to: firstPageNext.target)
+    viewController.view.layoutSubtreeIfNeeded()
+
+    let secondPagePrevious = try #require(
+        viewController.view.button(identifier: "DashboardSessionsPagination.previous")
+    )
+    let secondPageCurrent = try #require(
+        viewController.view.button(identifier: "DashboardSessionsPagination.page.2")
+    )
+    let secondPageNext = try #require(
+        viewController.view.button(identifier: "DashboardSessionsPagination.next")
+    )
+    #expect(secondPagePrevious.isEnabled)
+    #expect(!secondPageCurrent.isEnabled)
+    #expect(!secondPageNext.isEnabled)
+    try assertFocusable(["DashboardSessionsPagination.previous"])
 
     let settingsButton = try #require(viewController.view.button(identifier: "DashboardNav.settings"))
     _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
+    viewController.view.layoutSubtreeIfNeeded()
     try assertFocusable(["AuthorizationActionButton", "RefreshAllDataButton"])
 }
 ```
@@ -442,6 +500,7 @@ git commit -m "fix(dashboard): 增加会话表横向滚动"
 
 ```swift
 #expect(button.focusRingType != .none)
+#expect(!button.focusRingMaskBounds.isEmpty)
 ```
 
 在 UI 启动测试中把首个窗口查询改为：
@@ -459,7 +518,7 @@ XCTAssertTrue(mainWindow.waitForExistence(timeout: 5))
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/mainWindowFactoryBuildsVisibleMainWindowShape()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardActionButtonsSupportKeyboardFocusAndFocusRings()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardNavigationItemsUsePencilIconSpacing()" -only-testing:TokenWatchUITests/TokenWatchUITests/testLaunchShowsPencilDashboardOverview CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：FAIL；窗口标题仍为空，根背景 view 与三个按钮类都返回 `acceptsFirstResponder == false`，`window.makeFirstResponder(rootView)` 返回 false，导航和 range/session 控件的 focus ring 为 `.none`。
+预期：FAIL；窗口标题仍为空，根背景 view 与三个按钮类都返回 `acceptsFirstResponder == false`，窗口不会自动把根 view 设为 first responder，导航和 range/session 控件的 focus ring 为 `.none` 或没有可绘制 mask。disabled 的当前页与不可用分页箭头不参与焦点断言。
 
 - [ ] **Step 3: 删除永久焦点拒绝并让主窗口根 view 选择性接受 responder**
 
@@ -476,6 +535,25 @@ override var acceptsFirstResponder: Bool {
 ```swift
 focusRingType = .none
 ```
+
+两个类都覆盖了 `draw(_:)` 且不调用 `super`，因此还必须显式提供 AppKit focus-ring mask；只把 `focusRingType` 改成非 `.none` 不会实际绘制系统 ring。在两个类中加入：
+
+```swift
+override var focusRingMaskBounds: NSRect {
+    bounds
+}
+
+override func drawFocusRingMask() {
+    let cornerRadius = layer?.cornerRadius ?? 0
+    NSBezierPath(
+        roundedRect: bounds,
+        xRadius: cornerRadius,
+        yRadius: cornerRadius
+    ).fill()
+}
+```
+
+该 mask 使用 layer 的现有圆角，不改变按钮视觉；AppKit 会在独立 focus-ring 绘制路径中使用它，避免被 layer-backed 自绘内容吞掉。
 
 删除 `DashboardViewController.makeRangeButton(_:)` 和 `SettingsViewController.configureSettingsButton(_:)` 中的：
 
@@ -539,7 +617,7 @@ window.center()
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData "-only-testing:TokenWatchTests/TokenWatchTests/mainWindowFactoryBuildsVisibleMainWindowShape()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardActionButtonsSupportKeyboardFocusAndFocusRings()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardNavigationItemsUsePencilIconSpacing()" "-only-testing:TokenWatchTests/TokenWatchTests/dashboardRefreshButtonIsStableActionEntry()" -only-testing:TokenWatchUITests/TokenWatchUITests/testLaunchShowsPencilDashboardOverview CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=- test
 ```
 
-预期：PASS；逻辑标题可被 XCUI 查询，标题仍不在 title bar 绘制；主窗口根 view 是可实际成为 `window.firstResponder` 的非操作控件，其他背景 view 仍默认拒绝；按钮保留原视觉布局并接受 first responder。
+预期：PASS；逻辑标题可被 XCUI 查询，标题仍不在 title bar 绘制；主窗口首次显示后根 view 自动成为 `window.firstResponder`，其他背景 view 仍默认拒绝；enabled 按钮保留原视觉布局、接受 first responder，并由自绘按钮提供非空 focus-ring mask；disabled 分页控件继续不可操作。
 
 - [ ] **Step 5: 提交键盘和窗口语义**
 
