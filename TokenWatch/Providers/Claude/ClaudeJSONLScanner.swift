@@ -15,6 +15,11 @@ struct ClaudeJSONLFileInfo: Sendable {
 final class ClaudeJSONLScanner: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLScanner")
+    private let directoryLister: any JSONLDirectoryListing
+
+    init(directoryLister: any JSONLDirectoryListing = SystemJSONLDirectoryLister()) {
+        self.directoryLister = directoryLister
+    }
 
     /// 扫描 claudeDataRoot 目录下的所有 JSONL 文件
     /// - Parameter claudeDataRoot: Security-Scoped 访问下的 ~/.claude 目录 URL
@@ -23,22 +28,15 @@ final class ClaudeJSONLScanner: Sendable {
         let projectsDir = claudeDataRoot.appendingPathComponent("projects")
         var results: [ClaudeJSONLFileInfo] = []
 
-        // 检查 projects 目录是否存在
-        guard FileManager.default.fileExists(atPath: projectsDir.path) else {
-            logger.warning("projects 目录不存在: \(projectsDir.path)")
-            return results
+        let fileURLs: [URL]
+        do {
+            fileURLs = try directoryLister.recursiveFileURLs(in: projectsDir)
+        } catch {
+            logger.error("projects 枚举失败: \(error.localizedDescription)")
+            throw error
         }
 
-        guard let projectEnumerator = FileManager.default.enumerator(
-            at: projectsDir,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        ) else {
-            logger.warning("无法枚举 projects 目录")
-            return results
-        }
-
-        for case let fileURL as URL in projectEnumerator {
+        for fileURL in fileURLs {
             guard fileURL.pathExtension == "jsonl" else { continue }
 
             let isSubagent = fileURL.pathComponents.contains("subagents")

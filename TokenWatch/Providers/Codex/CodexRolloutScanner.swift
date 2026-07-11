@@ -16,6 +16,11 @@ struct CodexRolloutFileInfo: Sendable {
 final class CodexRolloutScanner: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "CodexRolloutScanner")
+    private let directoryLister: any JSONLDirectoryListing
+
+    init(directoryLister: any JSONLDirectoryListing = SystemJSONLDirectoryLister()) {
+        self.directoryLister = directoryLister
+    }
 
     /// 扫描 codexRoot 下所有 rollout-*.jsonl 文件
     /// - Parameter codexRoot: 已通过 Bookmark 取得访问权限的 ~/.codex 目录
@@ -24,11 +29,12 @@ final class CodexRolloutScanner: Sendable {
         let archivedDir = codexRoot.appendingPathComponent("archived_sessions")
 
         // 先收 sessions/,再收 archived_sessions/ 中相对路径未撞名的部分
-        let primary = scanDirectory(sessionsDir, isArchived: false)
+        let primary = try scanDirectory(sessionsDir, isArchived: false)
         var seenRelative = Set(primary.map(\.relativePath))
 
         var files = primary.map(\.fileInfo)
-        for hit in scanDirectory(archivedDir, isArchived: true) where !seenRelative.contains(hit.relativePath) {
+        for hit in try scanDirectory(archivedDir, isArchived: true)
+        where !seenRelative.contains(hit.relativePath) {
             seenRelative.insert(hit.relativePath)
             files.append(hit.fileInfo)
         }
@@ -40,22 +46,21 @@ final class CodexRolloutScanner: Sendable {
     // MARK: - Private
 
     /// 扫描单个根目录下所有 rollout-*.jsonl,同时返回相对路径用于跨目录去重
-    private func scanDirectory(_ dir: URL, isArchived: Bool) -> [(fileInfo: CodexRolloutFileInfo, relativePath: String)] {
-        guard FileManager.default.fileExists(atPath: dir.path) else {
-            return []
-        }
-        guard let enumerator = FileManager.default.enumerator(
-            at: dir,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        ) else {
-            logger.warning("无法枚举目录: \(dir.path)")
-            return []
+    private func scanDirectory(
+        _ dir: URL,
+        isArchived: Bool
+    ) throws -> [(fileInfo: CodexRolloutFileInfo, relativePath: String)] {
+        let fileURLs: [URL]
+        do {
+            fileURLs = try directoryLister.recursiveFileURLs(in: dir)
+        } catch {
+            logger.error("目录枚举失败: \(dir.path), \(error.localizedDescription)")
+            throw error
         }
 
-        var results: [(CodexRolloutFileInfo, String)] = []
+        var results: [(fileInfo: CodexRolloutFileInfo, relativePath: String)] = []
         let dirPath = dir.path
-        for case let fileURL as URL in enumerator {
+        for fileURL in fileURLs {
             guard fileURL.pathExtension == "jsonl" else { continue }
             let name = fileURL.lastPathComponent
             guard name.hasPrefix("rollout-") else { continue }
@@ -63,9 +68,17 @@ final class CodexRolloutScanner: Sendable {
             let relativePath = String(fileURL.path.dropFirst(dirPath.count))
                 .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             let sessionID = extractSessionID(from: name) ?? name
-            results.append((CodexRolloutFileInfo(url: fileURL, sessionID: sessionID, isArchived: isArchived), relativePath))
+            results.append((
+                CodexRolloutFileInfo(url: fileURL, sessionID: sessionID, isArchived: isArchived),
+                relativePath
+            ))
         }
-        return results
+        return results.sorted {
+            if $0.relativePath != $1.relativePath {
+                return $0.relativePath < $1.relativePath
+            }
+            return $0.fileInfo.url.standardizedFileURL.path < $1.fileInfo.url.standardizedFileURL.path
+        }
     }
 
     /// 从 `rollout-2026-05-04T16-35-18-<UUID>.jsonl` 提取尾部 UUID
