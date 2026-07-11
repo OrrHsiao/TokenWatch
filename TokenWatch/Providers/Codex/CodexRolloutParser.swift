@@ -30,6 +30,12 @@ enum CodexReplayClassification: Sendable, Equatable {
     }
 }
 
+/// replay 分类与其跨 append 复用证明；不稳定结果必须在下一次追加后重算。
+private struct CodexReplayDecision: Sendable {
+    let classification: CodexReplayClassification
+    let isStableUnderAppend: Bool
+}
+
 /// 解析 Codex rollout JSONL，提取 token_count 事件为统一用量条目。
 ///
 /// 关键策略参考 ccusage `adapter/codex/parser.rs`：
@@ -45,6 +51,7 @@ final class CodexRolloutParser: @unchecked Sendable {
 
     private struct CodexIncrementalState: Sendable {
         let replayClassification: CodexReplayClassification
+        let replayClassificationIsStableUnderAppend: Bool
         let fileState: CodexFileState
 
         var returnedCandidates: [CodexUsageCandidate] {
@@ -194,16 +201,20 @@ final class CodexRolloutParser: @unchecked Sendable {
             contentCanReuseClassification = false
         }
 
-        let replayClassification: CodexReplayClassification
+        let replayDecision: CodexReplayDecision
         if let previous,
            contentCanReuseClassification,
-           previous.replayClassification != .pending {
-            replayClassification = previous.replayClassification
+           previous.replayClassificationIsStableUnderAppend {
+            replayDecision = CodexReplayDecision(
+                classification: previous.replayClassification,
+                isStableUnderAppend: true
+            )
         } else {
-            replayClassification = try CodexReplayDetector.classify(
+            replayDecision = try CodexReplayDetector.classify(
                 snapshot: snapshot
             )
         }
+        let replayClassification = replayDecision.classification
         let replaySecond = replayClassification.replaySecond
 
         let reusableFileState: CodexFileState?
@@ -226,8 +237,15 @@ final class CodexRolloutParser: @unchecked Sendable {
             replaySecond: replaySecond,
             pricingSpeed: pricingSpeed
         )
+        let committedReplayProbeLength = min(
+            snapshot.metadata.size,
+            UInt64(16 * 1024)
+        )
         return CodexIncrementalState(
             replayClassification: replayClassification,
+            replayClassificationIsStableUnderAppend:
+                replayDecision.isStableUnderAppend
+                    && fileState.committedOffset >= committedReplayProbeLength,
             fileState: fileState
         )
     }
@@ -378,14 +396,18 @@ private enum CodexReplayDetector {
     /// 仅在前 16 KiB 含 thread/fork marker 时比较前两条有效 usage 的规范化秒。
     static func classify(
         snapshot: JSONLFileSnapshot
-    ) throws -> CodexReplayClassification {
+    ) throws -> CodexReplayDecision {
         guard try hasReplayMarker(snapshot: snapshot) else {
-            return .notReplay
+            return CodexReplayDecision(
+                classification: .notReplay,
+                isStableUnderAppend: snapshot.metadata.size >= UInt64(16 * 1024)
+            )
         }
 
         let decoder = JSONDecoder()
         var firstSecond: String?
         var result: CodexReplayClassification = .pending
+        var isStableUnderAppend = false
         try forEachLine(in: snapshot) { lineData in
             guard let record = try? decoder.decode(
                 CodexRecord.self,
@@ -405,9 +427,13 @@ private enum CodexReplayDetector {
             result = firstSecond == second
                 ? .replay(second: second)
                 : .notReplay
+            isStableUnderAppend = true
             return false
         }
-        return result
+        return CodexReplayDecision(
+            classification: result,
+            isStableUnderAppend: isStableUnderAppend
+        )
     }
 
     private static func hasReplayMarker(
