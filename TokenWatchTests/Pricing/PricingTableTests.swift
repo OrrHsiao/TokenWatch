@@ -127,6 +127,38 @@ extension PricingTableTests {
         #expect(table.pricing(for: "claude-sonnet-4-5") == nil)
     }
 
+    @Test("LiteLLM 损坏时仍保留有效 models.dev catalog")
+    func corruptLiteLLMKeepsModelsDevCatalog() throws {
+        let files = try catalogFiles(
+            liteLLM: Data("{".utf8),
+            modelsDev: Data(#"{"models-dev-independent":{"cost":{"input":7,"output":28}}}"#.utf8)
+        )
+        defer { try? FileManager.default.removeItem(at: files.directory) }
+
+        let table = PricingTable.load(
+            liteLLMURL: files.liteLLM,
+            modelsDevURL: files.modelsDev
+        )
+
+        #expect(table.pricing(for: "models-dev-independent")?.inputPrice == 7)
+    }
+
+    @Test("models.dev 损坏时仍保留有效 LiteLLM catalog")
+    func corruptModelsDevKeepsLiteLLMCatalog() throws {
+        let files = try catalogFiles(
+            liteLLM: Data(#"{"gpt-independent-loader":{"i":0.000002,"o":0.000008}}"#.utf8),
+            modelsDev: Data("{".utf8)
+        )
+        defer { try? FileManager.default.removeItem(at: files.directory) }
+
+        let table = PricingTable.load(
+            liteLLMURL: files.liteLLM,
+            modelsDevURL: files.modelsDev
+        )
+
+        #expect(table.pricing(for: "gpt-independent-loader")?.inputPrice == 2)
+    }
+
     @Test("fuzzy 多候选先最长，等长取 canonical 字典序最小")
     func deterministicFuzzySelection() {
         let table = PricingTable(
@@ -261,5 +293,22 @@ extension PricingTableTests {
             cacheWritePrice: input * 1.25,
             fastMultiplier: fast
         )
+    }
+
+    private func catalogFiles(
+        liteLLM: Data,
+        modelsDev: Data
+    ) throws -> (directory: URL, liteLLM: URL, modelsDev: URL) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        let liteLLMURL = directory.appendingPathComponent("litellm.json")
+        let modelsDevURL = directory.appendingPathComponent("models-dev.json")
+        try liteLLM.write(to: liteLLMURL)
+        try modelsDev.write(to: modelsDevURL)
+        return (directory, liteLLMURL, modelsDevURL)
     }
 }

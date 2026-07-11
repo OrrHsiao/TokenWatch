@@ -3,18 +3,12 @@ import Foundation
 enum OpenCodePricingCandidateResolver {
     /// 按 ccusage OpenCode adapter 的稳定顺序生成本地定价候选。
     /// - Parameters:
-    ///   - modelKey: parser 产生的原始 model key。
+    ///   - modelID: OpenCode 返回的真实 model ID；缺失时不可用 provider fallback 计价。
     ///   - providerID: OpenCode 上游 provider 标识。
     /// - Returns: 去重后依次供本地定价查询的 model ID。
-    static func candidates(modelKey: String, providerID: String?) -> [String] {
-        let rawModel: String
-        if let providerID,
-           modelKey.hasPrefix("\(providerID)/") {
-            rawModel = String(modelKey.dropFirst(providerID.count + 1))
-        } else {
-            rawModel = modelKey
-        }
-
+    static func candidates(modelID: String?, providerID: String?) -> [String] {
+        guard let rawModel = modelID?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawModel.isEmpty else { return [] }
         let resolved: String
         switch rawModel {
         case "gemini-3-pro-high": resolved = "gemini-3-pro-preview"

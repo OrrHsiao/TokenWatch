@@ -15,6 +15,8 @@ struct ParsedUsageEntry: Sendable, Hashable {
     let sessionID: String
     let timestamp: Date?
     let model: String
+    /// OpenCode 实际返回的计价模型 ID；Claude/Codex 保持 nil。
+    let upstreamModelID: String?
     let cwd: String?
     let agentId: String?
     let usage: TokenUsage
@@ -39,6 +41,7 @@ struct ParsedUsageEntry: Sendable, Hashable {
         sessionID: String,
         timestamp: Date?,
         model: String,
+        upstreamModelID: String? = nil,
         cwd: String?,
         agentId: String?,
         usage: TokenUsage,
@@ -55,6 +58,7 @@ struct ParsedUsageEntry: Sendable, Hashable {
         self.sessionID = sessionID
         self.timestamp = timestamp
         self.model = model
+        self.upstreamModelID = upstreamModelID
         self.cwd = cwd
         self.agentId = agentId
         self.usage = usage

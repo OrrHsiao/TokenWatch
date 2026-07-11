@@ -5,6 +5,7 @@ import os.log
 ///
 /// 字段映射策略(见设计稿"opencode 字段映射"表):
 /// - model = "{providerID}/{modelID}"(Q4=b,严格区分上游)
+/// - upstreamModelID = 真实 modelID，不继承展示用 provider fallback
 /// - tokens.cache.write → cacheCreationInputTokens 扁平字段(cacheCreation 保持 nil,
 ///   派生属性 totalCacheCreationTokens 自动 fall through 到扁平字段)
 /// - tokens.total 中未被已知类别覆盖的余量 → outputTokens
@@ -87,6 +88,7 @@ final class OpenCodeMessageParser: Sendable {
                 sessionID: row.sessionID,
                 timestamp: Date(timeIntervalSince1970: TimeInterval(row.timeCreatedMs) / 1000.0),
                 model: modelKey,
+                upstreamModelID: parsed.modelID,
                 cwd: cwd,
                 agentId: nil,
                 usage: usage,

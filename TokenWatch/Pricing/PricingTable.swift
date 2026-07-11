@@ -70,30 +70,63 @@ struct PricingTable: Sendable {
         shared.pricing(for: modelID)
     }
 
+    /// 按匹配类型和模型 ID 排序，序列化生产实际使用的 fast override 映射。
+    static var canonicalFastMultiplierOverrides: Data {
+        let exact = fastExactOverrides
+            .sorted { $0.key < $1.key }
+            .map { "exact\t\($0.key)\t\($0.value)" }
+        let prefixes = fastPrefixOverrides
+            .sorted { $0.modelID < $1.modelID }
+            .map { "prefix\t\($0.modelID)\t\($0.multiplier)" }
+        return Data((exact + prefixes).joined(separator: "\n").utf8)
+    }
+
     private static func loadBundled() -> PricingTable {
-        do {
-            guard let liteURL = Bundle.main.url(
+        load(
+            liteLLMURL: Bundle.main.url(
                 forResource: "litellm_prices",
                 withExtension: "json"
-            ), let modelsURL = Bundle.main.url(
+            ),
+            modelsDevURL: Bundle.main.url(
                 forResource: "models-dev-pricing",
                 withExtension: "json"
-            ) else {
-                logger.error("离线定价资源缺失，仅使用 builtin")
-                return PricingTable(
-                    liteLLMEntries: [:],
-                    modelsDevEntries: [:]
-                )
-            }
-            let lite = try LiteLLMPriceCatalog(data: Data(contentsOf: liteURL))
-            let models = try ModelsDevPriceCatalog(data: Data(contentsOf: modelsURL))
-            return PricingTable(
-                liteLLMEntries: lite.entries,
-                modelsDevEntries: models.entries
             )
+        )
+    }
+
+    /// 从指定的两个离线资源组装定价表，与 bundle 初始化共用读取路径。
+    static func load(liteLLMURL: URL?, modelsDevURL: URL?) -> PricingTable {
+        PricingTable(
+            liteLLMEntries: loadLiteLLM(from: liteLLMURL),
+            modelsDevEntries: loadModelsDev(from: modelsDevURL)
+        )
+    }
+
+    private static func loadLiteLLM(
+        from url: URL?
+    ) -> [String: CatalogPricingEntry] {
+        guard let url else {
+            logger.error("LiteLLM 离线定价资源缺失")
+            return [:]
+        }
+        do {
+            return try LiteLLMPriceCatalog(data: Data(contentsOf: url)).entries
         } catch {
-            logger.error("离线定价资源解析失败：\(error.localizedDescription)")
-            return PricingTable(liteLLMEntries: [:], modelsDevEntries: [:])
+            logger.error("LiteLLM 离线定价资源读取失败：\(error.localizedDescription)")
+            return [:]
+        }
+    }
+
+    private static func loadModelsDev(from url: URL?) -> [String: ModelPricing] {
+        guard let url else {
+            logger.error("models.dev 离线定价资源缺失")
+            return [:]
+        }
+        do {
+            return try ModelsDevPriceCatalog(data: Data(contentsOf: url)).entries
+        } catch {
+            logger.error("models.dev 离线定价资源读取失败：\(error.localizedDescription)")
+            return [:]
         }
     }
 
@@ -189,6 +222,18 @@ private extension PricingTable {
         let cacheWrite: Double?
         let cacheRead: Double?
     }
+
+    static let fastExactOverrides: [String: Double] = [
+        "gpt-5.5": 2.5,
+        "gpt-5.4": 2.0,
+        "gpt-5.3-codex": 2.0,
+    ]
+
+    static let fastPrefixOverrides: [(modelID: String, multiplier: Double)] = [
+        ("claude-opus-4-6", 6.0),
+        ("claude-opus-4-7", 6.0),
+        ("claude-opus-4-8", 2.0),
+    ]
 
     static let builtinPrices: [String: ModelPricing] = {
         func p(
@@ -289,21 +334,11 @@ private extension PricingTable {
     }()
 
     static func builtinFastMultiplier(for modelID: String) -> Double? {
-        let exact: [String: Double] = [
-            "gpt-5.5": 2.5,
-            "gpt-5.4": 2.0,
-            "gpt-5.3-codex": 2.0,
-        ]
-        if let value = exact[modelID] { return value }
+        if let value = fastExactOverrides[modelID] { return value }
 
         let normalized = normalizeSeparators(modelID)
-        let prefixes: [(String, Double)] = [
-            ("claude-opus-4-6", 6.0),
-            ("claude-opus-4-7", 6.0),
-            ("claude-opus-4-8", 2.0),
-        ]
         for part in normalized.split(whereSeparator: { $0 == "/" || $0 == ":" }) {
-            for (base, multiplier) in prefixes {
+            for (base, multiplier) in fastPrefixOverrides {
                 guard let range = part.range(of: base, options: .backwards) else { continue }
                 let suffix = part[range.lowerBound...]
                 if suffix == base || suffix.dropFirst(base.count).first == "-" {

@@ -133,6 +133,28 @@ struct OpenCodeMessageParserTests {
         #expect(parser.parseAll([onlyProvider])[0].model == "p-only")
     }
 
+    @Test("仅 providerID 时保留展示 fallback 但不生成本地定价候选")
+    func providerOnlyDoesNotCreatePricingCandidates() throws {
+        let row = makeRow(
+            id: "provider-only",
+            sessionID: "s",
+            timeMs: 0,
+            json: #"{"role":"assistant","providerID":"anthropic","cost":0,"tokens":{"input":1000000,"output":1000000}}"#,
+            directory: "/d"
+        )
+
+        let entry = try #require(parser.parseAll([row]).first)
+        let candidates = OpenCodePricingCandidateResolver.candidates(
+            modelID: entry.upstreamModelID,
+            providerID: entry.upstreamProviderID
+        )
+
+        #expect(entry.model == "anthropic")
+        #expect(entry.upstreamModelID == nil)
+        #expect(candidates.isEmpty)
+        #expect(UsageCostResolver().resolvedCost(for: entry) == 0)
+    }
+
     @Test("cost == 0 视为缺省 → upstreamCost = nil")
     func zeroCostBecomesNil() {
         let row = makeRow(

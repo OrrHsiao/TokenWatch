@@ -49,6 +49,14 @@ enum CodexModelResolver {
         return fallbackModels.first { key >= $0.releasedOn }?.model ?? "gpt-5"
     }
 
+    /// 按生产匹配顺序序列化 `codex-auto-review` 固定日期映射。
+    static var canonicalAutoReviewFallbacks: Data {
+        Data(fallbackModels
+            .map { "\($0.releasedOn)\t\($0.model)" }
+            .joined(separator: "\n")
+            .utf8)
+    }
+
     private static func dateKey(_ date: Date) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
