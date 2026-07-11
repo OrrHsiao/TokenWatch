@@ -700,7 +700,11 @@ extension StatusPopoverViewController: NSCollectionViewDataSource {
         heatmapItem.onHoverTextChange = { [weak self] text in
             self?.updateHoverText(text)
         }
-        heatmapItem.configure(with: cell, language: languageSettings.resolvedLanguage)
+        heatmapItem.configure(
+            with: cell,
+            language: languageSettings.resolvedLanguage,
+            calendar: calendar
+        )
         return heatmapItem
     }
 }
