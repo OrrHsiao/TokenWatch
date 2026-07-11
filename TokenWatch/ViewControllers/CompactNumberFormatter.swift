@@ -34,30 +34,29 @@ enum CompactNumberFormatter {
         return "\(whole).\(frac)M"
     }
 
-    /// 把 token 总数统一换算成百万单位
-    /// - Parameter value: 整数 token 数,负数会被视为 0
-    /// - Returns: 使用 `M` 作为单位的字符串,用于最近 12 个月内容页
+    /// 按 Dashboard 约定压缩 token 数；零保留 `0.0M`，正数绝不显示为零。
     static func formatMillions(_ value: Int) -> String {
-        let safeValue = max(value, 0)
-        let tenths = safeValue / 100_000
-        let whole = tenths / 10
-        let frac = tenths % 10
-        return "\(whole).\(frac)M"
+        formatDashboardTokens(value)
     }
 
-    /// 把 hover 文案里的 token 总数压缩成 `M` 单位,0 保持 `M`,不足 0.1M 且非 0 时使用 `k`。
-    /// - Parameter value: 整数 token 数,负数会被视为 0
-    /// - Returns: 用于 hover label 的短字符串
+    /// 按 Dashboard hover 约定压缩 token 数，与 `formatMillions` 使用相同边界。
     static func formatHoverTokens(_ value: Int) -> String {
-        let safeValue = max(value, 0)
+        formatDashboardTokens(value)
+    }
 
-        if safeValue > 0 && safeValue < 100_000 {
-            let tenths = safeValue / 100
-            let whole = tenths / 10
-            let frac = tenths % 10
-            return "\(whole).\(frac)k"
+    private static func formatDashboardTokens(_ value: Int) -> String {
+        guard value > 0 else { return "0.0M" }
+
+        if value < 1_000 {
+            return String(value)
         }
 
-        return formatMillions(safeValue)
+        if value < 100_000 {
+            let tenths = value / 100
+            return "\(tenths / 10).\(tenths % 10)k"
+        }
+
+        let tenths = value / 100_000
+        return "\(tenths / 10).\(tenths % 10)M"
     }
 }

@@ -41,12 +41,32 @@ struct CompactNumberFormatterTests {
         #expect(CompactNumberFormatter.format(-1_000_000) == "0")
     }
 
-    @Test func hoverTokensUseMillionsWithKFallback() {
-        #expect(CompactNumberFormatter.formatHoverTokens(-1) == "0.0M")
-        #expect(CompactNumberFormatter.formatHoverTokens(0) == "0.0M")
-        #expect(CompactNumberFormatter.formatHoverTokens(12_345) == "12.3k")
-        #expect(CompactNumberFormatter.formatHoverTokens(99_999) == "99.9k")
-        #expect(CompactNumberFormatter.formatHoverTokens(100_000) == "0.1M")
-        #expect(CompactNumberFormatter.formatHoverTokens(1_234_567) == "1.2M")
+    @Test func dashboardFormattersUseExpectedBoundaries() {
+        let cases: [(value: Int, expected: String)] = [
+            (-1, "0.0M"),
+            (0, "0.0M"),
+            (1, "1"),
+            (999, "999"),
+            (1_000, "1.0k"),
+            (1_234, "1.2k"),
+            (99_999, "99.9k"),
+            (100_000, "0.1M"),
+            (1_234_567, "1.2M"),
+        ]
+
+        for item in cases {
+            #expect(CompactNumberFormatter.formatMillions(item.value) == item.expected)
+            #expect(CompactNumberFormatter.formatHoverTokens(item.value) == item.expected)
+        }
+    }
+
+    @Test func positiveDashboardValuesNeverFormatAsZero() {
+        for value in [1, 9, 99, 999, 1_001, 10_001, 100_001] {
+            let millions = CompactNumberFormatter.formatMillions(value)
+            let hover = CompactNumberFormatter.formatHoverTokens(value)
+
+            #expect(!["0", "0.0k", "0.0M"].contains(millions))
+            #expect(!["0", "0.0k", "0.0M"].contains(hover))
+        }
     }
 }
