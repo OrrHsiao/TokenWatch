@@ -141,6 +141,7 @@ private struct UsageSummaryAccumulator {
     private(set) var cacheReadTokens = 0
     private(set) var cacheCreationTokens = 0
     private(set) var reasoningTokens = 0
+    private(set) var totalTokens = 0
     private(set) var cost = 0.0
     private(set) var entryCount = 0
 
@@ -154,6 +155,7 @@ private struct UsageSummaryAccumulator {
             entry.usage.totalCacheCreationTokens
         )
         reasoningTokens = reasoningTokens.addingSaturated(entry.usage.reasoningTokens)
+        totalTokens = totalTokens.addingSaturated(entry.usage.aggregateTotalTokens)
         cost += entryCost
         entryCount += 1
     }
@@ -168,13 +170,7 @@ private struct UsageSummaryAccumulator {
             cacheReadTokens: cacheReadTokens,
             cacheCreationTokens: cacheCreationTokens,
             reasoningTokens: reasoningTokens,
-            totalTokens: [
-                inputTokens,
-                outputTokens,
-                cacheReadTokens,
-                cacheCreationTokens,
-                reasoningTokens,
-            ].reduce(0) { $0.addingSaturated($1) },
+            totalTokens: totalTokens,
             cost: cost,
             entryCount: entryCount,
             modelBreakdown: modelBreakdown,

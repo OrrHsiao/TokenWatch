@@ -338,6 +338,44 @@ struct RecentSessionDetailsBuilderTests {
         #expect(snapshot.errorMessages == ["opencode failed"])
     }
 
+    @Test("会话行、模型和快照总量都不重复加入 reasoning")
+    func reasoningIsExcludedFromSessionTotals() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar)
+        let entry = makeEntry(
+            provider: .opencode,
+            sessionID: "reasoning",
+            timestamp: dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar),
+            model: "gpt-5",
+            input: 100,
+            output: 50,
+            cacheRead: 20,
+            cacheCreation: 10,
+            reasoning: 200
+        )
+
+        let snapshot = RecentSessionDetailsBuilder.build(
+            states: [.opencode: .init(
+                stats: nil,
+                entries: [entry],
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            )],
+            period: .recent7Days,
+            now: now,
+            calendar: calendar
+        )
+        let row = try #require(snapshot.rows.first)
+        let model = try #require(row.modelBreakdown["gpt-5"])
+
+        #expect(row.reasoningTokens == 200)
+        #expect(row.totalTokens == 180)
+        #expect(model.reasoningTokens == 200)
+        #expect(model.totalTokens == 180)
+        #expect(snapshot.totalTokens == 180)
+    }
+
     private func makeEntry(
         provider: ProviderID,
         sessionID: String,
@@ -345,6 +383,9 @@ struct RecentSessionDetailsBuilderTests {
         model: String = "test-model",
         input: Int,
         output: Int,
+        cacheRead: Int = 0,
+        cacheCreation: Int = 0,
+        reasoning: Int = 0,
         cwd: String? = nil,
         isSubagent: Bool = false,
         upstreamProviderID: String? = nil
@@ -356,6 +397,9 @@ struct RecentSessionDetailsBuilderTests {
             model,
             "\(input)",
             "\(output)",
+            "\(cacheRead)",
+            "\(cacheCreation)",
+            "\(reasoning)",
             cwd ?? "nil",
             upstreamProviderID ?? "nil",
         ].joined(separator: "-")
@@ -371,13 +415,16 @@ struct RecentSessionDetailsBuilderTests {
             agentId: nil,
             usage: TokenUsage(
                 inputTokens: input,
-                cacheCreationInputTokens: 0,
-                cacheReadInputTokens: 0,
+                cacheCreationInputTokens: cacheCreation,
+                cacheReadInputTokens: cacheRead,
                 outputTokens: output,
-                reasoningTokens: 0,
+                reasoningTokens: reasoning,
                 serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
                 serviceTier: "",
-                cacheCreation: CacheCreation(ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0),
+                cacheCreation: CacheCreation(
+                    ephemeral1hInputTokens: 0,
+                    ephemeral5mInputTokens: cacheCreation
+                ),
                 inferenceGeo: "",
                 iterations: [],
                 speed: ""

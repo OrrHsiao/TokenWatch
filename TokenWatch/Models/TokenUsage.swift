@@ -159,4 +159,15 @@ extension TokenUsage {
     var totalCacheCreationTokens: Int {
         cacheCreate5mTokens.addingSaturated(cacheCreate1hTokens)
     }
+
+    /// ccusage 聚合口径下的非重复 token 总量。
+    /// reasoning 是独立展示维度；Codex output 已包含它，不能再次相加。
+    var aggregateTotalTokens: Int {
+        [
+            inputTokens,
+            outputTokens,
+            cacheReadInputTokens,
+            totalCacheCreationTokens,
+        ].reduce(0) { $0.addingSaturated($1) }
+    }
 }
