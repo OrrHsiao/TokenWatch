@@ -643,6 +643,33 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardSessionTableUsesIndependentHorizontalScrollView() throws {
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+
+        let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let pageScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsPageScrollView") as? NSScrollView
+        )
+        let tableScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsTableScrollView") as? NSScrollView
+        )
+        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+
+        #expect(pageScrollView.hasVerticalScroller)
+        #expect(!pageScrollView.hasHorizontalScroller)
+        #expect(tableScrollView.hasHorizontalScroller)
+        #expect(!tableScrollView.hasVerticalScroller)
+        #expect(tableScrollView.documentView === table)
+        #expect(table.frame.width >= 1_108)
+        #expect(table.frame.width > tableScrollView.contentView.bounds.width)
+    }
+
+    @MainActor
     @Test func dashboardSessionsPageRendersSelectedDaySessionRowsAndSummaries() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
