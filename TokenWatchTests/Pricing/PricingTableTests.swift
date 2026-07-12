@@ -238,6 +238,22 @@ extension PricingTableTests {
         )?.fastMultiplier ?? 0) - 6.0) < 1e-9)
     }
 
+    @Test("六个 builtin 模型的 effective fast multiplier 固定")
+    func builtinEffectiveFastMultipliers() {
+        let expected: [String: Double] = [
+            "claude-opus-4-6": 6.0,
+            "claude-opus-4-7": 6.0,
+            "claude-opus-4-8": 2.0,
+            "gpt-5.3-codex": 2.0,
+            "gpt-5.4": 2.0,
+            "gpt-5.5": 2.5,
+        ]
+
+        for modelID in expected.keys.sorted() {
+            #expect(PricingTable.pricing(for: modelID)?.fastMultiplier == expected[modelID])
+        }
+    }
+
     @Test("long-context overlay 整组补齐，不与已有任意 above 字段混用")
     func longContextOverlayIsAllOrNothing() throws {
         let empty = catalogEntry(id: "gpt-5.4", input: 2.5)
