@@ -4,7 +4,7 @@
 
 **Goal:** 让主界面会话列表稳定显示缩略会话 ID，同时保留复制完整 ID 的现有交互。
 
-**Architecture:** 保持 `ParsedUsageEntry` 到 `RecentSessionRow` 的数据链不变，只修正 `makeSessionIDCell` 的局部 Auto Layout 约束。测试在现有 AppKit 控制器测试中检查标题落入按钮 bounds 的真实可见宽度，避免只验证 `NSButton.title` 或标题自身 frame 而漏掉裁剪回归。
+**Architecture:** 保持 `ParsedUsageEntry` 到 `RecentSessionRow` 的数据链不变，只修正 `makeSessionIDCell` 的局部 Auto Layout 约束。测试在现有 AppKit 控制器测试中同时检查缩略标题内容和复制按钮是否铺满固定 ID 单元格，避免只验证 `NSButton.title` 而漏掉父按钮裁剪回归。
 
 **Tech Stack:** Swift 6、AppKit、Swift Testing、Xcode 26 / `xcodebuild`
 
@@ -41,14 +41,14 @@ let compactSessionID = "019df220...eeeffff"
 
 ```swift
 let sessionIDLabel = try textField(withString: compactSessionID, in: row)
-let sessionIDFrameInButton = sessionIDLabel.convert(sessionIDLabel.bounds, to: copyButton)
-let visibleSessionIDFrame = copyButton.bounds.intersection(sessionIDFrameInButton)
+let sessionIDCell = try #require(copyButton.superview)
 
 #expect(copyButton.title == compactSessionID)
-#expect(visibleSessionIDFrame.width >= sessionIDLabel.fittingSize.width)
+#expect(sessionIDLabel.stringValue == compactSessionID)
+#expect(abs(copyButton.frame.width - sessionIDCell.bounds.width) < 0.5)
 ```
 
-保留原有完整 ID 不直接出现在普通标签中、复制图标存在、点击后剪贴板得到完整 ID 等断言。该新增断言验证标题没有被按钮的 `masksToBounds` 裁掉，而不是只验证按钮模型保存了标题或标题自身拥有非零 frame。
+保留原有完整 ID 不直接出现在普通标签中、复制图标存在、点击后剪贴板得到完整 ID 等断言。该新增断言验证按钮使用完整 ID 列宽，不再让其 `masksToBounds` 裁剪自绘内容。不要比较标题 `frame.width` 与 `fittingSize.width`；`NSTextField` 的 alignment rect 会引入 2 pt 装饰边距，使该比较产生假阳性。
 
 - [ ] **Step 2: 运行单条测试并确认 RED**
 
@@ -58,7 +58,7 @@ Run:
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' '-only-testing:TokenWatchTests/DashboardSessionPaginationTests/dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject()' -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
 ```
 
-Expected: `dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject()` 因 `visibleSessionIDFrame.width` 小于 `sessionIDLabel.fittingSize.width` 而 FAIL；不能接受编译错误、签名错误或测试未被发现作为 RED 证据。
+Expected: `dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject()` 因复制按钮宽度为 134 pt、ID 单元格宽度为 150 pt 而 FAIL；不能接受编译错误、签名错误或测试未被发现作为 RED 证据。
 
 - [ ] **Step 3: 实现最小布局修复**
 
