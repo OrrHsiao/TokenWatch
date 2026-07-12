@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 会话 ID 继续显示为现有缩略格式，例如 `019df220...eeefff`。
+- 会话 ID 继续显示为现有缩略格式，例如 `019df220...eeeffff`。
 - tooltip、辅助功能标签和点击复制完整 ID 的行为保持不变。
 - 不修改会话数据解析、聚合、排序、分页或横向滚动逻辑。
 - 不重写 `DashboardSessionButton.intrinsicContentSize`，也不拆分 ID 文本与复制按钮。
@@ -34,7 +34,7 @@
 
 ```swift
 let fullSessionID = "019df220-aaaa-bbbb-cccc-ddddeeeeffff"
-let compactSessionID = "019df220...eeefff"
+let compactSessionID = "019df220...eeeffff"
 ```
 
 在取得 `row` 与 `copyButton` 后加入：
