@@ -9,6 +9,7 @@ struct ParsedUsageEntryDeepSnapshot: Equatable {
     let sessionID: String
     let timestamp: Date?
     let model: String
+    let upstreamModelID: String?
     let cwd: String?
     let agentId: String?
     let inputTokens: Int
@@ -38,6 +39,7 @@ struct ParsedUsageEntryDeepSnapshot: Equatable {
         sessionID = entry.sessionID
         timestamp = entry.timestamp
         model = entry.model
+        upstreamModelID = entry.upstreamModelID
         cwd = entry.cwd
         agentId = entry.agentId
         inputTokens = entry.usage.inputTokens

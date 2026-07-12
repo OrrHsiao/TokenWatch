@@ -70,15 +70,16 @@ struct PricingTable: Sendable {
         shared.pricing(for: modelID)
     }
 
-    /// 按匹配类型和模型 ID 排序，序列化生产实际使用的 fast override 映射。
+    /// 按 schema、匹配类型和模型 ID 排序，序列化生产实际使用的 fast 映射。
     static var canonicalFastMultiplierOverrides: Data {
+        let schema = ["schema\tfast-multiplier-production-v2"]
         let exact = fastExactOverrides
             .sorted { $0.key < $1.key }
             .map { "exact\t\($0.key)\t\($0.value)" }
         let prefixes = fastPrefixOverrides
             .sorted { $0.modelID < $1.modelID }
             .map { "prefix\t\($0.modelID)\t\($0.multiplier)" }
-        return Data((exact + prefixes).joined(separator: "\n").utf8)
+        return Data((schema + exact + prefixes).joined(separator: "\n").utf8)
     }
 
     private static func loadBundled() -> PricingTable {
@@ -246,8 +247,7 @@ private extension PricingTable {
             inputAbove: Double? = nil,
             outputAbove: Double? = nil,
             cacheReadAbove: Double? = nil,
-            cacheWriteAbove: Double? = nil,
-            fast: Double = 1.0
+            cacheWriteAbove: Double? = nil
         ) -> ModelPricing {
             ModelPricing(
                 modelID: id,
@@ -261,7 +261,7 @@ private extension PricingTable {
                 outputPriceAbove200k: outputAbove,
                 cacheReadPriceAbove200k: cacheReadAbove,
                 cacheWritePriceAbove200k: cacheWriteAbove,
-                fastMultiplier: fast
+                fastMultiplier: builtinFastMultiplier(for: id) ?? 1.0
             )
         }
 
@@ -271,9 +271,9 @@ private extension PricingTable {
 
         return [
             "claude-opus-4-5": p("claude-opus-4-5", 5, 25, 0.5, 6.25),
-            "claude-opus-4-6": p("claude-opus-4-6", 5, 25, 0.5, 6.25, fast: 6),
-            "claude-opus-4-7": p("claude-opus-4-7", 5, 25, 0.5, 6.25, fast: 6),
-            "claude-opus-4-8": p("claude-opus-4-8", 5, 25, 0.5, 6.25, fast: 2),
+            "claude-opus-4-6": p("claude-opus-4-6", 5, 25, 0.5, 6.25),
+            "claude-opus-4-7": p("claude-opus-4-7", 5, 25, 0.5, 6.25),
+            "claude-opus-4-8": p("claude-opus-4-8", 5, 25, 0.5, 6.25),
             "claude-haiku-4-5": p("claude-haiku-4-5", 1, 5, 0.1, 1.25),
             "claude-opus-4": p("claude-opus-4", 15, 75, 1.5, 18.75),
             "claude-sonnet-4-6": p("claude-sonnet-4-6", 3, 15, 0.3, 3.75),
@@ -295,7 +295,7 @@ private extension PricingTable {
             "claude-3-sonnet": p("claude-3-sonnet", 3, 15, 0.3, 3.75),
             "claude-3-haiku": p("claude-3-haiku", 0.25, 1.25, 0.03, 0.3),
             "gpt-5": p("gpt-5", 1.25, 10, 0.125, 1.25),
-            "gpt-5.5": p("gpt-5.5", 5, 30, 0.5, 5, fast: 2.5),
+            "gpt-5.5": p("gpt-5.5", 5, 30, 0.5, 5),
             "grok-4.3": p("grok-4.3", 1.25, 2.5, 0.125, 1.25, explicitCacheRead: false),
             "moonshot/kimi-k2.5": p("moonshot/kimi-k2.5", 0.6, 3, 0.1, 0.75),
             "moonshot/kimi-k2.6": p("moonshot/kimi-k2.6", 0.95, 4, 0.16, 1.1875),
@@ -309,9 +309,9 @@ private extension PricingTable {
                 cacheWritePrice: gpt51.cacheWritePrice
             ),
             "gpt-5.2-codex": gpt52Codex,
-            "gpt-5.3-codex": p("gpt-5.3-codex", 1.75, 14, 0.175, 1.75, fast: 2),
+            "gpt-5.3-codex": p("gpt-5.3-codex", 1.75, 14, 0.175, 1.75),
             "gpt-5.2": p("gpt-5.2", 1.75, 14, 0.175, 1.75),
-            "gpt-5.4": p("gpt-5.4", 2.5, 15, 0.25, 2.5, fast: 2),
+            "gpt-5.4": p("gpt-5.4", 2.5, 15, 0.25, 2.5),
             "gpt-5.4-mini": p("gpt-5.4-mini", 0.75, 4.5, 0.075, 0.75),
             "gpt-5.4-nano": p("gpt-5.4-nano", 0.2, 1.25, 0.02, 0.2),
             "gpt-5.6-sol": p("gpt-5.6-sol", 5, 30, 0.5, 6.25),
