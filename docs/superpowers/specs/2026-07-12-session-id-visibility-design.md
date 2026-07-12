@@ -56,9 +56,12 @@
 ## 测试设计
 
 在 `DashboardSessionPaginationTests` 现有“会话行短显 ID、复制完整 ID”测试中补充实际
-可见性断言：定位缩略 ID 对应的内部 `NSTextField`，把标题 bounds 转换到复制按钮坐标系，
-再与按钮 bounds 求交集。可见交集宽度必须至少容纳标题的 fitting size。该断言在当前实现
-下应因标题落在按钮裁剪区域外而失败。
+布局断言：定位缩略 ID 对应的内部 `NSTextField` 和它所在的复制按钮，验证标题内容正确，
+并验证按钮铺满固定 150 pt 的会话 ID 单元格。当前实现的按钮只有 134 pt，断言应失败；
+尾部等式约束生效后按钮应扩展为 150 pt。
+
+不使用标题 `frame.width >= fittingSize.width` 作为可见性判断。AppKit 的 `NSTextField`
+alignment rect 会在 frame 左侧保留 2 pt 装饰边距，使该比较产生与真实文字无关的假阳性。
 
 按 TDD 顺序执行：
 
