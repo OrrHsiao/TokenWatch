@@ -104,12 +104,26 @@ struct DashboardSessionPaginationTests {
         let rowLabels = textValues(in: row)
         let copyButton = try button(withIdentifier: "DashboardSessionsCopy.0", in: row)
         let sessionIDLabel = try textField(withString: compactSessionID, in: row)
+        let copyIcon = try #require(findView(withIdentifier: "DashboardSessionButton.icon", in: copyButton))
+        let titleIconSpacingConstraint = try #require(copyButton.constraints.first { constraint in
+            (constraint.firstItem as? NSView) === copyIcon
+                && constraint.firstAttribute == .leading
+                && (constraint.secondItem as? NSView) === sessionIDLabel
+                && constraint.secondAttribute == .trailing
+        })
         let sessionIDCell = try #require(copyButton.superview)
+        let requiredContentWidth = sessionIDLabel.fittingSize.width
+            + titleIconSpacingConstraint.constant
+            + copyIcon.frame.width
         let toolLabel = try textField(withString: "Claude Code", in: row)
         let toolAncestorViews = ancestorViews(from: toolLabel, stoppingBefore: row)
         let toolAncestors = toolAncestorViews.map { String(describing: type(of: $0)) }
         #expect(copyButton.title == compactSessionID)
         #expect(sessionIDLabel.stringValue == compactSessionID)
+        #expect(
+            copyButton.bounds.width >= requiredContentWidth,
+            "复制按钮宽度需同时容纳标题 \(sessionIDLabel.fittingSize.width)、间距 \(titleIconSpacingConstraint.constant) 和图标 \(copyIcon.frame.width)"
+        )
         #expect(abs(copyButton.frame.width - sessionIDCell.bounds.width) < 0.5)
         #expect(copyButton.image != nil)
         #expect(!rowLabels.contains(fullSessionID))
