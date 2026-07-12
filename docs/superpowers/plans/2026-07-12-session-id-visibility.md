@@ -4,7 +4,7 @@
 
 **Goal:** 让主界面会话列表稳定显示缩略会话 ID，同时保留复制完整 ID 的现有交互。
 
-**Architecture:** 保持 `ParsedUsageEntry` 到 `RecentSessionRow` 的数据链不变，只修正 `makeSessionIDCell` 的局部 Auto Layout 约束。测试在现有 AppKit 控制器测试中检查内部标题控件的真实布局宽度，避免只验证 `NSButton.title` 属性而漏掉视觉回归。
+**Architecture:** 保持 `ParsedUsageEntry` 到 `RecentSessionRow` 的数据链不变，只修正 `makeSessionIDCell` 的局部 Auto Layout 约束。测试在现有 AppKit 控制器测试中检查标题落入按钮 bounds 的真实可见宽度，避免只验证 `NSButton.title` 或标题自身 frame 而漏掉裁剪回归。
 
 **Tech Stack:** Swift 6、AppKit、Swift Testing、Xcode 26 / `xcodebuild`
 
@@ -41,12 +41,14 @@ let compactSessionID = "019df220...eeeffff"
 
 ```swift
 let sessionIDLabel = try textField(withString: compactSessionID, in: row)
+let sessionIDFrameInButton = sessionIDLabel.convert(sessionIDLabel.bounds, to: copyButton)
+let visibleSessionIDFrame = copyButton.bounds.intersection(sessionIDFrameInButton)
 
 #expect(copyButton.title == compactSessionID)
-#expect(sessionIDLabel.frame.width >= sessionIDLabel.fittingSize.width)
+#expect(visibleSessionIDFrame.width >= sessionIDLabel.fittingSize.width)
 ```
 
-保留原有完整 ID 不直接出现在普通标签中、复制图标存在、点击后剪贴板得到完整 ID 等断言。该新增断言验证用户实际能看到文本，而不是只验证按钮模型保存了标题。
+保留原有完整 ID 不直接出现在普通标签中、复制图标存在、点击后剪贴板得到完整 ID 等断言。该新增断言验证标题没有被按钮的 `masksToBounds` 裁掉，而不是只验证按钮模型保存了标题或标题自身拥有非零 frame。
 
 - [ ] **Step 2: 运行单条测试并确认 RED**
 
@@ -56,7 +58,7 @@ Run:
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' '-only-testing:TokenWatchTests/DashboardSessionPaginationTests/dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject()' -skip-testing:TokenWatchUITests -derivedDataPath .build/DerivedData test
 ```
 
-Expected: `dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject()` 因 `sessionIDLabel.frame.width` 小于 `sessionIDLabel.fittingSize.width` 而 FAIL；不能接受编译错误、签名错误或测试未被发现作为 RED 证据。
+Expected: `dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject()` 因 `visibleSessionIDFrame.width` 小于 `sessionIDLabel.fittingSize.width` 而 FAIL；不能接受编译错误、签名错误或测试未被发现作为 RED 证据。
 
 - [ ] **Step 3: 实现最小布局修复**
 
