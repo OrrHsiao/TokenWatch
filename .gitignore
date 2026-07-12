@@ -35,6 +35,7 @@ playground.xcworkspace
 .build/
 DerivedData/
 *.xcresult
+.worktrees/
 
 # CocoaPods
 #
