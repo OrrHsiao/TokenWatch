@@ -71,6 +71,7 @@ struct DashboardSessionPaginationTests {
     func dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
         let fullSessionID = "019df220-aaaa-bbbb-cccc-ddddeeeeffff"
+        let compactSessionID = "019df220...eeeffff"
         let languageSettings = zhHansLanguageSettings()
         let controller = DashboardViewController(
             settingsViewController: settingsViewController(languageSettings: languageSettings),
@@ -102,10 +103,14 @@ struct DashboardSessionPaginationTests {
         let row = try #require(findView(withIdentifier: "DashboardSessionsRow.0", in: controller.view))
         let rowLabels = textValues(in: row)
         let copyButton = try button(withIdentifier: "DashboardSessionsCopy.0", in: row)
+        let sessionIDLabel = try textField(withString: compactSessionID, in: row)
+        let sessionIDCell = try #require(copyButton.superview)
         let toolLabel = try textField(withString: "Claude Code", in: row)
         let toolAncestorViews = ancestorViews(from: toolLabel, stoppingBefore: row)
         let toolAncestors = toolAncestorViews.map { String(describing: type(of: $0)) }
-        #expect(copyButton.title == "019df220...eeeffff")
+        #expect(copyButton.title == compactSessionID)
+        #expect(sessionIDLabel.stringValue == compactSessionID)
+        #expect(abs(copyButton.frame.width - sessionIDCell.bounds.width) < 0.5)
         #expect(copyButton.image != nil)
         #expect(!rowLabels.contains(fullSessionID))
         #expect(rowLabels.contains("Claude Code"))

@@ -1315,7 +1315,7 @@ final class DashboardViewController: NSViewController {
         NSLayoutConstraint.activate([
             cell.widthAnchor.constraint(equalToConstant: width),
             copyButton.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
-            copyButton.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
+            copyButton.trailingAnchor.constraint(equalTo: cell.trailingAnchor),
             copyButton.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             copyButton.heightAnchor.constraint(equalToConstant: 24),
         ])
