@@ -67,6 +67,76 @@ struct DashboardSessionPaginationTests {
     }
 
     @MainActor
+    @Test("横向滚动条不覆盖分页栏且默认窗口无需纵向滚动")
+    func dashboardScrollerKeepsPaginationAndTenRowsVisible() throws {
+        let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { [
+                .claude: .init(
+                    stats: nil,
+                    entries: makeEntries(count: 10, now: now),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                ),
+            ] },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        controller.view.setFrameSize(MainWindowFactory.contentSize)
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let pageScrollView = try #require(
+            findView(withIdentifier: "DashboardSessionsPageScrollView", in: controller.view) as? NSScrollView
+        )
+        let pageDocumentView = try #require(pageScrollView.documentView)
+        let sessionStack = try #require(
+            findView(withIdentifier: "DashboardSessionsPage", in: controller.view)
+        )
+        let tableScrollView = try #require(
+            findView(withIdentifier: "DashboardSessionsTableScrollView", in: controller.view) as? NSScrollView
+        )
+        let pagination = try #require(
+            findView(withIdentifier: "DashboardSessionsPagination", in: controller.view)
+        )
+        let lastRow = try #require(
+            findView(withIdentifier: "DashboardSessionsRow.9", in: controller.view)
+        )
+
+        for style in [NSScroller.Style.overlay, .legacy] {
+            tableScrollView.scrollerStyle = style
+            tableScrollView.autohidesScrollers = false
+            tableScrollView.hasHorizontalScroller = true
+            tableScrollView.tile()
+            controller.view.layoutSubtreeIfNeeded()
+
+            let horizontalScroller = try #require(tableScrollView.horizontalScroller)
+            let paginationFrame = pagination.convert(pagination.bounds, to: tableScrollView)
+            let scrollerFrame = horizontalScroller.convert(horizontalScroller.bounds, to: tableScrollView)
+
+            #expect((tableScrollView.documentView?.frame.width ?? 0) > tableScrollView.contentView.bounds.width)
+            #expect(paginationFrame.intersection(scrollerFrame).height <= 0.5)
+        }
+
+        let pageVisibleRect = pageScrollView.documentVisibleRect
+        let sessionStackFrame = sessionStack.convert(sessionStack.bounds, to: pageDocumentView)
+        let lastRowFrame = lastRow.convert(lastRow.bounds, to: pageDocumentView)
+        let paginationFrame = pagination.convert(pagination.bounds, to: pageDocumentView)
+
+        #expect(pageDocumentView.frame.height <= pageVisibleRect.height + 0.5)
+        #expect(pageVisibleRect.minY <= sessionStackFrame.minY && pageVisibleRect.maxY >= sessionStackFrame.maxY)
+        #expect(pageVisibleRect.minY <= lastRowFrame.minY && pageVisibleRect.maxY >= lastRowFrame.maxY)
+        #expect(pageVisibleRect.minY <= paginationFrame.minY && pageVisibleRect.maxY >= paginationFrame.maxY)
+        #expect(pageScrollView.hasVerticalScroller)
+    }
+
+    @MainActor
     @Test("会话行短显 ID、复制完整 ID，并展示具体工具与有效项目")
     func dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
