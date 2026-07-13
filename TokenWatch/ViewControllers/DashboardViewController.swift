@@ -1,5 +1,10 @@
 import AppKit
 
+private final class DashboardSessionTableDocumentView: DashboardRoundedView {
+    /// AppKit 在 document 小于 overlay clip 时默认底部对齐；翻转坐标确保 17pt gutter 留在底部而不裁表头。
+    override var isFlipped: Bool { true }
+}
+
 /// Pencil 设计稿中的 TokenWatch 深色总览 Dashboard。
 final class DashboardViewController: NSViewController {
     private static let sidebarWidth: CGFloat = 244
@@ -8,8 +13,10 @@ final class DashboardViewController: NSViewController {
     private static let sessionVerticalInset: CGFloat = 20
     private static let sessionRowGap: CGFloat = 14
     private static let minimumContentWidth: CGFloat = 860
-    private static let sessionTableColumnWidths: [CGFloat] = [150, 150, 126, 190, 150, 104, 84, 66]
-    private static let sessionTableMinimumWidth: CGFloat = 1_108
+    private static let sessionTableColumnWidths: [CGFloat] = [120, 150, 84, 132, 116, 86, 76, 68]
+    private static let sessionTableMinimumWidth: CGFloat = 880
+    private static let sessionTableColumnSpacing: CGFloat = 4
+    private static let sessionTableHorizontalPadding: CGFloat = 10
     private static let sessionPageSize = 10
     private static let sessionTableHeaderHeight: CGFloat = 44
     private static let sessionTableRowHeight: CGFloat = 48
@@ -950,7 +957,7 @@ final class DashboardViewController: NSViewController {
             table.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
             table.topAnchor.constraint(equalTo: clipView.topAnchor),
             table.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.sessionTableMinimumWidth),
-            table.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
+            table.heightAnchor.constraint(equalToConstant: Self.sessionTableContentHeight),
             coverViewportWidth,
         ])
         return sessionTableScrollView
@@ -972,7 +979,7 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 0
 
-        let table = DashboardRoundedView(
+        let table = DashboardSessionTableDocumentView(
             backgroundColor: DashboardPalette.panelBackground,
             cornerRadius: 8,
             borderColor: DashboardPalette.border,
@@ -983,14 +990,11 @@ final class DashboardViewController: NSViewController {
         table.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            table.heightAnchor.constraint(equalToConstant: Self.sessionTableHeight),
+            table.heightAnchor.constraint(equalToConstant: Self.sessionTableContentHeight),
             stack.leadingAnchor.constraint(equalTo: table.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: table.trailingAnchor),
             stack.topAnchor.constraint(equalTo: table.topAnchor),
-            stack.bottomAnchor.constraint(
-                equalTo: table.bottomAnchor,
-                constant: -Self.sessionTableScrollerGutter
-            ),
+            stack.bottomAnchor.constraint(equalTo: table.bottomAnchor),
             header.widthAnchor.constraint(equalTo: stack.widthAnchor),
             sessionRowsStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
             spacer.widthAnchor.constraint(equalTo: stack.widthAnchor),
@@ -1240,7 +1244,7 @@ final class DashboardViewController: NSViewController {
         let content = NSStackView(views: cells)
         content.orientation = .horizontal
         content.alignment = .centerY
-        content.spacing = 8
+        content.spacing = Self.sessionTableColumnSpacing
 
         let row = DashboardRoundedView(backgroundColor: backgroundColor, cornerRadius: 0)
         row.identifier = NSUserInterfaceItemIdentifier(identifier)
@@ -1249,8 +1253,14 @@ final class DashboardViewController: NSViewController {
         content.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             row.heightAnchor.constraint(equalToConstant: height),
-            content.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            content.trailingAnchor.constraint(lessThanOrEqualTo: row.trailingAnchor, constant: -16),
+            content.leadingAnchor.constraint(
+                equalTo: row.leadingAnchor,
+                constant: Self.sessionTableHorizontalPadding
+            ),
+            content.trailingAnchor.constraint(
+                lessThanOrEqualTo: row.trailingAnchor,
+                constant: -Self.sessionTableHorizontalPadding
+            ),
             content.centerYAnchor.constraint(equalTo: row.centerYAnchor),
         ])
         return row

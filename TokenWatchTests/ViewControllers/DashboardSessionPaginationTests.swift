@@ -67,8 +67,8 @@ struct DashboardSessionPaginationTests {
     }
 
     @MainActor
-    @Test("横向滚动条不覆盖分页栏且默认窗口无需纵向滚动")
-    func dashboardScrollerKeepsPaginationAndTenRowsVisible() throws {
+    @Test("默认窗口无需滚动即可完整显示表头、十行数据与分页栏")
+    func dashboardDefaultWindowShowsAllColumnsTenRowsAndPaginationWithoutScrolling() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
         let languageSettings = zhHansLanguageSettings()
         let controller = DashboardViewController(
@@ -76,7 +76,7 @@ struct DashboardSessionPaginationTests {
             stateProvider: { [
                 .claude: .init(
                     stats: nil,
-                    entries: makeEntries(count: 10, now: now),
+                    entries: makeEntries(count: 21, now: now),
                     isLoading: false,
                     errorMessage: nil,
                     needsAuthorization: false
@@ -102,8 +102,14 @@ struct DashboardSessionPaginationTests {
         let tableScrollView = try #require(
             findView(withIdentifier: "DashboardSessionsTableScrollView", in: controller.view) as? NSScrollView
         )
+        let header = try #require(
+            findView(withIdentifier: "DashboardSessionsTableHeader", in: controller.view)
+        )
         let pagination = try #require(
             findView(withIdentifier: "DashboardSessionsPagination", in: controller.view)
+        )
+        let paginationControls = try #require(
+            findView(withIdentifier: "DashboardSessionsPaginationControls", in: controller.view)
         )
         let lastRow = try #require(
             findView(withIdentifier: "DashboardSessionsRow.9", in: controller.view)
@@ -116,12 +122,25 @@ struct DashboardSessionPaginationTests {
             tableScrollView.tile()
             controller.view.layoutSubtreeIfNeeded()
 
-            let horizontalScroller = try #require(tableScrollView.horizontalScroller)
-            let paginationFrame = pagination.convert(pagination.bounds, to: tableScrollView)
-            let scrollerFrame = horizontalScroller.convert(horizontalScroller.bounds, to: tableScrollView)
+            let tableDocumentView = try #require(tableScrollView.documentView)
+            let tableVisibleRect = tableScrollView.documentVisibleRect
+            let headerFrame = header.convert(header.bounds, to: tableDocumentView)
+            let lastRowFrame = lastRow.convert(lastRow.bounds, to: tableDocumentView)
+            let paginationFrame = pagination.convert(pagination.bounds, to: tableDocumentView)
+            let controlsFrame = paginationControls.convert(paginationControls.bounds, to: tableDocumentView)
 
-            #expect((tableScrollView.documentView?.frame.width ?? 0) > tableScrollView.contentView.bounds.width)
-            #expect(paginationFrame.intersection(scrollerFrame).height <= 0.5)
+            #expect(tableDocumentView.frame.width <= tableScrollView.contentView.bounds.width + 0.5)
+            #expect(tableDocumentView.frame.height <= tableScrollView.contentView.bounds.height + 0.5)
+            #expect(tableVisibleRect.minX <= headerFrame.minX + 0.5)
+            #expect(tableVisibleRect.maxX + 0.5 >= headerFrame.maxX)
+            #expect(tableVisibleRect.minY <= headerFrame.minY + 0.5)
+            #expect(tableVisibleRect.maxY + 0.5 >= headerFrame.maxY)
+            #expect(tableVisibleRect.minY <= lastRowFrame.minY + 0.5)
+            #expect(tableVisibleRect.maxY + 0.5 >= lastRowFrame.maxY)
+            #expect(tableVisibleRect.minY <= paginationFrame.minY + 0.5)
+            #expect(tableVisibleRect.maxY + 0.5 >= paginationFrame.maxY)
+            #expect(tableVisibleRect.minX <= controlsFrame.minX + 0.5)
+            #expect(tableVisibleRect.maxX + 0.5 >= controlsFrame.maxX)
         }
 
         let pageVisibleRect = pageScrollView.documentVisibleRect

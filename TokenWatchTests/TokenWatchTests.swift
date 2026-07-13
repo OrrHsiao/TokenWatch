@@ -794,13 +794,17 @@ struct TokenWatchTests {
         #expect(tableScrollView.hasHorizontalScroller)
         #expect(!tableScrollView.hasVerticalScroller)
         #expect(tableScrollView.documentView === table)
-        #expect(table.frame.width >= 1_108)
+        #expect(abs(table.frame.width - tableScrollView.contentView.bounds.width) < 1)
+
+        viewController.view.setFrameSize(NSSize(width: 1_160, height: MainWindowFactory.contentSize.height))
+        viewController.view.layoutSubtreeIfNeeded()
+
+        #expect(table.frame.width >= 880)
         #expect(table.frame.width > tableScrollView.contentView.bounds.width)
 
         viewController.view.setFrameSize(NSSize(width: 1_500, height: MainWindowFactory.contentSize.height))
         viewController.view.layoutSubtreeIfNeeded()
 
-        #expect(tableScrollView.contentView.bounds.width >= 1_108)
         #expect(abs(table.frame.width - tableScrollView.contentView.bounds.width) < 1)
     }
 
@@ -1140,6 +1144,9 @@ struct TokenWatchTests {
         let sessionsButton = try #require(viewController.view.button(identifier: "DashboardNav.sessions"))
         _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
 
+        let tableScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsTableScrollView") as? NSScrollView
+        )
         let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
 
         let scrollerGutter = max(
@@ -1147,7 +1154,8 @@ struct TokenWatchTests {
             NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)
         )
 
-        #expect(table.fixedHeightConstant == 568 + scrollerGutter)
+        #expect(table.fixedHeightConstant == 568)
+        #expect(tableScrollView.fixedHeightConstant == 568 + scrollerGutter)
     }
 
     @MainActor

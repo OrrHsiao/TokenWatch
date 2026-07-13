@@ -172,7 +172,7 @@ enum DashboardColors {
     }
 }
 
-final class DashboardRoundedView: NSView, DashboardAppearanceRefreshable {
+class DashboardRoundedView: NSView, DashboardAppearanceRefreshable {
     private let backgroundColor: NSColor
     private let borderColor: NSColor?
 
