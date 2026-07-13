@@ -137,6 +137,63 @@ struct DashboardSessionPaginationTests {
     }
 
     @MainActor
+    @Test("小窗口可纵向滚动到底部并查看分页栏")
+    func dashboardSmallWindowScrollsPaginationIntoView() throws {
+        let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { [
+                .claude: .init(
+                    stats: nil,
+                    entries: makeEntries(count: 10, now: now),
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                ),
+            ] },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        controller.view.setFrameSize(NSSize(width: MainWindowFactory.contentSize.width, height: 620))
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let pageScrollView = try #require(
+            findView(withIdentifier: "DashboardSessionsPageScrollView", in: controller.view) as? NSScrollView
+        )
+        let pageDocumentView = try #require(pageScrollView.documentView)
+        let pagination = try #require(
+            findView(withIdentifier: "DashboardSessionsPagination", in: controller.view)
+        )
+        let paginationFrame = pagination.convert(pagination.bounds, to: pageDocumentView)
+        let initialVisibleRect = pageScrollView.documentVisibleRect
+
+        #expect(pageDocumentView.frame.height > initialVisibleRect.height + 0.5)
+        #expect(
+            initialVisibleRect.minY > paginationFrame.minY
+                || initialVisibleRect.maxY < paginationFrame.maxY
+        )
+
+        let bottomOriginY = pageDocumentView.isFlipped
+            ? pageDocumentView.frame.maxY - initialVisibleRect.height
+            : pageDocumentView.frame.minY
+        pageScrollView.contentView.scroll(
+            to: NSPoint(x: initialVisibleRect.minX, y: bottomOriginY)
+        )
+        pageScrollView.reflectScrolledClipView(pageScrollView.contentView)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let scrolledVisibleRect = pageScrollView.documentVisibleRect
+        #expect(abs(scrolledVisibleRect.minY - initialVisibleRect.minY) > 0.5)
+        #expect(scrolledVisibleRect.minY <= paginationFrame.minY + 0.5)
+        #expect(scrolledVisibleRect.maxY + 0.5 >= paginationFrame.maxY)
+    }
+
+    @MainActor
     @Test("会话行短显 ID、复制完整 ID，并展示具体工具与有效项目")
     func dashboardSessionRowDisplaysCompactIDCopiesFullIDAndCleansProject() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
