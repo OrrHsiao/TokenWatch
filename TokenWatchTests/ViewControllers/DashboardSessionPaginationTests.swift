@@ -123,14 +123,19 @@ struct DashboardSessionPaginationTests {
             controller.view.layoutSubtreeIfNeeded()
 
             let tableDocumentView = try #require(tableScrollView.documentView)
+            let horizontalScroller = try #require(tableScrollView.horizontalScroller)
             let tableVisibleRect = tableScrollView.documentVisibleRect
             let headerFrame = header.convert(header.bounds, to: tableDocumentView)
             let lastRowFrame = lastRow.convert(lastRow.bounds, to: tableDocumentView)
             let paginationFrame = pagination.convert(pagination.bounds, to: tableDocumentView)
             let controlsFrame = paginationControls.convert(paginationControls.bounds, to: tableDocumentView)
+            let paginationFrameInScrollView = pagination.convert(pagination.bounds, to: tableScrollView)
+            let scrollerFrameInScrollView = horizontalScroller.convert(horizontalScroller.bounds, to: tableScrollView)
 
+            #expect(tableDocumentView.isFlipped)
             #expect(tableDocumentView.frame.width <= tableScrollView.contentView.bounds.width + 0.5)
             #expect(tableDocumentView.frame.height <= tableScrollView.contentView.bounds.height + 0.5)
+            #expect(paginationFrameInScrollView.intersection(scrollerFrameInScrollView).height <= 0.5)
             #expect(tableVisibleRect.minX <= headerFrame.minX + 0.5)
             #expect(tableVisibleRect.maxX + 0.5 >= headerFrame.maxX)
             #expect(tableVisibleRect.minY <= headerFrame.minY + 0.5)

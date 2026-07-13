@@ -1,7 +1,7 @@
 import AppKit
 
 private final class DashboardSessionTableDocumentView: DashboardRoundedView {
-    /// AppKit 在 document 小于 overlay clip 时默认底部对齐；翻转坐标确保 17pt gutter 留在底部而不裁表头。
+    /// AppKit 在 document 小于 overlay clip 时默认底部对齐；翻转坐标确保动态 gutter 留在底部而不裁表头。
     override var isFlipped: Bool { true }
 }
 
@@ -24,7 +24,7 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableContentHeight = sessionTableHeaderHeight
         + CGFloat(sessionPageSize) * sessionTableRowHeight
         + sessionPaginationHeight
-    // 按 overlay/legacy 最大宽度预留文档底部空间，避免横向滚动条覆盖分页栏并兼容系统样式切换。
+    // 按 overlay/legacy regular scroller 最大高度仅为滚动外壳底部预留 gutter，不计入 document。
     private static let sessionTableScrollerGutter = max(
         NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay),
         NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)
