@@ -17,6 +17,7 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableContentHeight = sessionTableHeaderHeight
         + CGFloat(sessionPageSize) * sessionTableRowHeight
         + sessionPaginationHeight
+    // 按 overlay/legacy 最大宽度预留文档底部空间，避免横向滚动条覆盖分页栏并兼容系统样式切换。
     private static let sessionTableScrollerGutter = max(
         NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay),
         NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)
