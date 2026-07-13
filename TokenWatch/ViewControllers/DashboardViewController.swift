@@ -5,6 +5,8 @@ final class DashboardViewController: NSViewController {
     private static let sidebarWidth: CGFloat = 244
     private static let pageInset: CGFloat = 28
     private static let rowGap: CGFloat = 18
+    private static let sessionVerticalInset: CGFloat = 20
+    private static let sessionRowGap: CGFloat = 14
     private static let minimumContentWidth: CGFloat = 860
     private static let sessionTableColumnWidths: [CGFloat] = [150, 150, 126, 190, 150, 104, 84, 66]
     private static let sessionTableMinimumWidth: CGFloat = 1_108
@@ -12,9 +14,15 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableHeaderHeight: CGFloat = 44
     private static let sessionTableRowHeight: CGFloat = 48
     private static let sessionPaginationHeight: CGFloat = 44
-    private static let sessionTableHeight = sessionTableHeaderHeight
+    private static let sessionTableContentHeight = sessionTableHeaderHeight
         + CGFloat(sessionPageSize) * sessionTableRowHeight
         + sessionPaginationHeight
+    private static let sessionTableScrollerGutter = max(
+        NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay),
+        NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)
+    )
+    private static let sessionTableHeight = sessionTableContentHeight
+        + sessionTableScrollerGutter
     private static let sourceLegendValueWidth: CGFloat = 52
     private static let privacyPolicyURL = URL(string: "https://orrhsiao.github.io/TokenWatch/privacy/")!
 
@@ -304,7 +312,7 @@ final class DashboardViewController: NSViewController {
         sessionStack.translatesAutoresizingMaskIntoConstraints = false
         sessionStack.orientation = .vertical
         sessionStack.alignment = .leading
-        sessionStack.spacing = Self.rowGap
+        sessionStack.spacing = Self.sessionRowGap
         sessionStack.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPage")
         sessionStack.setAccessibilityIdentifier("DashboardSessionsPage")
         sessionContentView.addSubview(sessionStack)
@@ -323,8 +331,11 @@ final class DashboardViewController: NSViewController {
             sessionContentView.heightAnchor.constraint(greaterThanOrEqualTo: sessionScrollView.contentView.heightAnchor),
             sessionStack.leadingAnchor.constraint(equalTo: sessionContentView.leadingAnchor, constant: Self.pageInset),
             sessionStack.trailingAnchor.constraint(equalTo: sessionContentView.trailingAnchor, constant: -Self.pageInset),
-            sessionStack.topAnchor.constraint(equalTo: sessionContentView.topAnchor, constant: Self.pageInset),
-            sessionStack.bottomAnchor.constraint(lessThanOrEqualTo: sessionContentView.bottomAnchor, constant: -Self.pageInset),
+            sessionStack.topAnchor.constraint(equalTo: sessionContentView.topAnchor, constant: Self.sessionVerticalInset),
+            sessionStack.bottomAnchor.constraint(
+                lessThanOrEqualTo: sessionContentView.bottomAnchor,
+                constant: -Self.sessionVerticalInset
+            ),
             sessionStack.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumContentWidth),
         ])
     }
@@ -975,7 +986,10 @@ final class DashboardViewController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: table.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: table.trailingAnchor),
             stack.topAnchor.constraint(equalTo: table.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: table.bottomAnchor),
+            stack.bottomAnchor.constraint(
+                equalTo: table.bottomAnchor,
+                constant: -Self.sessionTableScrollerGutter
+            ),
             header.widthAnchor.constraint(equalTo: stack.widthAnchor),
             sessionRowsStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
             spacer.widthAnchor.constraint(equalTo: stack.widthAnchor),

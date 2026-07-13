@@ -1142,7 +1142,12 @@ struct TokenWatchTests {
 
         let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
 
-        #expect(table.fixedHeightConstant == 568)
+        let scrollerGutter = max(
+            NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay),
+            NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)
+        )
+
+        #expect(table.fixedHeightConstant == 568 + scrollerGutter)
     }
 
     @MainActor
