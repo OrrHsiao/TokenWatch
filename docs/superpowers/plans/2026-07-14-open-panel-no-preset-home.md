@@ -21,6 +21,7 @@
 
 **Files:**
 - Modify: `TokenWatchTests/Services/SecurityScopedBookmarkManagerTests.swift`
+- Modify: `TokenWatchTests/Providers/ProviderRegistryTests.swift:25-29,50-54`
 - Modify: `TokenWatch/Services/SecurityScopedBookmarkManager.swift:93-141`
 - Modify: `TokenWatch/Providers/UsageProvider.swift:3-25`
 - Modify: `TokenWatch/Providers/Claude/ClaudeProvider.swift:5-11`
@@ -109,6 +110,8 @@ var defaultDirectoryPath: String { get }
 let defaultDirectoryPath = ProviderAuthorization.homeDirectoryPath
 ```
 
+从 `ProviderRegistryTests` 删除验证旧默认目录接口的 `defaultDirectoriesUseHomeDirectory()` 和 `openCodeDefaultDirectory()`；保留共享 bookmark、授权提示和各 provider 扫描 Home Folder 子目录的测试。
+
 - [ ] **Step 5: 运行目标测试并确认 GREEN**
 
 运行：
@@ -150,6 +153,6 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Relea
 - [ ] **Step 8: 提交实现**
 
 ```bash
-git add TokenWatchTests/Services/SecurityScopedBookmarkManagerTests.swift TokenWatch/Services/SecurityScopedBookmarkManager.swift TokenWatch/Providers/UsageProvider.swift TokenWatch/Providers/Claude/ClaudeProvider.swift TokenWatch/Providers/Codex/CodexProvider.swift TokenWatch/Providers/OpenCode/OpenCodeProvider.swift
+git add TokenWatchTests/Services/SecurityScopedBookmarkManagerTests.swift TokenWatchTests/Providers/ProviderRegistryTests.swift TokenWatch/Services/SecurityScopedBookmarkManager.swift TokenWatch/Providers/UsageProvider.swift TokenWatch/Providers/Claude/ClaudeProvider.swift TokenWatch/Providers/Codex/CodexProvider.swift TokenWatch/Providers/OpenCode/OpenCodeProvider.swift
 git commit -m "fix(sandbox): 取消授权面板预设用户目录"
 ```
