@@ -6,7 +6,6 @@ struct ClaudeProvider: UsageProvider {
     let id: ProviderID = .claude
     let displayName = "Claude Code"
     let bookmarkKey = ProviderAuthorization.homeBookmarkKey
-    let defaultDirectoryPath = ProviderAuthorization.homeDirectoryPath
     let openPanelMessage = ProviderAuthorization.homeAccessMessage
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
