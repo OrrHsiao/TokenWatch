@@ -6,7 +6,6 @@ struct CodexProvider: UsageProvider {
     let id: ProviderID = .codex
     let displayName = "Codex"
     let bookmarkKey = ProviderAuthorization.homeBookmarkKey
-    let defaultDirectoryPath = ProviderAuthorization.homeDirectoryPath
     let openPanelMessage = ProviderAuthorization.homeAccessMessage
     /// Codex 不暴露 cache write 概念，UI 该 Tab 不展示该行
     let hasCacheWriteDimension = false

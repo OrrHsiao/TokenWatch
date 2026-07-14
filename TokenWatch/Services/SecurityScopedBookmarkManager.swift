@@ -97,6 +97,30 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
         )
     }
 
+    /// 创建未预设初始目录的标准授权面板。
+    /// - Parameter language: 面板提示文案使用的语言。
+    /// - Returns: 仅允许用户单选目录的 `NSOpenPanel`。
+    static func makeOpenPanel(language: AppLanguage) -> NSOpenPanel {
+        let panel = NSOpenPanel()
+        configureOpenPanel(panel, language: language)
+        return panel
+    }
+
+    /// 配置标准授权面板，不覆盖系统管理的初始目录。
+    /// - Parameters:
+    ///   - panel: 待配置的目录选择面板。
+    ///   - language: 面板提示文案使用的语言。
+    static func configureOpenPanel(_ panel: NSOpenPanel, language: AppLanguage) {
+        let copy = openPanelCopy(language: language)
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.message = copy.message
+        panel.prompt = copy.prompt
+        panel.showsHiddenFiles = true
+        panel.treatsFilePackagesAsDirectories = true
+    }
+
     // MARK: - 查询
 
     /// 是否已存储该 key 对应的 Bookmark
@@ -106,27 +130,11 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
 
     // MARK: - 授权流程
 
-    /// 通过 NSOpenPanel 让用户选择 provider 默认目录
+    /// 通过 NSOpenPanel 让用户主动选择授权目录
     /// 选择后创建 Security-Scoped Bookmark 并持久化到 UserDefaults
     func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL? {
         return await withCheckedContinuation { continuation in
-            let panel = NSOpenPanel()
-            let copy = Self.openPanelCopy(language: AppLanguageSettings.shared.resolvedLanguage)
-            panel.canChooseDirectories = true
-            panel.canChooseFiles = false
-            panel.allowsMultipleSelection = false
-            panel.message = copy.message
-            panel.prompt = copy.prompt
-            panel.showsHiddenFiles = true
-            panel.treatsFilePackagesAsDirectories = true
-
-            // 默认定位到 provider 期望的目录;不存在则回退到 home
-            let target = URL(fileURLWithPath: provider.defaultDirectoryPath, isDirectory: true)
-            if FileManager.default.fileExists(atPath: target.path) {
-                panel.directoryURL = target
-            } else {
-                panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
-            }
+            let panel = Self.makeOpenPanel(language: AppLanguageSettings.shared.resolvedLanguage)
 
             let key = provider.bookmarkKey
             panel.begin { [weak self] response in

@@ -6,7 +6,6 @@ struct OpenCodeProvider: UsageProvider {
     let id: ProviderID = .opencode
     let displayName = "opencode"
     let bookmarkKey = ProviderAuthorization.homeBookmarkKey
-    let defaultDirectoryPath = ProviderAuthorization.homeDirectoryPath
     let openPanelMessage = ProviderAuthorization.homeAccessMessage
     /// opencode 的 cache.write 含义与 Anthropic cache_creation 不完全等价,数据层映射保留但 UI 暂不展示
     let hasCacheWriteDimension = false

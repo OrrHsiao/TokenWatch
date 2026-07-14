@@ -22,12 +22,6 @@ struct ProviderRegistryTests {
         #expect(Set(keys) == ["HomeDirectoryBookmark"])
     }
 
-    @Test("所有 provider 默认授权目录为用户目录")
-    func defaultDirectoriesUseHomeDirectory() {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        #expect(ProviderRegistry.allProviders.allSatisfy { $0.defaultDirectoryPath == home })
-    }
-
     @Test("所有 provider 授权弹窗提示为用户目录")
     func openPanelMessagesUseHomeDirectory() {
         #expect(ProviderRegistry.allProviders.allSatisfy {
@@ -45,12 +39,6 @@ struct ProviderRegistryTests {
     func containsOpenCode() {
         let ids = ProviderRegistry.allProviders.map(\.id)
         #expect(ids.contains(.opencode))
-    }
-
-    @Test("opencode provider 默认目录指向用户目录")
-    func openCodeDefaultDirectory() {
-        let provider = ProviderRegistry.provider(for: .opencode)
-        #expect(provider?.defaultDirectoryPath == FileManager.default.homeDirectoryForCurrentUser.path)
     }
 
     @Test("hasReasoningDimension:仅 opencode=true,Claude/Codex=false")

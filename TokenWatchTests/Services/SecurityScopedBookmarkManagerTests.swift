@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import TokenWatch
@@ -27,6 +28,20 @@ struct SecurityScopedBookmarkManagerTests {
         #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .zhHans).prompt == "授权访问")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .en).message == "TokenWatch wants to access your home folder")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(language: .en).prompt == "Authorize")
+    }
+
+    @MainActor
+    @Test("授权面板配置不覆盖系统初始目录")
+    func openPanelConfigurationPreservesSystemDirectory() {
+        let panel = NSOpenPanel()
+        panel.directoryURL = FileManager.default.temporaryDirectory
+
+        SecurityScopedBookmarkManager.configureOpenPanel(panel, language: .en)
+
+        #expect(panel.directoryURL == FileManager.default.temporaryDirectory)
+        #expect(panel.canChooseDirectories)
+        #expect(!panel.canChooseFiles)
+        #expect(!panel.allowsMultipleSelection)
     }
 
     @MainActor

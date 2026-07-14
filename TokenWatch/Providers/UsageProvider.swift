@@ -3,7 +3,6 @@ import Foundation
 /// Provider 统一授权配置。方案 2:所有数据源共享一次用户目录授权。
 enum ProviderAuthorization {
     static let homeBookmarkKey = "HomeDirectoryBookmark"
-    static let homeDirectoryPath = FileManager.default.homeDirectoryForCurrentUser.path
     static let homeAccessMessage = AppStrings.text(.homeAccessMessage, language: .zhHans)
 }
 
@@ -19,8 +18,6 @@ protocol UsageProvider: Sendable {
     var displayName: String { get }
     /// UserDefaults Bookmark 持久化键
     var bookmarkKey: String { get }
-    /// NSOpenPanel 默认定位目录（绝对路径）
-    var defaultDirectoryPath: String { get }
     /// NSOpenPanel 顶部说明文案
     var openPanelMessage: String { get }
     /// 该 provider 是否产出 cache write tokens（决定 UI 是否展示该行）

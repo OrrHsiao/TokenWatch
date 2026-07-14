@@ -17,7 +17,7 @@ App Review 根据 Guideline 2.4.5(i) 指出 TokenWatch 将 Home Folder 作为预
 
 ## 测试与验收
 
-- 以可独立测试的面板配置方法验证新创建的 `NSOpenPanel.directoryURL` 未被 TokenWatch 设置。
+- 以可独立测试的面板配置方法验证 TokenWatch 不覆盖 `NSOpenPanel` 由系统管理的 `directoryURL`。
 - 现有授权提示、本地化和 bookmark 测试继续通过。
 - Debug/Release 至少完成一次项目构建验证；完整单元测试在环境允许时运行。
 - 最终代码中授权流程不存在对 `NSOpenPanel.directoryURL` 的赋值，也不存在 provider 默认目录配置。
