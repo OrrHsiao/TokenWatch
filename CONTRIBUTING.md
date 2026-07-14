@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve TokenWatch.
+Thanks for helping improve AI Token Watch.
 
 ## Before You Start
 

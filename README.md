@@ -1,4 +1,4 @@
-# TokenWatch
+# AI Token Watch
 
 [![CI](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/OrrHsiao/TokenWatch/actions/workflows/ci.yml)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](./LICENSE)
@@ -10,22 +10,22 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-TokenWatch is a native macOS app for tracking token usage and estimated cost from local coding-agent data. It reads local usage records from Claude Code, Codex, and opencode, then summarizes totals by day, month, model, project, and provider.
+AI Token Watch is a native macOS app for tracking token usage and estimated cost from local coding-agent data. It reads local usage records from Claude Code, Codex, and opencode, then summarizes totals by day, month, model, project, and provider.
 
-The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does not send your usage data anywhere.
+The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch does not send your usage data anywhere.
 
 ## Screenshots
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/en-US/01-menu-bar-popover.png" alt="TokenWatch menu bar popover showing month, week, today, and daily average token usage" width="820">
+  <img src="./snapshots/appstore_snapshot/en-US/01-menu-bar-popover.png" alt="AI Token Watch menu bar popover showing month, week, today, and daily average token usage" width="820">
 </p>
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/en-US/02-overview.png" alt="TokenWatch overview dashboard showing token totals, cost, trends, source share, model ranking, and project usage" width="820">
+  <img src="./snapshots/appstore_snapshot/en-US/02-overview.png" alt="AI Token Watch overview dashboard showing token totals, cost, trends, source share, model ranking, and project usage" width="820">
 </p>
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/en-US/03-sessions.png" alt="TokenWatch sessions view showing session-level model, token, cost, and record counts" width="820">
+  <img src="./snapshots/appstore_snapshot/en-US/03-sessions.png" alt="AI Token Watch sessions view showing session-level model, token, cost, and record counts" width="820">
 </p>
 
 ## Features
@@ -41,7 +41,7 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does 
 
 ## Supported Sources
 
-| Source | Local data read by TokenWatch | Notes |
+| Source | Local data read by AI Token Watch | Notes |
 | --- | --- | --- |
 | Claude Code | `~/.claude/projects/**/*.jsonl` | Deduplicates by `message.id`, with `requestId` as an optional suffix. |
 | Codex | `~/.codex/sessions/**/rollout-*.jsonl` and archived sessions | Uses `last_token_usage` when available, otherwise derives deltas from total token counts. |
@@ -49,7 +49,7 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. TokenWatch does 
 
 ## Privacy
 
-TokenWatch is designed as a local-only utility.
+AI Token Watch is designed as a local-only utility.
 
 - It reads files only after you grant access through the macOS open panel.
 - It stores security-scoped bookmarks in `UserDefaults` so the app can reopen the same local folders later.
@@ -62,12 +62,12 @@ The app may display local project paths from the agent logs because those paths 
 
 Download the latest packaged app from the [GitHub Releases page](https://github.com/OrrHsiao/TokenWatch/releases):
 
-1. Download `TokenWatch-macOS-universal.zip` from the latest release.
+1. Download `AI-Token-Watch-macOS-universal.zip` from the latest release.
 2. Unzip the archive.
-3. Move `TokenWatch.app` to `/Applications`.
-4. Open TokenWatch and authorize access to your user directory when prompted.
+3. Move `AI Token Watch.app` to `/Applications`.
+4. Open AI Token Watch and authorize access to your user directory when prompted.
 
-If macOS says `TokenWatch.app is damaged and can't be opened. You should move it to the Trash.`, confirm that the app came from the official TokenWatch release page, then go to **System Settings > Privacy & Security**. In the Security section, click **Open Anyway** for TokenWatch, then open TokenWatch again and choose **Open** when prompted.
+If macOS says `AI Token Watch.app is damaged and can't be opened. You should move it to the Trash.`, confirm that the app came from the official AI Token Watch release page, then go to **System Settings > Privacy & Security**. In the Security section, click **Open Anyway** for AI Token Watch, then open AI Token Watch again and choose **Open** when prompted.
 
 To build from source instead:
 
@@ -79,7 +79,7 @@ To build from source instead:
 
 ## First Run
 
-TokenWatch asks for user-directory access once, then scans supported provider folders under your home directory. If you do not use one of the supported tools, that provider will simply have no data.
+AI Token Watch asks for user-directory access once, then scans supported provider folders under your home directory. If you do not use one of the supported tools, that provider will simply have no data.
 
 You can refresh manually from the window or menu bar popover. Automatic refresh intervals can be changed in settings.
 
@@ -147,7 +147,7 @@ TokenWatchUITests/ XCTest UI tests
 
 ## Pricing Data
 
-TokenWatch estimates cost from embedded pricing data. Prices can drift from upstream provider billing, so treat app totals as an estimate rather than an invoice. Unknown models fall back to upstream cost when the source provides it; otherwise their cost may be shown as zero until pricing data is updated.
+AI Token Watch estimates cost from embedded pricing data. Prices can drift from upstream provider billing, so treat app totals as an estimate rather than an invoice. Unknown models fall back to upstream cost when the source provides it; otherwise their cost may be shown as zero until pricing data is updated.
 
 ## Contributing
 
@@ -157,4 +157,4 @@ For local agent guidance, see [AGENT_GUIDE.md](./AGENT_GUIDE.md).
 
 ## License
 
-TokenWatch is licensed under the GNU General Public License v3.0 or later. See [LICENSE](./LICENSE).
+AI Token Watch is licensed under the GNU General Public License v3.0 or later. See [LICENSE](./LICENSE).
