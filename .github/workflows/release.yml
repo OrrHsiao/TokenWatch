@@ -19,6 +19,7 @@ permissions:
 
 env:
   XCODE_APP_PRODUCT_NAME: AI Token Watch
+  RELEASE_ZIP_NAME: AI-Token-Watch-macOS-universal.zip
 
 jobs:
   build:
@@ -63,13 +64,13 @@ jobs:
         run: |
           APP_PATH="$RUNNER_TEMP/TokenWatchDerivedData/Build/Products/Release/$XCODE_APP_PRODUCT_NAME.app"
           test -d "$APP_PATH"
-          ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/TokenWatch-macOS-universal.zip"
+          ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/$RELEASE_ZIP_NAME"
 
       - name: Upload Release Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: TokenWatch-macOS-universal
-          path: ${{ runner.temp }}/TokenWatch-macOS-universal.zip
+          name: AI-Token-Watch-macOS-universal
+          path: ${{ runner.temp }}/${{ env.RELEASE_ZIP_NAME }}
           if-no-files-found: error
 
       - name: Resolve Release Tag
@@ -103,4 +104,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ steps.release-tag.outputs.tag }}" "$RUNNER_TEMP/TokenWatch-macOS-universal.zip" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "${{ steps.release-tag.outputs.tag }}" "$RUNNER_TEMP/$RELEASE_ZIP_NAME" --repo "$GITHUB_REPOSITORY" --clobber

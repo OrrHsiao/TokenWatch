@@ -197,18 +197,18 @@ struct StatusBarControllerTests {
         defer { controller.stop() }
 
         #expect(controller.debugStatusMenuItemTitles == [
-            "打开 TokenWatch",
+            "打开 AI Token Watch",
             "立即刷新",
-            "退出 TokenWatch",
+            "退出 AI Token Watch",
         ])
         #expect(controller.debugTitlePlainString == "—\nTokens")
 
         languageSettings.selectedPreference = .en
 
         #expect(controller.debugStatusMenuItemTitles == [
-            "Open TokenWatch",
+            "Open AI Token Watch",
             "Refresh Now",
-            "Quit TokenWatch",
+            "Quit AI Token Watch",
         ])
         #expect(controller.debugTitlePlainString == "—\nTokens")
     }
