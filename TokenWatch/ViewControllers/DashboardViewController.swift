@@ -1624,7 +1624,9 @@ final class DashboardViewController: NSViewController {
             snapshot: snapshot,
             totalProviderCount: states.count
         )
-        sessionStatusLabel.isHidden = sessionStatusLabel.stringValue.isEmpty
+        // 加载反馈已由侧边栏提供；避免额外状态行撑高默认视口并级联压窄表格。
+        let hasLoadingProvider = snapshot.loadingProviderCount > 0
+        sessionStatusLabel.isHidden = hasLoadingProvider || sessionStatusLabel.stringValue.isEmpty
     }
 
     private func updateNavigationSelection() {

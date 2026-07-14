@@ -161,6 +161,81 @@ struct DashboardSessionPaginationTests {
     }
 
     @MainActor
+    @Test("首次加载时默认会话页不产生双向滚动范围")
+    func dashboardInitialLoadingDoesNotExposeSessionScrollRanges() throws {
+        let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        let loadingState = TokenStatsViewModel.ProviderState(
+            stats: nil,
+            entries: nil,
+            isLoading: true,
+            errorMessage: nil,
+            needsAuthorization: false
+        )
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { [
+                .claude: loadingState,
+                .codex: loadingState,
+                .opencode: loadingState,
+            ] },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        controller.view.setFrameSize(MainWindowFactory.contentSize)
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let loadingLabel = try textField(withString: "正在加载用量数据...", in: controller.view)
+        try expectDefaultSessionViewportWithoutScrollRanges(
+            in: controller,
+            hiddenStatusLabel: loadingLabel,
+            visibleRowIdentifier: "DashboardSessionsRow.0"
+        )
+    }
+
+    @MainActor
+    @Test("手动刷新保留数据时默认会话页不产生双向滚动范围")
+    func dashboardInteractiveRefreshKeepsSessionViewportStable() throws {
+        let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        var states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(
+                stats: nil,
+                entries: makeEntries(count: 21, now: now),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            ),
+        ]
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { states },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        controller.view.setFrameSize(MainWindowFactory.contentSize)
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+
+        states[.claude]?.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let partialLoadingLabel = try textField(withString: "部分数据仍在加载", in: controller.view)
+        try expectDefaultSessionViewportWithoutScrollRanges(
+            in: controller,
+            hiddenStatusLabel: partialLoadingLabel,
+            visibleRowIdentifier: "DashboardSessionsRow.9"
+        )
+    }
+
+    @MainActor
     @Test("小窗口可纵向滚动到底部并查看分页栏")
     func dashboardSmallWindowScrollsPaginationIntoView() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
@@ -343,6 +418,58 @@ struct DashboardSessionPaginationTests {
         #expect(labels.contains("2"))
         #expect(labels.contains("200"))
         #expect(!labels.contains("1.2k"))
+    }
+
+    @MainActor
+    private func expectDefaultSessionViewportWithoutScrollRanges(
+        in controller: DashboardViewController,
+        hiddenStatusLabel: NSTextField,
+        visibleRowIdentifier: String
+    ) throws {
+        let pageScrollView = try #require(
+            findView(withIdentifier: "DashboardSessionsPageScrollView", in: controller.view) as? NSScrollView
+        )
+        let pageDocumentView = try #require(pageScrollView.documentView)
+        let tableScrollView = try #require(
+            findView(withIdentifier: "DashboardSessionsTableScrollView", in: controller.view) as? NSScrollView
+        )
+        let tableDocumentView = try #require(tableScrollView.documentView)
+        let header = try #require(
+            findView(withIdentifier: "DashboardSessionsTableHeader", in: controller.view)
+        )
+        let visibleRow = try #require(
+            findView(withIdentifier: visibleRowIdentifier, in: controller.view)
+        )
+        let pagination = try #require(
+            findView(withIdentifier: "DashboardSessionsPagination", in: controller.view)
+        )
+
+        #expect(hiddenStatusLabel.isHidden)
+
+        for style in [NSScroller.Style.overlay, .legacy] {
+            pageScrollView.scrollerStyle = style
+            tableScrollView.scrollerStyle = style
+            pageScrollView.autohidesScrollers = true
+            tableScrollView.autohidesScrollers = true
+            pageScrollView.tile()
+            tableScrollView.tile()
+            controller.view.layoutSubtreeIfNeeded()
+
+            let pageVisibleRect = pageScrollView.documentVisibleRect
+            let tableVisibleRect = tableScrollView.documentVisibleRect
+            let headerFrame = header.convert(header.bounds, to: tableDocumentView)
+            let rowFrame = visibleRow.convert(visibleRow.bounds, to: tableDocumentView)
+            let paginationFrame = pagination.convert(pagination.bounds, to: tableDocumentView)
+
+            #expect(pageDocumentView.frame.height <= pageVisibleRect.height + 0.5)
+            #expect(tableDocumentView.frame.width <= tableVisibleRect.width + 0.5)
+            #expect(tableVisibleRect.minY <= headerFrame.minY + 0.5)
+            #expect(tableVisibleRect.maxY + 0.5 >= headerFrame.maxY)
+            #expect(tableVisibleRect.minY <= rowFrame.minY + 0.5)
+            #expect(tableVisibleRect.maxY + 0.5 >= rowFrame.maxY)
+            #expect(tableVisibleRect.minY <= paginationFrame.minY + 0.5)
+            #expect(tableVisibleRect.maxY + 0.5 >= paginationFrame.maxY)
+        }
     }
 
     @MainActor
