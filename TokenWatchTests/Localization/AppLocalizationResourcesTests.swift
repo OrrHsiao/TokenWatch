@@ -27,11 +27,86 @@ private let middleEasternAndSouthAsianLocaleIdentifiers = [
     "ml", "mr-IN", "pa", "ta-IN", "te-IN", "ur",
 ]
 
+private let africanSoutheastAsianAndHongKongLocaleIdentifiers = [
+    "am", "id-ID", "ms-MY", "my-MM", "so-SO",
+    "sw-TZ", "th-TH", "tl", "vi-VN", "zh-HK",
+]
+
 private let validatedLocaleIdentifiers = migratedLocaleIdentifiers
     + westernAndRegionalLocaleIdentifiers
     + centralEuropeanLatinLocaleIdentifiers
     + easternEuropeanAndCentralAsianLocaleIdentifiers
     + middleEasternAndSouthAsianLocaleIdentifiers
+    + africanSoutheastAsianAndHongKongLocaleIdentifiers
+
+// 独立抄录产品设计冻结清单，避免测试从 AppLanguage 或分批数组继承同一处遗漏。
+private let frozenCodexLocaleIdentifiers = [
+    "en-US",
+    "am",
+    "ar",
+    "bg-BG",
+    "bn-BD",
+    "bs-BA",
+    "ca-ES",
+    "cs-CZ",
+    "da-DK",
+    "de-DE",
+    "el-GR",
+    "es-419",
+    "es-ES",
+    "et-EE",
+    "fa",
+    "fi-FI",
+    "fr-CA",
+    "fr-FR",
+    "gu-IN",
+    "hi-IN",
+    "hr-HR",
+    "hu-HU",
+    "hy-AM",
+    "id-ID",
+    "is-IS",
+    "it-IT",
+    "ja-JP",
+    "ka-GE",
+    "kk",
+    "kn-IN",
+    "ko-KR",
+    "lt",
+    "lv-LV",
+    "mk-MK",
+    "ml",
+    "mn",
+    "mr-IN",
+    "ms-MY",
+    "my-MM",
+    "nb-NO",
+    "nl-NL",
+    "pa",
+    "pl-PL",
+    "pt-BR",
+    "pt-PT",
+    "ro-RO",
+    "ru-RU",
+    "sk-SK",
+    "sl-SI",
+    "so-SO",
+    "sq-AL",
+    "sr-RS",
+    "sv-SE",
+    "sw-TZ",
+    "ta-IN",
+    "te-IN",
+    "th-TH",
+    "tl",
+    "tr-TR",
+    "uk-UA",
+    "ur",
+    "vi-VN",
+    "zh-CN",
+    "zh-HK",
+    "zh-TW",
+]
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
@@ -66,6 +141,35 @@ struct AppLocalizationResourcesTests {
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
         #expect(AppStringKey.allCases.count == 140)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
+    }
+
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 140 个 key")
+    func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
+        #expect(AppStringKey.allCases.count == 140)
+        try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
+    }
+
+    @Test("源码资源目录与冻结的 65 个 Codex locale 完全一致")
+    func sourceResourceDirectoriesMatchFrozenCodexLocales() throws {
+        #expect(frozenCodexLocaleIdentifiers.count == 65)
+        #expect(Set(frozenCodexLocaleIdentifiers).count == frozenCodexLocaleIdentifiers.count)
+
+        let resourcesURL = try localizationResourcesURL()
+        let directoryURLs = try FileManager.default.contentsOfDirectory(
+            at: resourcesURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+        let resourceLocaleIdentifiers = try directoryURLs.compactMap { directoryURL -> String? in
+            guard directoryURL.pathExtension == "lproj",
+                  try directoryURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true else {
+                return nil
+            }
+            return directoryURL.deletingPathExtension().lastPathComponent
+        }
+
+        #expect(Set(resourceLocaleIdentifiers) == Set(frozenCodexLocaleIdentifiers))
+        try assertCompleteResources(frozenCodexLocaleIdentifiers)
     }
 
     @Test("所有格式参数签名与英文基准一致")
