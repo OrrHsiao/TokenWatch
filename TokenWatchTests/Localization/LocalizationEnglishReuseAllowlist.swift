@@ -99,4 +99,19 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "sv-SE", key: .dashboardCache, reason: "Cache 是瑞典语技术界面沿用的术语。"),
     .init(localeIdentifier: "sv-SE", key: .recentDetailsSession, reason: "Session 是瑞典语技术界面采用的常用列名。"),
     .init(localeIdentifier: "sv-SE", key: .periodAxisValueName, reason: "Period 在瑞典语中使用相同拼写。"),
+
+    .init(localeIdentifier: "bs-BA", key: .dashboardTrendTitle, reason: "Trend 是波斯尼亚语数据界面中拼写相同的自然标题。"),
+    .init(localeIdentifier: "bs-BA", key: .recentDetailsModel, reason: "Model 是波斯尼亚语中拼写相同的自然列名。"),
+    .init(localeIdentifier: "bs-BA", key: .periodAxisValueName, reason: "Period 是波斯尼亚语中拼写相同的时间轴名称。"),
+
+    .init(localeIdentifier: "cs-CZ", key: .dashboardTrendTitle, reason: "Trend 是捷克语数据界面中拼写相同的自然标题。"),
+    .init(localeIdentifier: "cs-CZ", key: .recentDetailsModel, reason: "Model 是捷克语中拼写相同的自然列名。"),
+
+    .init(localeIdentifier: "hr-HR", key: .dashboardTrendTitle, reason: "Trend 是克罗地亚语数据界面中拼写相同的自然标题。"),
+    .init(localeIdentifier: "hr-HR", key: .recentDetailsModel, reason: "Model 是克罗地亚语中拼写相同的自然列名。"),
+
+    .init(localeIdentifier: "sk-SK", key: .dashboardTrendTitle, reason: "Trend 是斯洛伐克语数据界面中拼写相同的自然标题。"),
+    .init(localeIdentifier: "sk-SK", key: .recentDetailsModel, reason: "Model 是斯洛伐克语中拼写相同的自然列名。"),
+
+    .init(localeIdentifier: "tr-TR", key: .recentDetailsModel, reason: "Model 是土耳其语中拼写相同的自然列名。"),
 ]
