@@ -6,7 +6,7 @@
 
 ## 背景
 
-TokenWatch 当前通过 `AppLanguage`、`AppLanguagePreference` 和 `AppStrings` 实现应用内即时语言切换。现有 12 种语言均有完整译文，共覆盖 136 个 `AppStringKey`，不是依赖英文回退的占位实现。
+TokenWatch 当前通过 `AppLanguage`、`AppLanguagePreference` 和 `AppStrings` 实现应用内即时语言切换。现有 12 种语言均有完整译文，共覆盖 139 个 `AppStringKey`，不是依赖英文回退的占位实现。
 
 OpenAI 的公开文档没有给出 Codex 桌面 UI 的完整语言清单。本次以本机当前客户端中实际供语言设置加载的资源为可复现基准：`en-US` 加 64 个非英语 locale，共 65 个 locale。该清单是本次功能冻结的产品范围，不作为 OpenAI 未来版本支持承诺。
 
@@ -174,7 +174,7 @@ TokenWatch/Localization/Resources/zh-HK.lproj/Localizable.strings
 
 `AppStringKey` 改为以 case 名称作为 raw value。现有 Swift 字典迁移到对应 `.strings` 文件后删除，避免同时维护两套来源。
 
-审计发现 `AppLanguage.periodAxisValueName` 是当前 136 个 key 之外的用户可感知辅助功能文案。为满足“完整译文”，它迁移为新的 `AppStringKey`。因此迁移后每个 locale 直接覆盖 137 个 key；136 是迁移前已确认的数量，不包含这条散落在 `AppLanguage` 中的文案。
+审计发现 `AppLanguage.periodAxisValueName` 是当前 139 个 key 之外的用户可感知辅助功能文案。为满足“完整译文”，它迁移为新的 `AppStringKey`。因此迁移后每个 locale 直接覆盖 140 个 key；139 是当前基线数量，不包含这条散落在 `AppLanguage` 中的文案。
 
 为允许不同语言调整语序，下列当前“标题 + 后缀”的 key 改为完整格式字符串，但不增加 key 数量：
 
@@ -281,7 +281,7 @@ AppStrings.text(_ key: AppStringKey, language: AppLanguage) -> String
 ### 资源完整性
 
 - 65 个 `.lproj` 目录和 `Localizable.strings` 都存在且可解析。
-- 每个资源的 key 集合与全部 137 个 `AppStringKey` 完全一致。
+- 每个资源的 key 集合与全部 140 个 `AppStringKey` 完全一致。
 - 测试直接解析目标资源，不调用带英文回退的 `AppStrings.text` 来判断完整性。
 - 所有值非空，无重复 key，无残留 raw key 名称。
 - 所有格式占位符的类型和数量与英文一致，允许使用位置参数调整顺序。
@@ -331,7 +331,7 @@ AppStrings.text(_ key: AppStringKey, language: AppLanguage) -> String
 ## 验收标准
 
 1. 设置页显示“跟随系统”及 65 个具体 locale。
-2. 每个 locale 都直接提供全部 137 个用户文案 key，不依赖英文回退完成验收。
+2. 每个 locale 都直接提供全部 140 个用户文案 key，不依赖英文回退完成验收。
 3. 旧用户语言偏好保持等价选择。
 4. 系统语言按明确地区规则解析，未知语言最终回退英文。
 5. 切换任一语言会立即刷新全部现有 UI 表面，且不重新加载数据。
