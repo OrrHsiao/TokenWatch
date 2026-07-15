@@ -139,6 +139,16 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.monthBuckets[9].monthLabel == "9")
     }
 
+    @Test("完整格式文案控制时间标题语序和图表辅助功能标签")
+    func completeLocalizedFormatsControlPeriodText() {
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .en) == "Today has no token data")
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .zhHans) == "本日暂无 Token 数据")
+        #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .en) == "Today token bar chart")
+        #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .en) == "Today cost bar chart")
+        #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .zhHans) == "本日 token 柱状图")
+        #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .zhHans) == "本日 费用柱状图")
+    }
+
     @Test("跨年边界只统计最近十二个月")
     func ignoresMonthsOutsideRecentTwelveMonthWindow() {
         let calendar = utcCalendar()

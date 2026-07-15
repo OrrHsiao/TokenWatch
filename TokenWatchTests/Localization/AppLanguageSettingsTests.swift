@@ -232,11 +232,35 @@ struct AppLanguageSettingsTests {
         #expect(!keyNames.contains("periodSubtitleSuffix"))
     }
 
-    @Test("缺失中英文文案时回落到 key 名称")
-    func missingStringsFallBackToKeyName() {
+    @Test("缺失目标文案时依次回落到英文与 raw key")
+    func missingStringsFallBackToEnglishThenRawKey() {
+        var requestedLanguages: [AppLanguage] = []
         #expect(
-            AppStrings.text(.settingsTitle, language: .zhHans, zhHans: [:], en: [:]) == "settingsTitle"
+            AppStrings.text(.settingsTitle, language: .zhHans) { language, key in
+                requestedLanguages.append(language)
+                return language == .en && key == .settingsTitle ? "Settings" : nil
+            } == "Settings"
         )
+        #expect(requestedLanguages == [.zhHans, .en])
+
+        requestedLanguages.removeAll()
+        #expect(
+            AppStrings.text(.settingsTitle, language: .zhHans) { language, _ in
+                requestedLanguages.append(language)
+                return language == .zhHans ? "设置" : "Settings"
+            } == "设置"
+        )
+        #expect(requestedLanguages == [.zhHans])
+
+        requestedLanguages.removeAll()
+        #expect(
+            AppStrings.text(.settingsTitle, language: .zhHans) { language, _ in
+                requestedLanguages.append(language)
+                return nil
+            }
+                == AppStringKey.settingsTitle.rawValue
+        )
+        #expect(requestedLanguages == [.zhHans, .en])
     }
 }
 

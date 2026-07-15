@@ -29,16 +29,27 @@ enum UsageStatsPeriod: Sendable, Equatable {
     }
 
     func emptyDataText(language: AppLanguage) -> String {
-        let separator = language.usesCompactCJKFormatting ? "" : " "
-        return "\(title(language: language))\(separator)\(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
+        String(
+            format: AppStrings.text(.periodNoTokenDataFormat, language: language),
+            locale: Locale(identifier: language.localeIdentifier),
+            arguments: [title(language: language)]
+        )
     }
 
     func tokenChartAccessibilityLabel(language: AppLanguage) -> String {
-        "\(title(language: language)) \(AppStrings.text(.chartTokenAccessibilitySuffix, language: language))"
+        String(
+            format: AppStrings.text(.chartTokenAccessibilityFormat, language: language),
+            locale: Locale(identifier: language.localeIdentifier),
+            arguments: [title(language: language)]
+        )
     }
 
     func costChartAccessibilityLabel(language: AppLanguage) -> String {
-        "\(title(language: language)) \(AppStrings.text(.chartCostAccessibilitySuffix, language: language))"
+        String(
+            format: AppStrings.text(.chartCostAccessibilityFormat, language: language),
+            locale: Locale(identifier: language.localeIdentifier),
+            arguments: [title(language: language)]
+        )
     }
 
     fileprivate var bucketCount: Int {

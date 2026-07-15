@@ -64,32 +64,6 @@ extension AppLanguage {
         }
     }
 
-    var periodAxisValueName: String {
-        switch self {
-        case .zhHans, .zhHant:
-            return "月份"
-        case .ja:
-            return "月"
-        case .ko:
-            return "월"
-        case .en:
-            return "Period"
-        case .es:
-            return "Periodo"
-        case .de:
-            return "Zeitraum"
-        case .fr:
-            return "Période"
-        case .ptBR:
-            return "Período"
-        case .it:
-            return "Periodo"
-        case .nl:
-            return "Periode"
-        case .pl:
-            return "Okres"
-        }
-    }
 }
 
 enum AppLanguagePreference: CaseIterable, Sendable, Equatable {

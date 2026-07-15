@@ -22,7 +22,7 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["AI Token Watch"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["本地 AI 用量监控"].exists)
         XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["总 Token"].exists)
+        XCTAssertTrue(app.staticTexts["总 Tokens"].exists)
         XCTAssertTrue(app.staticTexts["总费用"].exists)
         XCTAssertTrue(app.staticTexts["会话数"].exists)
         XCTAssertTrue(app.staticTexts["模型消耗排行"].exists)
