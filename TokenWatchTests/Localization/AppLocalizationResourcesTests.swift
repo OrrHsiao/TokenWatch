@@ -22,10 +22,16 @@ private let easternEuropeanAndCentralAsianLocaleIdentifiers = [
     "mk-MK", "mn", "ru-RU", "sr-RS", "uk-UA",
 ]
 
+private let middleEasternAndSouthAsianLocaleIdentifiers = [
+    "ar", "bn-BD", "fa", "gu-IN", "hi-IN", "kn-IN",
+    "ml", "mr-IN", "pa", "ta-IN", "te-IN", "ur",
+]
+
 private let validatedLocaleIdentifiers = migratedLocaleIdentifiers
     + westernAndRegionalLocaleIdentifiers
     + centralEuropeanLatinLocaleIdentifiers
     + easternEuropeanAndCentralAsianLocaleIdentifiers
+    + middleEasternAndSouthAsianLocaleIdentifiers
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
@@ -54,6 +60,12 @@ struct AppLocalizationResourcesTests {
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
         #expect(AppStringKey.allCases.count == 140)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
+    }
+
+    @Test("中东与南亚文字的十二份资源均直接定义全部 140 个 key")
+    func middleEasternAndSouthAsianResourcesAreComplete() throws {
+        #expect(AppStringKey.allCases.count == 140)
+        try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
     @Test("所有格式参数签名与英文基准一致")
