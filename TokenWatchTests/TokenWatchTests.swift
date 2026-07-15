@@ -447,7 +447,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("总 Token"))
+        #expect(labels.contains("总 Tokens"))
         #expect(labels.contains("总费用"))
         #expect(labels.contains("会话数"))
         #expect(labels.contains("趋势"))
