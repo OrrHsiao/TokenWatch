@@ -52,4 +52,51 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "pl-PL", key: .languageSystem, reason: "System 在波兰语中使用相同拼写。"),
     .init(localeIdentifier: "pl-PL", key: .dashboardTrendTitle, reason: "Trend 是波兰语数据界面沿用的术语。"),
     .init(localeIdentifier: "pl-PL", key: .recentDetailsModel, reason: "Model 在波兰语中使用相同拼写。"),
+
+    .init(localeIdentifier: "ca-ES", key: .sidebarTotal, reason: "Total 是加泰罗尼亚语中拼写相同的常用汇总标签。"),
+    .init(localeIdentifier: "ca-ES", key: .dashboardSessionsNavigation, reason: "Sessions 是加泰罗尼亚语中拼写相同的复数名词。"),
+    .init(localeIdentifier: "ca-ES", key: .dashboardSessionsTitle, reason: "Sessions 是加泰罗尼亚语中拼写相同的页面标题。"),
+    .init(localeIdentifier: "ca-ES", key: .dashboardMetricSessions, reason: "Sessions 是加泰罗尼亚语中拼写相同的指标名。"),
+    .init(localeIdentifier: "ca-ES", key: .chartCost, reason: "Cost 是加泰罗尼亚语中拼写相同的费用指标。"),
+    .init(localeIdentifier: "ca-ES", key: .recentDetailsModel, reason: "Model 是加泰罗尼亚语中拼写相同的列名。"),
+    .init(localeIdentifier: "ca-ES", key: .recentDetailsCost, reason: "Cost 是加泰罗尼亚语中拼写相同的列名。"),
+    .init(localeIdentifier: "ca-ES", key: .mainMenuZoom, reason: "Zoom 是加泰罗尼亚语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "da-DK", key: .languageSystem, reason: "System 在丹麦语中使用相同拼写。"),
+    .init(localeIdentifier: "da-DK", key: .dashboardCache, reason: "Cache 是丹麦语技术界面沿用的术语。"),
+    .init(localeIdentifier: "da-DK", key: .recentDetailsSession, reason: "Session 是丹麦语技术界面采用的常用列名。"),
+    .init(localeIdentifier: "da-DK", key: .recentDetailsModel, reason: "Model 在丹麦语中使用相同拼写。"),
+    .init(localeIdentifier: "da-DK", key: .mainMenuZoom, reason: "Zoom 是丹麦语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "es-419", key: .sidebarTotal, reason: "Total 是拉丁美洲西班牙语中拼写相同的常用汇总标签。"),
+    .init(localeIdentifier: "es-419", key: .mainMenuZoom, reason: "Zoom 是拉丁美洲西班牙语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "fr-CA", key: .sidebarTotal, reason: "Total 是加拿大法语中拼写相同的汇总标签。"),
+    .init(localeIdentifier: "fr-CA", key: .dashboardSessionsNavigation, reason: "Sessions 是加拿大法语中拼写相同的复数名词。"),
+    .init(localeIdentifier: "fr-CA", key: .dashboardSessionsTitle, reason: "Sessions 是加拿大法语中拼写相同的页面标题。"),
+    .init(localeIdentifier: "fr-CA", key: .dashboardMetricSessions, reason: "Sessions 是加拿大法语中拼写相同的指标名。"),
+    .init(localeIdentifier: "fr-CA", key: .autoRefreshMinute1, reason: "minute 是加拿大法语中拼写相同的单数时间单位。"),
+    .init(localeIdentifier: "fr-CA", key: .autoRefreshMinutes5, reason: "minutes 是加拿大法语中拼写相同的复数时间单位。"),
+    .init(localeIdentifier: "fr-CA", key: .autoRefreshMinutes15, reason: "minutes 是加拿大法语中拼写相同的复数时间单位。"),
+    .init(localeIdentifier: "fr-CA", key: .recentDetailsSession, reason: "Session 是加拿大法语中拼写相同的列名。"),
+    .init(localeIdentifier: "fr-CA", key: .mainMenuZoom, reason: "Zoom 是加拿大法语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "nb-NO", key: .languageSystem, reason: "System 在书面挪威语中使用相同拼写。"),
+    .init(localeIdentifier: "nb-NO", key: .mainMenuZoom, reason: "Zoom 是书面挪威语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "pt-PT", key: .sidebarTotal, reason: "Total 是欧洲葡萄牙语中拼写相同的常用汇总标签。"),
+    .init(localeIdentifier: "pt-PT", key: .dashboardCache, reason: "Cache 是欧洲葡萄牙语技术界面沿用的术语。"),
+    .init(localeIdentifier: "pt-PT", key: .mainMenuZoom, reason: "Zoom 是欧洲葡萄牙语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "ro-RO", key: .sidebarTotal, reason: "Total 是罗马尼亚语中拼写相同的常用汇总标签。"),
+    .init(localeIdentifier: "ro-RO", key: .chartCost, reason: "Cost 是罗马尼亚语中拼写相同的费用指标。"),
+    .init(localeIdentifier: "ro-RO", key: .recentDetailsModel, reason: "Model 是罗马尼亚语中拼写相同的列名。"),
+    .init(localeIdentifier: "ro-RO", key: .recentDetailsCost, reason: "Cost 是罗马尼亚语中拼写相同的列名。"),
+    .init(localeIdentifier: "ro-RO", key: .mainMenuZoom, reason: "Zoom 是罗马尼亚语 macOS 界面沿用的通用术语。"),
+
+    .init(localeIdentifier: "sv-SE", key: .languageSystem, reason: "System 在瑞典语中使用相同拼写。"),
+    .init(localeIdentifier: "sv-SE", key: .dashboardTrendTitle, reason: "Trend 在瑞典语数据界面中使用相同拼写。"),
+    .init(localeIdentifier: "sv-SE", key: .dashboardCache, reason: "Cache 是瑞典语技术界面沿用的术语。"),
+    .init(localeIdentifier: "sv-SE", key: .recentDetailsSession, reason: "Session 是瑞典语技术界面采用的常用列名。"),
+    .init(localeIdentifier: "sv-SE", key: .periodAxisValueName, reason: "Period 在瑞典语中使用相同拼写。"),
 ]

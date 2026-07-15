@@ -7,6 +7,14 @@ private let migratedLocaleIdentifiers = [
     "de-DE", "fr-FR", "pt-BR", "it-IT", "nl-NL", "pl-PL",
 ]
 
+private let westernAndRegionalLocaleIdentifiers = [
+    "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
+    "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
+]
+
+private let validatedLocaleIdentifiers = migratedLocaleIdentifiers
+    + westernAndRegionalLocaleIdentifiers
+
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
     @Test("迁移的十二份资源均直接定义全部 140 个 key")
@@ -15,9 +23,18 @@ struct AppLocalizationResourcesTests {
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
+    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 140 个 key")
+    func westernAndRegionalResourcesAreComplete() throws {
+        #expect(AppStringKey.allCases.count == 140)
+        try assertCompleteResources([
+            "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
+            "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
+        ])
+    }
+
     @Test("所有格式参数签名与英文基准一致")
     func localizedFormatSignaturesMatchEnglish() throws {
-        let resources = try loadResources(migratedLocaleIdentifiers)
+        let resources = try loadResources(validatedLocaleIdentifiers)
         let english = try requiredResource("en-US", in: resources)
         let englishSignatures = try signatures(in: english.values)
 
@@ -26,7 +43,7 @@ struct AppLocalizationResourcesTests {
             #expect(englishSignatures[key] == expectedSignature, "Unexpected English signature for \(key.rawValue)")
         }
 
-        for localeIdentifier in migratedLocaleIdentifiers where localeIdentifier != "en-US" {
+        for localeIdentifier in validatedLocaleIdentifiers where localeIdentifier != "en-US" {
             let resource = try requiredResource(localeIdentifier, in: resources)
             let localizedSignatures = try signatures(in: resource.values)
             for key in AppStringKey.allCases {
@@ -77,10 +94,10 @@ struct AppLocalizationResourcesTests {
 
     @Test("每个 locale 子 Bundle 可直接读取每个 key")
     func localeBundlesReadEveryKeyDirectly() throws {
-        let resources = try loadResources(migratedLocaleIdentifiers)
+        let resources = try loadResources(validatedLocaleIdentifiers)
         let missingSentinel = "__TOKENWATCH_MISSING_LOCALIZATION__"
 
-        for localeIdentifier in migratedLocaleIdentifiers {
+        for localeIdentifier in validatedLocaleIdentifiers {
             let resource = try requiredResource(localeIdentifier, in: resources)
             let localeBundle = try #require(Bundle(url: resource.directoryURL))
             for key in AppStringKey.allCases {
@@ -96,11 +113,11 @@ struct AppLocalizationResourcesTests {
 
     @Test("英文复用仅限固定术语或逐 key 人工许可")
     func englishReuseHasExactReviewedAllowlist() throws {
-        let resources = try loadResources(migratedLocaleIdentifiers)
+        let resources = try loadResources(validatedLocaleIdentifiers)
         let english = try requiredResource("en-US", in: resources)
         var requiredAllowlistPairs = Set<LocalizationKey>()
 
-        for localeIdentifier in migratedLocaleIdentifiers where localeIdentifier != "en-US" {
+        for localeIdentifier in validatedLocaleIdentifiers where localeIdentifier != "en-US" {
             let localized = try requiredResource(localeIdentifier, in: resources)
             for key in AppStringKey.allCases {
                 let englishValue = try requiredValue(key, in: english)
@@ -119,7 +136,7 @@ struct AppLocalizationResourcesTests {
 
         let validationIssues = englishReuseAllowlistValidationIssues(
             localizationEnglishReuseAllowlist,
-            migratedLocaleIdentifiers: migratedLocaleIdentifiers,
+            validatedLocaleIdentifiers: validatedLocaleIdentifiers,
             requiredPairs: requiredAllowlistPairs
         )
         #expect(
@@ -131,18 +148,18 @@ struct AppLocalizationResourcesTests {
     @Test("完整 allowlist 校验不会忽略未知 locale 的无效记录")
     func englishReuseAllowlistValidatesCompleteInput() {
         let invalidAllowances: [LocalizationEnglishReuseAllowance] = [
-            .init(localeIdentifier: "fr-CA", key: .languageEnglish, reason: ""),
-            .init(localeIdentifier: "fr-CA", key: .languageEnglish, reason: "重复记录"),
+            .init(localeIdentifier: "zz-ZZ", key: .languageEnglish, reason: ""),
+            .init(localeIdentifier: "zz-ZZ", key: .languageEnglish, reason: "重复记录"),
         ]
 
         let issues = englishReuseAllowlistValidationIssues(
             invalidAllowances,
-            migratedLocaleIdentifiers: migratedLocaleIdentifiers,
+            validatedLocaleIdentifiers: validatedLocaleIdentifiers,
             requiredPairs: []
         )
 
         #expect(Set(issues) == [
-            .unknownLocale("fr-CA"),
+            .unknownLocale("zz-ZZ"),
             .duplicateLocaleKey,
             .emptyReason,
             .usageMismatch,
@@ -151,10 +168,10 @@ struct AppLocalizationResourcesTests {
 
     @Test("产品与数据源固定名称保留大小写和出现次数")
     func fixedTerminologyIsPreservedExactly() throws {
-        let resources = try loadResources(migratedLocaleIdentifiers)
+        let resources = try loadResources(validatedLocaleIdentifiers)
         let english = try requiredResource("en-US", in: resources)
 
-        for localeIdentifier in migratedLocaleIdentifiers where localeIdentifier != "en-US" {
+        for localeIdentifier in validatedLocaleIdentifiers where localeIdentifier != "en-US" {
             let localized = try requiredResource(localeIdentifier, in: resources)
             for key in AppStringKey.allCases {
                 let englishValue = try requiredValue(key, in: english)
@@ -331,12 +348,12 @@ private func declaredLocalizationKeys(in source: String) throws -> [String] {
 
 private func englishReuseAllowlistValidationIssues(
     _ allowances: [LocalizationEnglishReuseAllowance],
-    migratedLocaleIdentifiers: [String],
+    validatedLocaleIdentifiers: [String],
     requiredPairs: Set<LocalizationKey>
 ) -> [EnglishReuseAllowlistValidationIssue] {
-    let migratedIdentifiers = Set(migratedLocaleIdentifiers)
+    let validatedIdentifiers = Set(validatedLocaleIdentifiers)
     let unknownIdentifiers = Set(allowances.map(\.localeIdentifier))
-        .subtracting(migratedIdentifiers)
+        .subtracting(validatedIdentifiers)
         .sorted()
     let allowancePairs = Set(allowances.map {
         LocalizationKey(localeIdentifier: $0.localeIdentifier, key: $0.key)
