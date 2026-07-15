@@ -74,23 +74,63 @@ struct AppLanguageSettingsTests {
         }
     }
 
-    @Test("语言偏好包含三阶段新增语言")
-    func languagePreferencesIncludePlannedLanguages() {
-        #expect(AppLanguagePreference.allCases == [
-            .system,
-            .zhHans,
-            .zhHant,
-            .en,
-            .ja,
-            .ko,
-            .es,
-            .de,
-            .fr,
-            .ptBR,
-            .it,
-            .nl,
-            .pl,
+    @Test("现有语言先使用精确 locale code")
+    func existingLanguagesUseCanonicalLocaleCodes() {
+        #expect(AppLanguage.allCases.map(\.rawValue) == [
+            "zh-CN", "zh-TW", "en-US", "ja-JP", "ko-KR", "es-ES",
+            "de-DE", "fr-FR", "pt-BR", "it-IT", "nl-NL", "pl-PL",
         ])
+    }
+
+    @Test("偏好列表由跟随系统与具体语言组成")
+    func preferencesAreSystemFollowedByLanguages() {
+        #expect(
+            AppLanguagePreference.allCases
+                == [AppLanguagePreference.system]
+                    + AppLanguage.allCases.map(AppLanguagePreference.language)
+        )
+    }
+
+    @Test("语言族属性保留当前展示规则")
+    func languageFamilyPropertiesPreserveFormatting() {
+        #expect(AppLanguage.zhHans.baseLanguageCode == "zh")
+        #expect(AppLanguage.zhHant.usesCompactCJKFormatting)
+        #expect(AppLanguage.ja.yearAxisSuffix == "年")
+        #expect(AppLanguage.ko.yearAxisSuffix == "년")
+        #expect(AppLanguage.en.yearAxisSuffix == nil)
+        #expect(AppLanguage.zhHans.hourSuffix == "时")
+        #expect(AppLanguage.ja.hourSuffix == "時")
+        #expect(AppLanguage.ko.hourSuffix == "시")
+        #expect(AppLanguage.en.hourSuffix == nil)
+        #expect(AppLanguage.zhHans.usesFullWidthParentheses)
+        #expect(!AppLanguage.ja.usesFullWidthParentheses)
+    }
+
+    @Test("旧语言偏好值会迁移到具体语言")
+    func legacyLanguagePreferenceValuesResolveToLanguages() {
+        let cases: [(String, AppLanguage)] = [
+            ("en", .en),
+            ("zh-Hans", .zhHans),
+            ("zh-Hant", .zhHant),
+            ("ja", .ja),
+            ("ko", .ko),
+            ("es", .es),
+            ("de", .de),
+            ("fr", .fr),
+            ("pt-BR", .ptBR),
+            ("it", .it),
+            ("nl", .nl),
+            ("pl", .pl),
+        ]
+
+        withTemporaryDefaults { defaults in
+            for (storedValue, language) in cases {
+                defaults.set(storedValue, forKey: AppLanguageSettings.storageKey)
+                let settings = AppLanguageSettings(defaults: defaults)
+
+                #expect(settings.selectedPreference == .language(language))
+            }
+        }
     }
 
     @Test("选择英文会持久化并通知观察者")
@@ -100,14 +140,14 @@ struct AppLanguageSettingsTests {
             var notificationCount = 0
             let token = settings.observe { notificationCount += 1 }
 
-            settings.selectedPreference = .en
+            settings.selectedPreference = .language(.en)
 
-            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
+            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en-US")
             #expect(settings.resolvedLanguage == .en)
             #expect(notificationCount == 1)
 
             settings.removeObserver(token)
-            settings.selectedPreference = .zhHans
+            settings.selectedPreference = .language(.zhHans)
             #expect(notificationCount == 1)
         }
     }
@@ -128,8 +168,14 @@ struct AppLanguageSettingsTests {
         #expect(AppStrings.text(.settingsTitle, language: .pl) == "Ustawienia")
         #expect(AppLanguagePreference.system.title(language: .zhHans) == "跟随系统")
         #expect(AppLanguagePreference.system.title(language: .en) == "System")
-        #expect(AppLanguagePreference.zhHant.title(language: .zhHans) == "繁體中文")
-        #expect(AppLanguagePreference.ptBR.title(language: .en) == "Português (Brasil)")
+        #expect(
+            AppLanguagePreference.language(.zhHant).title(language: .zhHans)
+                == AppLanguage.zhHant.nativeDisplayName
+        )
+        #expect(
+            AppLanguagePreference.language(.ptBR).title(language: .en)
+                == AppLanguage.ptBR.nativeDisplayName
+        )
     }
 
     @Test func loginItemStatusStringsCoverEverySupportedLanguage() {

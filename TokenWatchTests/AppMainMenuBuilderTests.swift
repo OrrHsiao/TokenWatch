@@ -91,7 +91,7 @@ struct AppMainMenuBuilderTests {
 
         #expect(NSApp.mainMenu?.items.map(\.title) == ["AI Token Watch", "窗口"])
 
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         #expect(NSApp.mainMenu?.items.map(\.title) == ["AI Token Watch", "Window"])
     }

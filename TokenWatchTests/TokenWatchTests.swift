@@ -1931,7 +1931,7 @@ struct TokenWatchTests {
             #expect(refresh.accessibilityLabel() == "刷新全部数据")
             #expect(openSettings.accessibilityLabel() == "打开登录项设置")
 
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
 
             #expect(autoRefresh.accessibilityLabel() == "Auto Refresh Interval")
             #expect(launchAtLogin.accessibilityLabel() == "Launch at Login")
@@ -2013,21 +2013,7 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            #expect(popUpButton.itemTitles == [
-                "跟随系统",
-                "简体中文",
-                "繁體中文",
-                "English",
-                "日本語",
-                "한국어",
-                "Español",
-                "Deutsch",
-                "Français",
-                "Português (Brasil)",
-                "Italiano",
-                "Nederlands",
-                "Polski",
-            ])
+            #expect(popUpButton.itemTitles == ["跟随系统"] + AppLanguage.allCases.map(\.nativeDisplayName))
             #expect(popUpButton.titleOfSelectedItem == "跟随系统")
         }
     }
@@ -2111,29 +2097,15 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            popUpButton.selectItem(withTitle: "English")
+            popUpButton.selectItem(withTitle: AppLanguage.en.nativeDisplayName)
             _ = popUpButton.sendAction(popUpButton.action, to: popUpButton.target)
 
             let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
+            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en-US")
             #expect(labels.contains("Settings"))
             #expect(labels.contains("Language"))
-            #expect(popUpButton.itemTitles == [
-                "System",
-                "简体中文",
-                "繁體中文",
-                "English",
-                "日本語",
-                "한국어",
-                "Español",
-                "Deutsch",
-                "Français",
-                "Português (Brasil)",
-                "Italiano",
-                "Nederlands",
-                "Polski",
-            ])
-            #expect(popUpButton.titleOfSelectedItem == "English")
+            #expect(popUpButton.itemTitles == ["System"] + AppLanguage.allCases.map(\.nativeDisplayName))
+            #expect(popUpButton.titleOfSelectedItem == AppLanguage.en.nativeDisplayName)
         }
     }
 
@@ -2141,7 +2113,7 @@ struct TokenWatchTests {
     @Test func dashboardUsesEnglishCopyWhenLanguageIsEnglish() throws {
         withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
             let viewController = ViewController(languageSettings: languageSettings)
             viewController.loadViewIfNeeded()
 
@@ -2172,7 +2144,7 @@ struct TokenWatchTests {
             let viewController = ViewController(languageSettings: languageSettings)
             viewController.loadViewIfNeeded()
 
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
 
             let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
                 guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }

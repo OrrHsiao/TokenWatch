@@ -367,7 +367,7 @@ struct CalendarHeatmapCollectionViewItemTests {
             defaults: defaults,
             preferredLanguagesProvider: { ["en-US"] }
         )
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         var calendar = Calendar(identifier: .buddhist)
         calendar.timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))

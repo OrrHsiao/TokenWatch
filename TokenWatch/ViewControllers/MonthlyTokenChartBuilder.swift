@@ -29,12 +29,8 @@ enum UsageStatsPeriod: Sendable, Equatable {
     }
 
     func emptyDataText(language: AppLanguage) -> String {
-        switch language {
-        case .zhHans, .zhHant, .ja, .ko:
-            return "\(title(language: language))\(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
-        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-            return "\(title(language: language)) \(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
-        }
+        let separator = language.usesCompactCJKFormatting ? "" : " "
+        return "\(title(language: language))\(separator)\(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
     }
 
     func tokenChartAccessibilityLabel(language: AppLanguage) -> String {

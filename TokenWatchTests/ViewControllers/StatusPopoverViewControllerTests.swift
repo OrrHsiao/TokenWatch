@@ -120,7 +120,7 @@ struct StatusPopoverViewControllerTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans"] })
-        languageSettings.selectedPreference = .zhHans
+        languageSettings.selectedPreference = .language(.zhHans)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },
@@ -132,7 +132,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugSummaryCards.map(\.title) == ["本月", "本周", "今日", "日均"])
         #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
 
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         #expect(controller.debugSummaryCards.map(\.title) == ["Month", "Week", "Today", "Daily Avg"])
         #expect(controller.debugTodayDescriptionText == "No token usage today")
@@ -318,7 +318,7 @@ struct StatusPopoverViewControllerTests {
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: {
             language == .zhHans ? ["zh-Hans"] : ["en-US"]
         })
-        languageSettings.selectedPreference = language == .zhHans ? .zhHans : .en
+        languageSettings.selectedPreference = .language(language == .zhHans ? .zhHans : .en)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },

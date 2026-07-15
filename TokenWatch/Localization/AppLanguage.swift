@@ -1,23 +1,67 @@
 import Foundation
 
 enum AppLanguage: String, CaseIterable, Sendable, Equatable {
-    case zhHans = "zh-Hans"
-    case zhHant = "zh-Hant"
-    case en
-    case ja
-    case ko
-    case es
-    case de
-    case fr
+    case zhHans = "zh-CN"
+    case zhHant = "zh-TW"
+    case en = "en-US"
+    case ja = "ja-JP"
+    case ko = "ko-KR"
+    case es = "es-ES"
+    case de = "de-DE"
+    case fr = "fr-FR"
     case ptBR = "pt-BR"
-    case it
-    case nl
-    case pl
+    case it = "it-IT"
+    case nl = "nl-NL"
+    case pl = "pl-PL"
 }
 
 extension AppLanguage {
     var localeIdentifier: String {
         rawValue
+    }
+
+    var resourceIdentifier: String {
+        rawValue
+    }
+
+    var baseLanguageCode: String {
+        rawValue.split(separator: "-", maxSplits: 1).first.map(String.init)?.lowercased() ?? rawValue
+    }
+
+    var nativeDisplayName: String {
+        Locale(identifier: rawValue).localizedString(forIdentifier: rawValue) ?? rawValue
+    }
+
+    var usesCompactCJKFormatting: Bool {
+        ["zh", "ja", "ko"].contains(baseLanguageCode)
+    }
+
+    var usesFullWidthParentheses: Bool {
+        baseLanguageCode == "zh"
+    }
+
+    var yearAxisSuffix: String? {
+        switch baseLanguageCode {
+        case "zh", "ja":
+            return "年"
+        case "ko":
+            return "년"
+        default:
+            return nil
+        }
+    }
+
+    var hourSuffix: String? {
+        switch baseLanguageCode {
+        case "zh":
+            return "时"
+        case "ja":
+            return "時"
+        case "ko":
+            return "시"
+        default:
+            return nil
+        }
     }
 
     var periodAxisValueName: String {
@@ -48,50 +92,30 @@ extension AppLanguage {
     }
 }
 
-enum AppLanguagePreference: String, CaseIterable, Sendable, Equatable {
+enum AppLanguagePreference: CaseIterable, Sendable, Equatable {
     case system
-    case zhHans = "zh-Hans"
-    case zhHant = "zh-Hant"
-    case en
-    case ja
-    case ko
-    case es
-    case de
-    case fr
-    case ptBR = "pt-BR"
-    case it
-    case nl
-    case pl
+    case language(AppLanguage)
 
-    /// Returns the localized display title for this language preference.
-    func title(language: AppLanguage) -> String {
+    static var allCases: [Self] {
+        [.system] + AppLanguage.allCases.map(Self.language)
+    }
+
+    var storageValue: String {
         switch self {
         case .system:
-            return AppStrings.text(.languageSystem, language: language)
-        case .zhHans:
-            return "简体中文"
-        case .zhHant:
-            return "繁體中文"
-        case .en:
-            return "English"
-        case .ja:
-            return "日本語"
-        case .ko:
-            return "한국어"
-        case .es:
-            return "Español"
-        case .de:
-            return "Deutsch"
-        case .fr:
-            return "Français"
-        case .ptBR:
-            return "Português (Brasil)"
-        case .it:
-            return "Italiano"
-        case .nl:
-            return "Nederlands"
-        case .pl:
-            return "Polski"
+            return "system"
+        case .language(let language):
+            return language.rawValue
+        }
+    }
+
+    /// Returns the localized display title for this language preference.
+    func title(language displayLanguage: AppLanguage) -> String {
+        switch self {
+        case .system:
+            return AppStrings.text(.languageSystem, language: displayLanguage)
+        case .language(let language):
+            return language.nativeDisplayName
         }
     }
 }
@@ -120,13 +144,20 @@ final class AppLanguageSettings {
     /// The persisted language preference. Missing or invalid stored values are treated as `.system`.
     var selectedPreference: AppLanguagePreference {
         get {
-            defaults.string(forKey: Self.storageKey)
-                .flatMap(AppLanguagePreference.init(rawValue:))
-                ?? .system
+            guard let storedValue = defaults.string(forKey: Self.storageKey) else {
+                return .system
+            }
+            if let language = AppLanguage(rawValue: storedValue) {
+                return .language(language)
+            }
+            if let language = Self.legacyLanguagesByStorageValue[storedValue] {
+                return .language(language)
+            }
+            return .system
         }
         set {
             guard selectedPreference != newValue else { return }
-            defaults.set(newValue.rawValue, forKey: Self.storageKey)
+            defaults.set(newValue.storageValue, forKey: Self.storageKey)
             notifyChange()
         }
     }
@@ -136,30 +167,8 @@ final class AppLanguageSettings {
         switch selectedPreference {
         case .system:
             return Self.resolveSystemLanguage(preferredLanguagesProvider())
-        case .zhHans:
-            return .zhHans
-        case .zhHant:
-            return .zhHant
-        case .en:
-            return .en
-        case .ja:
-            return .ja
-        case .ko:
-            return .ko
-        case .es:
-            return .es
-        case .de:
-            return .de
-        case .fr:
-            return .fr
-        case .ptBR:
-            return .ptBR
-        case .it:
-            return .it
-        case .nl:
-            return .nl
-        case .pl:
-            return .pl
+        case .language(let language):
+            return language
         }
     }
 
@@ -202,6 +211,21 @@ final class AppLanguageSettings {
     private static func matches(_ normalizedIdentifier: String, _ languageIdentifier: String) -> Bool {
         normalizedIdentifier == languageIdentifier || normalizedIdentifier.hasPrefix("\(languageIdentifier)-")
     }
+
+    private static let legacyLanguagesByStorageValue: [String: AppLanguage] = [
+        "en": .en,
+        "zh-Hans": .zhHans,
+        "zh-Hant": .zhHant,
+        "ja": .ja,
+        "ko": .ko,
+        "es": .es,
+        "de": .de,
+        "fr": .fr,
+        "pt-BR": .ptBR,
+        "it": .it,
+        "nl": .nl,
+        "pl": .pl,
+    ]
 
     /// Registers a main-actor observer that is called synchronously after preference changes.
     @discardableResult

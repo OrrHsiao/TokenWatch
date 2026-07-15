@@ -237,10 +237,9 @@ enum CalendarHeatmapBuilder {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: language.localeIdentifier)
         let symbols: [String]
-        switch language {
-        case .zhHans, .zhHant, .ja, .ko:
+        if language.usesCompactCJKFormatting {
             symbols = formatter.veryShortStandaloneWeekdaySymbols ?? []
-        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
+        } else {
             symbols = formatter.shortStandaloneWeekdaySymbols ?? []
         }
         guard symbols.count == 7 else {

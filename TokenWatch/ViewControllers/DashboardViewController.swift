@@ -1886,12 +1886,10 @@ final class DashboardViewController: NSViewController {
     }
 
     private func localizedParenthetical(_ value: String) -> String {
-        switch language {
-        case .zhHans, .zhHant:
+        if language.usesFullWidthParentheses {
             return "（\(value)）"
-        default:
-            return " (\(value))"
         }
+        return " (\(value))"
     }
 
     private func formatCacheHitRate(_ summary: DashboardUsageSummary) -> String {
