@@ -114,4 +114,13 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "sk-SK", key: .recentDetailsModel, reason: "Model 是斯洛伐克语中拼写相同的自然列名。"),
 
     .init(localeIdentifier: "tr-TR", key: .recentDetailsModel, reason: "Model 是土耳其语中拼写相同的自然列名。"),
+
+    .init(localeIdentifier: "id-ID", key: .recentDetailsModel, reason: "Model 是印尼语技术界面中拼写相同且通行的模型列名。"),
+
+    .init(localeIdentifier: "ms-MY", key: .dashboardInput, reason: "Input 是马来语模型用量界面中通行的输入指标名。"),
+    .init(localeIdentifier: "ms-MY", key: .dashboardOutput, reason: "Output 是马来语模型用量界面中通行的输出指标名。"),
+    .init(localeIdentifier: "ms-MY", key: .dashboardCache, reason: "Cache 是马来语技术界面中通行的缓存指标名。"),
+    .init(localeIdentifier: "ms-MY", key: .recentDetailsModel, reason: "Model 是马来语技术界面中拼写相同且通行的模型列名。"),
+
+    .init(localeIdentifier: "tl", key: .recentDetailsTool, reason: "Tool 是菲律宾语开发工具界面中通行且拼写相同的工具列名。"),
 ]
