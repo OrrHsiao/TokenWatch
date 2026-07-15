@@ -68,6 +68,13 @@ struct AppLocalizationResourcesTests {
         #expect(try declaredLocalizationKeys(in: source) == ["settingsTitle", "settingsTitle"])
     }
 
+    @Test("声明扫描器不会漏掉同一行的重复 key")
+    func declarationScannerCountsSameLineDuplicates() throws {
+        let source = #""settingsTitle" = "Settings"; "settingsTitle" = "Override";"#
+
+        #expect(try declaredLocalizationKeys(in: source) == ["settingsTitle", "settingsTitle"])
+    }
+
     @Test("每个 locale 子 Bundle 可直接读取每个 key")
     func localeBundlesReadEveryKeyDirectly() throws {
         let resources = try loadResources(migratedLocaleIdentifiers)
@@ -110,17 +117,36 @@ struct AppLocalizationResourcesTests {
             }
         }
 
-        let scopedAllowances = localizationEnglishReuseAllowlist.filter {
-            migratedLocaleIdentifiers.contains($0.localeIdentifier)
-        }
-        let allowancePairs = Set(scopedAllowances.map {
-            LocalizationKey(localeIdentifier: $0.localeIdentifier, key: $0.key)
-        })
-        #expect(allowancePairs.count == scopedAllowances.count, "Allowlist contains duplicate locale/key records")
-        #expect(scopedAllowances.allSatisfy {
-            !$0.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }, "Every allowlist record needs a written rationale")
-        #expect(allowancePairs == requiredAllowlistPairs, "English reuse allowlist must exactly match reviewed locale/key reuse")
+        let validationIssues = englishReuseAllowlistValidationIssues(
+            localizationEnglishReuseAllowlist,
+            migratedLocaleIdentifiers: migratedLocaleIdentifiers,
+            requiredPairs: requiredAllowlistPairs
+        )
+        #expect(
+            validationIssues.isEmpty,
+            "English reuse allowlist is invalid: \(validationIssues)"
+        )
+    }
+
+    @Test("完整 allowlist 校验不会忽略未知 locale 的无效记录")
+    func englishReuseAllowlistValidatesCompleteInput() {
+        let invalidAllowances: [LocalizationEnglishReuseAllowance] = [
+            .init(localeIdentifier: "fr-CA", key: .languageEnglish, reason: ""),
+            .init(localeIdentifier: "fr-CA", key: .languageEnglish, reason: "重复记录"),
+        ]
+
+        let issues = englishReuseAllowlistValidationIssues(
+            invalidAllowances,
+            migratedLocaleIdentifiers: migratedLocaleIdentifiers,
+            requiredPairs: []
+        )
+
+        #expect(Set(issues) == [
+            .unknownLocale("fr-CA"),
+            .duplicateLocaleKey,
+            .emptyReason,
+            .usageMismatch,
+        ])
     }
 
     @Test("产品与数据源固定名称保留大小写和出现次数")
@@ -156,6 +182,13 @@ private struct LocalizationResource {
 private struct LocalizationKey: Hashable {
     let localeIdentifier: String
     let key: AppStringKey
+}
+
+private enum EnglishReuseAllowlistValidationIssue: Hashable {
+    case unknownLocale(String)
+    case duplicateLocaleKey
+    case emptyReason
+    case usageMismatch
 }
 
 private struct FormatArgument: Equatable, Hashable {
@@ -287,13 +320,40 @@ private func localizationResourcesURL() throws -> URL {
 
 private func declaredLocalizationKeys(in source: String) throws -> [String] {
     let expression = try NSRegularExpression(
-        pattern: #"(?m)^[ \t]*"([A-Za-z][A-Za-z0-9]*)""#
+        pattern: #""([A-Za-z][A-Za-z0-9]*)"(?=\s*=)"#
     )
     let range = NSRange(source.startIndex..<source.endIndex, in: source)
     return expression.matches(in: source, range: range).compactMap { match in
         guard let keyRange = Range(match.range(at: 1), in: source) else { return nil }
         return String(source[keyRange])
     }
+}
+
+private func englishReuseAllowlistValidationIssues(
+    _ allowances: [LocalizationEnglishReuseAllowance],
+    migratedLocaleIdentifiers: [String],
+    requiredPairs: Set<LocalizationKey>
+) -> [EnglishReuseAllowlistValidationIssue] {
+    let migratedIdentifiers = Set(migratedLocaleIdentifiers)
+    let unknownIdentifiers = Set(allowances.map(\.localeIdentifier))
+        .subtracting(migratedIdentifiers)
+        .sorted()
+    let allowancePairs = Set(allowances.map {
+        LocalizationKey(localeIdentifier: $0.localeIdentifier, key: $0.key)
+    })
+    var issues = unknownIdentifiers.map(EnglishReuseAllowlistValidationIssue.unknownLocale)
+    if allowancePairs.count != allowances.count {
+        issues.append(.duplicateLocaleKey)
+    }
+    if allowances.contains(where: {
+        $0.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }) {
+        issues.append(.emptyReason)
+    }
+    if allowancePairs != requiredPairs {
+        issues.append(.usageMismatch)
+    }
+    return issues
 }
 
 private func requiredResource(
