@@ -187,7 +187,7 @@ struct StatusBarControllerTests {
             defaults: defaults,
             preferredLanguagesProvider: { ["zh-Hans"] }
         )
-        languageSettings.selectedPreference = .zhHans
+        languageSettings.selectedPreference = .language(.zhHans)
 
         let controller = StatusBarController(
             viewModel: TokenStatsViewModel(),
@@ -203,7 +203,7 @@ struct StatusBarControllerTests {
         ])
         #expect(controller.debugTitlePlainString == "—\nTokens")
 
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         #expect(controller.debugStatusMenuItemTitles == [
             "Open AI Token Watch",

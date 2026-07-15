@@ -18,14 +18,8 @@ enum MonthlyBarChartStyle {
               let month = Int(parts[1]) else {
             return monthKey
         }
-        switch language {
-        case .zhHans, .zhHant, .ja:
-            return "\(year)年\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
-        case .ko:
-            return "\(year)년\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
-        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-            return "\(year)\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
-        }
+        let yearLabel = language.yearAxisSuffix.map { "\(year)\($0)" } ?? "\(year)"
+        return "\(yearLabel)\n\(UsageStatsPeriod.shortMonthName(for: month, language: language))"
     }
 
     static func hoverPeriodLabel(
@@ -33,13 +27,11 @@ enum MonthlyBarChartStyle {
         fallback: String,
         language: AppLanguage = .zhHans
     ) -> String {
-        switch language {
-        case .zhHans, .zhHant, .ja, .ko:
+        if language.usesCompactCJKFormatting {
             return fallback
-        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-            return monthAxisLabel(for: monthKey, language: language)
-                .replacingOccurrences(of: "\n", with: " ")
         }
+        return monthAxisLabel(for: monthKey, language: language)
+            .replacingOccurrences(of: "\n", with: " ")
     }
 
     static func tokenAxisLabel(for value: Double) -> String {
