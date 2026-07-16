@@ -116,7 +116,9 @@ extension XCUIApplication {
             _ = wait(for: .notRunning, timeout: 5)
         }
         launchArguments += [
-            "-TokenWatch.didPromptInitialHomeAuthorization", "YES",
+            "-ClaudeDataDirectoryBookmark", "absent",
+            "-CodexDataDirectoryBookmark", "absent",
+            "-OpenCodeDataDirectoryBookmark", "absent",
             "-TokenWatch.languagePreference", languagePreference,
             "-TokenWatch.openMainWindowOnLaunch", "YES",
         ]

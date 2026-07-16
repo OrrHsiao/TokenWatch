@@ -13,99 +13,42 @@ import SwiftUI
 struct TokenWatchTests {
 
     @MainActor
-    @Test func firstLaunchWithoutBookmarkRequestsInitialAuthorization() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
-
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { false },
-            hasPromptedInitialAuthorization: { false },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return true
-            }
+    @Test("启动只清理遗留授权再加载数据")
+    func startupOnlyCleansLegacyStateThenLoadsStats() async {
+        var events: [String] = []
+        let coordinator = AppLaunchDataCoordinator(
+            clearLegacyAuthorization: { events.append("cleanup") },
+            loadAllStats: { events.append("load") }
         )
 
         await coordinator.performStartupWork()
 
-        #expect(didRequestAuthorization)
-        #expect(didMarkPrompted)
-        #expect(!didLoadAllStats)
+        #expect(events == ["cleanup", "load"])
     }
 
     @MainActor
-    @Test func startupWithBookmarkLoadsStatsWithoutInitialAuthorization() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
+    @Test("遗留清理不影响新 provider bookmark 和其他偏好")
+    func legacyCleanupPreservesProviderBookmarksAndOtherPreferences() throws {
+        let suiteName = "LegacyAuthorizationCleaner-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(Data([1]), forKey: "HomeDirectoryBookmark")
+        defaults.set(true, forKey: "TokenWatch.didPromptInitialHomeAuthorization")
+        defaults.set(Data([2]), forKey: "ClaudeDataDirectoryBookmark")
+        defaults.set(Data([3]), forKey: "CodexDataDirectoryBookmark")
+        defaults.set(Data([4]), forKey: "OpenCodeDataDirectoryBookmark")
+        defaults.set("minutes5", forKey: "TokenWatch.autoRefreshInterval")
+        defaults.set("en", forKey: AppLanguageSettings.storageKey)
 
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { true },
-            hasPromptedInitialAuthorization: { false },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return true
-            }
-        )
+        LegacyAuthorizationCleaner.removeLegacyState(from: defaults)
 
-        await coordinator.performStartupWork()
-
-        #expect(didLoadAllStats)
-        #expect(!didRequestAuthorization)
-        #expect(!didMarkPrompted)
-    }
-
-    @MainActor
-    @Test func startupAfterInitialPromptAttemptLoadsStatsWithoutReprompting() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
-
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { false },
-            hasPromptedInitialAuthorization: { true },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return true
-            }
-        )
-
-        await coordinator.performStartupWork()
-
-        #expect(didLoadAllStats)
-        #expect(!didRequestAuthorization)
-        #expect(!didMarkPrompted)
-    }
-
-    @MainActor
-    @Test func canceledInitialAuthorizationFallsBackToStatsLoad() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
-
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { false },
-            hasPromptedInitialAuthorization: { false },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return false
-            }
-        )
-
-        await coordinator.performStartupWork()
-
-        #expect(didRequestAuthorization)
-        #expect(didMarkPrompted)
-        #expect(didLoadAllStats)
+        #expect(defaults.object(forKey: "HomeDirectoryBookmark") == nil)
+        #expect(defaults.object(forKey: "TokenWatch.didPromptInitialHomeAuthorization") == nil)
+        #expect(defaults.data(forKey: "ClaudeDataDirectoryBookmark") == Data([2]))
+        #expect(defaults.data(forKey: "CodexDataDirectoryBookmark") == Data([3]))
+        #expect(defaults.data(forKey: "OpenCodeDataDirectoryBookmark") == Data([4]))
+        #expect(defaults.string(forKey: "TokenWatch.autoRefreshInterval") == "minutes5")
+        #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
     }
 
     @Test func appBundleDoesNotDeclareMainStoryboard() throws {
