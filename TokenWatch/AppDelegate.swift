@@ -15,7 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// ViewModel 实例,协调数据加载和统计计算
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
-    let viewModel = TokenStatsViewModel()
+    let viewModel: TokenStatsViewModel
 
     /// 状态栏控制器,长驻 menu bar 显示当日 token 数
     /// 在 didFinishLaunching 时创建,terminate 时 stop() 释放 Timer + 摘掉 status item
@@ -26,12 +26,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let languageSettings: AppLanguageSettings
 
     override init() {
-        self.languageSettings = .shared
+        let settings = AppLanguageSettings.shared
+        self.languageSettings = settings
+        self.viewModel = TokenStatsViewModel(
+            languageSettings: settings,
+            widgetSnapshotPublisher: WidgetSnapshotPublisherFactory.makeLive()
+        )
         super.init()
     }
 
-    init(languageSettings: AppLanguageSettings) {
+    init(
+        languageSettings: AppLanguageSettings,
+        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil
+    ) {
         self.languageSettings = languageSettings
+        self.viewModel = TokenStatsViewModel(
+            languageSettings: languageSettings,
+            widgetSnapshotPublisher: widgetSnapshotPublisher
+        )
         super.init()
     }
 
