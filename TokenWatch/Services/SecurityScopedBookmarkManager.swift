@@ -58,7 +58,7 @@ protocol BookmarkAccessManaging: Sendable {
 }
 
 /// 记录当前进程内 security-scoped URL 的逻辑访问次数。
-/// 同一个 bookmark key 可能被多个 provider 并发复用,只有成对释放到 0 时才真正 stopAccessing。
+/// 同一 bookmark key 可能被并发加载多次，只有成对释放到 0 时才真正 stopAccessing。
 struct SecurityScopedAccessSessions: Sendable {
     private struct Session: Sendable {
         let url: URL
@@ -97,7 +97,7 @@ struct SecurityScopedAccessSessions: Sendable {
 }
 
 /// 管理多个 Security-Scoped Bookmark 的创建、存储和恢复
-/// provider 可以共享同一个 bookmarkKey,因此同一 URL 的访问会做引用计数
+/// 每个 bookmark key 独立管理 URL，同一 key 的多次访问会做引用计数。
 @MainActor
 final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
 
@@ -109,7 +109,9 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
     }
 
     private let bookmarkDataCreator: any BookmarkDataCreating
+    private let bookmarkDataResolver: any BookmarkDataResolving
     private let bookmarkStore: any BookmarkDataStoring
+    private let resourceAccessor: any SecurityScopedResourceAccessing
     private let directoryPresenter: any DirectoryPanelPresenting
     private let languageProvider: @MainActor () -> AppLanguage
     private let logger = Logger(
@@ -122,14 +124,18 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
 
     init(
         bookmarkDataCreator: any BookmarkDataCreating = SecurityScopedBookmarkDataCreator(),
+        bookmarkDataResolver: any BookmarkDataResolving = SecurityScopedBookmarkDataResolver(),
         bookmarkStore: any BookmarkDataStoring = UserDefaultsBookmarkStore(),
+        resourceAccessor: any SecurityScopedResourceAccessing = URLSecurityScopedResourceAccessor(),
         directoryPresenter: any DirectoryPanelPresenting = OpenPanelDirectoryPresenter(),
         languageProvider: @escaping @MainActor () -> AppLanguage = {
             AppLanguageSettings.shared.resolvedLanguage
         }
     ) {
         self.bookmarkDataCreator = bookmarkDataCreator
+        self.bookmarkDataResolver = bookmarkDataResolver
         self.bookmarkStore = bookmarkStore
+        self.resourceAccessor = resourceAccessor
         self.directoryPresenter = directoryPresenter
         self.languageProvider = languageProvider
     }
@@ -226,59 +232,65 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
 
     // MARK: - Bookmark 恢复
 
-    /// 从 UserDefaults 恢复指定 key 的 Bookmark 并 startAccessing
-    /// stale 处理:解析得到的 URL 仍可临时使用,startAccessing 后立即用其重建 bookmark
+    /// 从注入的 store 恢复指定 key 的 bookmark 并开始访问。
+    /// stale bookmark 只有在重建与持久化都成功后才加入会话。
     func restoreBookmarkAndAccess(forKey key: String) -> URL? {
-        // 已经在访问中 → 增加逻辑引用,避免共享 key 的并发读取被提前 stop
         if let url = sessions.retainExisting(forKey: key) {
             return url
         }
 
-        guard let bookmarkData = bookmarkStore.data(forKey: key) else {
+        guard let data = bookmarkStore.data(forKey: key) else {
             return nil
         }
 
-        var isStale = false
-        guard let url = try? URL(
-            resolvingBookmarkData: bookmarkData,
-            options: .withSecurityScope,
-            relativeTo: nil,
-            bookmarkDataIsStale: &isStale
-        ) else {
+        let resolved: ResolvedBookmark
+        do {
+            resolved = try bookmarkDataResolver.resolveBookmarkData(data)
+        } catch {
+            logger.error("Bookmark 解析失败并清除当前 key: \(key)")
             bookmarkStore.removeData(forKey: key)
             return nil
         }
 
-        guard url.startAccessingSecurityScopedResource() else {
+        guard resourceAccessor.startAccessing(resolved.url) else {
+            logger.error("Security-scoped 访问启动失败并清除当前 key: \(key)")
             bookmarkStore.removeData(forKey: key)
             return nil
         }
 
-        if isStale {
+        if resolved.isStale {
             do {
-                let fresh = try bookmarkDataCreator.createBookmarkData(for: url)
-                if !bookmarkStore.save(fresh, forKey: key) {
-                    logger.error("过期 Bookmark 重存验证失败: \(key)")
+                let freshData = try bookmarkDataCreator.createBookmarkData(
+                    for: resolved.url
+                )
+                guard bookmarkStore.save(freshData, forKey: key) else {
+                    logger.error("过期 Bookmark 重存失败并清除当前 key: \(key)")
+                    resourceAccessor.stopAccessing(resolved.url)
+                    bookmarkStore.removeData(forKey: key)
+                    return nil
                 }
             } catch {
-                logger.error("过期 Bookmark 重建失败: \(error.localizedDescription)")
+                logger.error("过期 Bookmark 重建失败并清除当前 key: \(key)")
+                resourceAccessor.stopAccessing(resolved.url)
+                bookmarkStore.removeData(forKey: key)
+                return nil
             }
         }
 
-        sessions.insert(url, forKey: key)
-        return url
+        sessions.insert(resolved.url, forKey: key)
+        return resolved.url
     }
 
     /// 停止指定 key 的安全访问
     func stopAccessing(forKey key: String) {
         guard let url = sessions.release(forKey: key) else { return }
-        url.stopAccessingSecurityScopedResource()
+        resourceAccessor.stopAccessing(url)
     }
 
     /// 停止所有 key 的安全访问(applicationWillTerminate 用)
     func stopAccessingAll() {
         for url in sessions.removeAll() {
-            url.stopAccessingSecurityScopedResource()
+            resourceAccessor.stopAccessing(url)
         }
     }
 
