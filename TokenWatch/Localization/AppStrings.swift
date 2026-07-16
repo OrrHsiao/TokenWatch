@@ -141,6 +141,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case claudeDataDirectoryOpenPanelMessage
     case codexDataDirectoryOpenPanelMessage
     case openCodeDataDirectoryOpenPanelMessage
+    case chooseDirectoryPrompt
     case homeAccessMessage
     case authorizeAccessPrompt
     case errorCannotAccessHome
@@ -309,6 +310,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "选择 Claude Code 数据文件夹",
         .codexDataDirectoryOpenPanelMessage: "选择 Codex 数据文件夹",
         .openCodeDataDirectoryOpenPanelMessage: "选择 opencode 数据文件夹",
+        .chooseDirectoryPrompt: "选择",
         .homeAccessMessage: "AI Token Watch 想访问用户目录",
         .authorizeAccessPrompt: "授权访问",
         .errorCannotAccessHome: "无法访问用户目录,请重新授权",
@@ -454,6 +456,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "請選擇包含 Claude Code 資料的檔案夾。",
         .codexDataDirectoryOpenPanelMessage: "請選擇包含 Codex 資料的檔案夾。",
         .openCodeDataDirectoryOpenPanelMessage: "請選擇包含 opencode 資料的檔案夾。",
+        .chooseDirectoryPrompt: "選擇",
         .homeAccessMessage: "AI Token Watch 想存取使用者目錄",
         .authorizeAccessPrompt: "授權存取",
         .errorCannotAccessHome: "無法存取使用者目錄,請重新授權",
@@ -599,6 +602,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Claude Code のデータを含むフォルダを選択してください。",
         .codexDataDirectoryOpenPanelMessage: "Codex のデータを含むフォルダを選択してください。",
         .openCodeDataDirectoryOpenPanelMessage: "opencode のデータを含むフォルダを選択してください。",
+        .chooseDirectoryPrompt: "選択",
         .homeAccessMessage: "AI Token Watch がホームフォルダへのアクセスを求めています",
         .authorizeAccessPrompt: "許可",
         .errorCannotAccessHome: "ホームフォルダにアクセスできません。再度許可してください",
@@ -744,6 +748,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Claude Code 데이터가 포함된 폴더를 선택하세요.",
         .codexDataDirectoryOpenPanelMessage: "Codex 데이터가 포함된 폴더를 선택하세요.",
         .openCodeDataDirectoryOpenPanelMessage: "opencode 데이터가 포함된 폴더를 선택하세요.",
+        .chooseDirectoryPrompt: "선택",
         .homeAccessMessage: "AI Token Watch가 홈 폴더 접근을 요청합니다",
         .authorizeAccessPrompt: "허용",
         .errorCannotAccessHome: "홈 폴더에 접근할 수 없습니다. 다시 허용하세요",
@@ -889,6 +894,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Elige la carpeta que contiene los datos de Claude Code.",
         .codexDataDirectoryOpenPanelMessage: "Elige la carpeta que contiene los datos de Codex.",
         .openCodeDataDirectoryOpenPanelMessage: "Elige la carpeta que contiene los datos de opencode.",
+        .chooseDirectoryPrompt: "Elegir",
         .homeAccessMessage: "AI Token Watch quiere acceder a tu carpeta de inicio",
         .authorizeAccessPrompt: "Autorizar",
         .errorCannotAccessHome: "No se puede acceder a la carpeta de inicio. Autoriza de nuevo",
@@ -1034,6 +1040,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Wähle den Ordner aus, der die Daten von Claude Code enthält.",
         .codexDataDirectoryOpenPanelMessage: "Wähle den Ordner aus, der die Daten von Codex enthält.",
         .openCodeDataDirectoryOpenPanelMessage: "Wähle den Ordner aus, der die Daten von opencode enthält.",
+        .chooseDirectoryPrompt: "Auswählen",
         .homeAccessMessage: "AI Token Watch möchte auf deinen Home-Ordner zugreifen",
         .authorizeAccessPrompt: "Autorisieren",
         .errorCannotAccessHome: "Home-Ordner kann nicht geöffnet werden. Bitte erneut autorisieren",
@@ -1179,6 +1186,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Choisissez le dossier contenant les données de Claude Code.",
         .codexDataDirectoryOpenPanelMessage: "Choisissez le dossier contenant les données de Codex.",
         .openCodeDataDirectoryOpenPanelMessage: "Choisissez le dossier contenant les données d'opencode.",
+        .chooseDirectoryPrompt: "Choisir",
         .homeAccessMessage: "AI Token Watch veut accéder à votre dossier personnel",
         .authorizeAccessPrompt: "Autoriser",
         .errorCannotAccessHome: "Impossible d'accéder au dossier personnel. Veuillez autoriser à nouveau",
@@ -1324,6 +1332,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Escolha a pasta que contém os dados do Claude Code.",
         .codexDataDirectoryOpenPanelMessage: "Escolha a pasta que contém os dados do Codex.",
         .openCodeDataDirectoryOpenPanelMessage: "Escolha a pasta que contém os dados do opencode.",
+        .chooseDirectoryPrompt: "Escolher",
         .homeAccessMessage: "AI Token Watch quer acessar sua pasta inicial",
         .authorizeAccessPrompt: "Autorizar",
         .errorCannotAccessHome: "Não foi possível acessar a pasta inicial. Autorize novamente",
@@ -1469,6 +1478,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Scegli la cartella contenente i dati di Claude Code.",
         .codexDataDirectoryOpenPanelMessage: "Scegli la cartella contenente i dati di Codex.",
         .openCodeDataDirectoryOpenPanelMessage: "Scegli la cartella contenente i dati di opencode.",
+        .chooseDirectoryPrompt: "Scegli",
         .homeAccessMessage: "AI Token Watch vuole accedere alla cartella home",
         .authorizeAccessPrompt: "Autorizza",
         .errorCannotAccessHome: "Impossibile accedere alla cartella home. Autorizza di nuovo",
@@ -1614,6 +1624,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Kies de map met de gegevens van Claude Code.",
         .codexDataDirectoryOpenPanelMessage: "Kies de map met de gegevens van Codex.",
         .openCodeDataDirectoryOpenPanelMessage: "Kies de map met de gegevens van opencode.",
+        .chooseDirectoryPrompt: "Kiezen",
         .homeAccessMessage: "AI Token Watch wil toegang tot je thuismap",
         .authorizeAccessPrompt: "Autoriseren",
         .errorCannotAccessHome: "Kan de thuismap niet openen. Autoriseer opnieuw",
@@ -1759,6 +1770,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Wybierz folder zawierający dane Claude Code.",
         .codexDataDirectoryOpenPanelMessage: "Wybierz folder zawierający dane Codex.",
         .openCodeDataDirectoryOpenPanelMessage: "Wybierz folder zawierający dane opencode.",
+        .chooseDirectoryPrompt: "Wybierz",
         .homeAccessMessage: "AI Token Watch chce uzyskać dostęp do folderu domowego",
         .authorizeAccessPrompt: "Autoryzuj",
         .errorCannotAccessHome: "Nie można uzyskać dostępu do folderu domowego. Autoryzuj ponownie",
@@ -1904,6 +1916,7 @@ enum AppStrings {
         .claudeDataDirectoryOpenPanelMessage: "Choose the Claude Code data folder",
         .codexDataDirectoryOpenPanelMessage: "Choose the Codex data folder",
         .openCodeDataDirectoryOpenPanelMessage: "Choose the opencode data folder",
+        .chooseDirectoryPrompt: "Choose",
         .homeAccessMessage: "AI Token Watch wants to access your home folder",
         .authorizeAccessPrompt: "Authorize",
         .errorCannotAccessHome: "Cannot access home folder. Please authorize again",

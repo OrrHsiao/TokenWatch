@@ -44,25 +44,25 @@ struct TokenStatsViewModelObserverTests {
         #expect(t1 != t2)
     }
 
-    /// 用户目录授权是共享的:任一 provider 授权成功后,同 key 的其它 provider 也应退出未授权态
-    @Test func sharedBookmarkAuthorizationUpdatesAllProviders() {
+    /// provider 使用独立 bookmark key，授权成功只应更新 key 匹配的状态。
+    @Test func providerAuthorizationUpdatesOnlyMatchingBookmarkKey() {
         let vm = TokenStatsViewModel()
         var received: [ProviderID] = []
         _ = vm.observe { id in received.append(id) }
 
         vm.markProvidersAuthorized(sharingBookmarkWith: ClaudeProvider())
 
-        #expect(ProviderRegistry.allProviders.allSatisfy {
-            vm.states[$0.id]?.needsAuthorization == false
-        })
-        #expect(Set(received) == Set(ProviderRegistry.allProviders.map(\.id)))
+        #expect(vm.states[.claude]?.needsAuthorization == false)
+        #expect(vm.states[.codex]?.needsAuthorization == true)
+        #expect(vm.states[.opencode]?.needsAuthorization == true)
+        #expect(received == [.claude])
     }
 
     @Test func failedAuthorizationDoesNotMarkAuthorizedOrRefresh() async {
         let provider = StubUsageProvider(id: .claude)
         let bookmarkManager = StubBookmarkManager(
             rootURL: URL(fileURLWithPath: NSTemporaryDirectory()),
-            promptSucceeds: false
+            promptResult: .failed
         )
         let aggregator = CountingUsageAggregator()
         let vm = TokenStatsViewModel(
@@ -476,19 +476,24 @@ private func makeEntry(
 @MainActor
 private final class StubBookmarkManager: BookmarkAccessManaging {
     private let rootURL: URL
-    private let promptSucceeds: Bool
+    private let promptResult: DirectoryAuthorizationResult
 
-    init(rootURL: URL, promptSucceeds: Bool = true) {
+    init(
+        rootURL: URL,
+        promptResult: DirectoryAuthorizationResult? = nil
+    ) {
         self.rootURL = rootURL
-        self.promptSucceeds = promptSucceeds
+        self.promptResult = promptResult ?? .authorized(rootURL)
     }
 
     func hasBookmark(forKey key: String) -> Bool {
         true
     }
 
-    func promptUserToSelectDirectory(forProvider provider: any UsageProvider) async -> URL? {
-        promptSucceeds ? rootURL : nil
+    func promptUserToSelectDirectory(
+        forProvider provider: any UsageProvider
+    ) async -> DirectoryAuthorizationResult {
+        promptResult
     }
 
     func restoreBookmarkAndAccess(forKey key: String) -> URL? {
