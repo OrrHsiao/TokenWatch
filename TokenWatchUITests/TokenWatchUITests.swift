@@ -168,7 +168,7 @@ final class TokenWatchUITests: XCTestCase {
         ] {
             XCTAssertEqual(
                 app.staticTexts["ProviderDirectoryStatus.\(id)"].label,
-                "\(providerName), Not selected"
+                "\(providerName), Unauthorized"
             )
         }
     }
