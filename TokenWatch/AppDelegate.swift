@@ -13,6 +13,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let openMainWindowOnLaunchKey = "TokenWatch.openMainWindowOnLaunch"
 
+    static let supportURL = URL(
+        string: "https://orrhsiao.github.io/TokenWatch/support/"
+    )!
+
     /// ViewModel 实例,协调数据加载和统计计算
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
     let viewModel = TokenStatsViewModel()
@@ -24,14 +28,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindowController: NSWindowController?
 
     private let languageSettings: AppLanguageSettings
+    private let externalURLOpener: (URL) -> Bool
 
     override init() {
         self.languageSettings = .shared
+        self.externalURLOpener = { NSWorkspace.shared.open($0) }
         super.init()
     }
 
-    init(languageSettings: AppLanguageSettings) {
+    init(
+        languageSettings: AppLanguageSettings,
+        externalURLOpener: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }
+    ) {
         self.languageSettings = languageSettings
+        self.externalURLOpener = externalURLOpener
         super.init()
     }
 
@@ -87,6 +97,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 立即重新加载所有 provider 的统计数据。
     @objc func refreshNow(_ sender: Any?) {
         Task { await viewModel.loadAllStats() }
+    }
+
+    /// 使用默认浏览器打开公开支持页面。
+    @objc func openSupport(_ sender: Any?) {
+        guard externalURLOpener(Self.supportURL) else {
+            NSLog("TokenWatch failed to open the support page")
+            return
+        }
     }
 
     private func presentMainWindow() -> ViewController? {

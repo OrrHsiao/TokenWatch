@@ -39,6 +39,11 @@ enum AppMainMenuBuilder {
             keyEquivalent: "r",
             target: actionTarget
         ))
+        appMenu.addItem(makeApplicationItem(
+            title: text(.support, language: language),
+            action: #selector(AppDelegate.openSupport(_:)),
+            target: actionTarget
+        ))
         appMenu.addItem(.separator())
         appMenu.addItem(makeApplicationItem(
             title: text(.mainMenuHide, language: language),

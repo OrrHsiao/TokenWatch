@@ -23,6 +23,7 @@ struct AppMainMenuBuilderTests {
             "Open AI Token Watch",
             "Settings...",
             "Refresh Now",
+            "Support",
             "Hide AI Token Watch",
             "Hide Others",
             "Show All",
@@ -33,6 +34,7 @@ struct AppMainMenuBuilderTests {
             "openMainWindow:",
             "showSettings:",
             "refreshNow:",
+            "openSupport:",
             "hide:",
             "hideOtherApplications:",
             "unhideAllApplications:",
@@ -41,6 +43,48 @@ struct AppMainMenuBuilderTests {
         #expect(items[1].target === actionTarget)
         #expect(items[2].target === actionTarget)
         #expect(items[3].target === actionTarget)
+        #expect(items[4].target === actionTarget)
+    }
+
+    @Test("Support 位于 Refresh 与原分隔符之间")
+    func supportItemIsAdjacentToRefreshAndSeparator() throws {
+        let actionTarget = AppDelegate()
+        let menu = AppMainMenuBuilder.build(actionTarget: actionTarget)
+        let appMenu = try #require(menu.items.first?.submenu)
+        let supportIndex = try #require(
+            appMenu.items.firstIndex {
+                $0.action == #selector(AppDelegate.openSupport(_:))
+            }
+        )
+
+        try #require(supportIndex > 0)
+        try #require(appMenu.items.indices.contains(supportIndex + 1))
+        #expect(
+            appMenu.items[supportIndex - 1].action
+                == #selector(AppDelegate.refreshNow(_:))
+        )
+        #expect(appMenu.items[supportIndex + 1].isSeparatorItem)
+    }
+
+    @Test("Support 命令打开固定 HTTPS 页面")
+    func supportCommandOpensFixedHTTPSURL() {
+        var openedURLs: [URL] = []
+        let actionTarget = AppDelegate(
+            languageSettings: .shared,
+            externalURLOpener: { url in
+                openedURLs.append(url)
+                return true
+            }
+        )
+
+        actionTarget.openSupport(nil)
+
+        #expect(openedURLs == [AppDelegate.supportURL])
+        #expect(
+            AppDelegate.supportURL.absoluteString
+                == "https://orrhsiao.github.io/TokenWatch/support/"
+        )
+        #expect(AppDelegate.supportURL.scheme == "https")
     }
 
     @Test func mainMenuUsesChineseTitlesWhenLanguageIsChinese() throws {
@@ -55,6 +99,7 @@ struct AppMainMenuBuilderTests {
             "打开 AI Token Watch",
             "设置...",
             "立即刷新",
+            "支持",
             "隐藏 AI Token Watch",
             "隐藏其他",
             "全部显示",
