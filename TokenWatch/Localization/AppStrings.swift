@@ -145,6 +145,8 @@ enum AppStringKey: CaseIterable, Sendable {
     case homeAccessMessage
     case authorizeAccessPrompt
     case errorCannotAccessHome
+    case errorCannotAccessProviderDirectoryFormat
+    case errorProviderDirectoryAuthorizationFailedFormat
     case errorLoadFailedPrefix
     case errorOpenCodeDatabaseNotFoundFormat
     case errorOpenCodeDatabaseOpenFailedFormat
@@ -314,6 +316,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch 想访问用户目录",
         .authorizeAccessPrompt: "授权访问",
         .errorCannotAccessHome: "无法访问用户目录,请重新授权",
+        .errorCannotAccessProviderDirectoryFormat:
+            "无法访问 %@ 数据文件夹，请再次选择。",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "无法保存 %@ 数据文件夹的访问权限，请重新选择。",
         .errorLoadFailedPrefix: "数据加载失败",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db 不存在: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "无法打开 opencode.db (SQLite code=%d): %@",
@@ -460,6 +466,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch 想存取使用者目錄",
         .authorizeAccessPrompt: "授權存取",
         .errorCannotAccessHome: "無法存取使用者目錄,請重新授權",
+        .errorCannotAccessProviderDirectoryFormat:
+            "無法存取已選擇的 %@ 資料檔案夾，請重新選擇",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "無法儲存 %@ 資料檔案夾的存取權限，請再試一次",
         .errorLoadFailedPrefix: "資料載入失敗",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db 不存在: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "無法開啟 opencode.db (SQLite code=%d): %@",
@@ -606,6 +616,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch がホームフォルダへのアクセスを求めています",
         .authorizeAccessPrompt: "許可",
         .errorCannotAccessHome: "ホームフォルダにアクセスできません。再度許可してください",
+        .errorCannotAccessProviderDirectoryFormat:
+            "選択した %@ のデータフォルダにアクセスできません。もう一度選択してください",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "%@ のデータフォルダへのアクセス権を保存できませんでした。もう一度お試しください",
         .errorLoadFailedPrefix: "データの読み込みに失敗しました",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db が見つかりません: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "opencode.db を開けません (SQLite code=%d): %@",
@@ -752,6 +766,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch가 홈 폴더 접근을 요청합니다",
         .authorizeAccessPrompt: "허용",
         .errorCannotAccessHome: "홈 폴더에 접근할 수 없습니다. 다시 허용하세요",
+        .errorCannotAccessProviderDirectoryFormat:
+            "선택한 %@ 데이터 폴더에 접근할 수 없습니다. 다시 선택하세요",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "%@ 데이터 폴더 접근 권한을 저장하지 못했습니다. 다시 시도하세요",
         .errorLoadFailedPrefix: "데이터 불러오기 실패",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db를 찾을 수 없습니다: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "opencode.db를 열 수 없습니다 (SQLite code=%d): %@",
@@ -898,6 +916,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch quiere acceder a tu carpeta de inicio",
         .authorizeAccessPrompt: "Autorizar",
         .errorCannotAccessHome: "No se puede acceder a la carpeta de inicio. Autoriza de nuevo",
+        .errorCannotAccessProviderDirectoryFormat:
+            "No se puede acceder a la carpeta de datos seleccionada para %@. Vuelve a elegirla",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "No se pudo guardar el acceso a la carpeta de datos de %@. Inténtalo de nuevo",
         .errorLoadFailedPrefix: "Error al cargar datos",
         .errorOpenCodeDatabaseNotFoundFormat: "No se encontró opencode.db: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "No se pudo abrir opencode.db (SQLite code=%d): %@",
@@ -1044,6 +1066,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch möchte auf deinen Home-Ordner zugreifen",
         .authorizeAccessPrompt: "Autorisieren",
         .errorCannotAccessHome: "Home-Ordner kann nicht geöffnet werden. Bitte erneut autorisieren",
+        .errorCannotAccessProviderDirectoryFormat:
+            "Auf den ausgewählten Datenordner von %@ kann nicht zugegriffen werden. Wähle ihn erneut aus",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Der Zugriff auf den Datenordner von %@ konnte nicht gespeichert werden. Versuche es erneut",
         .errorLoadFailedPrefix: "Daten konnten nicht geladen werden",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db wurde nicht gefunden: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "opencode.db konnte nicht geöffnet werden (SQLite code=%d): %@",
@@ -1190,6 +1216,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch veut accéder à votre dossier personnel",
         .authorizeAccessPrompt: "Autoriser",
         .errorCannotAccessHome: "Impossible d'accéder au dossier personnel. Veuillez autoriser à nouveau",
+        .errorCannotAccessProviderDirectoryFormat:
+            "Impossible d'accéder au dossier de données sélectionné pour %@. Choisissez-le à nouveau",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Impossible d'enregistrer l'accès au dossier de données de %@. Réessayez",
         .errorLoadFailedPrefix: "Échec du chargement des données",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db introuvable : %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "Impossible d'ouvrir opencode.db (SQLite code=%d) : %@",
@@ -1336,6 +1366,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch quer acessar sua pasta inicial",
         .authorizeAccessPrompt: "Autorizar",
         .errorCannotAccessHome: "Não foi possível acessar a pasta inicial. Autorize novamente",
+        .errorCannotAccessProviderDirectoryFormat:
+            "Não foi possível acessar a pasta de dados selecionada para %@. Escolha-a novamente",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Não foi possível salvar o acesso à pasta de dados de %@. Tente novamente",
         .errorLoadFailedPrefix: "Falha ao carregar dados",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db não encontrado: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "Não foi possível abrir opencode.db (SQLite code=%d): %@",
@@ -1482,6 +1516,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch vuole accedere alla cartella home",
         .authorizeAccessPrompt: "Autorizza",
         .errorCannotAccessHome: "Impossibile accedere alla cartella home. Autorizza di nuovo",
+        .errorCannotAccessProviderDirectoryFormat:
+            "Impossibile accedere alla cartella dati selezionata per %@. Selezionala di nuovo",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Impossibile salvare l'accesso alla cartella dati di %@. Riprova",
         .errorLoadFailedPrefix: "Caricamento dati non riuscito",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db non trovato: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "Impossibile aprire opencode.db (SQLite code=%d): %@",
@@ -1628,6 +1666,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch wil toegang tot je thuismap",
         .authorizeAccessPrompt: "Autoriseren",
         .errorCannotAccessHome: "Kan de thuismap niet openen. Autoriseer opnieuw",
+        .errorCannotAccessProviderDirectoryFormat:
+            "De geselecteerde gegevensmap voor %@ is niet toegankelijk. Kies deze opnieuw",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Toegang tot de gegevensmap van %@ kon niet worden opgeslagen. Probeer het opnieuw",
         .errorLoadFailedPrefix: "Gegevens laden mislukt",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db niet gevonden: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "Kan opencode.db niet openen (SQLite code=%d): %@",
@@ -1774,6 +1816,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch chce uzyskać dostęp do folderu domowego",
         .authorizeAccessPrompt: "Autoryzuj",
         .errorCannotAccessHome: "Nie można uzyskać dostępu do folderu domowego. Autoryzuj ponownie",
+        .errorCannotAccessProviderDirectoryFormat:
+            "Nie można uzyskać dostępu do folderu danych wybranego dla %@. Wybierz go ponownie",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Nie udało się zapisać dostępu do folderu danych dla %@. Spróbuj ponownie",
         .errorLoadFailedPrefix: "Nie udało się załadować danych",
         .errorOpenCodeDatabaseNotFoundFormat: "Nie znaleziono opencode.db: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "Nie można otworzyć opencode.db (SQLite code=%d): %@",
@@ -1920,6 +1966,10 @@ enum AppStrings {
         .homeAccessMessage: "AI Token Watch wants to access your home folder",
         .authorizeAccessPrompt: "Authorize",
         .errorCannotAccessHome: "Cannot access home folder. Please authorize again",
+        .errorCannotAccessProviderDirectoryFormat:
+            "Cannot access the %@ data folder. Please choose it again.",
+        .errorProviderDirectoryAuthorizationFailedFormat:
+            "Could not save access to the %@ data folder. Please choose again.",
         .errorLoadFailedPrefix: "Data load failed",
         .errorOpenCodeDatabaseNotFoundFormat: "opencode.db not found: %@",
         .errorOpenCodeDatabaseOpenFailedFormat: "Could not open opencode.db (SQLite code=%d): %@",
