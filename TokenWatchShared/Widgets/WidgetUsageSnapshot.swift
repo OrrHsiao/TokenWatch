@@ -45,6 +45,10 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
 /// the builder calendar's `firstWeekday` order (`index = column * 7 + row`). Storage
 /// validates the fixed shape but does not reorder cells, so the producer preserves this
 /// ordering convention for the renderer.
+///
+/// `totalTokens`, every cell's `totalTokens`, and `maxDailyTokens` preserve the existing
+/// `UsageSummary.totalTokens` semantics: reasoning tokens are included, never added again
+/// as a separate amount. The maximum is computed from those same per-day totals.
 struct WidgetHeatmapSnapshot: Codable, Equatable, Sendable {
     let totalTokens: Int
     let maxDailyTokens: Int
@@ -68,6 +72,9 @@ struct WidgetHeatmapCell: Codable, Equatable, Sendable {
 /// The fixed wall-clock shape is retained on daylight-saving transition days rather than
 /// representing 24 elapsed hours. A valid snapshot has `dayKey == localDayKey`, points in
 /// ascending `hour` order, 24 unique nonempty keys, and exactly one current-hour marker.
+/// `totalTokens`, every point's `totalTokens`, and `maxHourlyTokens` preserve the existing
+/// `UsageSummary.totalTokens` semantics: reasoning tokens are included, never added again
+/// as a separate amount. The maximum is computed from those same per-hour totals.
 struct WidgetHourlyLineSnapshot: Codable, Equatable, Sendable {
     let dayKey: String
     let totalTokens: Int
