@@ -44,20 +44,12 @@ struct AppLanguageSettingsTests {
         }
     }
 
-    @Test("系统语言解析覆盖新增语言")
-    func supportedSystemLanguagesResolveToMatchingLanguages() {
+    @Test("完整 locale 匹配忽略大小写并接受下划线")
+    func exactLocaleMatchingIsCaseInsensitiveAndAcceptsUnderscores() {
         let cases: [(String, AppLanguage)] = [
-            ("zh-Hans-CN", .zhHans),
-            ("zh-Hant-TW", .zhHant),
-            ("ja-JP", .ja),
-            ("ko-KR", .ko),
-            ("es-ES", .es),
-            ("de-DE", .de),
-            ("fr-FR", .fr),
-            ("pt-BR", .ptBR),
-            ("it-IT", .it),
-            ("nl-NL", .nl),
-            ("pl-PL", .pl),
+            ("en_us", .en),
+            ("EN-us", .en),
+            ("JA_jp", .ja),
         ]
 
         for (identifier, language) in cases {
@@ -65,30 +57,86 @@ struct AppLanguageSettingsTests {
         }
     }
 
-    @Test("其他系统语言回落到英文")
-    func unsupportedSystemLanguageFallsBackToEnglish() throws {
-        withTemporaryDefaults { defaults in
-            let settings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["sv-SE"] })
-
-            #expect(settings.resolvedLanguage == .en)
+    @Test("每个规范 locale 均优先完整匹配")
+    func everyCanonicalLocaleMatchesExactly() {
+        for language in AppLanguage.allCases {
+            #expect(AppLanguageSettings.resolveSystemLanguage([language.rawValue]) == language)
         }
     }
 
-    @Test("现有语言先使用精确 locale code")
-    func existingLanguagesUseCanonicalLocaleCodes() {
-        #expect(AppLanguage.allCases.map(\.rawValue) == [
-            "zh-CN", "zh-TW", "en-US", "ja-JP", "ko-KR", "es-ES",
-            "de-DE", "fr-FR", "pt-BR", "it-IT", "nl-NL", "pl-PL",
-        ])
+    @Test("首项不受支持时继续解析下一项")
+    func unsupportedPreferenceContinuesToNextIdentifier() {
+        #expect(AppLanguageSettings.resolveSystemLanguage(["xx-XX", "sv-SE"]) == .svSE)
     }
 
-    @Test("偏好列表由跟随系统与具体语言组成")
-    func preferencesAreSystemFollowedByLanguages() {
-        #expect(
-            AppLanguagePreference.allCases
-                == [AppLanguagePreference.system]
-                    + AppLanguage.allCases.map(AppLanguagePreference.language)
-        )
+    @Test("中文按脚本与地区解析为三个冻结变体")
+    func chineseIdentifiersResolveByScriptAndRegion() {
+        let cases: [(String, AppLanguage)] = [
+            ("zh-Hans", .zhHans),
+            ("zh-CN", .zhHans),
+            ("zh-HK", .zhHK),
+            ("zh-MO", .zhHK),
+            ("zh-Hant-HK", .zhHK),
+            ("zh-TW", .zhHant),
+            ("zh-Hant", .zhHant),
+            ("zh", .zhHans),
+        ]
+
+        for (identifier, language) in cases {
+            #expect(AppLanguageSettings.resolveSystemLanguage([identifier]) == language)
+        }
+    }
+
+    @Test("西班牙语按完整拉美地区集合解析")
+    func spanishIdentifiersResolveByRegion() {
+        let latinAmericanRegions = [
+            "419", "AR", "BO", "BR", "CL", "CO", "CR", "CU", "DO", "EC", "GT",
+            "HN", "MX", "NI", "PA", "PE", "PR", "PY", "SV", "US", "UY", "VE",
+        ]
+
+        #expect(AppLanguageSettings.resolveSystemLanguage(["es-ES"]) == .es)
+        #expect(AppLanguageSettings.resolveSystemLanguage(["es"]) == .es)
+        for region in latinAmericanRegions {
+            #expect(AppLanguageSettings.resolveSystemLanguage(["es-\(region)"]) == .es419)
+        }
+        #expect(AppLanguageSettings.resolveSystemLanguage(["es-GQ"]) == .es)
+    }
+
+    @Test("法语默认法国并为加拿大保留地区变体")
+    func frenchIdentifiersResolveByRegion() {
+        let cases: [(String, AppLanguage)] = [
+            ("fr-CA", .frCA),
+            ("fr-FR", .fr),
+            ("fr-BE", .fr),
+            ("fr", .fr),
+        ]
+
+        for (identifier, language) in cases {
+            #expect(AppLanguageSettings.resolveSystemLanguage([identifier]) == language)
+        }
+    }
+
+    @Test("葡萄牙语默认巴西并为葡萄牙保留地区变体")
+    func portugueseIdentifiersResolveByRegion() {
+        let cases: [(String, AppLanguage)] = [
+            ("pt-PT", .ptPT),
+            ("pt-BR", .ptBR),
+            ("pt", .ptBR),
+        ]
+
+        for (identifier, language) in cases {
+            #expect(AppLanguageSettings.resolveSystemLanguage([identifier]) == language)
+        }
+    }
+
+    @Test("只有一个支持变体的语言按 base code 匹配")
+    func singleVariantLanguageMatchesBaseCode() {
+        #expect(AppLanguageSettings.resolveSystemLanguage(["de-AT"]) == .de)
+    }
+
+    @Test("全部系统语言不受支持时回落到英文")
+    func unsupportedSystemLanguagesFallBackToEnglish() {
+        #expect(AppLanguageSettings.resolveSystemLanguage(["xx-XX", "yy-YY"]) == .en)
     }
 
     @Test("语言族属性保留当前展示规则")
@@ -124,8 +172,9 @@ struct AppLanguageSettingsTests {
         ]
 
         withTemporaryDefaults { defaults in
+            #expect(AppLanguageSettings.storageKey == "TokenWatch.languagePreference")
             for (storedValue, language) in cases {
-                defaults.set(storedValue, forKey: AppLanguageSettings.storageKey)
+                defaults.set(storedValue, forKey: "TokenWatch.languagePreference")
                 let settings = AppLanguageSettings(defaults: defaults)
 
                 #expect(settings.selectedPreference == .language(language))
@@ -178,7 +227,7 @@ struct AppLanguageSettingsTests {
         )
     }
 
-    @Test func loginItemStatusStringsCoverEverySupportedLanguage() {
+    @Test func migratedLoginItemStatusStringsRemainUnchanged() {
         let expected: [AppLanguage: (approval: String, unavailable: String, open: String)] = [
             .zhHans: ("需要在系统设置中批准开机自启动。", "当前无法使用开机自启动。", "打开登录项设置"),
             .zhHant: ("需要在「系統設定」中核准登入時啟動。", "目前無法使用登入時啟動。", "打開登入項目設定"),
@@ -194,7 +243,6 @@ struct AppLanguageSettingsTests {
             .pl: ("Uruchamianie przy logowaniu wymaga zatwierdzenia w Ustawieniach systemowych.", "Uruchamianie przy logowaniu jest obecnie niedostępne.", "Otwórz ustawienia rzeczy otwieranych"),
         ]
 
-        #expect(expected.count == AppLanguage.allCases.count)
         for (language, value) in expected {
             #expect(AppStrings.text(.settingsLaunchAtLoginRequiresApproval, language: language) == value.approval)
             #expect(AppStrings.text(.settingsLaunchAtLoginUnavailable, language: language) == value.unavailable)

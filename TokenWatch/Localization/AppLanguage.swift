@@ -1,18 +1,71 @@
 import Foundation
 
 enum AppLanguage: String, CaseIterable, Sendable, Equatable {
-    case zhHans = "zh-CN"
-    case zhHant = "zh-TW"
     case en = "en-US"
-    case ja = "ja-JP"
-    case ko = "ko-KR"
-    case es = "es-ES"
+    case am
+    case ar
+    case bgBG = "bg-BG"
+    case bnBD = "bn-BD"
+    case bsBA = "bs-BA"
+    case caES = "ca-ES"
+    case csCZ = "cs-CZ"
+    case daDK = "da-DK"
     case de = "de-DE"
+    case elGR = "el-GR"
+    case es419 = "es-419"
+    case es = "es-ES"
+    case etEE = "et-EE"
+    case fa
+    case fiFI = "fi-FI"
+    case frCA = "fr-CA"
     case fr = "fr-FR"
-    case ptBR = "pt-BR"
+    case guIN = "gu-IN"
+    case hiIN = "hi-IN"
+    case hrHR = "hr-HR"
+    case huHU = "hu-HU"
+    case hyAM = "hy-AM"
+    case idID = "id-ID"
+    case isIS = "is-IS"
     case it = "it-IT"
+    case ja = "ja-JP"
+    case kaGE = "ka-GE"
+    case kk
+    case knIN = "kn-IN"
+    case ko = "ko-KR"
+    case lt
+    case lvLV = "lv-LV"
+    case mkMK = "mk-MK"
+    case ml
+    case mn
+    case mrIN = "mr-IN"
+    case msMY = "ms-MY"
+    case myMM = "my-MM"
+    case nbNO = "nb-NO"
     case nl = "nl-NL"
+    case pa
     case pl = "pl-PL"
+    case ptBR = "pt-BR"
+    case ptPT = "pt-PT"
+    case roRO = "ro-RO"
+    case ruRU = "ru-RU"
+    case skSK = "sk-SK"
+    case slSI = "sl-SI"
+    case soSO = "so-SO"
+    case sqAL = "sq-AL"
+    case srRS = "sr-RS"
+    case svSE = "sv-SE"
+    case swTZ = "sw-TZ"
+    case taIN = "ta-IN"
+    case teIN = "te-IN"
+    case thTH = "th-TH"
+    case tl
+    case trTR = "tr-TR"
+    case ukUA = "uk-UA"
+    case ur
+    case viVN = "vi-VN"
+    case zhHans = "zh-CN"
+    case zhHK = "zh-HK"
+    case zhHant = "zh-TW"
 }
 
 extension AppLanguage {
@@ -162,29 +215,44 @@ final class AppLanguageSettings {
             .replacingOccurrences(of: "_", with: "-")
             .lowercased()
 
-        if matches(normalized, "zh-hant") || matches(normalized, "zh-tw")
-            || matches(normalized, "zh-hk") || matches(normalized, "zh-mo") {
-            return .zhHant
+        if let exactMatch = AppLanguage.allCases.first(where: {
+            $0.rawValue.lowercased() == normalized
+        }) {
+            return exactMatch
         }
-        if matches(normalized, "zh") {
+
+        let subtags = normalized.split(separator: "-").map(String.init)
+        guard let baseLanguageCode = subtags.first else { return nil }
+        let variantSubtags = Set(subtags.dropFirst())
+
+        // 这些语言各有多个资源变体，不能用通用 base-code 规则任意选择第一项。
+        switch baseLanguageCode {
+        case "zh":
+            if !variantSubtags.isDisjoint(with: ["hk", "mo"]) {
+                return .zhHK
+            }
+            if !variantSubtags.isDisjoint(with: ["tw", "hant"]) {
+                return .zhHant
+            }
             return .zhHans
+        case "es":
+            return variantSubtags.isDisjoint(with: latinAmericanSpanishRegions) ? .es : .es419
+        case "fr":
+            return variantSubtags.contains("ca") ? .frCA : .fr
+        case "pt":
+            return variantSubtags.contains("pt") ? .ptPT : .ptBR
+        default:
+            let candidates = AppLanguage.allCases.filter {
+                $0.baseLanguageCode == baseLanguageCode
+            }
+            return candidates.count == 1 ? candidates[0] : nil
         }
-        if matches(normalized, "en") { return .en }
-        if matches(normalized, "ja") { return .ja }
-        if matches(normalized, "ko") { return .ko }
-        if matches(normalized, "es") { return .es }
-        if matches(normalized, "de") { return .de }
-        if matches(normalized, "fr") { return .fr }
-        if matches(normalized, "pt") { return .ptBR }
-        if matches(normalized, "it") { return .it }
-        if matches(normalized, "nl") { return .nl }
-        if matches(normalized, "pl") { return .pl }
-        return nil
     }
 
-    private static func matches(_ normalizedIdentifier: String, _ languageIdentifier: String) -> Bool {
-        normalizedIdentifier == languageIdentifier || normalizedIdentifier.hasPrefix("\(languageIdentifier)-")
-    }
+    private static let latinAmericanSpanishRegions: Set<String> = [
+        "419", "ar", "bo", "br", "cl", "co", "cr", "cu", "do", "ec", "gt",
+        "hn", "mx", "ni", "pa", "pe", "pr", "py", "sv", "us", "uy", "ve",
+    ]
 
     private static let legacyLanguagesByStorageValue: [String: AppLanguage] = [
         "en": .en,
