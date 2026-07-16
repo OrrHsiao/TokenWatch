@@ -1182,11 +1182,11 @@ then
   echo 'unexpected legacy support or Home-directory wording found' >&2
   exit 1
 else
-  status=$?
-  if test "$status" -ne 1
+  rg_status=$?
+  if test "$rg_status" -ne 1
   then
-    echo "rg failed with status ${status}" >&2
-    exit "$status"
+    echo "rg failed with status ${rg_status}" >&2
+    exit "$rg_status"
   fi
 fi
 
@@ -1195,11 +1195,11 @@ then
   echo 'review material must describe Data Folders as a Settings section' >&2
   exit 1
 else
-  status=$?
-  if test "$status" -ne 1
+  rg_status=$?
+  if test "$rg_status" -ne 1
   then
-    echo "rg failed with status ${status}" >&2
-    exit "$status"
+    echo "rg failed with status ${rg_status}" >&2
+    exit "$rg_status"
   fi
 fi
 ```
