@@ -234,13 +234,17 @@ final class TokenStatsViewModel: Sendable {
     @discardableResult
     func requestAuthorization(for id: ProviderID) async -> Bool {
         guard let provider = provider(for: id) else { return false }
-        if let _ = await bookmarkManager.promptUserToSelectDirectory(forProvider: provider) {
+        switch await bookmarkManager.promptUserToSelectDirectory(forProvider: provider) {
+        case .authorized:
             markProvidersAuthorized(sharingBookmarkWith: provider)
             logger.info("\(provider.displayName) 用户授权成功")
             await loadAllStats()
             return true
-        } else {
+        case .cancelled:
             logger.info("\(provider.displayName) 用户取消授权")
+            return false
+        case .failed:
+            logger.error("\(provider.displayName) 目录授权保存失败")
             return false
         }
     }

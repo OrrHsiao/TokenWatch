@@ -5,36 +5,36 @@ import Testing
 @MainActor
 @Suite("BookmarkPersistence")
 struct BookmarkPersistenceTests {
-    @Test("bookmark data 创建失败时授权完成结果为 nil")
-    func creationFailureReturnsNil() {
+    @Test("重新选择时 bookmark 创建失败会保留旧数据")
+    func reselectionCreationFailureKeepsExistingBookmark() {
+        let oldData = Data([1, 2, 3])
+        let store = InMemoryBookmarkStore(values: ["bookmark": oldData])
         let manager = SecurityScopedBookmarkManager(
             bookmarkDataCreator: ThrowingBookmarkDataCreator(),
-            bookmarkStore: InMemoryBookmarkStore()
+            bookmarkStore: store
         )
 
-        let result = manager.persistSelectedDirectory(
-            URL(fileURLWithPath: "/Users/example", isDirectory: true),
+        #expect(!manager.persistSelectedDirectory(
+            URL(fileURLWithPath: "/replacement", isDirectory: true),
             forKey: "bookmark"
-        )
-
-        #expect(result == nil)
-        #expect(!manager.hasBookmark(forKey: "bookmark"))
+        ))
+        #expect(store.data(forKey: "bookmark") == oldData)
     }
 
-    @Test("bookmark store 拒绝写入时授权完成结果为 nil")
-    func saveFailureReturnsNil() {
+    @Test("重新选择时 bookmark 保存失败会保留旧数据")
+    func reselectionSaveFailureKeepsExistingBookmark() {
+        let oldData = Data([4, 5, 6])
+        let store = RejectingBookmarkStore(values: ["bookmark": oldData])
         let manager = SecurityScopedBookmarkManager(
-            bookmarkDataCreator: FixedBookmarkDataCreator(data: Data([1, 2, 3])),
-            bookmarkStore: RejectingBookmarkStore()
+            bookmarkDataCreator: FixedBookmarkDataCreator(data: Data([7, 8, 9])),
+            bookmarkStore: store
         )
 
-        let result = manager.persistSelectedDirectory(
-            URL(fileURLWithPath: "/Users/example", isDirectory: true),
+        #expect(!manager.persistSelectedDirectory(
+            URL(fileURLWithPath: "/replacement", isDirectory: true),
             forKey: "bookmark"
-        )
-
-        #expect(result == nil)
-        #expect(!manager.hasBookmark(forKey: "bookmark"))
+        ))
+        #expect(store.data(forKey: "bookmark") == oldData)
     }
 
     @Test("UserDefaults store 写后回读相同数据才返回成功")
@@ -69,24 +69,30 @@ private struct FixedBookmarkDataCreator: BookmarkDataCreating {
 }
 
 private final class InMemoryBookmarkStore: BookmarkDataStoring, @unchecked Sendable {
-    private var values: [String: Data] = [:]
+    private var values: [String: Data]
 
-    func data(forKey key: String) -> Data? {
-        values[key]
+    init(values: [String: Data] = [:]) {
+        self.values = values
     }
+
+    func data(forKey key: String) -> Data? { values[key] }
 
     func save(_ data: Data, forKey key: String) -> Bool {
         values[key] = data
-        return values[key] == data
+        return true
     }
 
-    func removeData(forKey key: String) {
-        values[key] = nil
-    }
+    func removeData(forKey key: String) { values[key] = nil }
 }
 
-private struct RejectingBookmarkStore: BookmarkDataStoring {
-    func data(forKey key: String) -> Data? { nil }
+private final class RejectingBookmarkStore: BookmarkDataStoring, @unchecked Sendable {
+    private var values: [String: Data]
+
+    init(values: [String: Data] = [:]) {
+        self.values = values
+    }
+
+    func data(forKey key: String) -> Data? { values[key] }
     func save(_ data: Data, forKey key: String) -> Bool { false }
-    func removeData(forKey key: String) {}
+    func removeData(forKey key: String) { values[key] = nil }
 }

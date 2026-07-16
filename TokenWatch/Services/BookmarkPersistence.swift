@@ -16,6 +16,8 @@ struct SecurityScopedBookmarkDataCreator: BookmarkDataCreating {
 
 protocol BookmarkDataStoring: Sendable {
     func data(forKey key: String) -> Data?
+
+    /// 保存 bookmark data；返回 `false` 时不得改变调用前的值。
     func save(_ data: Data, forKey key: String) -> Bool
     func removeData(forKey key: String)
 }
@@ -32,8 +34,17 @@ final class UserDefaultsBookmarkStore: BookmarkDataStoring, @unchecked Sendable 
     }
 
     func save(_ data: Data, forKey key: String) -> Bool {
+        let previousValue = defaults.object(forKey: key)
         defaults.set(data, forKey: key)
-        return defaults.data(forKey: key) == data
+        guard defaults.data(forKey: key) == data else {
+            if let previousValue {
+                defaults.set(previousValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+            return false
+        }
+        return true
     }
 
     func removeData(forKey key: String) {
