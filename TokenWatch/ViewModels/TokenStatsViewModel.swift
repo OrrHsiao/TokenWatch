@@ -49,6 +49,7 @@ final class TokenStatsViewModel: Sendable {
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var isLoadingAllStats = false
     private var needsLanguageRepublish = false
+    private var isLanguageRepublishDrainScheduled = false
 
     init(
         languageSettings: AppLanguageSettings = .shared,
@@ -156,15 +157,29 @@ final class TokenStatsViewModel: Sendable {
         )
     }
 
-    /// 语言变化只重建共享快照，不触发 provider 扫描；刷新中的变化由末尾循环合并。
+    /// 语言变化只重建共享快照，不触发 provider 扫描；同一 dirty bit 合并连续变化。
     private func handleLanguageChangeForWidgets() {
         guard widgetSnapshotPublisher != nil else { return }
-        if isLoadingAllStats {
-            needsLanguageRepublish = true
-            return
-        }
+        needsLanguageRepublish = true
+        guard !isLoadingAllStats, !isLanguageRepublishDrainScheduled else { return }
+        isLanguageRepublishDrainScheduled = true
         Task { @MainActor [weak self] in
-            await self?.publishCurrentWidgetSnapshot()
+            await self?.drainLanguageRepublish()
+        }
+    }
+
+    /// 串行消化空闲期语言变化；真正运行及每次发布恢复后都重查全量刷新 gate。
+    private func drainLanguageRepublish() async {
+        defer { isLanguageRepublishDrainScheduled = false }
+        while needsLanguageRepublish {
+            guard !isLoadingAllStats else { return }
+            needsLanguageRepublish = false
+            await publishCurrentWidgetSnapshot()
+            if isLoadingAllStats {
+                // publish 挂起期间若刷新开启，恢复 dirty，由刷新末尾基于完整 states 重发。
+                needsLanguageRepublish = true
+                return
+            }
         }
     }
 

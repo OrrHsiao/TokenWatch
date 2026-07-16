@@ -69,6 +69,37 @@ struct TokenStatsViewModelWidgetPublishingTests {
         #expect(finalOverlapCount == 1)
     }
 
+    @Test("queued language drain rechecks a refresh that starts before it runs")
+    func queuedLanguageChangeWaitsForRefreshGate() async throws {
+        let fixture = makeLanguageSettings()
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        let claude = MutableTestUsageProvider(id: .claude, totalTokens: 10)
+        let codex = BlockingTestUsageProvider(id: .codex, totalTokens: 20)
+        defer { codex.resume() }
+        let publisher = RecordingWidgetSnapshotPublisher()
+        let viewModel = makeViewModel(
+            settings: fixture.settings,
+            providers: [claude, codex],
+            publisher: publisher
+        )
+
+        // refresh 先排入 MainActor，语言 observer 随后排入 drain；真正执行 drain 时必须重查 gate。
+        let refresh = Task { await viewModel.loadAllStats() }
+        fixture.settings.selectedPreference = .en
+        try await waitUntil { codex.isWaiting }
+
+        let callCountWhileRefreshIsBlocked = await publisher.callCount()
+        #expect(callCountWhileRefreshIsBlocked == 0)
+
+        codex.resume()
+        await refresh.value
+
+        let calls = await publisher.recordedCalls()
+        #expect(calls.map(\.language) == [.en])
+        #expect(claude.scanCount == 1)
+        #expect(codex.scanCount == 1)
+    }
+
     @Test("partial failure publishes the retained valid provider state")
     func partialFailureStillPublishesAvailableStats() async throws {
         let fixture = makeLanguageSettings()
@@ -160,6 +191,42 @@ struct TokenStatsViewModelWidgetPublishingTests {
         #expect(codex.scanCount == 1)
     }
 
+    @Test("idle language changes during publish share one drain and keep only the latest language")
+    func idleLanguageChangesDuringPublishShareOneDrain() async throws {
+        let fixture = makeLanguageSettings()
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        let claude = MutableTestUsageProvider(id: .claude, totalTokens: 10)
+        let publisher = RecordingWidgetSnapshotPublisher()
+        await publisher.suspendNextPublish()
+        defer {
+            Task { await publisher.resumeSuspendedPublish() }
+        }
+        let viewModel = makeViewModel(
+            settings: fixture.settings,
+            providers: [claude],
+            publisher: publisher
+        )
+        let scansBeforeLanguageChanges = claude.scanCount
+
+        fixture.settings.selectedPreference = .en
+        try await waitUntil { await publisher.isPublishSuspended() }
+        fixture.settings.selectedPreference = .ja
+        fixture.settings.selectedPreference = .ko
+        await waitForPreviouslyScheduledMainActorTasks()
+
+        let callCountWhileFirstPublishIsSuspended = await publisher.callCount()
+        #expect(callCountWhileFirstPublishIsSuspended == 1)
+
+        await publisher.resumeSuspendedPublish()
+        try await waitUntil { await publisher.callCount() >= 2 }
+        await waitForPreviouslyScheduledMainActorTasks()
+
+        let calls = await publisher.recordedCalls()
+        #expect(calls.map(\.language) == [.en, .ko])
+        #expect(claude.scanCount == scansBeforeLanguageChanges)
+        withExtendedLifetime(viewModel) {}
+    }
+
     private func makeViewModel(
         settings: AppLanguageSettings,
         providers: [any UsageProvider],
@@ -203,6 +270,11 @@ struct TokenStatsViewModelWidgetPublishingTests {
             }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
+    }
+
+    private func waitForPreviouslyScheduledMainActorTasks() async {
+        let barrier = Task { @MainActor in () }
+        await barrier.value
     }
 }
 
