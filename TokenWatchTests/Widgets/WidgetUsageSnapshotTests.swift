@@ -13,36 +13,95 @@ struct WidgetUsageSnapshotTests {
         #expect(decoded.schemaVersion == WidgetSharedConfiguration.schemaVersion)
     }
 
-    @Test("semantic comparison ignores generatedAt and nothing else")
-    func semanticComparisonIgnoresGeneratedAtOnly() {
+    @Test("semantic comparison ignores generatedAt")
+    func semanticComparisonIgnoresGeneratedAt() {
         let first = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 100))
         let later = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 200))
+
+        #expect(
+            first.hasSameContent(as: later),
+            "hasSameContent(as:) must ignore generatedAt"
+        )
+    }
+
+    @Test("semantic comparison includes schemaVersion")
+    func semanticComparisonIncludesSchemaVersion() {
+        let first = makeSnapshot()
         let changed = makeSnapshot(
-            generatedAt: Date(timeIntervalSince1970: 200),
-            todayTotal: 43
+            schemaVersion: WidgetSharedConfiguration.schemaVersion + 1
         )
 
-        #expect(first.hasSameContent(as: later))
-        #expect(!first.hasSameContent(as: changed))
+        #expect(
+            !first.hasSameContent(as: changed),
+            "hasSameContent(as:) must compare schemaVersion"
+        )
+    }
+
+    @Test("semantic comparison includes localDayKey")
+    func semanticComparisonIncludesLocalDayKey() {
+        let first = makeSnapshot()
+        let changed = makeSnapshot(localDayKey: "2026-07-16")
+
+        #expect(
+            !first.hasSameContent(as: changed),
+            "hasSameContent(as:) must compare localDayKey"
+        )
+    }
+
+    @Test("semantic comparison includes localizedText")
+    func semanticComparisonIncludesLocalizedText() {
+        let first = makeSnapshot()
+        let changed = makeSnapshot(notReadyMessage: "Open TokenWatch to refresh data")
+
+        #expect(
+            !first.hasSameContent(as: changed),
+            "hasSameContent(as:) must compare localizedText"
+        )
+    }
+
+    @Test("semantic comparison includes heatmap")
+    func semanticComparisonIncludesHeatmap() {
+        let first = makeSnapshot()
+        let changed = makeSnapshot(heatmapTotalTokens: 43)
+
+        #expect(
+            !first.hasSameContent(as: changed),
+            "hasSameContent(as:) must compare heatmap"
+        )
+    }
+
+    @Test("semantic comparison includes hourlyLine")
+    func semanticComparisonIncludesHourlyLine() {
+        let first = makeSnapshot()
+        let changed = makeSnapshot(hourlyTotalTokens: 43)
+
+        #expect(
+            !first.hasSameContent(as: changed),
+            "hasSameContent(as:) must compare hourlyLine"
+        )
     }
 
     private func makeSnapshot(
-        generatedAt: Date,
-        todayTotal: Int = 42
+        generatedAt: Date = Date(timeIntervalSince1970: 100),
+        schemaVersion: Int = WidgetSharedConfiguration.schemaVersion,
+        localDayKey: String = "2026-07-15",
+        notReadyMessage: String = "打开 TokenWatch 刷新数据",
+        heatmapTotalTokens: Int = 42,
+        hourlyTotalTokens: Int = 42
     ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
-            schemaVersion: WidgetSharedConfiguration.schemaVersion,
+            schemaVersion: schemaVersion,
             generatedAt: generatedAt,
-            localDayKey: "2026-07-15",
+            localDayKey: localDayKey,
             localizedText: WidgetLocalizedText(
                 heatmapTitle: "最近 22 周",
                 todayUsageTitle: "今日用量",
                 datedUsageTitle: "7/15 用量",
                 updatedThroughTitle: "更新至 7/15",
-                notReadyMessage: "打开 TokenWatch 刷新数据"
+                notReadyMessage: notReadyMessage
             ),
             heatmap: WidgetHeatmapSnapshot(
-                totalTokens: 42,
+                totalTokens: heatmapTotalTokens,
                 maxDailyTokens: 42,
                 cells: [
                     WidgetHeatmapCell(
@@ -55,14 +114,14 @@ struct WidgetUsageSnapshotTests {
             ),
             hourlyLine: WidgetHourlyLineSnapshot(
                 dayKey: "2026-07-15",
-                totalTokens: todayTotal,
-                maxHourlyTokens: todayTotal,
+                totalTokens: hourlyTotalTokens,
+                maxHourlyTokens: 42,
                 points: [
                     WidgetHourlyPoint(
                         hour: 0,
                         hourKey: "2026-07-15T00",
                         hourLabel: "0时",
-                        totalTokens: todayTotal,
+                        totalTokens: 42,
                         isCurrentHour: true
                     )
                 ]
