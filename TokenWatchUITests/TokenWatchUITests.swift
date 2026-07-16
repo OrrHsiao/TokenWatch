@@ -87,20 +87,90 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
-    func testSettingsPageExposesActionControls() throws {
+    func testFreshLaunchDoesNotPresentAuthorizationPanel() throws {
         let app = XCUIApplication()
-        app.launchForUITesting()
+        app.launchForUITesting(languagePreference: "en")
+
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Usage Overview"].exists)
+        XCTAssertFalse(
+            app.windows.element(boundBy: 1).waitForExistence(timeout: 2)
+        )
+        XCTAssertEqual(app.windows.count, 1)
+    }
+
+    @MainActor
+    func testSettingsExposeThreeProviderDirectoryControls() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting(languagePreference: "en")
 
         let settingsButton = app.buttons["DashboardNav.settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         settingsButton.click()
 
-        XCTAssertTrue(app.staticTexts["通用访问权限"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["AuthorizationActionButton"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["RefreshAllDataButton"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["AutoRefreshIntervalPopUpButton"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["LaunchAtLoginSwitch"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["LanguagePreferencePopUpButton"].exists)
+        for id in ["claude", "codex", "opencode"] {
+            XCTAssertTrue(
+                app.staticTexts["ProviderDirectoryStatus.\(id)"]
+                    .waitForExistence(timeout: 5)
+            )
+            XCTAssertTrue(app.buttons["ProviderDirectoryAction.\(id)"].exists)
+        }
+    }
+
+    @MainActor
+    func testCancellingOneProviderPanelLeavesAllRowsUnselected() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting(languagePreference: "en")
+
+        let settingsButton = app.buttons["DashboardNav.settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.click()
+
+        let claudeButton = app.buttons["ProviderDirectoryAction.claude"]
+        let buttonReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true"),
+            object: claudeButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [buttonReady], timeout: 5),
+            .completed
+        )
+        claudeButton.click()
+
+        let panelMessageText = "Choose the Claude Code data folder"
+        let panelMessage = app.staticTexts.matching(
+            NSPredicate(
+                format: "label == %@ OR value == %@",
+                panelMessageText,
+                panelMessageText
+            )
+        ).firstMatch
+        XCTAssertTrue(panelMessage.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.windows.count, 2)
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(panelMessage.waitForNonExistence(timeout: 2))
+
+        let buttonReadyAfterCancellation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true"),
+            object: claudeButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [buttonReadyAfterCancellation], timeout: 5),
+            .completed
+        )
+        XCTAssertEqual(app.windows.count, 1)
+
+        for (id, providerName) in [
+            ("claude", "Claude Code"),
+            ("codex", "Codex"),
+            ("opencode", "opencode"),
+        ] {
+            XCTAssertEqual(
+                app.staticTexts["ProviderDirectoryStatus.\(id)"].label,
+                "\(providerName), Not selected"
+            )
+        }
     }
 }
 

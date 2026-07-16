@@ -20,10 +20,14 @@ final class TokenWatchUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
-        app.launchForUITesting()
+        app.launchForUITesting(languagePreference: "en")
 
-        XCTAssertTrue(app.windows.element(boundBy: 0).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Usage Overview"].waitForExistence(timeout: 5))
+        XCTAssertFalse(
+            app.windows.element(boundBy: 1).waitForExistence(timeout: 2)
+        )
+        XCTAssertEqual(app.windows.count, 1)
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"
