@@ -142,6 +142,220 @@ struct SecurityScopedBookmarkManagerTests {
         #expect(!manager.hasBookmark(forKey: key))
         #expect(store.removedKeys == [key])
     }
+
+    @MainActor
+    @Test("stale bookmark 刷新失败会停止访问且只清除当前 provider")
+    func staleRefreshFailureStopsAccessAndClearsOnlyCurrentProvider() {
+        let claudeKey = "ClaudeDataDirectoryBookmark"
+        let codexKey = "CodexDataDirectoryBookmark"
+        let store = ManagerBookmarkStore(values: [
+            claudeKey: Data([1]),
+            codexKey: Data([2]),
+        ])
+        let url = URL(fileURLWithPath: "/claude", isDirectory: true)
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataCreator: ThrowingManagerBookmarkDataCreator(),
+            bookmarkDataResolver: FixedBookmarkDataResolver(
+                result: .init(url: url, isStale: true)
+            ),
+            bookmarkStore: store,
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: claudeKey) == nil)
+        #expect(!manager.hasBookmark(forKey: claudeKey))
+        #expect(manager.hasBookmark(forKey: codexKey))
+        #expect(accessor.stoppedURLs == [url])
+    }
+
+    @MainActor
+    @Test("startAccess 失败只清除请求的 provider bookmark")
+    func startAccessFailureClearsOnlyRequestedProviderBookmark() {
+        let claudeKey = "ClaudeDataDirectoryBookmark"
+        let codexKey = "CodexDataDirectoryBookmark"
+        let store = ManagerBookmarkStore(values: [
+            claudeKey: Data([1]),
+            codexKey: Data([2]),
+        ])
+        let accessor = RecordingResourceAccessor(startResult: false)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataResolver: FixedBookmarkDataResolver(
+                result: .init(
+                    url: URL(fileURLWithPath: "/claude", isDirectory: true),
+                    isStale: false
+                )
+            ),
+            bookmarkStore: store,
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: claudeKey) == nil)
+        #expect(!manager.hasBookmark(forKey: claudeKey))
+        #expect(manager.hasBookmark(forKey: codexKey))
+        #expect(accessor.stoppedURLs.isEmpty)
+    }
+
+    @MainActor
+    @Test("bookmark 解析失败只清除当前 provider")
+    func resolverFailureClearsOnlyCurrentProvider() {
+        let claudeKey = "ClaudeDataDirectoryBookmark"
+        let codexKey = "CodexDataDirectoryBookmark"
+        let store = ManagerBookmarkStore(values: [
+            claudeKey: Data([1]),
+            codexKey: Data([2]),
+        ])
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataResolver: MappingBookmarkDataResolver(values: [:]),
+            bookmarkStore: store,
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: claudeKey) == nil)
+        #expect(!manager.hasBookmark(forKey: claudeKey))
+        #expect(manager.hasBookmark(forKey: codexKey))
+        #expect(accessor.startedURLs.isEmpty)
+        #expect(accessor.stoppedURLs.isEmpty)
+    }
+
+    @MainActor
+    @Test("provider bookmark 会话分别恢复并分别释放")
+    func providerSessionsRestoreAndStopIndependently() {
+        let claudeKey = "ClaudeDataDirectoryBookmark"
+        let codexKey = "CodexDataDirectoryBookmark"
+        let sharedURL = URL(fileURLWithPath: "/shared", isDirectory: true)
+        let resolver = MappingBookmarkDataResolver(values: [
+            Data([1]): .init(url: sharedURL, isStale: false),
+            Data([2]): .init(url: sharedURL, isStale: false),
+        ])
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataResolver: resolver,
+            bookmarkStore: ManagerBookmarkStore(values: [
+                claudeKey: Data([1]),
+                codexKey: Data([2]),
+            ]),
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: claudeKey) == sharedURL)
+        #expect(manager.restoreBookmarkAndAccess(forKey: codexKey) == sharedURL)
+        #expect(accessor.startedURLs == [sharedURL, sharedURL])
+        manager.stopAccessing(forKey: claudeKey)
+        #expect(accessor.stoppedURLs == [sharedURL])
+        #expect(manager.restoreBookmarkAndAccess(forKey: codexKey) == sharedURL)
+        manager.stopAccessing(forKey: codexKey)
+        manager.stopAccessing(forKey: codexKey)
+        #expect(accessor.stoppedURLs == [sharedURL, sharedURL])
+    }
+
+    @MainActor
+    @Test("stale bookmark 刷新成功会保存新数据并通过注入 accessor 释放")
+    func staleRefreshSuccessPersistsFreshDataAndStopsThroughAccessor() {
+        let key = "ClaudeDataDirectoryBookmark"
+        let staleData = Data([1])
+        let freshData = Data([9])
+        let url = URL(fileURLWithPath: "/claude", isDirectory: true)
+        let store = ManagerBookmarkStore(values: [key: staleData])
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataCreator: FixedManagerBookmarkDataCreator(data: freshData),
+            bookmarkDataResolver: FixedBookmarkDataResolver(
+                result: .init(url: url, isStale: true)
+            ),
+            bookmarkStore: store,
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: key) == url)
+        #expect(store.data(forKey: key) == freshData)
+        manager.stopAccessing(forKey: key)
+        #expect(accessor.stoppedURLs == [url])
+    }
+
+    @MainActor
+    @Test("stale bookmark 保存失败会停止访问且只清除当前 provider")
+    func staleRefreshSaveFailureStopsAccessAndClearsOnlyCurrentProvider() {
+        let claudeKey = "ClaudeDataDirectoryBookmark"
+        let codexKey = "CodexDataDirectoryBookmark"
+        let url = URL(fileURLWithPath: "/claude", isDirectory: true)
+        let store = RejectingManagerBookmarkStore(values: [
+            claudeKey: Data([1]),
+            codexKey: Data([2]),
+        ])
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataCreator: FixedManagerBookmarkDataCreator(data: Data([9])),
+            bookmarkDataResolver: FixedBookmarkDataResolver(
+                result: .init(url: url, isStale: true)
+            ),
+            bookmarkStore: store,
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: claudeKey) == nil)
+        #expect(!manager.hasBookmark(forKey: claudeKey))
+        #expect(manager.hasBookmark(forKey: codexKey))
+        #expect(accessor.stoppedURLs == [url])
+    }
+
+    @MainActor
+    @Test("stopAccessingAll 使用注入 accessor 且不会重复释放")
+    func stopAccessingAllUsesInjectedAccessorWithoutDuplicateStops() {
+        let claudeKey = "ClaudeDataDirectoryBookmark"
+        let codexKey = "CodexDataDirectoryBookmark"
+        let claudeURL = URL(fileURLWithPath: "/claude", isDirectory: true)
+        let codexURL = URL(fileURLWithPath: "/codex", isDirectory: true)
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataResolver: MappingBookmarkDataResolver(values: [
+                Data([1]): .init(url: claudeURL, isStale: false),
+                Data([2]): .init(url: codexURL, isStale: false),
+            ]),
+            bookmarkStore: ManagerBookmarkStore(values: [
+                claudeKey: Data([1]),
+                codexKey: Data([2]),
+            ]),
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(forKey: claudeKey) == claudeURL)
+        #expect(manager.restoreBookmarkAndAccess(forKey: codexKey) == codexURL)
+        manager.stopAccessingAll()
+        #expect(Set(accessor.stoppedURLs) == Set([claudeURL, codexURL]))
+        manager.stopAccessingAll()
+        #expect(accessor.stoppedURLs.count == 2)
+    }
+
+    @MainActor
+    @Test("stopAccessingAll 会按 bookmark key 释放同一 URL")
+    func stopAccessingAllStopsSharedURLOncePerBookmarkKey() {
+        let sharedURL = URL(fileURLWithPath: "/shared", isDirectory: true)
+        let accessor = RecordingResourceAccessor(startResult: true)
+        let manager = SecurityScopedBookmarkManager(
+            bookmarkDataResolver: MappingBookmarkDataResolver(values: [
+                Data([1]): .init(url: sharedURL, isStale: false),
+                Data([2]): .init(url: sharedURL, isStale: false),
+            ]),
+            bookmarkStore: ManagerBookmarkStore(values: [
+                "ClaudeDataDirectoryBookmark": Data([1]),
+                "CodexDataDirectoryBookmark": Data([2]),
+            ]),
+            resourceAccessor: accessor
+        )
+
+        #expect(manager.restoreBookmarkAndAccess(
+            forKey: "ClaudeDataDirectoryBookmark"
+        ) == sharedURL)
+        #expect(manager.restoreBookmarkAndAccess(
+            forKey: "CodexDataDirectoryBookmark"
+        ) == sharedURL)
+
+        manager.stopAccessingAll()
+
+        #expect(accessor.stoppedURLs == [sharedURL, sharedURL])
+    }
 }
 
 private final class ManagerBookmarkStore: BookmarkDataStoring, @unchecked Sendable {
@@ -170,6 +384,75 @@ private final class ManagerBookmarkStore: BookmarkDataStoring, @unchecked Sendab
 private struct FixedManagerBookmarkDataCreator: BookmarkDataCreating {
     let data: Data
     func createBookmarkData(for url: URL) throws -> Data { data }
+}
+
+private enum ManagerBookmarkCreatorError: Error {
+    case fixtureFailure
+}
+
+private struct ThrowingManagerBookmarkDataCreator: BookmarkDataCreating {
+    func createBookmarkData(for url: URL) throws -> Data {
+        throw ManagerBookmarkCreatorError.fixtureFailure
+    }
+}
+
+private enum ManagerBookmarkResolverError: Error {
+    case missingFixture
+}
+
+private struct FixedBookmarkDataResolver: BookmarkDataResolving {
+    let result: ResolvedBookmark
+
+    func resolveBookmarkData(_ data: Data) throws -> ResolvedBookmark {
+        result
+    }
+}
+
+private struct MappingBookmarkDataResolver: BookmarkDataResolving {
+    let values: [Data: ResolvedBookmark]
+
+    func resolveBookmarkData(_ data: Data) throws -> ResolvedBookmark {
+        guard let result = values[data] else {
+            throw ManagerBookmarkResolverError.missingFixture
+        }
+        return result
+    }
+}
+
+private final class RecordingResourceAccessor: SecurityScopedResourceAccessing, @unchecked Sendable {
+    private let lock = NSLock()
+    private let startResult: Bool
+    private var recordedStarts: [URL] = []
+    private var recordedStops: [URL] = []
+
+    init(startResult: Bool) {
+        self.startResult = startResult
+    }
+
+    var startedURLs: [URL] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedStarts
+    }
+
+    var stoppedURLs: [URL] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedStops
+    }
+
+    func startAccessing(_ url: URL) -> Bool {
+        lock.lock()
+        recordedStarts.append(url)
+        lock.unlock()
+        return startResult
+    }
+
+    func stopAccessing(_ url: URL) {
+        lock.lock()
+        recordedStops.append(url)
+        lock.unlock()
+    }
 }
 
 @MainActor

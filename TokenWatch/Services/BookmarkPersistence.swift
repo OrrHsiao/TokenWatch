@@ -14,6 +14,49 @@ struct SecurityScopedBookmarkDataCreator: BookmarkDataCreating {
     }
 }
 
+struct ResolvedBookmark: Sendable, Equatable {
+    let url: URL
+    let isStale: Bool
+}
+
+protocol BookmarkDataResolving: Sendable {
+    /// 解析 security-scoped bookmark 并返回过期状态。
+    /// - Parameter data: 已持久化的 bookmark data。
+    /// - Returns: 解析后的 URL 与 stale 标记。
+    func resolveBookmarkData(_ data: Data) throws -> ResolvedBookmark
+}
+
+struct SecurityScopedBookmarkDataResolver: BookmarkDataResolving {
+    func resolveBookmarkData(_ data: Data) throws -> ResolvedBookmark {
+        var isStale = false
+        let url = try URL(
+            resolvingBookmarkData: data,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        )
+        return ResolvedBookmark(url: url, isStale: isStale)
+    }
+}
+
+protocol SecurityScopedResourceAccessing: Sendable {
+    /// 开始访问 security-scoped URL。
+    func startAccessing(_ url: URL) -> Bool
+
+    /// 停止访问 security-scoped URL。
+    func stopAccessing(_ url: URL)
+}
+
+struct URLSecurityScopedResourceAccessor: SecurityScopedResourceAccessing {
+    func startAccessing(_ url: URL) -> Bool {
+        url.startAccessingSecurityScopedResource()
+    }
+
+    func stopAccessing(_ url: URL) {
+        url.stopAccessingSecurityScopedResource()
+    }
+}
+
 protocol BookmarkDataStoring: Sendable {
     func data(forKey key: String) -> Data?
 
