@@ -256,7 +256,9 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     override func loadView() {
-        view = StatusPopoverRootView(frame: NSRect(origin: .zero, size: Self.contentSize))
+        let root = StatusPopoverRootView(frame: NSRect(origin: .zero, size: Self.contentSize))
+        root.userInterfaceLayoutDirection = .leftToRight
+        view = root
         setupSubviews()
     }
 

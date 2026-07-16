@@ -77,9 +77,26 @@ struct AppLanguageSettingsTests {
             ("zh-HK", .zhHK),
             ("zh-MO", .zhHK),
             ("zh-Hant-HK", .zhHK),
+            ("zh-Hans-HK", .zhHans),
+            ("zh-Hans-TW", .zhHans),
+            ("zh-Hant-CN", .zhHant),
             ("zh-TW", .zhHant),
             ("zh-Hant", .zhHant),
             ("zh", .zhHans),
+        ]
+
+        for (identifier, language) in cases {
+            #expect(AppLanguageSettings.resolveSystemLanguage([identifier]) == language)
+        }
+    }
+
+    @Test("BCP-47 扩展不参与脚本与地区解析")
+    func bcp47ExtensionsDoNotAffectScriptOrRegionResolution() {
+        let cases: [(String, AppLanguage)] = [
+            ("fr-FR-u-ca-gregory", .fr),
+            ("pt-BR-x-pt", .ptBR),
+            ("es-ES-x-mx", .es),
+            ("zh-Hans-CN-x-hk", .zhHans),
         ]
 
         for (identifier, language) in cases {
@@ -179,6 +196,21 @@ struct AppLanguageSettingsTests {
 
                 #expect(settings.selectedPreference == .language(language))
             }
+        }
+    }
+
+    @Test("再次保存旧语言偏好会写回规范 locale")
+    func savingLegacyPreferenceCanonicalizesStorage() {
+        withTemporaryDefaults { defaults in
+            defaults.set("en", forKey: AppLanguageSettings.storageKey)
+            let settings = AppLanguageSettings(defaults: defaults)
+            var notificationCount = 0
+            _ = settings.observe { notificationCount += 1 }
+
+            settings.selectedPreference = .language(.en)
+
+            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en-US")
+            #expect(notificationCount == 1)
         }
     }
 

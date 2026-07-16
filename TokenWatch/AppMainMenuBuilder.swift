@@ -8,6 +8,7 @@ enum AppMainMenuBuilder {
     /// 创建主菜单。调用方负责把返回值安装到 `NSApp.mainMenu`。
     static func build(actionTarget: AppDelegate, language: AppLanguage = .en) -> NSMenu {
         let mainMenu = NSMenu(title: "Main Menu")
+        mainMenu.userInterfaceLayoutDirection = .leftToRight
         mainMenu.addItem(makeApplicationMenuItem(actionTarget: actionTarget, language: language))
         mainMenu.addItem(makeWindowMenuItem(language: language))
         return mainMenu
@@ -15,6 +16,7 @@ enum AppMainMenuBuilder {
 
     private static func makeApplicationMenuItem(actionTarget: AppDelegate, language: AppLanguage) -> NSMenuItem {
         let appMenu = NSMenu(title: appName)
+        appMenu.userInterfaceLayoutDirection = .leftToRight
         appMenu.addItem(makeApplicationItem(
             title: text(.mainMenuAbout, language: language),
             action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
@@ -74,6 +76,7 @@ enum AppMainMenuBuilder {
     private static func makeWindowMenuItem(language: AppLanguage) -> NSMenuItem {
         let windowMenuTitle = text(.mainMenuWindow, language: language)
         let windowMenu = NSMenu(title: windowMenuTitle)
+        windowMenu.userInterfaceLayoutDirection = .leftToRight
         windowMenu.addItem(makeApplicationItem(
             title: text(.mainMenuMinimize, language: language),
             action: #selector(NSWindow.performMiniaturize(_:)),
