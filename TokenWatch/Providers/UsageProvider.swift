@@ -1,10 +1,5 @@
 import Foundation
 
-/// 保留旧版 Home bookmark 键，供尚未迁移的启动与设置流程使用。
-enum ProviderAuthorization {
-    static let homeBookmarkKey = "HomeDirectoryBookmark"
-}
-
 /// 抽象的数据源 provider
 /// 职责：扫描自己的目录、解析自己的 JSONL 格式、产出统一的 ParsedUsageEntry
 /// 不关心 Bookmark / 聚合 / 定价 — 这些在共享层完成

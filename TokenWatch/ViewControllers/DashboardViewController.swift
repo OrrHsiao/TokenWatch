@@ -1953,7 +1953,10 @@ final class DashboardViewController: NSViewController {
             return AppStrings.text(.statusLoadingUsage, language: languageSettings.resolvedLanguage)
         }
         if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
-            return AppStrings.text(.statusNeedsHomeAuthorization, language: languageSettings.resolvedLanguage)
+            return AppStrings.text(
+                .statusNeedsDataDirectorySelection,
+                language: languageSettings.resolvedLanguage
+            )
         }
         if let errorMessage = snapshot.errorMessages.first {
             return errorMessage
@@ -1978,7 +1981,10 @@ final class DashboardViewController: NSViewController {
             return AppStrings.text(.statusLoadingUsage, language: languageSettings.resolvedLanguage)
         }
         if totalSnapshot.loadedProviderCount == 0 && totalSnapshot.unauthorizedProviderCount > 0 {
-            return AppStrings.text(.statusNeedsHomeAuthorization, language: languageSettings.resolvedLanguage)
+            return AppStrings.text(
+                .statusNeedsDataDirectorySelection,
+                language: languageSettings.resolvedLanguage
+            )
         }
         if let errorMessage = totalSnapshot.errorMessages.first ?? rangeSnapshot.errorMessages.first {
             return errorMessage
