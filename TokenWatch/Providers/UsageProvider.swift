@@ -1,9 +1,8 @@
 import Foundation
 
-/// Provider 统一授权配置。方案 2:所有数据源共享一次用户目录授权。
+/// 保留旧版 Home bookmark 键，供尚未迁移的启动与设置流程使用。
 enum ProviderAuthorization {
     static let homeBookmarkKey = "HomeDirectoryBookmark"
-    static let homeAccessMessage = AppStrings.text(.homeAccessMessage, language: .zhHans)
 }
 
 /// 抽象的数据源 provider
@@ -18,8 +17,8 @@ protocol UsageProvider: Sendable {
     var displayName: String { get }
     /// UserDefaults Bookmark 持久化键
     var bookmarkKey: String { get }
-    /// NSOpenPanel 顶部说明文案
-    var openPanelMessage: String { get }
+    /// NSOpenPanel 顶部说明文案的本地化键
+    var openPanelMessageKey: AppStringKey { get }
     /// 该 provider 是否产出 cache write tokens（决定 UI 是否展示该行）
     /// Claude=true，Codex=false
     var hasCacheWriteDimension: Bool { get }
@@ -27,7 +26,8 @@ protocol UsageProvider: Sendable {
     /// Claude=false(无该字段)、Codex=false(reasoning 已并入 output)、opencode=true
     var hasReasoningDimension: Bool { get }
 
-    /// 扫描+解析，产出统一条目
-    /// - Parameter rootURL: 已通过 Security-Scoped Bookmark 取得访问权限的用户目录
-    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry]
+    /// 从用户直接选择的 provider 数据根目录读取用量。
+    /// - Parameter dataRootURL: 已通过当前 provider bookmark 恢复访问的数据根。
+    /// - Returns: 解析并去重后的统一用量条目。
+    func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry]
 }

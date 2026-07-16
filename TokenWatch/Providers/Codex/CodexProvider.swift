@@ -5,8 +5,8 @@ import Foundation
 struct CodexProvider: UsageProvider {
     let id: ProviderID = .codex
     let displayName = "Codex"
-    let bookmarkKey = ProviderAuthorization.homeBookmarkKey
-    let openPanelMessage = ProviderAuthorization.homeAccessMessage
+    let bookmarkKey = "CodexDataDirectoryBookmark"
+    let openPanelMessageKey: AppStringKey = .codexDataDirectoryOpenPanelMessage
     /// Codex 不暴露 cache write 概念，UI 该 Tab 不展示该行
     let hasCacheWriteDimension = false
     /// Codex 的 reasoning 已并入 output_tokens,不单列维度
@@ -26,13 +26,12 @@ struct CodexProvider: UsageProvider {
         self.serviceTierResolver = serviceTierResolver
     }
 
-    /// 扫描 Codex 目录下所有 rollout JSONL 文件并解析为统一条目
-    /// - Parameter rootURL: 已授权的用户目录
+    /// 扫描 Codex 数据根下所有 rollout JSONL 文件并解析为统一条目
+    /// - Parameter dataRootURL: 已授权的 Codex 数据根
     /// - Returns: 去重后的 ParsedUsageEntry 列表
-    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
-        let codexRoot = rootURL.appendingPathComponent(".codex", isDirectory: true)
-        let files = try scanner.scanAll(in: codexRoot)
-        let speed = serviceTierResolver.pricingSpeed(at: codexRoot)
+    func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
+        let files = try scanner.scanAll(in: dataRootURL)
+        let speed = serviceTierResolver.pricingSpeed(at: dataRootURL)
         return try parser.parseAllFiles(files, pricingSpeed: speed)
     }
 }

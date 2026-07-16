@@ -5,20 +5,19 @@ import Foundation
 struct ClaudeProvider: UsageProvider {
     let id: ProviderID = .claude
     let displayName = "Claude Code"
-    let bookmarkKey = ProviderAuthorization.homeBookmarkKey
-    let openPanelMessage = ProviderAuthorization.homeAccessMessage
+    let bookmarkKey = "ClaudeDataDirectoryBookmark"
+    let openPanelMessageKey: AppStringKey = .claudeDataDirectoryOpenPanelMessage
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
 
     private let scanner = ClaudeJSONLScanner()
     private let parser = ClaudeJSONLParser()
 
-    /// 扫描 Claude 目录下所有 JSONL 文件并解析为统一条目
-    /// - Parameter rootURL: 已授权的用户目录
+    /// 扫描 Claude 数据根下所有 JSONL 文件并解析为统一条目
+    /// - Parameter dataRootURL: 已授权的 Claude 数据根
     /// - Returns: 去重后的 ParsedUsageEntry 列表
-    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
-        let claudeRoot = rootURL.appendingPathComponent(".claude", isDirectory: true)
-        let files = try scanner.scanAllJSONLFiles(in: claudeRoot)
-        return try parser.parseAllFiles(files, claudeDataRoot: claudeRoot)
+    func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
+        let files = try scanner.scanAllJSONLFiles(in: dataRootURL)
+        return try parser.parseAllFiles(files, claudeDataRoot: dataRootURL)
     }
 }
