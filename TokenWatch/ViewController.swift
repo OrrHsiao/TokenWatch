@@ -137,13 +137,78 @@ private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefre
     }
 }
 
-/// 通用设置页,承载跨 provider 的授权、刷新和自动刷新配置。
+enum ProviderDirectoryActionStyle: Sendable, Equatable {
+    case primary
+    case neutral
+}
+
+struct ProviderDirectoryRowModel: Sendable, Equatable {
+    let providerID: ProviderID
+    let providerName: String
+    let statusText: String
+    let actionTitle: String
+    let actionStyle: ProviderDirectoryActionStyle
+    let isActionEnabled: Bool
+
+    /// 根据单一 provider 状态生成设置行，不读取共享 bookmark 或其他 provider。
+    static func make(
+        provider: any UsageProvider,
+        state: TokenStatsViewModel.ProviderState,
+        language: AppLanguage
+    ) -> ProviderDirectoryRowModel {
+        let statusText: String
+        if let error = state.directoryAuthorizationErrorMessage {
+            statusText = error
+        } else {
+            let key: AppStringKey
+            switch state.directoryState {
+            case .notSelected: key = .settingsDirectoryNotSelected
+            case .selected: key = .settingsDirectorySelected
+            case .selectedNoData: key = .settingsDirectoryNoData
+            case .needsReselection: key = .settingsDirectoryNeedsReselection
+            }
+            statusText = AppStrings.text(key, language: language)
+        }
+
+        let actionKey: AppStringKey
+        let actionStyle: ProviderDirectoryActionStyle
+        switch state.directoryState {
+        case .notSelected:
+            actionKey = .settingsChooseDirectory
+            actionStyle = .primary
+        case .selected, .selectedNoData:
+            actionKey = .settingsReselectDirectory
+            actionStyle = .neutral
+        case .needsReselection:
+            actionKey = .settingsChooseAgain
+            actionStyle = .primary
+        }
+
+        return ProviderDirectoryRowModel(
+            providerID: provider.id,
+            providerName: provider.displayName,
+            statusText: statusText,
+            actionTitle: AppStrings.text(actionKey, language: language),
+            actionStyle: actionStyle,
+            isActionEnabled: !state.isLoading && !state.isAuthorizing
+        )
+    }
+}
+
+/// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
+    static let minimumContentHeight: CGFloat = 540
+
+    private struct ProviderDirectoryRowViews {
+        let nameLabel: NSTextField
+        let statusLabel: NSTextField
+        let actionButton: DashboardRangeButton
+    }
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let descriptionLabel = NSTextField(labelWithString: "")
-    private let authorizationTitleLabel = NSTextField(labelWithString: "")
-    private let authorizationActionButton = DashboardRangeButton(title: "", target: nil, action: nil)
+    private let dataFoldersTitleLabel = NSTextField(labelWithString: "")
+    private let providerDirectoryStack = NSStackView()
     private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let autoRefreshIntervalLabel = NSTextField(labelWithString: "")
     private let autoRefreshIntervalPopUpButton = SettingsPopUpButton()
@@ -153,25 +218,71 @@ final class SettingsViewController: NSViewController {
     private let openLoginItemsSettingsButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let languageLabel = NSTextField(labelWithString: "")
     private let languagePopUpButton = SettingsPopUpButton()
-    private let isAuthorized: @MainActor () -> Bool
+
+    private let providers: [any UsageProvider]
+    private let providerState:
+        @MainActor (ProviderID) -> TokenStatsViewModel.ProviderState?
+    private let authorizationAction:
+        @MainActor (ProviderID) async -> Bool
     private let loginItemSettings: LoginItemSettingsControlling
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
-    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
+
+    private var providerDirectoryRows:
+        [ProviderID: ProviderDirectoryRowViews] = [:]
+    private var languageSettingsObserverToken:
+        AppLanguageSettings.ObservationToken?
 
     private var viewModel: TokenStatsViewModel? {
         (NSApp.delegate as? AppDelegate)?.viewModel
     }
 
-    init(isAuthorized: @escaping @MainActor () -> Bool = {
-        SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
-    }, loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
-       autoRefreshSettings: AutoRefreshSettings = .shared, languageSettings: AppLanguageSettings = .shared) {
-        self.isAuthorized = isAuthorized
+    init(
+        providers: [any UsageProvider] = ProviderRegistry.allProviders,
+        providerState: @escaping @MainActor (ProviderID) -> TokenStatsViewModel.ProviderState? = { id in
+            (NSApp.delegate as? AppDelegate)?.viewModel.states[id]
+        },
+        authorizationAction: @escaping @MainActor (ProviderID) async -> Bool = { id in
+            guard let viewModel = (NSApp.delegate as? AppDelegate)?.viewModel else {
+                return false
+            }
+            return await viewModel.requestAuthorization(for: id)
+        },
+        loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
+        autoRefreshSettings: AutoRefreshSettings = .shared,
+        languageSettings: AppLanguageSettings = .shared
+    ) {
+        self.providers = providers
+        self.providerState = providerState
+        self.authorizationAction = authorizationAction
         self.loginItemSettings = loginItemSettings
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         super.init(nibName: nil, bundle: nil)
+    }
+
+    convenience init(
+        isAuthorized: @escaping @MainActor () -> Bool,
+        loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
+        autoRefreshSettings: AutoRefreshSettings = .shared,
+        languageSettings: AppLanguageSettings = .shared
+    ) {
+        self.init(
+            providers: ProviderRegistry.allProviders,
+            providerState: { _ in
+                let authorized = isAuthorized()
+                return .init(
+                    stats: nil,
+                    entries: nil,
+                    needsAuthorization: !authorized,
+                    directoryState: authorized ? .selected : .notSelected
+                )
+            },
+            authorizationAction: { _ in false },
+            loginItemSettings: loginItemSettings,
+            autoRefreshSettings: autoRefreshSettings,
+            languageSettings: languageSettings
+        )
     }
 
     convenience init(isAuthorized: @escaping @MainActor () -> Bool, defaults: UserDefaults) {
@@ -183,12 +294,17 @@ final class SettingsViewController: NSViewController {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("SettingsViewController 必须用 init(isAuthorized:autoRefreshSettings:) 构造")
+        fatalError("SettingsViewController 必须使用代码 initializer 构造")
     }
 
     override func loadView() {
         view = DashboardBackgroundView(
-            frame: NSRect(x: 0, y: 0, width: 480, height: 320),
+            frame: NSRect(
+                x: 0,
+                y: 0,
+                width: 480,
+                height: Self.minimumContentHeight
+            ),
             backgroundColor: DashboardPalette.appBackground
         )
     }
@@ -203,13 +319,19 @@ final class SettingsViewController: NSViewController {
             name: NSApplication.didBecomeActiveNotification,
             object: nil
         )
-        renderAuthorizationState()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(providerStateDidChange(_:)),
+            name: .providerStateDidChange,
+            object: nil
+        )
+        renderAllDirectoryRows()
         renderLaunchAtLoginState()
     }
 
     override func viewWillAppear() {
         super.viewWillAppear()
-        renderAuthorizationState()
+        renderAllDirectoryRows()
         renderLaunchAtLoginState()
     }
 
@@ -222,8 +344,14 @@ final class SettingsViewController: NSViewController {
         descriptionLabel.lineBreakMode = .byWordWrapping
         descriptionLabel.maximumNumberOfLines = 0
 
-        authorizationTitleLabel.font = .systemFont(ofSize: 13)
-        authorizationTitleLabel.textColor = DashboardPalette.primaryText
+        dataFoldersTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        dataFoldersTitleLabel.textColor = DashboardPalette.primaryText
+        dataFoldersTitleLabel.identifier = NSUserInterfaceItemIdentifier(
+            "DataFoldersTitleLabel"
+        )
+        dataFoldersTitleLabel.setAccessibilityIdentifier("DataFoldersTitleLabel")
+
+        configureProviderDirectoryRows()
 
         autoRefreshIntervalLabel.font = .systemFont(ofSize: 13)
         autoRefreshIntervalLabel.textColor = DashboardPalette.primaryText
@@ -260,25 +388,11 @@ final class SettingsViewController: NSViewController {
         languagePopUpButton.target = self
         languagePopUpButton.action = #selector(languagePreferenceChanged)
 
-        configureSettingsButton(authorizationActionButton)
-        authorizationActionButton.identifier = NSUserInterfaceItemIdentifier("AuthorizationActionButton")
-        authorizationActionButton.setAccessibilityIdentifier("AuthorizationActionButton")
-        authorizationActionButton.target = self
-        authorizationActionButton.action = #selector(authorizationActionButtonClicked)
-
         configureSettingsButton(refreshButton)
         refreshButton.identifier = NSUserInterfaceItemIdentifier("RefreshAllDataButton")
         refreshButton.setAccessibilityIdentifier("RefreshAllDataButton")
         refreshButton.target = self
         refreshButton.action = #selector(refreshButtonClicked)
-
-        let authorizationStack = NSStackView(views: [
-            authorizationTitleLabel,
-            authorizationActionButton,
-        ])
-        authorizationStack.orientation = .horizontal
-        authorizationStack.alignment = .centerY
-        authorizationStack.spacing = 8
 
         let autoRefreshIntervalStack = NSStackView(views: [autoRefreshIntervalLabel, autoRefreshIntervalPopUpButton])
         autoRefreshIntervalStack.orientation = .horizontal
@@ -312,7 +426,8 @@ final class SettingsViewController: NSViewController {
         let contentStack = NSStackView(views: [
             titleLabel,
             descriptionLabel,
-            authorizationStack,
+            dataFoldersTitleLabel,
+            providerDirectoryStack,
             autoRefreshIntervalStack,
             launchAtLoginSettingsStack,
             languageStack,
@@ -321,7 +436,7 @@ final class SettingsViewController: NSViewController {
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
-        contentStack.spacing = 14
+        contentStack.spacing = 12
 
         let panel = DashboardRoundedView(
             backgroundColor: DashboardPalette.panelBackground,
@@ -335,16 +450,137 @@ final class SettingsViewController: NSViewController {
         panel.addSubview(contentStack)
         view.addSubview(panel)
         NSLayoutConstraint.activate([
-            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
-            panel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -28),
-            panel.topAnchor.constraint(equalTo: view.topAnchor, constant: 28),
-            contentStack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 24),
-            contentStack.trailingAnchor.constraint(lessThanOrEqualTo: panel.trailingAnchor, constant: -24),
-            contentStack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 24),
-            contentStack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -24),
+            panel.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor,
+                constant: 28
+            ),
+            panel.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor,
+                constant: -28
+            ),
+            panel.topAnchor.constraint(
+                equalTo: view.topAnchor,
+                constant: 28
+            ),
+            panel.bottomAnchor.constraint(
+                lessThanOrEqualTo: view.bottomAnchor,
+                constant: -28
+            ),
+            contentStack.leadingAnchor.constraint(
+                equalTo: panel.leadingAnchor,
+                constant: 24
+            ),
+            contentStack.trailingAnchor.constraint(
+                equalTo: panel.trailingAnchor,
+                constant: -24
+            ),
+            contentStack.topAnchor.constraint(
+                equalTo: panel.topAnchor,
+                constant: 24
+            ),
+            contentStack.bottomAnchor.constraint(
+                equalTo: panel.bottomAnchor,
+                constant: -24
+            ),
+            descriptionLabel.widthAnchor.constraint(
+                equalTo: contentStack.widthAnchor
+            ),
+            providerDirectoryStack.widthAnchor.constraint(
+                equalTo: contentStack.widthAnchor
+            ),
         ])
 
         reloadLocalizedText()
+    }
+
+    /// 依照注入 providers 的稳定顺序建立目录设置行。
+    private func configureProviderDirectoryRows() {
+        providerDirectoryStack.orientation = .vertical
+        providerDirectoryStack.alignment = .width
+        providerDirectoryStack.distribution = .fill
+        providerDirectoryStack.spacing = 8
+
+        for (index, provider) in providers.enumerated() {
+            let nameLabel = NSTextField(labelWithString: provider.displayName)
+            nameLabel.font = .systemFont(ofSize: 13, weight: .medium)
+            nameLabel.textColor = DashboardPalette.primaryText
+            nameLabel.identifier = NSUserInterfaceItemIdentifier(
+                "ProviderDirectoryName.\(provider.id.rawValue)"
+            )
+            nameLabel.setAccessibilityIdentifier(
+                "ProviderDirectoryName.\(provider.id.rawValue)"
+            )
+            nameLabel.setContentHuggingPriority(.required, for: .horizontal)
+            nameLabel.setContentCompressionResistancePriority(
+                .required,
+                for: .horizontal
+            )
+            nameLabel.widthAnchor.constraint(
+                greaterThanOrEqualToConstant: 88
+            ).isActive = true
+
+            let statusLabel = NSTextField(labelWithString: "")
+            statusLabel.font = .systemFont(ofSize: 12)
+            statusLabel.textColor = DashboardPalette.secondaryText
+            statusLabel.maximumNumberOfLines = 0
+            statusLabel.lineBreakMode = .byWordWrapping
+            statusLabel.identifier = NSUserInterfaceItemIdentifier(
+                "ProviderDirectoryStatus.\(provider.id.rawValue)"
+            )
+            statusLabel.setAccessibilityIdentifier(
+                "ProviderDirectoryStatus.\(provider.id.rawValue)"
+            )
+            statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            statusLabel.setContentCompressionResistancePriority(
+                .defaultLow,
+                for: .horizontal
+            )
+
+            let actionButton = DashboardRangeButton(
+                title: "",
+                target: nil,
+                action: nil
+            )
+            configureSettingsButton(actionButton)
+            actionButton.identifier = NSUserInterfaceItemIdentifier(
+                "ProviderDirectoryAction.\(provider.id.rawValue)"
+            )
+            actionButton.setAccessibilityIdentifier(
+                "ProviderDirectoryAction.\(provider.id.rawValue)"
+            )
+            actionButton.target = self
+            actionButton.action = #selector(directoryAuthorizationButtonClicked(_:))
+            actionButton.tag = index
+            actionButton.setContentHuggingPriority(.required, for: .horizontal)
+            actionButton.setContentCompressionResistancePriority(
+                .required,
+                for: .horizontal
+            )
+            actionButton.widthAnchor.constraint(
+                greaterThanOrEqualToConstant: 92
+            ).isActive = true
+
+            let row = NSStackView(views: [nameLabel, statusLabel, actionButton])
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.spacing = 12
+            row.identifier = NSUserInterfaceItemIdentifier(
+                "ProviderDirectoryRow.\(provider.id.rawValue)"
+            )
+            row.setAccessibilityIdentifier(
+                "ProviderDirectoryRow.\(provider.id.rawValue)"
+            )
+            row.heightAnchor.constraint(
+                greaterThanOrEqualToConstant: 36
+            ).isActive = true
+
+            providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(
+                nameLabel: nameLabel,
+                statusLabel: statusLabel,
+                actionButton: actionButton
+            )
+            providerDirectoryStack.addArrangedSubview(row)
+        }
     }
 
     private func configureSettingsButton(_ button: DashboardRangeButton) {
@@ -380,30 +616,56 @@ final class SettingsViewController: NSViewController {
         )
     }
 
-    private func renderAuthorizationState() {
-        let title: String
-        let backgroundColor: NSColor
-        let borderColor: NSColor
-        let textColor: NSColor
-        if isAuthorized() {
-            title = AppStrings.text(.settingsAuthorized, language: languageSettings.resolvedLanguage)
-            backgroundColor = DashboardPalette.panelBackground
-            borderColor = DashboardPalette.border
-            textColor = DashboardPalette.secondaryText
-            authorizationActionButton.isEnabled = false
-        } else {
-            title = AppStrings.text(.settingsAuthorize, language: languageSettings.resolvedLanguage)
-            backgroundColor = DashboardPalette.accent
-            borderColor = DashboardPalette.accent
-            textColor = DashboardPalette.rangeSelectedText
-            authorizationActionButton.isEnabled = true
+    private func renderAllDirectoryRows() {
+        for provider in providers {
+            renderDirectoryRow(for: provider.id)
         }
-        applySettingsButtonStyle(
-            authorizationActionButton,
-            title: title,
-            backgroundColor: backgroundColor,
-            borderColor: borderColor,
-            textColor: textColor
+    }
+
+    /// 只读取并重绘指定 provider；不得查询其他 providerState。
+    private func renderDirectoryRow(for id: ProviderID) {
+        guard
+            let provider = providers.first(where: { $0.id == id }),
+            let row = providerDirectoryRows[id]
+        else {
+            return
+        }
+
+        let state = providerState(id)
+            ?? TokenStatsViewModel.ProviderState(stats: nil, entries: nil)
+        let model = ProviderDirectoryRowModel.make(
+            provider: provider,
+            state: state,
+            language: languageSettings.resolvedLanguage
+        )
+
+        row.nameLabel.stringValue = model.providerName
+        row.statusLabel.stringValue = model.statusText
+        row.statusLabel.setAccessibilityLabel(
+            "\(model.providerName), \(model.statusText)"
+        )
+        row.actionButton.isEnabled = model.isActionEnabled
+
+        switch model.actionStyle {
+        case .primary:
+            applySettingsButtonStyle(
+                row.actionButton,
+                title: model.actionTitle,
+                backgroundColor: DashboardPalette.accent,
+                borderColor: DashboardPalette.accent,
+                textColor: DashboardPalette.rangeSelectedText
+            )
+        case .neutral:
+            applySettingsButtonStyle(
+                row.actionButton,
+                title: model.actionTitle,
+                backgroundColor: DashboardPalette.panelBackground,
+                borderColor: DashboardPalette.border,
+                textColor: DashboardPalette.primaryText
+            )
+        }
+        row.actionButton.setAccessibilityLabel(
+            "\(model.providerName), \(model.actionTitle)"
         )
     }
 
@@ -481,17 +743,33 @@ final class SettingsViewController: NSViewController {
         renderLaunchAtLoginState()
     }
 
-    @objc private func authorizationActionButtonClicked() {
-        guard !isAuthorized() else { return }
-        requestAuthorization()
+    @objc private func providerStateDidChange(_ notification: Notification) {
+        guard let id = notification.userInfo?["providerID"] as? ProviderID else {
+            return
+        }
+        renderDirectoryRow(for: id)
     }
 
-    private func requestAuthorization() {
-        guard let providerID = ProviderRegistry.allProviders.first?.id else { return }
-        Task { @MainActor in
-            await viewModel?.requestAuthorization(for: providerID)
-            renderAuthorizationState()
+    @objc private func directoryAuthorizationButtonClicked(_ sender: NSButton) {
+        let tag = sender.tag
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            _ = await performDirectoryAuthorization(forButtonTag: tag)
         }
+    }
+
+    /// 完成一次 button tag 到 provider 的授权路由。
+    /// - Parameter tag: `configureProviderDirectoryRows` 写入的 provider 索引。
+    /// - Returns: provider 不存在时为 false；否则原样返回授权动作结果。
+    @discardableResult
+    func performDirectoryAuthorization(forButtonTag tag: Int) async -> Bool {
+        guard providers.indices.contains(tag) else {
+            return false
+        }
+        let id = providers[tag].id
+        let result = await authorizationAction(id)
+        renderDirectoryRow(for: id)
+        return result
     }
 
     @objc private func refreshButtonClicked() {
@@ -503,8 +781,14 @@ final class SettingsViewController: NSViewController {
     func reloadLocalizedText() {
         let language = languageSettings.resolvedLanguage
         titleLabel.stringValue = AppStrings.text(.settingsTitle, language: language)
-        descriptionLabel.stringValue = AppStrings.text(.settingsDescription, language: language)
-        authorizationTitleLabel.stringValue = AppStrings.text(.settingsAuthorizationTitle, language: language)
+        descriptionLabel.stringValue = AppStrings.text(
+            .settingsDescription,
+            language: language
+        )
+        dataFoldersTitleLabel.stringValue = AppStrings.text(
+            .settingsDataFoldersTitle,
+            language: language
+        )
         applySettingsButtonStyle(
             refreshButton,
             title: AppStrings.text(.settingsRefreshAllData, language: language),
@@ -533,7 +817,7 @@ final class SettingsViewController: NSViewController {
         )
         reloadAutoRefreshIntervalPopUp(language: language)
         reloadLanguagePopUp(language: language)
-        renderAuthorizationState()
+        renderAllDirectoryRows()
         renderLaunchAtLoginState()
     }
 
