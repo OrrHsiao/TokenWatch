@@ -227,6 +227,53 @@ struct TokenStatsViewModelWidgetPublishingTests {
         withExtendedLifetime(viewModel) {}
     }
 
+    @Test("idle publish finishing during refresh does not duplicate the complete refresh publish")
+    func idlePublishFinishingDuringRefreshDoesNotDuplicateRefreshPublish() async throws {
+        let fixture = makeLanguageSettings()
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        let claude = MutableTestUsageProvider(id: .claude, totalTokens: 10)
+        let publisher = RecordingWidgetSnapshotPublisher()
+        await publisher.suspendNextPublish()
+        defer {
+            Task { await publisher.resumeAllSuspendedPublishes() }
+        }
+        let viewModel = makeViewModel(
+            settings: fixture.settings,
+            providers: [claude],
+            publisher: publisher
+        )
+
+        fixture.settings.selectedPreference = .en
+        try await waitUntil { await publisher.suspendedPublishCount() == 1 }
+
+        await publisher.suspendNextPublish()
+        let refresh = Task { await viewModel.loadAllStats() }
+        try await waitUntil { await publisher.suspendedPublishCount() == 2 }
+
+        let callsWhileBothPublishesAreSuspended = await publisher.recordedCalls()
+        #expect(callsWhileBothPublishesAreSuspended.map(\.language) == [.en, .en])
+        #expect(claude.scanCount == 1)
+
+        // 先恢复旧 idle publish；第二个 continuation 仍挂起，因此完整刷新 gate 仍开启。
+        await publisher.resumeSuspendedPublish()
+        try await waitUntil { await publisher.completedPublishCount() == 1 }
+        await waitForPreviouslyScheduledMainActorTasks()
+
+        let callCountBeforeRefreshPublishResumes = await publisher.callCount()
+        #expect(callCountBeforeRefreshPublishResumes == 2)
+        #expect(await publisher.suspendedPublishCount() == 1)
+        #expect(fixture.settings.selectedPreference == .en)
+
+        await publisher.resumeSuspendedPublish()
+        await refresh.value
+        await waitForPreviouslyScheduledMainActorTasks()
+
+        let calls = await publisher.recordedCalls()
+        #expect(calls.map(\.language) == [.en, .en])
+        #expect(claude.scanCount == 1)
+        withExtendedLifetime(viewModel) {}
+    }
+
     private func makeViewModel(
         settings: AppLanguageSettings,
         providers: [any UsageProvider],
@@ -291,23 +338,22 @@ private actor RecordingWidgetSnapshotPublisher: WidgetSnapshotPublishing {
     }
 
     private var calls: [Call] = []
-    private var shouldSuspendNextPublish = false
-    private var publishIsSuspended = false
-    private var continuation: CheckedContinuation<Void, Never>?
+    private var pendingSuspensionCount = 0
+    private var suspendedContinuations: [CheckedContinuation<Void, Never>] = []
+    private var completedPublishes = 0
 
     func publish(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         language: AppLanguage
     ) async -> WidgetSnapshotPublishResult {
         calls.append(Call(states: states, language: language))
-        if shouldSuspendNextPublish {
-            shouldSuspendNextPublish = false
-            publishIsSuspended = true
+        if pendingSuspensionCount > 0 {
+            pendingSuspensionCount -= 1
             await withCheckedContinuation { continuation in
-                self.continuation = continuation
+                suspendedContinuations.append(continuation)
             }
-            publishIsSuspended = false
         }
+        completedPublishes += 1
         return .published
     }
 
@@ -321,20 +367,36 @@ private actor RecordingWidgetSnapshotPublisher: WidgetSnapshotPublishing {
 
     func reset() {
         calls.removeAll()
+        completedPublishes = 0
     }
 
     func suspendNextPublish() {
-        shouldSuspendNextPublish = true
+        pendingSuspensionCount += 1
     }
 
     func isPublishSuspended() -> Bool {
-        publishIsSuspended
+        !suspendedContinuations.isEmpty
+    }
+
+    func suspendedPublishCount() -> Int {
+        suspendedContinuations.count
+    }
+
+    func completedPublishCount() -> Int {
+        completedPublishes
     }
 
     func resumeSuspendedPublish() {
-        let continuation = continuation
-        self.continuation = nil
-        continuation?.resume()
+        guard !suspendedContinuations.isEmpty else { return }
+        suspendedContinuations.removeFirst().resume()
+    }
+
+    func resumeAllSuspendedPublishes() {
+        let continuations = suspendedContinuations
+        suspendedContinuations.removeAll()
+        for continuation in continuations {
+            continuation.resume()
+        }
     }
 }
 
