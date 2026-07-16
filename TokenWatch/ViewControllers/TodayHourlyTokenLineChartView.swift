@@ -4,7 +4,7 @@ import SwiftUI
 
 /// 状态栏 popover 专用的本日小时 token 折线图。
 final class TodayHourlyTokenLineChartView: NSView {
-    private static let visibleAxisHourIndexes = [0, 6, 12, 18, 23]
+    private static let visibleAxisHourIndexes = WidgetChartVisualStyle.hourAxisValues
     private static let hoverLabelToChartSpacing: CGFloat = 1
 
     private let chartHost = NSHostingView(rootView: AnyView(TodayHourlyTokenLineChartContent(
@@ -137,11 +137,17 @@ private func clampHourlyNormalizedHeight(_ value: Double) -> Double {
 }
 
 enum TodayHourlyLineChartRendering {
-    static let interpolationMethod: InterpolationMethod = .catmullRom
-    static let interpolationMethodName = "catmullRom"
+    /// Exhaustive mapping keeps Swift Charts out of the shared Widget rendering contract.
+    static let interpolationMethod: InterpolationMethod = {
+        switch WidgetChartRendering.lineInterpolationStyle {
+        case .catmullRom:
+            return .catmullRom
+        }
+    }()
+    static let interpolationMethodName = WidgetChartRendering.lineInterpolationMethodName
     static let areaGradientScaleModeName = "dailyMaximum"
-    static let areaGradientPeakOpacity = 0.8
-    static let areaGradientBaselineOpacity = 0.05
+    static let areaGradientPeakOpacity = WidgetChartVisualStyle.areaPeakOpacity
+    static let areaGradientBaselineOpacity = WidgetChartVisualStyle.areaBaselineOpacity
     static var areaGradientColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
 
     static func areaGradientRoundedRGBAComponents(for appearanceName: NSAppearance.Name) -> [CGFloat]? {
@@ -165,7 +171,9 @@ private struct TodayHourlyTokenLineChartContent: View {
     let onHoverMonthKeyChange: (String?) -> Void
 
     private var maxTokens: Double {
-        max(1, Double(buckets.map(\.totalTokens).max() ?? 0))
+        WidgetChartVisualStyle.hourlyMaximumY(
+            maxHourlyTokens: buckets.map(\.totalTokens).max() ?? 0
+        )
     }
 
     var body: some View {
@@ -186,7 +194,11 @@ private struct TodayHourlyTokenLineChartContent: View {
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
                 .foregroundStyle(Color(nsColor: .controlAccentColor))
-                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .lineStyle(StrokeStyle(
+                    lineWidth: CGFloat(WidgetChartVisualStyle.lineWidth),
+                    lineCap: .round,
+                    lineJoin: .round
+                ))
                 .accessibilityLabel(accessibilityLabel(for: bucket))
                 .accessibilityValue(CompactNumberFormatter.formatMillions(bucket.totalTokens))
 
@@ -196,7 +208,7 @@ private struct TodayHourlyTokenLineChartContent: View {
                         y: .value("Tokens", Double(bucket.totalTokens))
                     )
                     .foregroundStyle(Color(nsColor: .controlAccentColor))
-                    .symbolSize(22)
+                    .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
                 }
             }
         }
@@ -216,7 +228,7 @@ private struct TodayHourlyTokenLineChartContent: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
                 AxisGridLine()
-                    .foregroundStyle(.secondary.opacity(0.16))
+                    .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
                 AxisTick()
                 if let tokens = value.as(Double.self) {
                     AxisValueLabel(MonthlyBarChartStyle.tokenAxisLabel(for: tokens))

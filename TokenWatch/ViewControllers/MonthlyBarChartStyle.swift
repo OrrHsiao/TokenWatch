@@ -43,23 +43,7 @@ enum MonthlyBarChartStyle {
     }
 
     static func tokenAxisLabel(for value: Double) -> String {
-        guard value.isFinite, value > 0 else { return "0" }
-        let tokens = value.rounded()
-        if tokens < 1_000 {
-            return String(format: "%.0f", locale: Locale(identifier: "en_US_POSIX"), tokens)
-        }
-        if tokens < 1_000_000 {
-            return String(
-                format: "%.0fk",
-                locale: Locale(identifier: "en_US_POSIX"),
-                (tokens / 1_000).rounded()
-            )
-        }
-        return String(
-            format: "%.0fM",
-            locale: Locale(identifier: "en_US_POSIX"),
-            (tokens / 1_000_000).rounded()
-        )
+        WidgetChartNumberFormatter.axis(value)
     }
 
     static func costAxisLabel(for value: Double) -> String {

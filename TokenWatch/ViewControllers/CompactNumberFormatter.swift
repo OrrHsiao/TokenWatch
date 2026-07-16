@@ -13,50 +13,16 @@ enum CompactNumberFormatter {
     /// - Parameter value: 整数 token 数,负数会被视作 0
     /// - Returns: 状态栏可直接展示的字符串
     static func format(_ value: Int) -> String {
-        guard value > 0 else { return "0" }
-
-        if value < 1_000 {
-            return String(value)
-        }
-
-        if value < 1_000_000 {
-            // 1.0k ~ 999.9k:统一保留一位小数,向下截断到 0.1k
-            let tenths = value / 100              // value / 1_000 * 10
-            let whole = tenths / 10
-            let frac = tenths % 10
-            return "\(whole).\(frac)k"
-        }
-
-        // 1.0M+:保留一位小数,向下截断到 0.1M
-        let tenths = value / 100_000             // value / 1_000_000 * 10
-        let whole = tenths / 10
-        let frac = tenths % 10
-        return "\(whole).\(frac)M"
+        WidgetChartNumberFormatter.compact(value)
     }
 
     /// 按 Dashboard 约定压缩 token 数；零保留 `0.0M`，正数绝不显示为零。
     static func formatMillions(_ value: Int) -> String {
-        formatDashboardTokens(value)
+        WidgetChartNumberFormatter.dashboard(value)
     }
 
     /// 按 Dashboard hover 约定压缩 token 数，与 `formatMillions` 使用相同边界。
     static func formatHoverTokens(_ value: Int) -> String {
-        formatDashboardTokens(value)
-    }
-
-    private static func formatDashboardTokens(_ value: Int) -> String {
-        guard value > 0 else { return "0.0M" }
-
-        if value < 1_000 {
-            return String(value)
-        }
-
-        if value < 100_000 {
-            let tenths = value / 100
-            return "\(tenths / 10).\(tenths % 10)k"
-        }
-
-        let tenths = value / 100_000
-        return "\(tenths / 10).\(tenths % 10)M"
+        WidgetChartNumberFormatter.dashboard(value)
     }
 }
