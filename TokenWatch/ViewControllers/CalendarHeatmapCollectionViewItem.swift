@@ -216,29 +216,15 @@ private final class CalendarHeatmapCellView: NSView {
 }
 
 enum CalendarHeatmapGitHubPalette {
-    static let maxIntensity = 4
-
-    private static let lightColors = [
-        color(red: 216, green: 222, blue: 232),
-        color(red: 155, green: 233, blue: 168),
-        color(red: 64, green: 196, blue: 99),
-        color(red: 48, green: 161, blue: 78),
-        color(red: 33, green: 110, blue: 57),
-    ]
-
-    private static let darkColors = [
-        color(red: 25, green: 30, blue: 37),
-        color(red: 14, green: 68, blue: 41),
-        color(red: 0, green: 109, blue: 50),
-        color(red: 38, green: 166, blue: 65),
-        color(red: 57, green: 211, blue: 83),
-    ]
+    static let maxIntensity = WidgetChartVisualStyle.heatmapMaximumIntensity
 
     static func color(forIntensity intensity: Int) -> NSColor {
-        let clampedIntensity = min(max(intensity, 0), 4)
         return NSColor(name: nil) { appearance in
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            return (isDark ? darkColors : lightColors)[clampedIntensity]
+            return color(WidgetChartVisualStyle.heatmapRGBA(
+                intensity: intensity,
+                isDark: isDark
+            ))
         }
     }
 
@@ -246,7 +232,12 @@ enum CalendarHeatmapGitHubPalette {
         color(forIntensity: maxIntensity)
     }
 
-    private static func color(red: CGFloat, green: CGFloat, blue: CGFloat) -> NSColor {
-        NSColor(calibratedRed: red / 255, green: green / 255, blue: blue / 255, alpha: 1)
+    private static func color(_ rgba: WidgetChartRGBA) -> NSColor {
+        NSColor(
+            calibratedRed: CGFloat(rgba.red),
+            green: CGFloat(rgba.green),
+            blue: CGFloat(rgba.blue),
+            alpha: CGFloat(rgba.alpha)
+        )
     }
 }
