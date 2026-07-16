@@ -148,6 +148,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
     let statusText: String
     let actionTitle: String
     let actionStyle: ProviderDirectoryActionStyle
+    let showsAction: Bool
     let isActionEnabled: Bool
 
     /// 根据单一 provider 状态生成设置行，不读取共享 bookmark 或其他 provider。
@@ -156,33 +157,30 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
         state: TokenStatsViewModel.ProviderState,
         language: AppLanguage
     ) -> ProviderDirectoryRowModel {
-        let statusText: String
-        if let error = state.directoryAuthorizationErrorMessage {
-            statusText = error
-        } else {
-            let key: AppStringKey
-            switch state.directoryState {
-            case .notSelected: key = .settingsDirectoryNotSelected
-            case .selected: key = .settingsDirectorySelected
-            case .selectedNoData: key = .settingsDirectoryNoData
-            case .needsReselection: key = .settingsDirectoryNeedsReselection
-            }
-            statusText = AppStrings.text(key, language: language)
-        }
-
+        let statusKey: AppStringKey
         let actionKey: AppStringKey
         let actionStyle: ProviderDirectoryActionStyle
+        let showsAction: Bool
         switch state.directoryState {
         case .notSelected:
+            statusKey = .dashboardUnauthorized
             actionKey = .settingsChooseDirectory
             actionStyle = .primary
+            showsAction = true
         case .selected, .selectedNoData:
-            actionKey = .settingsReselectDirectory
+            statusKey = .settingsAuthorized
+            actionKey = .settingsAuthorized
             actionStyle = .neutral
+            showsAction = false
         case .needsReselection:
+            statusKey = .settingsDirectoryNeedsReselection
             actionKey = .settingsChooseAgain
             actionStyle = .primary
+            showsAction = true
         }
+
+        let statusText = state.directoryAuthorizationErrorMessage
+            ?? AppStrings.text(statusKey, language: language)
 
         return ProviderDirectoryRowModel(
             providerID: provider.id,
@@ -190,7 +188,8 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
             statusText: statusText,
             actionTitle: AppStrings.text(actionKey, language: language),
             actionStyle: actionStyle,
-            isActionEnabled: !state.isLoading && !state.isAuthorizing
+            showsAction: showsAction,
+            isActionEnabled: showsAction && !state.isLoading && !state.isAuthorizing
         )
     }
 }
@@ -198,6 +197,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
 /// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
     static let minimumContentHeight: CGFloat = 540
+    private static let preferredPanelWidth: CGFloat = 424
 
     private struct ProviderDirectoryRowViews {
         let nameLabel: NSTextField
@@ -449,13 +449,19 @@ final class SettingsViewController: NSViewController {
         panel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(contentStack)
         view.addSubview(panel)
+
+        // 与最小 480pt 设置页可用宽度一致，宽窗口中也不拉散目录行。
+        let preferredPanelWidth = panel.widthAnchor.constraint(
+            equalToConstant: Self.preferredPanelWidth
+        )
+
         NSLayoutConstraint.activate([
             panel.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
                 constant: 28
             ),
             panel.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor,
+                lessThanOrEqualTo: view.trailingAnchor,
                 constant: -28
             ),
             panel.topAnchor.constraint(
@@ -466,6 +472,11 @@ final class SettingsViewController: NSViewController {
                 lessThanOrEqualTo: view.bottomAnchor,
                 constant: -28
             ),
+            panel.widthAnchor.constraint(
+                lessThanOrEqualTo: view.widthAnchor,
+                constant: -56
+            ),
+            preferredPanelWidth,
             contentStack.leadingAnchor.constraint(
                 equalTo: panel.leadingAnchor,
                 constant: 24
@@ -561,8 +572,10 @@ final class SettingsViewController: NSViewController {
             ).isActive = true
 
             let row = NSStackView(views: [nameLabel, statusLabel, actionButton])
+            row.translatesAutoresizingMaskIntoConstraints = false
             row.orientation = .horizontal
             row.alignment = .centerY
+            row.distribution = .fill
             row.spacing = 12
             row.identifier = NSUserInterfaceItemIdentifier(
                 "ProviderDirectoryRow.\(provider.id.rawValue)"
@@ -644,6 +657,7 @@ final class SettingsViewController: NSViewController {
         row.statusLabel.setAccessibilityLabel(
             "\(model.providerName), \(model.statusText)"
         )
+        row.actionButton.isHidden = !model.showsAction
         row.actionButton.isEnabled = model.isActionEnabled
 
         switch model.actionStyle {

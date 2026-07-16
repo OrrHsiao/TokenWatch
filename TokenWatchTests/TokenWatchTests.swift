@@ -1166,7 +1166,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func settingsSelectedDirectoryButtonUsesNeutralLightColors() throws {
+    @Test func settingsSelectedDirectoryHidesDirectoryAction() throws {
         let appearance = try #require(NSAppearance(named: .aqua))
         let controller = SettingsViewController(
             isAuthorized: { true },
@@ -1179,16 +1179,8 @@ struct TokenWatchTests {
         let button = try #require(
             controller.view.button(identifier: "ProviderDirectoryAction.claude")
         )
-        #expect(button.title == "重新选择")
-        #expect(button.isEnabled)
-        #expect(rgbHex(try #require(button.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(button.layer?.borderColor)) == 0xD8DEE8)
-        #expect(
-            try rgbHex(
-                try #require(button.contentTintColor),
-                appearance: .aqua
-            ) == 0x111827
-        )
+        #expect(button.isHidden)
+        #expect(!button.isEnabled)
     }
 
     @MainActor
@@ -1726,12 +1718,25 @@ struct TokenWatchTests {
         )
         controller.loadViewIfNeeded()
 
-        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.claude") as? NSTextField)?.stringValue == "未选择")
-        #expect(controller.view.button(identifier: "ProviderDirectoryAction.claude")?.title == "选择文件夹")
-        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.codex") as? NSTextField)?.stringValue == "所选文件夹中未发现数据")
-        #expect(controller.view.button(identifier: "ProviderDirectoryAction.codex")?.title == "重新选择")
+        let claudeAction = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.claude")
+        )
+        let codexAction = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.codex")
+        )
+        let opencodeAction = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.opencode")
+        )
+
+        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.claude") as? NSTextField)?.stringValue == "未授权")
+        #expect(claudeAction.title == "授权")
+        #expect(!claudeAction.isHidden)
+        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.codex") as? NSTextField)?.stringValue == "已授权")
+        #expect(codexAction.isHidden)
+        #expect(!codexAction.isEnabled)
         #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.opencode") as? NSTextField)?.stringValue == "需要重新选择")
-        #expect(controller.view.button(identifier: "ProviderDirectoryAction.opencode")?.title == "再次选择")
+        #expect(opencodeAction.title == "再次选择")
+        #expect(!opencodeAction.isHidden)
 
         let opencode = try #require(
             ProviderRegistry.allProviders.first { $0.id == .opencode }
@@ -1748,6 +1753,7 @@ struct TokenWatchTests {
         )
         #expect(errorModel.statusText == "无法读取所选目录")
         #expect(errorModel.actionTitle == "再次选择")
+        #expect(errorModel.showsAction)
     }
 
     @MainActor
@@ -1823,7 +1829,10 @@ struct TokenWatchTests {
 
         #expect((controller.view.firstDescendant(
             identifier: "ProviderDirectoryStatus.claude"
-        ) as? NSTextField)?.stringValue == "已选择")
+        ) as? NSTextField)?.stringValue == "已授权")
+        #expect(controller.view.button(
+            identifier: "ProviderDirectoryAction.claude"
+        )?.isHidden == true)
         #expect(codexLabel.stringValue == codexTextBefore)
         #expect(requestedStateIDs == [.claude])
 
@@ -2034,6 +2043,51 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test("宽窗口中的设置卡和目录行保持紧凑左对齐")
+    func settingsStaysCompactAndLeftAlignedInWideHost() throws {
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let panel = try #require(
+            controller.view.firstDescendant(identifier: "SettingsPanel")
+        )
+        let panelFrame = panel.convert(panel.bounds, to: controller.view)
+        #expect(abs(panelFrame.width - 424) <= 1)
+        #expect(panelFrame.width <= 480.5)
+        #expect(panelFrame.width < controller.view.bounds.width / 2)
+        #expect(panelFrame.height < 600)
+
+        var rowFrames: [NSRect] = []
+        for id in ProviderID.allCases {
+            let row = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryRow.\(id.rawValue)"
+                ) as? NSStackView
+            )
+            let name = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryName.\(id.rawValue)"
+                )
+            )
+            let rowFrame = row.convert(row.bounds, to: controller.view)
+            let nameFrame = name.convert(name.bounds, to: controller.view)
+            rowFrames.append(rowFrame)
+
+            #expect(abs(nameFrame.minX - panelFrame.minX - 24) <= 3)
+        }
+
+        #expect(rowFrames[0].minY > rowFrames[1].minY)
+        #expect(rowFrames[1].minY > rowFrames[2].minY)
+        #expect(rowFrames[0].minY - rowFrames[1].maxY <= 12)
+        #expect(rowFrames[1].minY - rowFrames[2].maxY <= 12)
+    }
+
+    @MainActor
     @Test func mainMenuSettingsCommandShowsProviderDirectoryActions() throws {
         let viewController = ViewController(
             languageSettings: zhHansLanguageSettings()
@@ -2079,9 +2133,9 @@ struct TokenWatchTests {
                     identifier: "ProviderDirectoryAction.\(id.rawValue)"
                 )
             )
-            #expect(status.stringValue == "已选择")
-            #expect(action.title == "重新选择")
-            #expect(action.isEnabled)
+            #expect(status.stringValue == "已授权")
+            #expect(action.isHidden)
+            #expect(!action.isEnabled)
         }
     }
 
@@ -2258,9 +2312,9 @@ struct TokenWatchTests {
             #expect(autoRefresh.accessibilityLabel() == "自动刷新间隔")
             #expect(launchAtLogin.accessibilityLabel() == "开机自启动")
             #expect(language.accessibilityLabel() == "语言")
-            #expect(claude.accessibilityLabel() == "Claude Code, 选择文件夹")
-            #expect(codex.accessibilityLabel() == "Codex, 选择文件夹")
-            #expect(opencode.accessibilityLabel() == "opencode, 选择文件夹")
+            #expect(claude.accessibilityLabel() == "Claude Code, 授权")
+            #expect(codex.accessibilityLabel() == "Codex, 授权")
+            #expect(opencode.accessibilityLabel() == "opencode, 授权")
             #expect(refresh.accessibilityLabel() == "刷新全部数据")
             #expect(openSettings.accessibilityLabel() == "打开登录项设置")
 
@@ -2269,9 +2323,9 @@ struct TokenWatchTests {
             #expect(autoRefresh.accessibilityLabel() == "Auto Refresh Interval")
             #expect(launchAtLogin.accessibilityLabel() == "Launch at Login")
             #expect(language.accessibilityLabel() == "Language")
-            #expect(claude.accessibilityLabel() == "Claude Code, Choose Folder")
-            #expect(codex.accessibilityLabel() == "Codex, Choose Folder")
-            #expect(opencode.accessibilityLabel() == "opencode, Choose Folder")
+            #expect(claude.accessibilityLabel() == "Claude Code, Authorize")
+            #expect(codex.accessibilityLabel() == "Codex, Authorize")
+            #expect(opencode.accessibilityLabel() == "opencode, Authorize")
             #expect(refresh.accessibilityLabel() == "Refresh All Data")
             #expect(openSettings.accessibilityLabel() == "Open Login Items Settings")
         }
