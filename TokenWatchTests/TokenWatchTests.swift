@@ -2152,28 +2152,35 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func languageChangeDoesNotInvokeDashboardRefreshAction() throws {
-        withTemporaryDefaults { defaults in
-            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
-            languageSettings.selectedPreference = .language(.zhHans)
-            var refreshActionCallCount = 0
-            let viewController = DashboardViewController(
-                settingsViewController: SettingsViewController(languageSettings: languageSettings),
-                stateProvider: { [:] },
-                refreshAction: { refreshActionCallCount += 1 },
-                languageSettings: languageSettings
-            )
-            viewController.loadViewIfNeeded()
+    @Test func languageChangeDoesNotInvokeDashboardRefreshAction() async throws {
+        let suiteName = "TokenWatchTests.LanguageChange.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
-            #expect(viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue).contains("用量总览"))
+        let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+        languageSettings.selectedPreference = .language(.zhHans)
+        var refreshActionCallCount = 0
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: languageSettings),
+            stateProvider: { [:] },
+            refreshAction: { refreshActionCallCount += 1 },
+            languageSettings: languageSettings
+        )
+        viewController.loadViewIfNeeded()
 
-            languageSettings.selectedPreference = .language(.ukUA)
+        #expect(viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue).contains("用量总览"))
 
-            let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-            #expect(labels.contains("Огляд використання"))
-            #expect(!labels.contains("用量总览"))
-            #expect(refreshActionCallCount == 0)
+        languageSettings.selectedPreference = .language(.ukUA)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
         }
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Огляд використання"))
+        #expect(!labels.contains("用量总览"))
+        #expect(refreshActionCallCount == 0)
     }
 }
 
