@@ -175,11 +175,8 @@ final class TokenStatsViewModel: Sendable {
             guard !isLoadingAllStats else { return }
             needsLanguageRepublish = false
             await publishCurrentWidgetSnapshot()
-            if isLoadingAllStats {
-                // publish 挂起期间若刷新开启，恢复 dirty，由刷新末尾基于完整 states 重发。
-                needsLanguageRepublish = true
-                return
-            }
+            // await 期间若全量刷新开启，刷新本身必定发布完整 states；只有真实语言变化
+            // 会由 observer 重新置 dirty，并在下一轮 guard 处交给刷新末尾的循环消化。
         }
     }
 
