@@ -67,6 +67,15 @@ struct AppMainMenuBuilderTests {
         ])
     }
 
+    @Test func mainMenuUsesThaiWindowAndApplicationCommandTitles() throws {
+        let actionTarget = AppDelegate()
+        let menu = AppMainMenuBuilder.build(actionTarget: actionTarget, language: .thTH)
+        let appMenu = try #require(menu.items.first?.submenu)
+
+        #expect(menu.items.map(\.title) == ["AI Token Watch", "หน้าต่าง"])
+        #expect(appMenu.items.first?.title == "เกี่ยวกับ AI Token Watch")
+    }
+
     @Test func installedMainMenuFollowsLanguageChanges() throws {
         let suiteName = "AppMainMenuBuilderTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))

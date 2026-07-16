@@ -81,10 +81,11 @@ struct CalendarHeatmapBuilderTests {
             month: date(2026, 6, 17, calendar: mondayCalendar),
             now: date(2026, 6, 17, calendar: mondayCalendar),
             calendar: mondayCalendar,
-            language: .es
+            language: .zhHK
         )
 
-        #expect(snapshot.weekdaySymbols == ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"])
+        #expect(snapshot.monthTitle == "過去 22 週")
+        #expect(snapshot.weekdaySymbols == ["一", "二", "三", "四", "五", "六", "日"])
     }
 
     @Test("快照、cell、day 支持等值比较和稳定 identity")
