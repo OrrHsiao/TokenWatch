@@ -5,8 +5,8 @@ import Foundation
 struct OpenCodeProvider: UsageProvider {
     let id: ProviderID = .opencode
     let displayName = "opencode"
-    let bookmarkKey = ProviderAuthorization.homeBookmarkKey
-    let openPanelMessage = ProviderAuthorization.homeAccessMessage
+    let bookmarkKey = "OpenCodeDataDirectoryBookmark"
+    let openPanelMessageKey: AppStringKey = .openCodeDataDirectoryOpenPanelMessage
     /// opencode 的 cache.write 含义与 Anthropic cache_creation 不完全等价,数据层映射保留但 UI 暂不展示
     let hasCacheWriteDimension = false
     /// opencode 显式暴露 reasoning_tokens(GPT-5/o3 系列)
@@ -16,14 +16,10 @@ struct OpenCodeProvider: UsageProvider {
     private let parser = OpenCodeMessageParser()
 
     /// 扫描 opencode.db 并解析为统一条目
-    /// - Parameter rootURL: 已授权的用户目录
+    /// - Parameter dataRootURL: 已授权的 opencode 数据根
     /// - Returns: ParsedUsageEntry 列表(messageId 由 SQLite PK 保证全局唯一,无需去重)
-    func loadEntries(from rootURL: URL) throws -> [ParsedUsageEntry] {
-        let openCodeRoot = rootURL
-            .appendingPathComponent(".local", isDirectory: true)
-            .appendingPathComponent("share", isDirectory: true)
-            .appendingPathComponent("opencode", isDirectory: true)
-        let rows = try scanner.scanAll(in: openCodeRoot)
+    func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
+        let rows = try scanner.scanAll(in: dataRootURL)
         return parser.parseAll(rows)
     }
 }

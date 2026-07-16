@@ -353,7 +353,13 @@ private struct StubUsageProvider: UsageProvider {
     let id: ProviderID
     let displayName = "Stub Provider"
     let bookmarkKey = "StubBookmark"
-    let openPanelMessage = "Select a folder"
+    var openPanelMessageKey: AppStringKey {
+        switch id {
+        case .claude: .claudeDataDirectoryOpenPanelMessage
+        case .codex: .codexDataDirectoryOpenPanelMessage
+        case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        }
+    }
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
 
@@ -366,7 +372,13 @@ private final class MutableUsageProvider: UsageProvider, @unchecked Sendable {
     let id: ProviderID
     let displayName = "Mutable Provider"
     let bookmarkKey = "MutableBookmark"
-    let openPanelMessage = "Select a folder"
+    var openPanelMessageKey: AppStringKey {
+        switch id {
+        case .claude: .claudeDataDirectoryOpenPanelMessage
+        case .codex: .codexDataDirectoryOpenPanelMessage
+        case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        }
+    }
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
 
@@ -396,7 +408,13 @@ private final class FailingAfterFirstLoadProvider: UsageProvider, @unchecked Sen
     let id: ProviderID
     let displayName = "Failing Provider"
     let bookmarkKey = "FailingBookmark"
-    let openPanelMessage = "Select a folder"
+    var openPanelMessageKey: AppStringKey {
+        switch id {
+        case .claude: .claudeDataDirectoryOpenPanelMessage
+        case .codex: .codexDataDirectoryOpenPanelMessage
+        case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        }
+    }
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
 
