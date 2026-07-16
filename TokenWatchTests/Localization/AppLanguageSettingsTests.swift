@@ -227,6 +227,24 @@ struct AppLanguageSettingsTests {
         )
     }
 
+    @Test("代表性新增语言返回已审定的设置标题")
+    func representativeLocalesReturnApprovedSettingsTitles() {
+        let samples: [(AppLanguage, String)] = [
+            (.ar, "الإعدادات"),
+            (.hiIN, "सेटिंग्ज़"),
+            (.thTH, "การตั้งค่า"),
+            (.ukUA, "Параметри"),
+            (.viVN, "Cài đặt"),
+            (.zhHK, "設定"),
+            (.es419, "Configuración"),
+            (.ptPT, "Definições"),
+        ]
+
+        for (language, expectedTitle) in samples {
+            #expect(AppStrings.text(.settingsTitle, language: language) == expectedTitle)
+        }
+    }
+
     @Test func migratedLoginItemStatusStringsRemainUnchanged() {
         let expected: [AppLanguage: (approval: String, unavailable: String, open: String)] = [
             .zhHans: ("需要在系统设置中批准开机自启动。", "当前无法使用开机自启动。", "打开登录项设置"),

@@ -203,12 +203,12 @@ struct StatusBarControllerTests {
         ])
         #expect(controller.debugTitlePlainString == "—\nTokens")
 
-        languageSettings.selectedPreference = .language(.en)
+        languageSettings.selectedPreference = .language(.viVN)
 
         #expect(controller.debugStatusMenuItemTitles == [
-            "Open AI Token Watch",
-            "Refresh Now",
-            "Quit AI Token Watch",
+            "Mở AI Token Watch",
+            "Làm mới ngay",
+            "Thoát AI Token Watch",
         ])
         #expect(controller.debugTitlePlainString == "—\nTokens")
     }

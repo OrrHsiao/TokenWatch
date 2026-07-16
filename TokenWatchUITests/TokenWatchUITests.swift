@@ -102,10 +102,27 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["LaunchAtLoginSwitch"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["LanguagePreferencePopUpButton"].exists)
     }
+
+    @MainActor
+    func testArabicLaunchUsesLocalizedCopyAndKeepsLTRLayout() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting(languagePreference: "ar")
+
+        let overviewButton = app.buttons["DashboardNav.overview"]
+        let dashboardTitle = app.staticTexts["نظرة عامة على الاستخدام"]
+        XCTAssertTrue(overviewButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(dashboardTitle.waitForExistence(timeout: 5))
+        XCTAssertLessThan(overviewButton.frame.minX, dashboardTitle.frame.minX)
+
+        let settingsButton = app.buttons["DashboardNav.settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.click()
+        XCTAssertTrue(app.staticTexts["الإعدادات"].waitForExistence(timeout: 5))
+    }
 }
 
 extension XCUIApplication {
-    func launchForUITesting(languagePreference: String = "zh-Hans") {
+    func launchForUITesting(languagePreference: String = "zh-CN") {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
             existingApp.terminate()

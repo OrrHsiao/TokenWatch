@@ -147,6 +147,9 @@ struct MonthlyTokenChartBuilderTests {
         #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .en) == "Today cost bar chart")
         #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .zhHans) == "本日 token 柱状图")
         #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .zhHans) == "本日 费用柱状图")
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .es419) == "No hay datos de tokens — Hoy")
+        #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .es419) == "Gráfica de barras de tokens: Hoy")
+        #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .es419) == "Gráfica de barras de costos: Hoy")
     }
 
     @Test("跨年边界只统计最近十二个月")

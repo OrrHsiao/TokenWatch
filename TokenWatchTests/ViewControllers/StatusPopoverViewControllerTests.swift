@@ -113,6 +113,17 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonImageAccessibilityDescription == "Refreshing")
     }
 
+    @Test("印地语摘要、今日说明和刷新提示使用已审定文案")
+    func hindiLanguageLocalizesSummaryDescriptionAndRefreshTooltip() {
+        let controller = makeController(language: .hiIN)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugSummaryCards.map(\.title) == ["महीना", "सप्ताह", "आज", "दैनिक औसत"])
+        #expect(controller.debugTodayDescriptionText == "आज कोई टोकन उपयोग नहीं")
+        #expect(controller.debugRefreshButtonToolTip == "अभी रीफ़्रेश करें")
+    }
+
     @Test("语言切换时重新渲染弹窗可见文案")
     func languageChangeRerendersVisibleText() throws {
         let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
@@ -316,9 +327,9 @@ struct StatusPopoverViewControllerTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: {
-            language == .zhHans ? ["zh-Hans"] : ["en-US"]
+            [language.rawValue]
         })
-        languageSettings.selectedPreference = .language(language == .zhHans ? .zhHans : .en)
+        languageSettings.selectedPreference = .language(language)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },
