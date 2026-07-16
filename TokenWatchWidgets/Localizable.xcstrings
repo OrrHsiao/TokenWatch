@@ -1,0 +1,150 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "widget.dated.format" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nutzung am %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ Usage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Uso del %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisation du %@" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Utilizzo del %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@の使用量" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@ 사용량" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Gebruik op %@" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Użycie: %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Uso em %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ 用量" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%@ 用量" } }
+      }
+    },
+    "widget.heatmap.description" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Token-Nutzung der letzten 22 Wochen anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View token usage for the last 22 weeks" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Consulta el uso de tokens de las últimas 22 semanas" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher l’utilisation des tokens sur les 22 dernières semaines" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Visualizza l’utilizzo dei token nelle ultime 22 settimane" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "過去22週間のToken使用量を表示" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최근 22주의 Token 사용량 보기" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Bekijk het tokengebruik van de afgelopen 22 weken" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wyświetla użycie tokenów z ostatnich 22 tygodni" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Veja o uso de tokens das últimas 22 semanas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看最近 22 周的 Token 用量" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "查看最近 22 週的 Token 用量" } }
+      }
+    },
+    "widget.heatmap.name" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nutzungs-Heatmap" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Usage Heatmap" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mapa de calor de uso" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Carte thermique d’utilisation" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Mappa termica di utilizzo" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "使用量ヒートマップ" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용량 히트맵" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Gebruik-heatmap" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Mapa użycia" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mapa de calor de uso" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "用量热力图" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "用量熱力圖" } }
+      }
+    },
+    "widget.heatmap.title" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Letzte 22 Wochen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Last 22 Weeks" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Últimas 22 semanas" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "22 dernières semaines" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Ultime 22 settimane" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "過去22週間" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최근 22주" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Afgelopen 22 weken" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Ostatnie 22 tygodnie" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Últimas 22 semanas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "最近 22 周" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "最近 22 週" } }
+      }
+    },
+    "widget.hourly.description" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heutige Token-Nutzung nach Stunde anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View today's token usage by hour" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Consulta por hora el uso de tokens de hoy" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher l’utilisation des tokens d’aujourd’hui par heure" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Visualizza per ora l’utilizzo dei token di oggi" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日のToken使用量を時間別に表示" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘의 Token 사용량을 시간별로 보기" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Bekijk het tokengebruik van vandaag per uur" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wyświetla dzisiejsze użycie tokenów według godzin" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Veja por hora o uso de tokens de hoje" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按小时查看今天的 Token 用量" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "按小時查看今天的 Token 用量" } }
+      }
+    },
+    "widget.hourly.name" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Stündliche Nutzung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hourly Usage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Uso por hora" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisation horaire" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Utilizzo orario" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "時間別使用量" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시간별 사용량" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Gebruik per uur" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Użycie godzinowe" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Uso por hora" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小时用量" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "小時用量" } }
+      }
+    },
+    "widget.notReady" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "TokenWatch öffnen, um Daten zu aktualisieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open TokenWatch to refresh data" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre TokenWatch para actualizar los datos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrez TokenWatch pour actualiser les données" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Apri TokenWatch per aggiornare i dati" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "TokenWatchを開いてデータを更新" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "TokenWatch를 열어 데이터를 새로고침" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Open TokenWatch om gegevens te verversen" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Otwórz TokenWatch, aby odświeżyć dane" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Abra o TokenWatch para atualizar os dados" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 TokenWatch 刷新数据" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開啟 TokenWatch 重新整理資料" } }
+      }
+    },
+    "widget.today.title" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heutige Nutzung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today's Usage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Uso de hoy" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisation aujourd’hui" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Utilizzo di oggi" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日の使用量" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘 사용량" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Gebruik vandaag" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Dzisiejsze użycie" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Uso de hoje" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日用量" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日用量" } }
+      }
+    },
+    "widget.updated.format" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisiert bis %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Updated through %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualizado hasta %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mis à jour jusqu’au %@" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Aggiornato al %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ まで更新" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@까지 업데이트" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Bijgewerkt tot %@" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Zaktualizowano do %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atualizado até %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更新至 %@" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "更新至 %@" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
