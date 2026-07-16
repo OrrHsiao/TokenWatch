@@ -132,6 +132,29 @@ struct AppLanguageSettingsTests {
         #expect(AppLanguagePreference.ptBR.title(language: .en) == "Português (Brasil)")
     }
 
+    @Test("Support 文案显式覆盖全部支持语言")
+    func supportStringCoversEverySupportedLanguage() {
+        let expected: [AppLanguage: String] = [
+            .zhHans: "支持",
+            .zhHant: "支援",
+            .en: "Support",
+            .ja: "サポート",
+            .ko: "지원",
+            .es: "Soporte",
+            .de: "Support",
+            .fr: "Assistance",
+            .ptBR: "Suporte",
+            .it: "Supporto",
+            .nl: "Ondersteuning",
+            .pl: "Wsparcie",
+        ]
+
+        #expect(expected.count == AppLanguage.allCases.count)
+        for (language, text) in expected {
+            #expect(AppStrings.text(.support, language: language) == text)
+        }
+    }
+
     @Test func loginItemStatusStringsCoverEverySupportedLanguage() {
         let expected: [AppLanguage: (approval: String, unavailable: String, open: String)] = [
             .zhHans: ("需要在系统设置中批准开机自启动。", "当前无法使用开机自启动。", "打开登录项设置"),

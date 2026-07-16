@@ -109,6 +109,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case periodNoTokenDataSuffix
     case statusMenuOpen
     case refreshNow
+    case support
     case statusMenuQuit
     case mainMenuAbout
     case privacyPolicy
@@ -282,6 +283,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "暂无 token 数据",
         .statusMenuOpen: "打开 AI Token Watch",
         .refreshNow: "立即刷新",
+        .support: "支持",
         .statusMenuQuit: "退出 AI Token Watch",
         .mainMenuAbout: "关于 AI Token Watch",
         .privacyPolicy: "隐私政策",
@@ -434,6 +436,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "暫無 token 資料",
         .statusMenuOpen: "開啟 AI Token Watch",
         .refreshNow: "立即重新整理",
+        .support: "支援",
         .statusMenuQuit: "結束 AI Token Watch",
         .mainMenuAbout: "關於 AI Token Watch",
         .privacyPolicy: "隱私權政策",
@@ -586,6 +589,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "token データなし",
         .statusMenuOpen: "AI Token Watch を開く",
         .refreshNow: "今すぐ更新",
+        .support: "サポート",
         .statusMenuQuit: "AI Token Watch を終了",
         .mainMenuAbout: "AI Token Watch について",
         .privacyPolicy: "プライバシーポリシー",
@@ -738,6 +742,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "token 데이터 없음",
         .statusMenuOpen: "AI Token Watch 열기",
         .refreshNow: "지금 새로고침",
+        .support: "지원",
         .statusMenuQuit: "AI Token Watch 종료",
         .mainMenuAbout: "AI Token Watch 정보",
         .privacyPolicy: "개인정보 처리방침",
@@ -890,6 +895,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "no tiene datos de tokens",
         .statusMenuOpen: "Abrir AI Token Watch",
         .refreshNow: "Actualizar ahora",
+        .support: "Soporte",
         .statusMenuQuit: "Salir de AI Token Watch",
         .mainMenuAbout: "Acerca de AI Token Watch",
         .privacyPolicy: "Política de privacidad",
@@ -1042,6 +1048,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "hat keine Token-Daten",
         .statusMenuOpen: "AI Token Watch öffnen",
         .refreshNow: "Jetzt aktualisieren",
+        .support: "Support",
         .statusMenuQuit: "AI Token Watch beenden",
         .mainMenuAbout: "Über AI Token Watch",
         .privacyPolicy: "Datenschutzrichtlinie",
@@ -1194,6 +1201,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "n'a aucune donnée de tokens",
         .statusMenuOpen: "Ouvrir AI Token Watch",
         .refreshNow: "Actualiser maintenant",
+        .support: "Assistance",
         .statusMenuQuit: "Quitter AI Token Watch",
         .mainMenuAbout: "À propos de AI Token Watch",
         .privacyPolicy: "Politique de confidentialité",
@@ -1346,6 +1354,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "não tem dados de tokens",
         .statusMenuOpen: "Abrir AI Token Watch",
         .refreshNow: "Atualizar agora",
+        .support: "Suporte",
         .statusMenuQuit: "Sair do AI Token Watch",
         .mainMenuAbout: "Sobre o AI Token Watch",
         .privacyPolicy: "Política de Privacidade",
@@ -1498,6 +1507,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "non ha dati token",
         .statusMenuOpen: "Apri AI Token Watch",
         .refreshNow: "Aggiorna ora",
+        .support: "Supporto",
         .statusMenuQuit: "Esci da AI Token Watch",
         .mainMenuAbout: "Informazioni su AI Token Watch",
         .privacyPolicy: "Informativa sulla privacy",
@@ -1650,6 +1660,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "heeft geen tokengegevens",
         .statusMenuOpen: "AI Token Watch openen",
         .refreshNow: "Nu verversen",
+        .support: "Ondersteuning",
         .statusMenuQuit: "AI Token Watch stoppen",
         .mainMenuAbout: "Over AI Token Watch",
         .privacyPolicy: "Privacybeleid",
@@ -1802,6 +1813,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "nie ma danych tokenów",
         .statusMenuOpen: "Otwórz AI Token Watch",
         .refreshNow: "Odśwież teraz",
+        .support: "Wsparcie",
         .statusMenuQuit: "Zamknij AI Token Watch",
         .mainMenuAbout: "O AI Token Watch",
         .privacyPolicy: "Polityka prywatności",
@@ -1954,6 +1966,7 @@ enum AppStrings {
         .periodNoTokenDataSuffix: "has no token data",
         .statusMenuOpen: "Open AI Token Watch",
         .refreshNow: "Refresh Now",
+        .support: "Support",
         .statusMenuQuit: "Quit AI Token Watch",
         .mainMenuAbout: "About AI Token Watch",
         .privacyPolicy: "Privacy Policy",
