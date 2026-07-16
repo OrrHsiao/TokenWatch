@@ -159,6 +159,15 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.view is StatusPopoverRootView)
     }
 
+    @Test("阿拉伯语弹窗根视图仍固定左到右")
+    func arabicPopoverRootStaysLeftToRight() {
+        let controller = makeController(language: .ar)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.view.userInterfaceLayoutDirection == .leftToRight)
+    }
+
     @Test("弹窗根背景使用系统 popover 背景以匹配顶部三角形")
     func rootBackgroundMatchesPopoverArrowBackgroundInLightAndDark() throws {
         let controller = makeController()

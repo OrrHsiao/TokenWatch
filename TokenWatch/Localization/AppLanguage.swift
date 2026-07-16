@@ -183,7 +183,11 @@ final class AppLanguageSettings {
             return .system
         }
         set {
-            guard selectedPreference != newValue else { return }
+            let storedValue = defaults.string(forKey: Self.storageKey)
+            if selectedPreference == newValue,
+               storedValue == nil || storedValue == newValue.storageValue {
+                return
+            }
             defaults.set(newValue.storageValue, forKey: Self.storageKey)
             notifyChange()
         }
@@ -221,26 +225,35 @@ final class AppLanguageSettings {
             return exactMatch
         }
 
-        let subtags = normalized.split(separator: "-").map(String.init)
-        guard let baseLanguageCode = subtags.first else { return nil }
-        let variantSubtags = Set(subtags.dropFirst())
+        let components = Locale.Components(identifier: normalized).languageComponents
+        guard let baseLanguageCode = components.languageCode?.identifier.lowercased() else {
+            return nil
+        }
+        let scriptCode = components.script?.identifier.lowercased()
+        let regionCode = components.region?.identifier.lowercased()
 
         // 这些语言各有多个资源变体，不能用通用 base-code 规则任意选择第一项。
         switch baseLanguageCode {
         case "zh":
-            if !variantSubtags.isDisjoint(with: ["hk", "mo"]) {
+            if scriptCode == "hans" {
+                return .zhHans
+            }
+            if scriptCode == "hant" {
+                return regionCode == "hk" || regionCode == "mo" ? .zhHK : .zhHant
+            }
+            if regionCode == "hk" || regionCode == "mo" {
                 return .zhHK
             }
-            if !variantSubtags.isDisjoint(with: ["tw", "hant"]) {
+            if regionCode == "tw" {
                 return .zhHant
             }
             return .zhHans
         case "es":
-            return variantSubtags.isDisjoint(with: latinAmericanSpanishRegions) ? .es : .es419
+            return regionCode.map(latinAmericanSpanishRegions.contains) == true ? .es419 : .es
         case "fr":
-            return variantSubtags.contains("ca") ? .frCA : .fr
+            return regionCode == "ca" ? .frCA : .fr
         case "pt":
-            return variantSubtags.contains("pt") ? .ptPT : .ptBR
+            return regionCode == "pt" ? .ptPT : .ptBR
         default:
             let candidates = AppLanguage.allCases.filter {
                 $0.baseLanguageCode == baseLanguageCode

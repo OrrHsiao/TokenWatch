@@ -188,6 +188,7 @@ enum UsageStatsPeriod: Sendable, Equatable {
         guard (1...12).contains(month) else { return "\(month)" }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: language.localeIdentifier)
+        formatter.calendar = Calendar(identifier: .gregorian)
         let names = formatter.shortMonthSymbols ?? []
         guard names.indices.contains(month - 1) else { return "\(month)" }
         return names[month - 1]

@@ -72,6 +72,31 @@ struct StatusBarControllerTests {
         #expect(controller.debugTitleBaselineOffsets.allSatisfy { $0 == StatusBarTitleTextLayout.baselineOffset })
     }
 
+    /// 阿拉伯语只翻译文案；状态栏按钮和右键菜单仍固定左到右。
+    @MainActor
+    @Test func statusBarSurfacesStayLeftToRight() throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(defaults: defaults)
+        languageSettings.selectedPreference = .language(.ar)
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(languageSettings: languageSettings),
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings
+        )
+        defer { controller.stop() }
+        let statusMenu = try #require(
+            Mirror(reflecting: controller).children.first { $0.label == "statusMenu" }?.value as? NSMenu
+        )
+        let statusItem = try #require(
+            Mirror(reflecting: controller).children.first { $0.label == "statusItem" }?.value as? NSStatusItem
+        )
+
+        #expect(statusMenu.userInterfaceLayoutDirection == .leftToRight)
+        #expect(statusItem.button?.userInterfaceLayoutDirection == .leftToRight)
+    }
+
     /// popover 显示期间应让状态栏按钮保持系统高亮背景。
     @Test func popoverShownHighlightsStatusButton() {
         #expect(StatusBarButtonHighlight.isHighlighted(popoverIsShown: true))

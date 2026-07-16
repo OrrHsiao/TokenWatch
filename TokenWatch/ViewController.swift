@@ -107,6 +107,8 @@ class ViewController: NSViewController {
 private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefreshable {
     init() {
         super.init(frame: .zero, pullsDown: false)
+        userInterfaceLayoutDirection = .leftToRight
+        menu?.userInterfaceLayoutDirection = .leftToRight
         wantsLayer = true
         layer?.cornerRadius = 7
         layer?.borderWidth = 1

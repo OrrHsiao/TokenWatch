@@ -106,7 +106,7 @@ final class TokenWatchUITests: XCTestCase {
     @MainActor
     func testArabicLaunchUsesLocalizedCopyAndKeepsLTRLayout() throws {
         let app = XCUIApplication()
-        app.launchForUITesting(languagePreference: "ar")
+        app.launchForUITesting(languagePreference: "ar", systemLanguage: "ar")
 
         let overviewButton = app.buttons["DashboardNav.overview"]
         let dashboardTitle = app.staticTexts["نظرة عامة على الاستخدام"]
@@ -122,7 +122,10 @@ final class TokenWatchUITests: XCTestCase {
 }
 
 extension XCUIApplication {
-    func launchForUITesting(languagePreference: String = "zh-CN") {
+    func launchForUITesting(
+        languagePreference: String = "zh-CN",
+        systemLanguage: String? = nil
+    ) {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
             existingApp.terminate()
@@ -137,6 +140,12 @@ extension XCUIApplication {
             "-TokenWatch.languagePreference", languagePreference,
             "-TokenWatch.openMainWindowOnLaunch", "YES",
         ]
+        if let systemLanguage {
+            launchArguments += [
+                "-AppleLanguages", "(\(systemLanguage))",
+                "-AppleLocale", systemLanguage,
+            ]
+        }
         launch()
     }
 }

@@ -76,6 +76,33 @@ struct AppMainMenuBuilderTests {
         #expect(appMenu.items.first?.title == "เกี่ยวกับ AI Token Watch")
     }
 
+    @Test func mainMenuAndSubmenusStayLeftToRight() {
+        let menu = AppMainMenuBuilder.build(actionTarget: AppDelegate(), language: .ar)
+        let menus = [menu] + menu.items.compactMap(\.submenu)
+
+        #expect(menus.allSatisfy { $0.userInterfaceLayoutDirection == .leftToRight })
+    }
+
+    @Test func settingsPopupMenusStayLeftToRight() throws {
+        let suiteName = "AppMainMenuBuilderTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(defaults: defaults)
+        languageSettings.selectedPreference = .language(.ar)
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+
+        let popups = allDescendants(in: controller.view, ofType: NSPopUpButton.self)
+        #expect(popups.count == 2)
+        #expect(popups.allSatisfy { $0.userInterfaceLayoutDirection == .leftToRight })
+        #expect(popups.allSatisfy { $0.menu?.userInterfaceLayoutDirection == .leftToRight })
+    }
+
     @Test func installedMainMenuFollowsLanguageChanges() throws {
         let suiteName = "AppMainMenuBuilderTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -121,5 +148,10 @@ struct AppMainMenuBuilderTests {
             "performZoom:",
             "arrangeInFront:",
         ])
+    }
+
+    private func allDescendants<T: NSView>(in view: NSView, ofType type: T.Type) -> [T] {
+        let current = (view as? T).map { [$0] } ?? []
+        return current + view.subviews.flatMap { allDescendants(in: $0, ofType: type) }
     }
 }

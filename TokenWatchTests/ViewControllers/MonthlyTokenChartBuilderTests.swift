@@ -139,6 +139,12 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.monthBuckets[9].monthLabel == "9")
     }
 
+    @Test("波斯语月名仍按公历月份编号")
+    func persianMonthNamesUseGregorianMonthNumbers() {
+        #expect(UsageStatsPeriod.shortMonthName(for: 1, language: .fa) == "ژانویه")
+        #expect(UsageStatsPeriod.shortMonthName(for: 3, language: .fa) == "مارس")
+    }
+
     @Test("完整格式文案控制时间标题语序和图表辅助功能标签")
     func completeLocalizedFormatsControlPeriodText() {
         #expect(UsageStatsPeriod.today.emptyDataText(language: .en) == "Today has no token data")
