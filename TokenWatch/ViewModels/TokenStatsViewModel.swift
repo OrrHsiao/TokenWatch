@@ -42,24 +42,43 @@ final class TokenStatsViewModel: Sendable {
     private let languageSettings: AppLanguageSettings
     private let aggregator: any UsageAggregating
     private let nowProvider: @Sendable () -> Date
+    private let widgetSnapshotPublisher: (any WidgetSnapshotPublishing)?
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
     private var entryFingerprints: [ProviderID: UsageEntriesFingerprint] = [:]
+    private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
+    private var isLoadingAllStats = false
+    private var needsLanguageRepublish = false
 
     init(
         languageSettings: AppLanguageSettings = .shared,
         providers: [any UsageProvider] = ProviderRegistry.allProviders,
         bookmarkManager: any BookmarkAccessManaging = SecurityScopedBookmarkManager.shared,
         aggregator: any UsageAggregating = UsageAggregator(),
-        nowProvider: @escaping @Sendable () -> Date = Date.init
+        nowProvider: @escaping @Sendable () -> Date = Date.init,
+        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil
     ) {
         self.languageSettings = languageSettings
         self.providers = providers
         self.bookmarkManager = bookmarkManager
         self.aggregator = aggregator
         self.nowProvider = nowProvider
+        self.widgetSnapshotPublisher = widgetSnapshotPublisher
         for provider in providers {
             states[provider.id] = ProviderState()
+        }
+        if widgetSnapshotPublisher != nil {
+            languageSettingsObserverToken = languageSettings.observe { [weak self] in
+                self?.handleLanguageChangeForWidgets()
+            }
+        }
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            if let languageSettingsObserverToken {
+                languageSettings.removeObserver(languageSettingsObserverToken)
+            }
         }
     }
 
@@ -106,6 +125,13 @@ final class TokenStatsViewModel: Sendable {
     /// 显式标 `@MainActor [weak self]` 时会崩(编译器内部错误);
     /// 改为 `await self.loadStats(...)` 让 main actor 自动 hop,行为等价且 self 由 AppDelegate 持有不会循环引用。
     func loadAllStats(mode: LoadMode = .interactive) async {
+        guard !isLoadingAllStats else {
+            logger.info("All-provider refresh already in progress; skipping duplicate request")
+            return
+        }
+        isLoadingAllStats = true
+        defer { isLoadingAllStats = false }
+
         await withTaskGroup(of: Void.self) { group in
             for provider in providers {
                 let id = provider.id
@@ -113,6 +139,32 @@ final class TokenStatsViewModel: Sendable {
                     await self.loadStats(for: id, mode: mode)
                 }
             }
+        }
+
+        repeat {
+            needsLanguageRepublish = false
+            await publishCurrentWidgetSnapshot()
+        } while needsLanguageRepublish
+    }
+
+    /// 发布完整内存状态；只由全量刷新完成或语言变化路径调用。
+    private func publishCurrentWidgetSnapshot() async {
+        guard let widgetSnapshotPublisher else { return }
+        await widgetSnapshotPublisher.publish(
+            states: states,
+            language: languageSettings.resolvedLanguage
+        )
+    }
+
+    /// 语言变化只重建共享快照，不触发 provider 扫描；刷新中的变化由末尾循环合并。
+    private func handleLanguageChangeForWidgets() {
+        guard widgetSnapshotPublisher != nil else { return }
+        if isLoadingAllStats {
+            needsLanguageRepublish = true
+            return
+        }
+        Task { @MainActor [weak self] in
+            await self?.publishCurrentWidgetSnapshot()
         }
     }
 
