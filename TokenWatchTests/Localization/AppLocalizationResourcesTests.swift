@@ -172,6 +172,16 @@ struct AppLocalizationResourcesTests {
         try assertCompleteResources(frozenCodexLocaleIdentifiers)
     }
 
+    @Test("Xcode localization 元数据与冻结目录完全一致")
+    func projectLocalizationMetadataMatchesFrozenCodexLocales() throws {
+        let metadata = try projectLocalizationMetadata()
+        let expectedKnownRegions = frozenCodexLocaleIdentifiers + ["Base"]
+
+        #expect(metadata.developmentRegion == "en-US")
+        #expect(metadata.knownRegions == expectedKnownRegions)
+        #expect(Set(metadata.knownRegions) == Set(expectedKnownRegions))
+    }
+
     @Test("所有格式参数签名与英文基准一致")
     func localizedFormatSignaturesMatchEnglish() throws {
         let resources = try loadResources(validatedLocaleIdentifiers)
@@ -353,6 +363,11 @@ private struct FormatArgument: Equatable, Hashable {
     let type: String
 }
 
+private struct ProjectLocalizationMetadata {
+    let developmentRegion: String
+    let knownRegions: [String]
+}
+
 private enum LocalizationResourceTestError: Error, CustomStringConvertible {
     case repositoryRootNotFound
     case resourceMissing(String)
@@ -360,6 +375,7 @@ private enum LocalizationResourceTestError: Error, CustomStringConvertible {
     case invalidPropertyList(String)
     case valueMissing(String, String)
     case malformedFormat(String)
+    case invalidProjectLocalizationMetadata
 
     var description: String {
         switch self {
@@ -375,6 +391,8 @@ private enum LocalizationResourceTestError: Error, CustomStringConvertible {
             return "Missing value for \(localeIdentifier)/\(key)"
         case .malformedFormat(let message):
             return message
+        case .invalidProjectLocalizationMetadata:
+            return "Could not parse localization metadata from project.pbxproj"
         }
     }
 }
@@ -463,16 +481,57 @@ private func loadResources(_ localeIdentifiers: [String]) throws -> [String: Loc
     })
 }
 
-private func localizationResourcesURL() throws -> URL {
+private func repositoryRootURL() throws -> URL {
     var candidate = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
     while candidate.path != "/" {
         let projectURL = candidate.appendingPathComponent("TokenWatch.xcodeproj")
         if FileManager.default.fileExists(atPath: projectURL.path) {
-            return candidate.appendingPathComponent("TokenWatch/Localization/Resources", isDirectory: true)
+            return candidate
         }
         candidate.deleteLastPathComponent()
     }
     throw LocalizationResourceTestError.repositoryRootNotFound
+}
+
+private func localizationResourcesURL() throws -> URL {
+    try repositoryRootURL().appendingPathComponent("TokenWatch/Localization/Resources", isDirectory: true)
+}
+
+private func projectLocalizationMetadata() throws -> ProjectLocalizationMetadata {
+    let projectURL = try repositoryRootURL().appendingPathComponent("TokenWatch.xcodeproj/project.pbxproj")
+    let source = try String(contentsOf: projectURL, encoding: .utf8)
+    let fullRange = NSRange(source.startIndex..<source.endIndex, in: source)
+
+    let developmentRegionExpression = try NSRegularExpression(
+        pattern: #"developmentRegion\s*=\s*\"?([^\";]+)\"?;"#
+    )
+    let knownRegionsExpression = try NSRegularExpression(
+        pattern: #"knownRegions\s*=\s*\((.*?)\);"#,
+        options: [.dotMatchesLineSeparators]
+    )
+    guard let developmentMatch = developmentRegionExpression.firstMatch(in: source, range: fullRange),
+          let developmentRange = Range(developmentMatch.range(at: 1), in: source),
+          let knownRegionsMatch = knownRegionsExpression.firstMatch(in: source, range: fullRange),
+          let knownRegionsRange = Range(knownRegionsMatch.range(at: 1), in: source) else {
+        throw LocalizationResourceTestError.invalidProjectLocalizationMetadata
+    }
+
+    let developmentRegion = source[developmentRange]
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    let knownRegions = source[knownRegionsRange]
+        .split(whereSeparator: { $0.isNewline })
+        .compactMap { line -> String? in
+            let value = line
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: ","))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            return value.isEmpty ? nil : value
+        }
+
+    return ProjectLocalizationMetadata(
+        developmentRegion: developmentRegion,
+        knownRegions: knownRegions
+    )
 }
 
 private func declaredLocalizationKeys(in source: String) throws -> [String] {

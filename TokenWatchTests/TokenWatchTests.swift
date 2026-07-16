@@ -7,8 +7,21 @@
 
 import Testing
 import AppKit
+import Foundation
 import SwiftUI
 @testable import TokenWatch
+
+// 设置菜单验收独立抄录冻结顺序，避免从生产 catalog 复制同一处错误。
+private let frozenSettingsLocaleIdentifiers = [
+    "en-US", "am", "ar", "bg-BG", "bn-BD", "bs-BA", "ca-ES", "cs-CZ",
+    "da-DK", "de-DE", "el-GR", "es-419", "es-ES", "et-EE", "fa", "fi-FI",
+    "fr-CA", "fr-FR", "gu-IN", "hi-IN", "hr-HR", "hu-HU", "hy-AM", "id-ID",
+    "is-IS", "it-IT", "ja-JP", "ka-GE", "kk", "kn-IN", "ko-KR", "lt",
+    "lv-LV", "mk-MK", "ml", "mn", "mr-IN", "ms-MY", "my-MM", "nb-NO",
+    "nl-NL", "pa", "pl-PL", "pt-BR", "pt-PT", "ro-RO", "ru-RU", "sk-SK",
+    "sl-SI", "so-SO", "sq-AL", "sr-RS", "sv-SE", "sw-TZ", "ta-IN", "te-IN",
+    "th-TH", "tl", "tr-TR", "uk-UA", "ur", "vi-VN", "zh-CN", "zh-HK", "zh-TW",
+]
 
 struct TokenWatchTests {
 
@@ -2013,7 +2026,7 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            #expect(popUpButton.itemTitles == ["跟随系统"] + AppLanguage.allCases.map(\.nativeDisplayName))
+            #expect(popUpButton.itemTitles == frozenLanguageMenuTitles(systemTitle: "跟随系统"))
             #expect(popUpButton.titleOfSelectedItem == "跟随系统")
         }
     }
@@ -2104,7 +2117,7 @@ struct TokenWatchTests {
             #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en-US")
             #expect(labels.contains("Settings"))
             #expect(labels.contains("Language"))
-            #expect(popUpButton.itemTitles == ["System"] + AppLanguage.allCases.map(\.nativeDisplayName))
+            #expect(popUpButton.itemTitles == frozenLanguageMenuTitles(systemTitle: "System"))
             #expect(popUpButton.titleOfSelectedItem == AppLanguage.en.nativeDisplayName)
         }
     }
@@ -2270,6 +2283,13 @@ private func withTemporaryDefaults(_ body: (UserDefaults) throws -> Void) rethro
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
     try body(defaults)
+}
+
+private func frozenLanguageMenuTitles(systemTitle: String) -> [String] {
+    [systemTitle] + frozenSettingsLocaleIdentifiers.map { localeIdentifier in
+        Locale(identifier: localeIdentifier).localizedString(forIdentifier: localeIdentifier)
+            ?? localeIdentifier
+    }
 }
 
 @MainActor
