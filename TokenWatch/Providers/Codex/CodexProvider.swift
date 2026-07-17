@@ -34,4 +34,25 @@ struct CodexProvider: UsageProvider {
         let speed = serviceTierResolver.pricingSpeed(at: dataRootURL)
         return try parser.parseAllFiles(files, pricingSpeed: speed)
     }
+
+    /// 接受包含 `sessions/` 或 `archived_sessions/` 的 Codex 数据根。
+    func validateDataRoot(
+        _ dataRootURL: URL
+    ) -> ProviderDataRootValidationResult {
+        for directoryName in ["sessions", "archived_sessions"] {
+            let directoryURL = dataRootURL.appendingPathComponent(
+                directoryName,
+                isDirectory: true
+            )
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(
+                atPath: directoryURL.path,
+                isDirectory: &isDirectory
+            )
+            if exists && isDirectory.boolValue {
+                return .valid
+            }
+        }
+        return .missingExpectedStructure
+    }
 }

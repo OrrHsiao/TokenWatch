@@ -119,6 +119,62 @@ struct ProviderRegistryTests {
         #expect(entries.first?.messageId == "opencode-msg")
     }
 
+    @Test("provider 能识别明显选错的数据目录")
+    func providersValidateExpectedDataRootStructure() throws {
+        let root = try makeTempDataRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let claudeRoot = root.appendingPathComponent("claude", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: claudeRoot,
+            withIntermediateDirectories: true
+        )
+        #expect(
+            ClaudeProvider().validateDataRoot(claudeRoot)
+                == .missingExpectedStructure
+        )
+        try FileManager.default.createDirectory(
+            at: claudeRoot.appendingPathComponent("projects", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        #expect(ClaudeProvider().validateDataRoot(claudeRoot) == .valid)
+
+        let codexRoot = root.appendingPathComponent("codex", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: codexRoot,
+            withIntermediateDirectories: true
+        )
+        #expect(
+            CodexProvider().validateDataRoot(codexRoot)
+                == .missingExpectedStructure
+        )
+        try FileManager.default.createDirectory(
+            at: codexRoot.appendingPathComponent(
+                "archived_sessions",
+                isDirectory: true
+            ),
+            withIntermediateDirectories: true
+        )
+        #expect(CodexProvider().validateDataRoot(codexRoot) == .valid)
+
+        let openCodeRoot = root.appendingPathComponent(
+            "opencode",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: openCodeRoot,
+            withIntermediateDirectories: true
+        )
+        #expect(
+            OpenCodeProvider().validateDataRoot(openCodeRoot)
+                == .missingExpectedStructure
+        )
+        try Data().write(
+            to: openCodeRoot.appendingPathComponent("opencode.db")
+        )
+        #expect(OpenCodeProvider().validateDataRoot(openCodeRoot) == .valid)
+    }
+
     private var claudeUsageLine: String {
         """
         {"type":"assistant","uuid":"u1","sessionId":"s1","timestamp":"2026-06-13T11:55:26.715Z","message":{"id":"claude-msg","role":"assistant","model":"deepseek-v4-pro","content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn","usage":{"input_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":50,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"}}}

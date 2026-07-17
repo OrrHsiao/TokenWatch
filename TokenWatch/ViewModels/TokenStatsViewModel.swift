@@ -306,6 +306,41 @@ final class TokenStatsViewModel: Sendable {
             )
         }
 
+        guard provider.validateDataRoot(rootURL) == .valid else {
+            let message = AppStrings.text(
+                .settingsDirectoryNoData,
+                language: languageSettings.resolvedLanguage
+            )
+            let previousDirectoryState = states[id]?.directoryState
+            let previousDirectoryError =
+                states[id]?.directoryAuthorizationErrorMessage
+            let previousLoadError = states[id]?.errorMessage
+            let wasLoading = states[id]?.isLoading == true
+            let clearedData = clearProviderData(for: id)
+
+            // 目录可访问并不代表它属于当前 provider；缺少必要结构时
+            // 提示用户重新选择，但不把“结构存在且暂时无记录”误判为选错。
+            setDirectoryState(.needsReselection, for: id)
+            states[id]?.directoryAuthorizationErrorMessage = message
+            states[id]?.errorMessage = nil
+            states[id]?.isLoading = false
+
+            logger.error(
+                "\(provider.displayName) 目录缺少预期数据结构，需要重新选择"
+            )
+
+            let shouldNotify = sendsLoadingNotifications
+                || clearedData
+                || wasLoading
+                || previousLoadError != nil
+                || previousDirectoryState != .needsReselection
+                || previousDirectoryError != message
+            if shouldNotify {
+                notifyStateChange(id)
+            }
+            return
+        }
+
         // bookmark 可恢复即表示目录仍已选择；parser 失败不能把
         // 该状态改回未选择或 needsReselection。
         let restoredDirectoryPresentationChanged =
