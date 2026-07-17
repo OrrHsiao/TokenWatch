@@ -2043,8 +2043,8 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test("宽窗口中的设置卡和目录行保持紧凑左对齐")
-    func settingsStaysCompactAndLeftAlignedInWideHost() throws {
+    @Test("宽窗口中的目录行左对齐且不缩窄设置面板")
+    func settingsDirectoryRowsAlignLeadingWithoutShrinkingPanel() throws {
         let controller = SettingsViewController(
             isAuthorized: { false },
             languageSettings: zhHansLanguageSettings()
@@ -2056,35 +2056,36 @@ struct TokenWatchTests {
         let panel = try #require(
             controller.view.firstDescendant(identifier: "SettingsPanel")
         )
+        let dataFoldersTitle = try #require(
+            controller.view.firstDescendant(identifier: "DataFoldersTitleLabel")
+        )
         let panelFrame = panel.convert(panel.bounds, to: controller.view)
-        #expect(abs(panelFrame.width - 424) <= 1)
-        #expect(panelFrame.width <= 480.5)
-        #expect(panelFrame.width < controller.view.bounds.width / 2)
-        #expect(panelFrame.height < 600)
+        let titleFrame = dataFoldersTitle.convert(
+            dataFoldersTitle.bounds,
+            to: controller.view
+        )
 
-        var rowFrames: [NSRect] = []
+        #expect(abs(panelFrame.minX - 28) <= 1)
+        #expect(abs(panelFrame.maxX - controller.view.bounds.maxX + 28) <= 1)
+        #expect(abs(panelFrame.width - controller.view.bounds.width + 56) <= 1)
+
         for id in ProviderID.allCases {
-            let row = try #require(
-                controller.view.firstDescendant(
-                    identifier: "ProviderDirectoryRow.\(id.rawValue)"
-                ) as? NSStackView
-            )
             let name = try #require(
                 controller.view.firstDescendant(
                     identifier: "ProviderDirectoryName.\(id.rawValue)"
                 )
             )
-            let rowFrame = row.convert(row.bounds, to: controller.view)
+            let action = try #require(
+                controller.view.button(
+                    identifier: "ProviderDirectoryAction.\(id.rawValue)"
+                )
+            )
             let nameFrame = name.convert(name.bounds, to: controller.view)
-            rowFrames.append(rowFrame)
+            let actionFrame = action.convert(action.bounds, to: controller.view)
 
-            #expect(abs(nameFrame.minX - panelFrame.minX - 24) <= 3)
+            #expect(abs(nameFrame.minX - titleFrame.minX) <= 3)
+            #expect(actionFrame.maxX < panelFrame.midX)
         }
-
-        #expect(rowFrames[0].minY > rowFrames[1].minY)
-        #expect(rowFrames[1].minY > rowFrames[2].minY)
-        #expect(rowFrames[0].minY - rowFrames[1].maxY <= 12)
-        #expect(rowFrames[1].minY - rowFrames[2].maxY <= 12)
     }
 
     @MainActor
