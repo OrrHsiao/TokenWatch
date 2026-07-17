@@ -36,9 +36,9 @@ struct ProviderRegistryTests {
         }
 
         #expect(Set(messages) == [
-            "Choose the Claude Code data folder",
-            "Choose the Codex data folder",
-            "Choose the opencode data folder",
+            "Choose the Claude Code data folder. It is usually named \".claude\".",
+            "Choose the Codex data folder. It is usually named \".codex\".",
+            "Choose the opencode data folder. It is usually named \"opencode\" and contains \"opencode.db\".",
         ])
         #expect(messages.allSatisfy {
             !$0.localizedCaseInsensitiveContains("home")

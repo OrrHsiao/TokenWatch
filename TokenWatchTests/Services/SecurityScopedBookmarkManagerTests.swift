@@ -27,15 +27,15 @@ struct SecurityScopedBookmarkManagerTests {
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: ClaudeProvider(),
             language: .en
-        ).message == "Choose the Claude Code data folder")
+        ).message == "Choose the Claude Code data folder. It is usually named \".claude\".")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: CodexProvider(),
             language: .en
-        ).message == "Choose the Codex data folder")
+        ).message == "Choose the Codex data folder. It is usually named \".codex\".")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: OpenCodeProvider(),
             language: .en
-        ).message == "Choose the opencode data folder")
+        ).message == "Choose the opencode data folder. It is usually named \"opencode\" and contains \"opencode.db\".")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: ClaudeProvider(),
             language: .en
@@ -121,7 +121,7 @@ struct SecurityScopedBookmarkManagerTests {
         )
 
         #expect(panel.directoryURL == FileManager.default.temporaryDirectory)
-        #expect(panel.message == "Choose the Codex data folder")
+        #expect(panel.message == "Choose the Codex data folder. It is usually named \".codex\".")
         #expect(panel.prompt == "Choose")
         #expect(panel.canChooseDirectories)
         #expect(!panel.canChooseFiles)
