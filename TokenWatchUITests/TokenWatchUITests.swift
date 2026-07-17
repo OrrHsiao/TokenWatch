@@ -87,16 +87,26 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
-    func testFreshLaunchDoesNotPresentAuthorizationPanel() throws {
+    func testFreshUnauthorizedLaunchGuidesToSettings() throws {
         let app = XCUIApplication()
-        app.launchForUITesting(languagePreference: "en")
+        app.launchForUITesting(
+            languagePreference: "en",
+            skipInitialDirectoryAuthorizationGuide: false
+        )
 
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Usage Overview"].exists)
-        XCTAssertFalse(
-            app.windows.element(boundBy: 1).waitForExistence(timeout: 2)
+        XCTAssertTrue(
+            app.staticTexts["Set Up Data Folders"].waitForExistence(timeout: 5)
         )
-        XCTAssertEqual(app.windows.count, 1)
+
+        let openSettingsButton = app.buttons["Go to Settings"]
+        XCTAssertTrue(openSettingsButton.waitForExistence(timeout: 5))
+        openSettingsButton.click()
+
+        XCTAssertTrue(
+            app.buttons["ProviderDirectoryAction.claude"].waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.staticTexts["Settings"].exists)
     }
 
     @MainActor
@@ -176,7 +186,10 @@ final class TokenWatchUITests: XCTestCase {
 }
 
 extension XCUIApplication {
-    func launchForUITesting(languagePreference: String = "zh-Hans") {
+    func launchForUITesting(
+        languagePreference: String = "zh-Hans",
+        skipInitialDirectoryAuthorizationGuide: Bool = true
+    ) {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
             existingApp.terminate()
@@ -192,6 +205,10 @@ extension XCUIApplication {
             "-OpenCodeDataDirectoryBookmark", "absent",
             "-TokenWatch.languagePreference", languagePreference,
             "-TokenWatch.openMainWindowOnLaunch", "YES",
+        ]
+        launchArguments += [
+            "-TokenWatch.didPresentInitialDirectoryAuthorizationGuide",
+            skipInitialDirectoryAuthorizationGuide ? "YES" : "NO",
         ]
         launch()
     }
