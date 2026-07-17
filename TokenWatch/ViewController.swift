@@ -204,11 +204,13 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
 /// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
     static let minimumContentHeight: CGFloat = 540
+    private static let directoryActionHorizontalPadding: CGFloat = 24
 
     private struct ProviderDirectoryRowViews {
         let nameLabel: NSTextField
         let statusLabel: NSTextField
         let actionButton: DashboardRangeButton
+        let actionButtonWidthConstraint: NSLayoutConstraint
     }
 
     private let titleLabel = NSTextField(labelWithString: "")
@@ -661,9 +663,12 @@ final class SettingsViewController: NSViewController {
                 .required,
                 for: .horizontal
             )
-            actionButton.widthAnchor.constraint(
-                greaterThanOrEqualToConstant: 92
-            ).isActive = true
+            // DashboardRangeButton 使用无边框自定义外观，没有可用的原生内容宽度；
+            // 通过标题宽度约束让操作按钮保持紧凑，同时为不同语言预留内边距。
+            let actionButtonWidthConstraint = actionButton.widthAnchor.constraint(
+                equalToConstant: 64
+            )
+            actionButtonWidthConstraint.isActive = true
 
             // 操作按钮始终紧跟在名称列后，避免“再次选择”等带状态文案的行被推到右侧。
             let row = NSStackView(views: [nameLabel, actionButton, statusLabel])
@@ -688,7 +693,8 @@ final class SettingsViewController: NSViewController {
             providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(
                 nameLabel: nameLabel,
                 statusLabel: statusLabel,
-                actionButton: actionButton
+                actionButton: actionButton,
+                actionButtonWidthConstraint: actionButtonWidthConstraint
             )
             providerDirectoryStack.addArrangedSubview(row)
         }
@@ -727,6 +733,15 @@ final class SettingsViewController: NSViewController {
                 .foregroundColor: textColor,
                 .paragraphStyle: paragraphStyle,
             ]
+        )
+    }
+
+    /// 计算目录操作按钮的内容宽度，保证不同语言文案完整显示且不拉伸整行。
+    private func directoryActionButtonWidth(for title: String) -> CGFloat {
+        let titleFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        return ceil(
+            (title as NSString).size(withAttributes: [.font: titleFont]).width
+                + Self.directoryActionHorizontalPadding
         )
     }
 
@@ -784,6 +799,9 @@ final class SettingsViewController: NSViewController {
                 textColor: DashboardPalette.primaryText
             )
         }
+        row.actionButtonWidthConstraint.constant = directoryActionButtonWidth(
+            for: model.actionTitle
+        )
         row.actionButton.setAccessibilityLabel(
             "\(model.providerName), \(model.actionTitle)"
         )
