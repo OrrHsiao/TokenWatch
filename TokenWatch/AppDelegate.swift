@@ -30,6 +30,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let languageSettings: AppLanguageSettings
     private let externalURLOpener: (URL) -> Bool
     private let initialDirectoryAuthorizationGuide: InitialDirectoryAuthorizationGuide
+    private var isInitialDirectoryAuthorizationGuidePending = false
+    private var isInitialDirectoryAuthorizationGuidePresentationScheduled = false
 
     override init() {
         self.languageSettings = .shared
@@ -64,8 +66,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             initialDirectoryAuthorizationGuide.shouldPresent()
         let viewModel = self.viewModel
 
+        // 引导与本地扫描互不依赖；应在应用启动事件结束后立即出现，避免大型本地数据延迟提示。
+        if shouldPresentInitialDirectoryAuthorizationGuide {
+            // 先结束应用启动事件，避免窗口置前请求被启动流程覆盖。
+            DispatchQueue.main.async { [weak self] in
+                self?.requestInitialDirectoryAuthorizationGuide()
+            }
+        }
+
         // 启动阶段不得触发目录面板；仅清理旧共享授权，再按 provider 独立状态加载。
-        Task { @MainActor [weak self, viewModel] in
+        Task { @MainActor [viewModel] in
             let coordinator = AppLaunchDataCoordinator(
                 clearLegacyAuthorization: {
                     LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
@@ -75,9 +85,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             )
             await coordinator.performStartupWork()
-
-            guard shouldPresentInitialDirectoryAuthorizationGuide else { return }
-            self?.presentInitialDirectoryAuthorizationGuide()
         }
     }
 
@@ -105,12 +112,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         presentMainWindow()?.showSettingsFromMainMenu(sender)
     }
 
-    /// 首次无目录授权时显示一次引导；确认后仅进入设置页，不请求任何文件夹权限。
-    private func presentInitialDirectoryAuthorizationGuide() {
-        guard let window = existingMainWindow(), window.isVisible else { return }
+    /// 请求首次无目录授权引导；确认后仅进入设置页，不请求任何文件夹权限。
+    private func requestInitialDirectoryAuthorizationGuide() {
+        guard !isInitialDirectoryAuthorizationGuidePending else { return }
+        isInitialDirectoryAuthorizationGuidePending = true
+        presentInitialDirectoryAuthorizationGuideWhenReady()
+    }
 
-        initialDirectoryAuthorizationGuide.markPresented()
+    /// 在启动事件结束后的下一轮主线程显示引导，避免依赖主窗口的可见或焦点时序。
+    private func presentInitialDirectoryAuthorizationGuideWhenReady() {
+        guard !isInitialDirectoryAuthorizationGuidePresentationScheduled else { return }
+        isInitialDirectoryAuthorizationGuidePresentationScheduled = true
 
+        // 让 applicationDidFinishLaunching 的当前事件完整结束，再开启应用级标准提示框。
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isInitialDirectoryAuthorizationGuidePresentationScheduled = false
+            guard self.isInitialDirectoryAuthorizationGuidePending else { return }
+
+            self.showInitialDirectoryAuthorizationGuide()
+            self.isInitialDirectoryAuthorizationGuidePending = false
+        }
+    }
+
+    /// 显示首次目录设置引导。
+    /// 使用应用级标准提示框，避免首次启动时主窗口尚未获取焦点而导致 sheet 不可见。
+    private func showInitialDirectoryAuthorizationGuide() {
         let language = languageSettings.resolvedLanguage
         let alert = NSAlert()
         alert.alertStyle = .informational
@@ -130,9 +157,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .initialDirectoryAuthorizationGuideLater,
             language: language
         ))
-        alert.beginSheetModal(for: window) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            self?.showSettings(nil)
+
+        // runModal 不依赖父窗口成为 key window，首次启动时也能稳定呈现。
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        initialDirectoryAuthorizationGuide.markPresented()
+        if response == .alertFirstButtonReturn {
+            showSettings(nil)
         }
     }
 

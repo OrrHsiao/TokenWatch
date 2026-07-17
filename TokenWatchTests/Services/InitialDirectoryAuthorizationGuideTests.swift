@@ -45,16 +45,41 @@ struct InitialDirectoryAuthorizationGuideTests {
             let guide = InitialDirectoryAuthorizationGuide(
                 defaults: defaults,
                 bookmarkKeys: [],
-                hasBookmark: { _ in false }
+                hasBookmark: { _ in false },
+                isDebugPresentationForced: { true }
             )
 
             #expect(!guide.shouldPresent())
         }
     }
 
+    @Test("调试强制参数可在保留授权状态时验证引导")
+    func debugForcePresentationOverridesExistingState() {
+        withTemporaryGuideDefaults { defaults in
+            defaults.set(true, forKey: InitialDirectoryAuthorizationGuide.storageKey)
+            let persistedGuide = makeGuide(
+                defaults: defaults,
+                authorizedKeys: ["CodexDataDirectoryBookmark"],
+                isDebugPresentationForced: { true }
+            )
+
+            #expect(persistedGuide.shouldPresent())
+
+            defaults.removeObject(forKey: InitialDirectoryAuthorizationGuide.storageKey)
+            let unpersistedGuide = makeGuide(
+                defaults: defaults,
+                authorizedKeys: ["CodexDataDirectoryBookmark"],
+                isDebugPresentationForced: { true }
+            )
+            unpersistedGuide.markPresented()
+            #expect(!defaults.bool(forKey: InitialDirectoryAuthorizationGuide.storageKey))
+        }
+    }
+
     private func makeGuide(
         defaults: UserDefaults,
-        authorizedKeys: Set<String>
+        authorizedKeys: Set<String>,
+        isDebugPresentationForced: @escaping () -> Bool = { false }
     ) -> InitialDirectoryAuthorizationGuide {
         InitialDirectoryAuthorizationGuide(
             defaults: defaults,
@@ -63,7 +88,8 @@ struct InitialDirectoryAuthorizationGuideTests {
                 "CodexDataDirectoryBookmark",
                 "OpenCodeDataDirectoryBookmark",
             ],
-            hasBookmark: { authorizedKeys.contains($0) }
+            hasBookmark: { authorizedKeys.contains($0) },
+            isDebugPresentationForced: isDebugPresentationForced
         )
     }
 }

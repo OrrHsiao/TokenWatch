@@ -87,7 +87,7 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
-    func testFreshUnauthorizedLaunchGuidesToSettings() throws {
+    func testForcedInitialAuthorizationGuideNavigatesToSettings() throws {
         let app = XCUIApplication()
         app.launchForUITesting(
             languagePreference: "en",
@@ -206,10 +206,15 @@ extension XCUIApplication {
             "-TokenWatch.languagePreference", languagePreference,
             "-TokenWatch.openMainWindowOnLaunch", "YES",
         ]
-        launchArguments += [
-            "-TokenWatch.didPresentInitialDirectoryAuthorizationGuide",
-            skipInitialDirectoryAuthorizationGuide ? "YES" : "NO",
-        ]
+        if skipInitialDirectoryAuthorizationGuide {
+            launchArguments += [
+                "-TokenWatch.didPresentInitialDirectoryAuthorizationGuide", "YES",
+            ]
+        } else {
+            launchArguments += [
+                "--force-initial-directory-authorization-guide",
+            ]
+        }
         launch()
     }
 }
