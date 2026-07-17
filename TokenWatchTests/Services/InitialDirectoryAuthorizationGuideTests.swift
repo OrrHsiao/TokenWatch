@@ -76,10 +76,38 @@ struct InitialDirectoryAuthorizationGuideTests {
         }
     }
 
+    @Test("自动化环境可跳过首次引导")
+    func automationCanSuppressInitialGuide() {
+        withTemporaryGuideDefaults { defaults in
+            let guide = makeGuide(
+                defaults: defaults,
+                authorizedKeys: [],
+                isPresentationSuppressedForAutomation: { true }
+            )
+
+            #expect(!guide.shouldPresent())
+        }
+    }
+
+    @Test("调试强制展示优先于自动化跳过")
+    func debugForcePresentationOverridesAutomationSuppression() {
+        withTemporaryGuideDefaults { defaults in
+            let guide = makeGuide(
+                defaults: defaults,
+                authorizedKeys: [],
+                isDebugPresentationForced: { true },
+                isPresentationSuppressedForAutomation: { true }
+            )
+
+            #expect(guide.shouldPresent())
+        }
+    }
+
     private func makeGuide(
         defaults: UserDefaults,
         authorizedKeys: Set<String>,
-        isDebugPresentationForced: @escaping () -> Bool = { false }
+        isDebugPresentationForced: @escaping () -> Bool = { false },
+        isPresentationSuppressedForAutomation: @escaping () -> Bool = { false }
     ) -> InitialDirectoryAuthorizationGuide {
         InitialDirectoryAuthorizationGuide(
             defaults: defaults,
@@ -89,7 +117,8 @@ struct InitialDirectoryAuthorizationGuideTests {
                 "OpenCodeDataDirectoryBookmark",
             ],
             hasBookmark: { authorizedKeys.contains($0) },
-            isDebugPresentationForced: isDebugPresentationForced
+            isDebugPresentationForced: isDebugPresentationForced,
+            isPresentationSuppressedForAutomation: isPresentationSuppressedForAutomation
         )
     }
 }

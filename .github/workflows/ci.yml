@@ -54,6 +54,8 @@ jobs:
         run: xcodebuild -version
 
       - name: Run Unit Tests
+        env:
+          TOKENWATCH_SKIP_INITIAL_DIRECTORY_AUTHORIZATION_GUIDE: "YES"
         run: |
           xcodebuild \
             -project "$XCODE_PROJECT" \
@@ -62,9 +64,7 @@ jobs:
             -only-testing:TokenWatchTests \
             -skip-testing:TokenWatchUITests \
             -derivedDataPath "$RUNNER_TEMP/TokenWatchDerivedData" \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="" \
-            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_ALLOWED=NO \
             test
 
   ui-tests:
