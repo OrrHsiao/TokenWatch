@@ -37,6 +37,10 @@ struct TokenWatchTests {
         defaults.set(Data([2]), forKey: "ClaudeDataDirectoryBookmark")
         defaults.set(Data([3]), forKey: "CodexDataDirectoryBookmark")
         defaults.set(Data([4]), forKey: "OpenCodeDataDirectoryBookmark")
+        defaults.set(
+            true,
+            forKey: InitialDirectoryAuthorizationGuide.storageKey
+        )
         defaults.set("minutes5", forKey: "TokenWatch.autoRefreshInterval")
         defaults.set("en", forKey: AppLanguageSettings.storageKey)
 
@@ -47,6 +51,7 @@ struct TokenWatchTests {
         #expect(defaults.data(forKey: "ClaudeDataDirectoryBookmark") == Data([2]))
         #expect(defaults.data(forKey: "CodexDataDirectoryBookmark") == Data([3]))
         #expect(defaults.data(forKey: "OpenCodeDataDirectoryBookmark") == Data([4]))
+        #expect(defaults.bool(forKey: InitialDirectoryAuthorizationGuide.storageKey))
         #expect(defaults.string(forKey: "TokenWatch.autoRefreshInterval") == "minutes5")
         #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
     }

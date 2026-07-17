@@ -29,10 +29,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let languageSettings: AppLanguageSettings
     private let externalURLOpener: (URL) -> Bool
+    private let initialDirectoryAuthorizationGuide: InitialDirectoryAuthorizationGuide
 
     override init() {
         self.languageSettings = .shared
         self.externalURLOpener = { NSWorkspace.shared.open($0) }
+        self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
     }
 
@@ -42,6 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     ) {
         self.languageSettings = languageSettings
         self.externalURLOpener = externalURLOpener
+        self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
     }
 
@@ -56,8 +59,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             _ = presentMainWindow()
         }
 
+        // 在启动加载前快照首次安装条件，避免失效 bookmark 清理后被误判为新安装。
+        let shouldPresentInitialDirectoryAuthorizationGuide =
+            initialDirectoryAuthorizationGuide.shouldPresent()
+        let viewModel = self.viewModel
+
         // 启动阶段不得触发目录面板；仅清理旧共享授权，再按 provider 独立状态加载。
-        Task { @MainActor in
+        Task { @MainActor [weak self, viewModel] in
             let coordinator = AppLaunchDataCoordinator(
                 clearLegacyAuthorization: {
                     LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
@@ -67,6 +75,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             )
             await coordinator.performStartupWork()
+
+            guard shouldPresentInitialDirectoryAuthorizationGuide else { return }
+            self?.presentInitialDirectoryAuthorizationGuide()
         }
     }
 
@@ -92,6 +103,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 打开主窗口并切换到设置页。
     @objc func showSettings(_ sender: Any?) {
         presentMainWindow()?.showSettingsFromMainMenu(sender)
+    }
+
+    /// 首次无目录授权时显示一次引导；确认后仅进入设置页，不请求任何文件夹权限。
+    private func presentInitialDirectoryAuthorizationGuide() {
+        guard let window = existingMainWindow(), window.isVisible else { return }
+
+        initialDirectoryAuthorizationGuide.markPresented()
+
+        let language = languageSettings.resolvedLanguage
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = AppStrings.text(
+            .initialDirectoryAuthorizationGuideTitle,
+            language: language
+        )
+        alert.informativeText = AppStrings.text(
+            .initialDirectoryAuthorizationGuideMessage,
+            language: language
+        )
+        alert.addButton(withTitle: AppStrings.text(
+            .initialDirectoryAuthorizationGuideOpenSettings,
+            language: language
+        ))
+        alert.addButton(withTitle: AppStrings.text(
+            .initialDirectoryAuthorizationGuideLater,
+            language: language
+        ))
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.showSettings(nil)
+        }
     }
 
     /// 立即重新加载所有 provider 的统计数据。

@@ -155,6 +155,32 @@ struct AppLanguageSettingsTests {
         }
     }
 
+    @Test("首次目录授权引导文案覆盖全部支持语言")
+    func initialDirectoryAuthorizationGuideStringsCoverEverySupportedLanguage() {
+        let expected: [AppLanguage: (title: String, message: String, openSettings: String, later: String)] = [
+            .zhHans: ("设置数据文件夹", "请在设置中选择数据文件夹以查看用量。应用不会自动访问任何文件夹或请求权限。", "前往设置", "稍后"),
+            .zhHant: ("設定資料檔案夾", "請在設定中選擇資料檔案夾以查看用量。應用程式不會自動存取任何資料夾或請求權限。", "前往設定", "稍後"),
+            .en: ("Set Up Data Folders", "Choose data folders in Settings to view usage. The app will not access any folder or request permission automatically.", "Go to Settings", "Later"),
+            .ja: ("データフォルダを設定", "使用量を表示するには、設定でデータフォルダを選択してください。アプリがフォルダに自動でアクセスしたり、権限を求めたりすることはありません。", "設定を開く", "あとで"),
+            .ko: ("데이터 폴더 설정", "사용량을 보려면 설정에서 데이터 폴더를 선택하세요. 앱은 폴더에 자동으로 접근하거나 권한을 요청하지 않습니다.", "설정으로 이동", "나중에"),
+            .es: ("Configura las carpetas de datos", "Para ver el uso, elige carpetas de datos en Configuración. La app no accederá a ninguna carpeta ni solicitará permisos automáticamente.", "Ir a Configuración", "Más tarde"),
+            .de: ("Datenordner einrichten", "Um die Nutzung anzuzeigen, wähle Datenordner in den Einstellungen aus. Die App greift nicht automatisch auf Ordner zu und fordert keine Berechtigung an.", "Zu den Einstellungen", "Später"),
+            .fr: ("Configurer les dossiers de données", "Pour afficher l’utilisation, choisissez des dossiers de données dans Paramètres. L’app n’accédera à aucun dossier et ne demandera pas d’autorisation automatiquement.", "Ouvrir les paramètres", "Plus tard"),
+            .ptBR: ("Configurar pastas de dados", "Para ver o uso, escolha pastas de dados em Configurações. O app não acessará nenhuma pasta nem solicitará permissão automaticamente.", "Ir para Configurações", "Mais tarde"),
+            .it: ("Configura le cartelle dati", "Per visualizzare l’utilizzo, scegli le cartelle dati in Impostazioni. L’app non accederà automaticamente a nessuna cartella né chiederà autorizzazioni.", "Vai a Impostazioni", "Più tardi"),
+            .nl: ("Gegevensmappen instellen", "Kies gegevensmappen in Instellingen om het gebruik te bekijken. De app opent geen map en vraagt niet automatisch om toestemming.", "Ga naar Instellingen", "Later"),
+            .pl: ("Skonfiguruj foldery danych", "Aby wyświetlić użycie, wybierz foldery danych w Ustawieniach. Aplikacja nie uzyska automatycznie dostępu do żadnego folderu ani nie poprosi o uprawnienia.", "Przejdź do Ustawień", "Później"),
+        ]
+
+        #expect(expected.count == AppLanguage.allCases.count)
+        for (language, value) in expected {
+            #expect(AppStrings.text(.initialDirectoryAuthorizationGuideTitle, language: language) == value.title)
+            #expect(AppStrings.text(.initialDirectoryAuthorizationGuideMessage, language: language) == value.message)
+            #expect(AppStrings.text(.initialDirectoryAuthorizationGuideOpenSettings, language: language) == value.openSettings)
+            #expect(AppStrings.text(.initialDirectoryAuthorizationGuideLater, language: language) == value.later)
+        }
+    }
+
     @Test func loginItemStatusStringsCoverEverySupportedLanguage() {
         let expected: [AppLanguage: (approval: String, unavailable: String, open: String)] = [
             .zhHans: ("需要在系统设置中批准开机自启动。", "当前无法使用开机自启动。", "打开登录项设置"),
