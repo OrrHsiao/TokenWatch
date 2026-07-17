@@ -1728,13 +1728,30 @@ struct TokenWatchTests {
             controller.view.button(identifier: "ProviderDirectoryAction.opencode")
         )
 
-        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.claude") as? NSTextField)?.stringValue == "未授权")
-        #expect(claudeAction.title == "授权")
+        let claudeStatus = try #require(
+            controller.view.firstDescendant(
+                identifier: "ProviderDirectoryStatus.claude"
+            ) as? NSTextField
+        )
+        #expect(claudeStatus.isHidden)
+        #expect(claudeAction.title == "去授权")
         #expect(!claudeAction.isHidden)
-        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.codex") as? NSTextField)?.stringValue == "已授权")
+        let codexStatus = try #require(
+            controller.view.firstDescendant(
+                identifier: "ProviderDirectoryStatus.codex"
+            ) as? NSTextField
+        )
+        #expect(codexStatus.stringValue == "已授权")
+        #expect(!codexStatus.isHidden)
         #expect(codexAction.isHidden)
         #expect(!codexAction.isEnabled)
-        #expect((controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.opencode") as? NSTextField)?.stringValue == "需要重新选择")
+        let opencodeStatus = try #require(
+            controller.view.firstDescendant(
+                identifier: "ProviderDirectoryStatus.opencode"
+            ) as? NSTextField
+        )
+        #expect(opencodeStatus.stringValue == "需要重新选择")
+        #expect(!opencodeStatus.isHidden)
         #expect(opencodeAction.title == "再次选择")
         #expect(!opencodeAction.isHidden)
 
@@ -1752,6 +1769,7 @@ struct TokenWatchTests {
             language: .zhHans
         )
         #expect(errorModel.statusText == "无法读取所选目录")
+        #expect(errorModel.showsStatus)
         #expect(errorModel.actionTitle == "再次选择")
         #expect(errorModel.showsAction)
     }
@@ -2059,15 +2077,64 @@ struct TokenWatchTests {
         let dataFoldersTitle = try #require(
             controller.view.firstDescendant(identifier: "DataFoldersTitleLabel")
         )
+        let dataRefreshTitle = try #require(
+            controller.view.firstDescendant(identifier: "DataRefreshTitleLabel")
+        )
+        let appPreferencesTitle = try #require(
+            controller.view.firstDescendant(identifier: "AppPreferencesTitleLabel")
+        )
+        let autoRefresh = try #require(
+            controller.view.popUpButton(
+                identifier: "AutoRefreshIntervalPopUpButton"
+            )
+        )
+        let refresh = try #require(
+            controller.view.button(identifier: "RefreshAllDataButton")
+        )
+        let language = try #require(
+            controller.view.popUpButton(
+                identifier: "LanguagePreferencePopUpButton"
+            )
+        )
+        let launchAtLogin = try #require(
+            controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+        )
         let panelFrame = panel.convert(panel.bounds, to: controller.view)
         let titleFrame = dataFoldersTitle.convert(
             dataFoldersTitle.bounds,
             to: controller.view
         )
+        let dataRefreshTitleFrame = dataRefreshTitle.convert(
+            dataRefreshTitle.bounds,
+            to: controller.view
+        )
+        let appPreferencesTitleFrame = appPreferencesTitle.convert(
+            appPreferencesTitle.bounds,
+            to: controller.view
+        )
+        let autoRefreshFrame = autoRefresh.convert(
+            autoRefresh.bounds,
+            to: controller.view
+        )
+        let refreshFrame = refresh.convert(refresh.bounds, to: controller.view)
+        let languageFrame = language.convert(language.bounds, to: controller.view)
+        let launchAtLoginFrame = launchAtLogin.convert(
+            launchAtLogin.bounds,
+            to: controller.view
+        )
+        // 下拉框、普通按钮和开关使用不同的 AppKit 对齐边距。
+        let nativeControlFrameTolerance: CGFloat = 6
 
         #expect(abs(panelFrame.minX - 28) <= 1)
         #expect(abs(panelFrame.maxX - controller.view.bounds.maxX + 28) <= 1)
         #expect(abs(panelFrame.width - controller.view.bounds.width + 56) <= 1)
+        #expect(titleFrame.minY > dataRefreshTitleFrame.minY)
+        #expect(dataRefreshTitleFrame.minY > appPreferencesTitleFrame.minY)
+        #expect(autoRefreshFrame.minY > refreshFrame.maxY)
+        #expect(languageFrame.minY > launchAtLoginFrame.maxY)
+        #expect(abs(autoRefreshFrame.minX - refreshFrame.minX) <= nativeControlFrameTolerance)
+        #expect(abs(autoRefreshFrame.minX - languageFrame.minX) <= 1)
+        #expect(abs(autoRefreshFrame.minX - launchAtLoginFrame.minX) <= nativeControlFrameTolerance)
 
         for id in ProviderID.allCases {
             let name = try #require(
@@ -2094,12 +2161,39 @@ struct TokenWatchTests {
             languageSettings: zhHansLanguageSettings()
         )
         viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
 
         viewController.showSettingsFromMainMenu(nil)
+        viewController.view.layoutSubtreeIfNeeded()
 
         let mainContent = try #require(
             viewController.view.firstDescendant(identifier: "DashboardMainContent")
         )
+        let panel = try #require(
+            mainContent.firstDescendant(identifier: "SettingsPanel")
+        )
+        let claudeAction = try #require(
+            mainContent.button(identifier: "ProviderDirectoryAction.claude")
+        )
+        let mainContentFrame = mainContent.convert(
+            mainContent.bounds,
+            to: viewController.view
+        )
+        let panelFrame = panel.convert(panel.bounds, to: viewController.view)
+        let claudeActionFrame = claudeAction.convert(
+            claudeAction.bounds,
+            to: viewController.view
+        )
+
+        #expect(!panel.isHidden)
+        #expect(panelFrame.width > 0)
+        #expect(panelFrame.height > 0)
+        #expect(abs(panelFrame.minX - mainContentFrame.minX - 28) <= 1)
+        #expect(abs(panelFrame.maxX - mainContentFrame.maxX + 28) <= 1)
+        #expect(claudeActionFrame.width > 0)
+        #expect(claudeActionFrame.height > 0)
+        #expect(panelFrame.contains(claudeActionFrame))
+
         for id in ProviderID.allCases {
             #expect(
                 mainContent.firstDescendant(
@@ -2135,6 +2229,7 @@ struct TokenWatchTests {
                 )
             )
             #expect(status.stringValue == "已授权")
+            #expect(!status.isHidden)
             #expect(action.isHidden)
             #expect(!action.isEnabled)
         }
@@ -2313,9 +2408,9 @@ struct TokenWatchTests {
             #expect(autoRefresh.accessibilityLabel() == "自动刷新间隔")
             #expect(launchAtLogin.accessibilityLabel() == "开机自启动")
             #expect(language.accessibilityLabel() == "语言")
-            #expect(claude.accessibilityLabel() == "Claude Code, 授权")
-            #expect(codex.accessibilityLabel() == "Codex, 授权")
-            #expect(opencode.accessibilityLabel() == "opencode, 授权")
+            #expect(claude.accessibilityLabel() == "Claude Code, 去授权")
+            #expect(codex.accessibilityLabel() == "Codex, 去授权")
+            #expect(opencode.accessibilityLabel() == "opencode, 去授权")
             #expect(refresh.accessibilityLabel() == "刷新全部数据")
             #expect(openSettings.accessibilityLabel() == "打开登录项设置")
 

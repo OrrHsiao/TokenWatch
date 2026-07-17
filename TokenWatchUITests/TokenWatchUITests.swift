@@ -110,10 +110,9 @@ final class TokenWatchUITests: XCTestCase {
 
         for id in ["claude", "codex", "opencode"] {
             XCTAssertTrue(
-                app.staticTexts["ProviderDirectoryStatus.\(id)"]
+                app.buttons["ProviderDirectoryAction.\(id)"]
                     .waitForExistence(timeout: 5)
             )
-            XCTAssertTrue(app.buttons["ProviderDirectoryAction.\(id)"].exists)
         }
     }
 
@@ -166,9 +165,11 @@ final class TokenWatchUITests: XCTestCase {
             ("codex", "Codex"),
             ("opencode", "opencode"),
         ] {
+            let action = app.buttons["ProviderDirectoryAction.\(id)"]
+            XCTAssertTrue(action.exists)
             XCTAssertEqual(
-                app.staticTexts["ProviderDirectoryStatus.\(id)"].label,
-                "\(providerName), Unauthorized"
+                action.label,
+                "\(providerName), Authorize"
             )
         }
     }
