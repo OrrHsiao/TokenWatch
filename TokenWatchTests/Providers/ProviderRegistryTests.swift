@@ -29,19 +29,21 @@ struct ProviderRegistryTests {
         }) == expected)
     }
 
-    @Test("provider 面板文案互相独立且没有 Home 语义")
-    func openPanelMessagesAreProviderSpecificAndAvoidHomeSemantics() {
+    @Test("provider 面板文案互相独立且不含预设目录")
+    func openPanelMessagesAreProviderSpecificAndAvoidPresetDirectorySemantics() {
         let messages = ProviderRegistry.allProviders.map {
             AppStrings.text($0.openPanelMessageKey, language: .en)
         }
 
         #expect(Set(messages) == [
-            "Choose the Claude Code data folder. It is usually named \".claude\".",
-            "Choose the Codex data folder. It is usually named \".codex\".",
-            "Choose the opencode data folder. It is usually named \"opencode\" and contains \"opencode.db\".",
+            "Choose the Claude Code data folder. It must directly contain the \"projects\" folder. To check a configured location, run \"printenv CLAUDE_CONFIG_DIR\" in Terminal. If it prints nothing, look for a folder named \".claude\".",
+            "Choose the Codex data folder. It must directly contain either the \"sessions\" or \"archived_sessions\" folder. To check a configured location, run \"printenv CODEX_HOME\" in Terminal. If it prints nothing, look for a folder named \".codex\".",
+            "Choose the opencode data folder. It must directly contain \"opencode.db\". If you cannot find it, run \"opencode db path\" in Terminal, then choose the folder that contains the displayed file.",
         ])
         #expect(messages.allSatisfy {
-            !$0.localizedCaseInsensitiveContains("home")
+            !$0.localizedCaseInsensitiveContains("home folder")
+                && !$0.contains("~/")
+                && !$0.contains("/Users/")
         })
     }
 
