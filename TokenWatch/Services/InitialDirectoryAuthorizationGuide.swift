@@ -6,33 +6,57 @@ import Foundation
 @MainActor
 struct InitialDirectoryAuthorizationGuide {
     static let storageKey = "TokenWatch.didPresentInitialDirectoryAuthorizationGuide"
+    static let debugForcePresentationArgument =
+        "--force-initial-directory-authorization-guide"
 
     private let defaults: UserDefaults
     private let bookmarkKeys: [String]
     private let hasBookmark: (String) -> Bool
+    private let isDebugPresentationForced: () -> Bool
 
     init(
         defaults: UserDefaults = .standard,
         bookmarkKeys: [String] = ProviderRegistry.allProviders.map(\.bookmarkKey),
         hasBookmark: @escaping (String) -> Bool = { key in
             SecurityScopedBookmarkManager.shared.hasBookmark(forKey: key)
+        },
+        isDebugPresentationForced: @escaping () -> Bool = {
+#if DEBUG
+            CommandLine.arguments.contains(
+                InitialDirectoryAuthorizationGuide.debugForcePresentationArgument
+            )
+#else
+            false
+#endif
         }
     ) {
         self.defaults = defaults
         self.bookmarkKeys = bookmarkKeys
         self.hasBookmark = hasBookmark
+        self.isDebugPresentationForced = isDebugPresentationForced
     }
 
     /// 仅当从未展示过引导且所有 provider 都没有保存 bookmark 时返回 `true`。
+    /// Debug 强制测试开启时，只要存在 provider 即返回 `true`。
     func shouldPresent() -> Bool {
-        guard !defaults.bool(forKey: Self.storageKey), !bookmarkKeys.isEmpty else {
+        guard !bookmarkKeys.isEmpty else { return false }
+
+        // 仅供本地调试和 UI 测试验证提示流程，不会修改真实 bookmark 或发布版行为。
+        if isDebugPresentationForced() {
+            return true
+        }
+
+        guard !defaults.bool(forKey: Self.storageKey) else {
             return false
         }
         return bookmarkKeys.allSatisfy { !hasBookmark($0) }
     }
 
-    /// 在展示 sheet 前记录状态，确保用户选择“稍后”后也不会重复打扰。
+    /// 在用户响应提示后记录状态，确保用户选择“稍后”后也不会重复打扰。
+    /// Debug 强制测试不记录该状态，以便每次启动均可重复验证。
     func markPresented() {
+        // 强制测试不污染用户已有的一次性展示记录，因此每次 Debug Run 均可重现。
+        guard !isDebugPresentationForced() else { return }
         defaults.set(true, forKey: Self.storageKey)
     }
 }
