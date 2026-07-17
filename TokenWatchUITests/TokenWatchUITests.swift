@@ -99,7 +99,10 @@ final class TokenWatchUITests: XCTestCase {
             app.staticTexts["Set Up Data Folders"].waitForExistence(timeout: 5)
         )
 
-        let openSettingsButton = app.buttons["Go to Settings"]
+        let authorizationGuide = app.dialogs.element(boundBy: 0)
+        XCTAssertTrue(authorizationGuide.waitForExistence(timeout: 5))
+
+        let openSettingsButton = authorizationGuide.buttons["Go to Settings"]
         XCTAssertTrue(openSettingsButton.waitForExistence(timeout: 5))
         openSettingsButton.click()
 
@@ -152,19 +155,12 @@ final class TokenWatchUITests: XCTestCase {
         )
         claudeButton.click()
 
-        let panelMessageText = "Choose the Claude Code data folder"
-        let panelMessage = app.staticTexts.matching(
-            NSPredicate(
-                format: "label == %@ OR value == %@",
-                panelMessageText,
-                panelMessageText
-            )
-        ).firstMatch
-        XCTAssertTrue(panelMessage.waitForExistence(timeout: 5))
+        let panelWindow = app.windows.element(boundBy: 1)
+        XCTAssertTrue(panelWindow.waitForExistence(timeout: 5))
         XCTAssertEqual(app.windows.count, 2)
 
         app.typeKey(.escape, modifierFlags: [])
-        XCTAssertTrue(panelMessage.waitForNonExistence(timeout: 2))
+        XCTAssertTrue(panelWindow.waitForNonExistence(timeout: 2))
 
         let buttonReadyAfterCancellation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == true AND enabled == true"),
