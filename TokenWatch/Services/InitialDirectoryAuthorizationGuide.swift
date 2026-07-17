@@ -8,11 +8,14 @@ struct InitialDirectoryAuthorizationGuide {
     static let storageKey = "TokenWatch.didPresentInitialDirectoryAuthorizationGuide"
     static let debugForcePresentationArgument =
         "--force-initial-directory-authorization-guide"
+    static let automatedTestingSkipPresentationEnvironmentKey =
+        "TOKENWATCH_SKIP_INITIAL_DIRECTORY_AUTHORIZATION_GUIDE"
 
     private let defaults: UserDefaults
     private let bookmarkKeys: [String]
     private let hasBookmark: (String) -> Bool
     private let isDebugPresentationForced: () -> Bool
+    private let isPresentationSuppressedForAutomation: () -> Bool
 
     init(
         defaults: UserDefaults = .standard,
@@ -28,12 +31,22 @@ struct InitialDirectoryAuthorizationGuide {
 #else
             false
 #endif
+        },
+        isPresentationSuppressedForAutomation: @escaping () -> Bool = {
+#if DEBUG
+            ProcessInfo.processInfo.environment[
+                InitialDirectoryAuthorizationGuide.automatedTestingSkipPresentationEnvironmentKey
+            ] == "YES"
+#else
+            false
+#endif
         }
     ) {
         self.defaults = defaults
         self.bookmarkKeys = bookmarkKeys
         self.hasBookmark = hasBookmark
         self.isDebugPresentationForced = isDebugPresentationForced
+        self.isPresentationSuppressedForAutomation = isPresentationSuppressedForAutomation
     }
 
     /// 仅当从未展示过引导且所有 provider 都没有保存 bookmark 时返回 `true`。
@@ -44,6 +57,12 @@ struct InitialDirectoryAuthorizationGuide {
         // 仅供本地调试和 UI 测试验证提示流程，不会修改真实 bookmark 或发布版行为。
         if isDebugPresentationForced() {
             return true
+        }
+
+        // App-hosted 单元测试不能等待用户交互的模态提示。
+        // 此显式环境变量仅由 CI 单元测试任务设置。
+        guard !isPresentationSuppressedForAutomation() else {
+            return false
         }
 
         guard !defaults.bool(forKey: Self.storageKey) else {
