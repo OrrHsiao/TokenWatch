@@ -64,27 +64,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 在启动加载前快照首次安装条件，避免失效 bookmark 清理后被误判为新安装。
         let shouldPresentInitialDirectoryAuthorizationGuide =
             initialDirectoryAuthorizationGuide.shouldPresent()
-        let viewModel = self.viewModel
 
-        // 引导与本地扫描互不依赖；应在应用启动事件结束后立即出现，避免大型本地数据延迟提示。
+        // 首次未授权时，必须优先让用户选择目录；若与本地扫描并行，扫描门禁会使
+        // 设置页的目录操作暂时不可用，造成“去授权”按钮无法点击的错觉。
         if shouldPresentInitialDirectoryAuthorizationGuide {
+            // 即使本次不扫描，也要移除不再使用的旧 Home 授权状态。
+            LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
+
             // 先结束应用启动事件，避免窗口置前请求被启动流程覆盖。
             DispatchQueue.main.async { [weak self] in
                 self?.requestInitialDirectoryAuthorizationGuide()
             }
-        }
+        } else {
+            let viewModel = self.viewModel
 
-        // 启动阶段不得触发目录面板；仅清理旧共享授权，再按 provider 独立状态加载。
-        Task { @MainActor [viewModel] in
-            let coordinator = AppLaunchDataCoordinator(
-                clearLegacyAuthorization: {
-                    LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
-                },
-                loadAllStats: { [viewModel] in
-                    await viewModel.loadAllStats()
-                }
-            )
-            await coordinator.performStartupWork()
+            // 常规启动不触发目录面板；仅清理旧共享授权，再按 provider 独立状态加载。
+            Task { @MainActor [viewModel] in
+                let coordinator = AppLaunchDataCoordinator(
+                    clearLegacyAuthorization: {
+                        LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
+                    },
+                    loadAllStats: { [viewModel] in
+                        await viewModel.loadAllStats()
+                    }
+                )
+                await coordinator.performStartupWork()
+            }
         }
     }
 

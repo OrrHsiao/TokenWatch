@@ -103,8 +103,14 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(openSettingsButton.waitForExistence(timeout: 5))
         openSettingsButton.click()
 
-        XCTAssertTrue(
-            app.buttons["ProviderDirectoryAction.claude"].waitForExistence(timeout: 5)
+        let claudeDirectoryButton = app.buttons["ProviderDirectoryAction.claude"]
+        let claudeButtonReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true"),
+            object: claudeDirectoryButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [claudeButtonReady], timeout: 5),
+            .completed
         )
         XCTAssertTrue(app.staticTexts["Settings"].exists)
     }
