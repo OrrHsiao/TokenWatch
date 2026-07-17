@@ -146,6 +146,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
     let providerID: ProviderID
     let providerName: String
     let statusText: String
+    let showsStatus: Bool
     let actionTitle: String
     let actionStyle: ProviderDirectoryActionStyle
     let showsAction: Bool
@@ -160,22 +161,27 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
         let statusKey: AppStringKey
         let actionKey: AppStringKey
         let actionStyle: ProviderDirectoryActionStyle
+        let showsStatus: Bool
         let showsAction: Bool
         switch state.directoryState {
         case .notSelected:
             statusKey = .dashboardUnauthorized
             actionKey = .settingsChooseDirectory
             actionStyle = .primary
+            // 常规未授权时，按钮本身就是唯一的下一步；保留失败信息的可见性。
+            showsStatus = state.directoryAuthorizationErrorMessage != nil
             showsAction = true
         case .selected, .selectedNoData:
             statusKey = .settingsAuthorized
             actionKey = .settingsAuthorized
             actionStyle = .neutral
+            showsStatus = true
             showsAction = false
         case .needsReselection:
             statusKey = .settingsDirectoryNeedsReselection
             actionKey = .settingsChooseAgain
             actionStyle = .primary
+            showsStatus = true
             showsAction = true
         }
 
@@ -186,6 +192,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
             providerID: provider.id,
             providerName: provider.displayName,
             statusText: statusText,
+            showsStatus: showsStatus,
             actionTitle: AppStrings.text(actionKey, language: language),
             actionStyle: actionStyle,
             showsAction: showsAction,
@@ -207,6 +214,8 @@ final class SettingsViewController: NSViewController {
     private let titleLabel = NSTextField(labelWithString: "")
     private let descriptionLabel = NSTextField(labelWithString: "")
     private let dataFoldersTitleLabel = NSTextField(labelWithString: "")
+    private let dataRefreshTitleLabel = NSTextField(labelWithString: "")
+    private let appPreferencesTitleLabel = NSTextField(labelWithString: "")
     private let providerDirectoryStack = NSStackView()
     private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let autoRefreshIntervalLabel = NSTextField(labelWithString: "")
@@ -215,6 +224,7 @@ final class SettingsViewController: NSViewController {
     private let launchAtLoginSwitch = NSSwitch(frame: .zero)
     private let launchAtLoginStatusLabel = NSTextField(labelWithString: "")
     private let openLoginItemsSettingsButton = DashboardRangeButton(title: "", target: nil, action: nil)
+    private let openLoginItemsSettingsRow = NSStackView()
     private let languageLabel = NSTextField(labelWithString: "")
     private let languagePopUpButton = SettingsPopUpButton()
 
@@ -343,12 +353,18 @@ final class SettingsViewController: NSViewController {
         descriptionLabel.lineBreakMode = .byWordWrapping
         descriptionLabel.maximumNumberOfLines = 0
 
-        dataFoldersTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
-        dataFoldersTitleLabel.textColor = DashboardPalette.primaryText
-        dataFoldersTitleLabel.identifier = NSUserInterfaceItemIdentifier(
-            "DataFoldersTitleLabel"
+        configureSectionTitle(
+            dataFoldersTitleLabel,
+            identifier: "DataFoldersTitleLabel"
         )
-        dataFoldersTitleLabel.setAccessibilityIdentifier("DataFoldersTitleLabel")
+        configureSectionTitle(
+            dataRefreshTitleLabel,
+            identifier: "DataRefreshTitleLabel"
+        )
+        configureSectionTitle(
+            appPreferencesTitleLabel,
+            identifier: "AppPreferencesTitleLabel"
+        )
 
         configureProviderDirectoryRows()
 
@@ -403,39 +419,85 @@ final class SettingsViewController: NSViewController {
         launchAtLoginControlRow.alignment = .centerY
         launchAtLoginControlRow.spacing = 8
 
+        let refreshButtonSpacer = NSView()
+        let loginSettingsButtonSpacer = NSView()
+        let controlColumnConstraints = [
+            autoRefreshIntervalLabel.widthAnchor.constraint(
+                greaterThanOrEqualToConstant: 104
+            ),
+            languageLabel.widthAnchor.constraint(
+                equalTo: autoRefreshIntervalLabel.widthAnchor
+            ),
+            launchAtLoginLabel.widthAnchor.constraint(
+                equalTo: autoRefreshIntervalLabel.widthAnchor
+            ),
+            refreshButtonSpacer.widthAnchor.constraint(
+                equalTo: autoRefreshIntervalLabel.widthAnchor
+            ),
+            loginSettingsButtonSpacer.widthAnchor.constraint(
+                equalTo: autoRefreshIntervalLabel.widthAnchor
+            ),
+        ]
+
+        let refreshButtonRow = NSStackView(views: [
+            refreshButtonSpacer,
+            refreshButton,
+        ])
+        refreshButtonRow.orientation = .horizontal
+        refreshButtonRow.alignment = .centerY
+        refreshButtonRow.spacing = 8
+
+        openLoginItemsSettingsRow.addArrangedSubview(loginSettingsButtonSpacer)
+        openLoginItemsSettingsRow.addArrangedSubview(openLoginItemsSettingsButton)
+        openLoginItemsSettingsRow.orientation = .horizontal
+        openLoginItemsSettingsRow.alignment = .centerY
+        openLoginItemsSettingsRow.spacing = 8
+
         let launchAtLoginSettingsStack = NSStackView(views: [
             launchAtLoginControlRow,
             launchAtLoginStatusLabel,
-            openLoginItemsSettingsButton,
+            openLoginItemsSettingsRow,
         ])
         launchAtLoginSettingsStack.orientation = .vertical
         launchAtLoginSettingsStack.alignment = .leading
-        launchAtLoginSettingsStack.spacing = 8
+        launchAtLoginSettingsStack.spacing = 6
 
         let languageStack = NSStackView(views: [languageLabel, languagePopUpButton])
         languageStack.orientation = .horizontal
         languageStack.alignment = .centerY
         languageStack.spacing = 8
 
-        let buttonStack = NSStackView(views: [refreshButton])
-        buttonStack.orientation = .vertical
-        buttonStack.alignment = .leading
-        buttonStack.spacing = 8
+        let dataFoldersSection = makeSettingsSection(
+            identifier: "SettingsDataFoldersSection",
+            title: dataFoldersTitleLabel,
+            content: [providerDirectoryStack]
+        )
+        let dataRefreshSection = makeSettingsSection(
+            identifier: "SettingsDataRefreshSection",
+            title: dataRefreshTitleLabel,
+            content: [autoRefreshIntervalStack, refreshButtonRow]
+        )
+        let appPreferencesSection = makeSettingsSection(
+            identifier: "SettingsAppPreferencesSection",
+            title: appPreferencesTitleLabel,
+            content: [languageStack, launchAtLoginSettingsStack]
+        )
 
         let contentStack = NSStackView(views: [
             titleLabel,
             descriptionLabel,
-            dataFoldersTitleLabel,
-            providerDirectoryStack,
-            autoRefreshIntervalStack,
-            launchAtLoginSettingsStack,
-            languageStack,
-            buttonStack,
+            dataFoldersSection,
+            dataRefreshSection,
+            appPreferencesSection,
         ])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
-        contentStack.spacing = 12
+        contentStack.spacing = 0
+        contentStack.setCustomSpacing(4, after: titleLabel)
+        contentStack.setCustomSpacing(14, after: descriptionLabel)
+        contentStack.setCustomSpacing(14, after: dataFoldersSection)
+        contentStack.setCustomSpacing(14, after: dataRefreshSection)
 
         let panel = DashboardRoundedView(
             backgroundColor: DashboardPalette.panelBackground,
@@ -448,6 +510,9 @@ final class SettingsViewController: NSViewController {
         panel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(contentStack)
         view.addSubview(panel)
+        // 等所有控件位于同一视图层级后再启用跨行的列对齐约束。
+        // 否则 AppKit 无法找到共同祖先，设置页首次加载会失败。
+        NSLayoutConstraint.activate(controlColumnConstraints)
         NSLayoutConstraint.activate([
             panel.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
@@ -487,9 +552,45 @@ final class SettingsViewController: NSViewController {
             providerDirectoryStack.widthAnchor.constraint(
                 equalTo: contentStack.widthAnchor
             ),
+            dataFoldersSection.widthAnchor.constraint(
+                equalTo: contentStack.widthAnchor
+            ),
+            dataRefreshSection.widthAnchor.constraint(
+                equalTo: contentStack.widthAnchor
+            ),
+            appPreferencesSection.widthAnchor.constraint(
+                equalTo: contentStack.widthAnchor
+            ),
+            launchAtLoginSettingsStack.widthAnchor.constraint(
+                equalTo: appPreferencesSection.widthAnchor
+            ),
         ])
 
         reloadLocalizedText()
+    }
+
+    private func configureSectionTitle(
+        _ label: NSTextField,
+        identifier: String
+    ) {
+        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.textColor = DashboardPalette.primaryText
+        label.identifier = NSUserInterfaceItemIdentifier(identifier)
+        label.setAccessibilityIdentifier(identifier)
+    }
+
+    private func makeSettingsSection(
+        identifier: String,
+        title: NSTextField,
+        content: [NSView]
+    ) -> NSStackView {
+        let section = NSStackView(views: [title] + content)
+        section.orientation = .vertical
+        section.alignment = .leading
+        section.spacing = 8
+        section.identifier = NSUserInterfaceItemIdentifier(identifier)
+        section.setAccessibilityIdentifier(identifier)
+        return section
     }
 
     /// 依照注入 providers 的稳定顺序建立目录设置行。
@@ -645,6 +746,10 @@ final class SettingsViewController: NSViewController {
 
         row.nameLabel.stringValue = model.providerName
         row.statusLabel.stringValue = model.statusText
+        row.statusLabel.isHidden = !model.showsStatus
+        row.statusLabel.textColor = model.showsAction
+            ? DashboardPalette.secondaryText
+            : DashboardPalette.green
         row.statusLabel.setAccessibilityLabel(
             "\(model.providerName), \(model.statusText)"
         )
@@ -712,6 +817,7 @@ final class SettingsViewController: NSViewController {
             launchAtLoginStatusLabel.isHidden = true
         }
         openLoginItemsSettingsButton.isHidden = !showsOpenSettings
+        openLoginItemsSettingsRow.isHidden = !showsOpenSettings
     }
 
     @objc private func autoRefreshIntervalChanged() {
@@ -792,6 +898,14 @@ final class SettingsViewController: NSViewController {
         )
         dataFoldersTitleLabel.stringValue = AppStrings.text(
             .settingsDataFoldersTitle,
+            language: language
+        )
+        dataRefreshTitleLabel.stringValue = AppStrings.text(
+            .settingsDataRefreshTitle,
+            language: language
+        )
+        appPreferencesTitleLabel.stringValue = AppStrings.text(
+            .settingsAppPreferencesTitle,
             language: language
         )
         applySettingsButtonStyle(
