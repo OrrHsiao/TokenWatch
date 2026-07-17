@@ -62,7 +62,9 @@ jobs:
             -only-testing:TokenWatchTests \
             -skip-testing:TokenWatchUITests \
             -derivedDataPath "$RUNNER_TEMP/TokenWatchDerivedData" \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_IDENTITY="-" \
             test
 
   ui-tests:
