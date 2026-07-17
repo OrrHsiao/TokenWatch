@@ -421,7 +421,7 @@ final class SettingsViewController: NSViewController {
 
         let refreshButtonSpacer = NSView()
         let loginSettingsButtonSpacer = NSView()
-        let controlColumnConstraints = [
+        var controlColumnConstraints = [
             autoRefreshIntervalLabel.widthAnchor.constraint(
                 greaterThanOrEqualToConstant: 104
             ),
@@ -438,6 +438,13 @@ final class SettingsViewController: NSViewController {
                 equalTo: autoRefreshIntervalLabel.widthAnchor
             ),
         ]
+        for row in providerDirectoryRows.values {
+            controlColumnConstraints.append(
+                row.nameLabel.widthAnchor.constraint(
+                    equalTo: autoRefreshIntervalLabel.widthAnchor
+                )
+            )
+        }
 
         let refreshButtonRow = NSStackView(views: [
             refreshButtonSpacer,
@@ -616,15 +623,12 @@ final class SettingsViewController: NSViewController {
                 .required,
                 for: .horizontal
             )
-            nameLabel.widthAnchor.constraint(
-                greaterThanOrEqualToConstant: 88
-            ).isActive = true
-
             let statusLabel = NSTextField(labelWithString: "")
             statusLabel.font = .systemFont(ofSize: 12)
             statusLabel.textColor = DashboardPalette.secondaryText
-            statusLabel.maximumNumberOfLines = 0
-            statusLabel.lineBreakMode = .byWordWrapping
+            // 错误详情可通过辅助功能和悬停提示读取；设置页保持紧凑，避免长翻译撑高窗口。
+            statusLabel.maximumNumberOfLines = 1
+            statusLabel.lineBreakMode = .byTruncatingTail
             statusLabel.identifier = NSUserInterfaceItemIdentifier(
                 "ProviderDirectoryStatus.\(provider.id.rawValue)"
             )
@@ -661,12 +665,13 @@ final class SettingsViewController: NSViewController {
                 greaterThanOrEqualToConstant: 92
             ).isActive = true
 
-            let row = NSStackView(views: [nameLabel, statusLabel, actionButton])
+            // 操作按钮始终紧跟在名称列后，避免“再次选择”等带状态文案的行被推到右侧。
+            let row = NSStackView(views: [nameLabel, actionButton, statusLabel])
             row.translatesAutoresizingMaskIntoConstraints = false
             row.orientation = .horizontal
             row.alignment = .centerY
             row.distribution = .fill
-            row.spacing = 12
+            row.spacing = 8
             row.identifier = NSUserInterfaceItemIdentifier(
                 "ProviderDirectoryRow.\(provider.id.rawValue)"
             )
@@ -676,8 +681,9 @@ final class SettingsViewController: NSViewController {
             row.heightAnchor.constraint(
                 greaterThanOrEqualToConstant: 36
             ).isActive = true
-            // 状态文字可换行，但目录行保持与普通设置项相近的紧凑宽度。
-            row.widthAnchor.constraint(equalToConstant: 360).isActive = true
+            // 目录行使用内容区全宽，让较长的重新选择提示保持单行，
+            // 同时不改变名称列与操作按钮的左侧对齐位置。
+            row.widthAnchor.constraint(equalToConstant: 376).isActive = true
 
             providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(
                 nameLabel: nameLabel,
@@ -712,11 +718,14 @@ final class SettingsViewController: NSViewController {
         button.setAccessibilityLabel(title)
         button.setDashboardLayerColors(backgroundColor: backgroundColor, borderColor: borderColor)
         button.contentTintColor = textColor
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
         button.attributedTitle = NSAttributedString(
             string: title,
             attributes: [
                 .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
                 .foregroundColor: textColor,
+                .paragraphStyle: paragraphStyle,
             ]
         )
     }
@@ -747,6 +756,7 @@ final class SettingsViewController: NSViewController {
         row.nameLabel.stringValue = model.providerName
         row.statusLabel.stringValue = model.statusText
         row.statusLabel.isHidden = !model.showsStatus
+        row.statusLabel.toolTip = model.showsStatus ? model.statusText : nil
         row.statusLabel.textColor = model.showsAction
             ? DashboardPalette.secondaryText
             : DashboardPalette.green

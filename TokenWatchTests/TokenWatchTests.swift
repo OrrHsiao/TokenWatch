@@ -1755,6 +1755,31 @@ struct TokenWatchTests {
         #expect(opencodeAction.title == "再次选择")
         #expect(!opencodeAction.isHidden)
 
+        controller.view.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: 480,
+            height: SettingsViewController.minimumContentHeight
+        )
+        controller.view.layoutSubtreeIfNeeded()
+        let refreshAction = try #require(
+            controller.view.button(identifier: "RefreshAllDataButton")
+        )
+        let reselectFrame = opencodeAction.convert(
+            opencodeAction.bounds,
+            to: controller.view
+        )
+        let refreshFrame = refreshAction.convert(
+            refreshAction.bounds,
+            to: controller.view
+        )
+        let reselectStatusFrame = opencodeStatus.convert(
+            opencodeStatus.bounds,
+            to: controller.view
+        )
+        #expect(abs(reselectFrame.minX - refreshFrame.minX) <= 1)
+        #expect(reselectStatusFrame.minX >= reselectFrame.maxX)
+
         let opencode = try #require(
             ProviderRegistry.allProviders.first { $0.id == .opencode }
         )
@@ -2152,6 +2177,16 @@ struct TokenWatchTests {
 
             #expect(abs(nameFrame.minX - titleFrame.minX) <= 3)
             #expect(actionFrame.maxX < panelFrame.midX)
+            #expect(abs(actionFrame.minX - refreshFrame.minX) <= 1)
+            #expect(action.alignment == .center)
+            let paragraphStyle = try #require(
+                action.attributedTitle.attribute(
+                    .paragraphStyle,
+                    at: 0,
+                    effectiveRange: nil
+                ) as? NSParagraphStyle
+            )
+            #expect(paragraphStyle.alignment == .center)
         }
     }
 
@@ -2193,6 +2228,7 @@ struct TokenWatchTests {
         #expect(claudeActionFrame.width > 0)
         #expect(claudeActionFrame.height > 0)
         #expect(panelFrame.contains(claudeActionFrame))
+        #expect(claudeAction.alignment == .center)
 
         for id in ProviderID.allCases {
             #expect(

@@ -20,4 +20,22 @@ struct ClaudeProvider: UsageProvider {
         let files = try scanner.scanAllJSONLFiles(in: dataRootURL)
         return try parser.parseAllFiles(files, claudeDataRoot: dataRootURL)
     }
+
+    /// 仅接受包含 `projects/` 的 Claude Code 数据根，避免将 Home 等上级目录误当作数据目录。
+    func validateDataRoot(
+        _ dataRootURL: URL
+    ) -> ProviderDataRootValidationResult {
+        let projectsURL = dataRootURL.appendingPathComponent(
+            "projects",
+            isDirectory: true
+        )
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(
+            atPath: projectsURL.path,
+            isDirectory: &isDirectory
+        )
+        return exists && isDirectory.boolValue
+            ? .valid
+            : .missingExpectedStructure
+    }
 }

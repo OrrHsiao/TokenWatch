@@ -219,6 +219,45 @@ struct TokenStatsViewModelObserverTests {
         )
     }
 
+    @Test("用户选择缺少数据结构的目录后要求重新选择")
+    func selectedDirectoryMissingExpectedStructureRequiresReselection() async {
+        let key = "ClaudeDataDirectoryBookmark"
+        let selectedURL = URL(
+            fileURLWithPath: "/not-claude-data",
+            isDirectory: true
+        )
+        let provider = DirectoryTestUsageProvider(
+            id: .claude,
+            bookmarkKey: key,
+            dataRootValidationResult: .missingExpectedStructure
+        )
+        let manager = DirectoryTestBookmarkManager(
+            promptResult: .authorized(selectedURL)
+        )
+        let vm = TokenStatsViewModel(
+            languageSettings: directoryTestEnglishLanguageSettings(),
+            providers: [provider],
+            bookmarkManager: manager
+        )
+
+        #expect(await vm.requestAuthorization(for: .claude))
+
+        #expect(
+            vm.states[.claude]?.directoryState == .needsReselection
+        )
+        #expect(vm.states[.claude]?.needsAuthorization == true)
+        #expect(vm.states[.claude]?.stats == nil)
+        #expect(vm.states[.claude]?.entries == nil)
+        #expect(vm.states[.claude]?.errorMessage == nil)
+        #expect(
+            vm.states[.claude]?.directoryAuthorizationErrorMessage
+                == AppStrings.text(.settingsDirectoryNoData, language: .en)
+        )
+        #expect(provider.loadCount == 0)
+        #expect(manager.restoredKeys == [key])
+        #expect(manager.stoppedKeys == [key])
+    }
+
     @Test("恢复失败只清除当前 provider 数据")
     func restoreFailureClearsOnlyCurrentProviderData() async {
         let claudeKey = "ClaudeDataDirectoryBookmark"
@@ -976,6 +1015,7 @@ private final class DirectoryTestUsageProvider:
     private let entries: [ParsedUsageEntry]
     private let throwsOnLoad: Bool
     private let suspendsLoads: Bool
+    private let dataRootValidationResult: ProviderDataRootValidationResult
     private let lock = NSLock()
     private var recordedLoadCount = 0
     private let loadRelease = DispatchSemaphore(value: 0)
@@ -988,7 +1028,8 @@ private final class DirectoryTestUsageProvider:
         bookmarkKey: String,
         entries: [ParsedUsageEntry]? = nil,
         throwsOnLoad: Bool = false,
-        suspendsLoads: Bool = false
+        suspendsLoads: Bool = false,
+        dataRootValidationResult: ProviderDataRootValidationResult = .valid
     ) {
         self.id = id
         self.bookmarkKey = bookmarkKey
@@ -1003,6 +1044,7 @@ private final class DirectoryTestUsageProvider:
         ]
         self.throwsOnLoad = throwsOnLoad
         self.suspendsLoads = suspendsLoads
+        self.dataRootValidationResult = dataRootValidationResult
         self.displayName = switch id {
         case .claude: "Claude Code"
         case .codex: "Codex"
@@ -1018,6 +1060,12 @@ private final class DirectoryTestUsageProvider:
         lock.lock()
         defer { lock.unlock() }
         return recordedLoadCount
+    }
+
+    func validateDataRoot(
+        _ dataRootURL: URL
+    ) -> ProviderDataRootValidationResult {
+        dataRootValidationResult
     }
 
     func loadEntries(

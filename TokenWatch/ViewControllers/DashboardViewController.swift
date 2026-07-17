@@ -1851,18 +1851,19 @@ final class DashboardViewController: NSViewController {
             textField.alignment = .left
         }
         if let button = root as? NSButton {
-            button.alignment = isHeaderControlButton(button) ? .center : .left
+            button.alignment = usesCenteredButtonTitle(button) ? .center : .left
         }
         for subview in root.subviews {
             enforceLeftAlignedContent(in: subview)
         }
     }
 
-    private func isHeaderControlButton(_ button: NSButton) -> Bool {
+    private func usesCenteredButtonTitle(_ button: NSButton) -> Bool {
         let identifier = button.identifier?.rawValue ?? button.accessibilityIdentifier()
         return identifier.hasPrefix("DashboardRange.")
             || identifier.hasPrefix("DashboardSessionsPagination.")
             || identifier == "DashboardRefreshButton"
+            || identifier.hasPrefix("ProviderDirectoryAction.")
     }
 
     private func fraction(_ value: Int, max maxValue: Int) -> CGFloat {

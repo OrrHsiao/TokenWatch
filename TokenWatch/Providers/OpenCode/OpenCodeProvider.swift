@@ -22,4 +22,19 @@ struct OpenCodeProvider: UsageProvider {
         let rows = try scanner.scanAll(in: dataRootURL)
         return parser.parseAll(rows)
     }
+
+    /// 仅接受直接包含 `opencode.db` 的 opencode 数据根。
+    func validateDataRoot(
+        _ dataRootURL: URL
+    ) -> ProviderDataRootValidationResult {
+        let databaseURL = dataRootURL.appendingPathComponent("opencode.db")
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(
+            atPath: databaseURL.path,
+            isDirectory: &isDirectory
+        )
+        return exists && !isDirectory.boolValue
+            ? .valid
+            : .missingExpectedStructure
+    }
 }
