@@ -197,7 +197,6 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
 /// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
     static let minimumContentHeight: CGFloat = 540
-    private static let preferredPanelWidth: CGFloat = 424
 
     private struct ProviderDirectoryRowViews {
         let nameLabel: NSTextField
@@ -449,19 +448,13 @@ final class SettingsViewController: NSViewController {
         panel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(contentStack)
         view.addSubview(panel)
-
-        // 与最小 480pt 设置页可用宽度一致，宽窗口中也不拉散目录行。
-        let preferredPanelWidth = panel.widthAnchor.constraint(
-            equalToConstant: Self.preferredPanelWidth
-        )
-
         NSLayoutConstraint.activate([
             panel.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
                 constant: 28
             ),
             panel.trailingAnchor.constraint(
-                lessThanOrEqualTo: view.trailingAnchor,
+                equalTo: view.trailingAnchor,
                 constant: -28
             ),
             panel.topAnchor.constraint(
@@ -472,11 +465,6 @@ final class SettingsViewController: NSViewController {
                 lessThanOrEqualTo: view.bottomAnchor,
                 constant: -28
             ),
-            panel.widthAnchor.constraint(
-                lessThanOrEqualTo: view.widthAnchor,
-                constant: -56
-            ),
-            preferredPanelWidth,
             contentStack.leadingAnchor.constraint(
                 equalTo: panel.leadingAnchor,
                 constant: 24
@@ -507,7 +495,8 @@ final class SettingsViewController: NSViewController {
     /// 依照注入 providers 的稳定顺序建立目录设置行。
     private func configureProviderDirectoryRows() {
         providerDirectoryStack.orientation = .vertical
-        providerDirectoryStack.alignment = .width
+        // 与其余设置项一致，目录行按内容宽度从左侧开始，不随宽窗口拉散。
+        providerDirectoryStack.alignment = .leading
         providerDirectoryStack.distribution = .fill
         providerDirectoryStack.spacing = 8
 
@@ -586,6 +575,8 @@ final class SettingsViewController: NSViewController {
             row.heightAnchor.constraint(
                 greaterThanOrEqualToConstant: 36
             ).isActive = true
+            // 状态文字可换行，但目录行保持与普通设置项相近的紧凑宽度。
+            row.widthAnchor.constraint(equalToConstant: 360).isActive = true
 
             providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(
                 nameLabel: nameLabel,
