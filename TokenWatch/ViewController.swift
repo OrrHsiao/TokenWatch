@@ -670,8 +670,23 @@ final class SettingsViewController: NSViewController {
             )
             actionButtonWidthConstraint.isActive = true
 
+            // 隐藏状态时由尾部空白吸收剩余宽度，避免名称列挤压统一宽度的操作按钮。
+            let trailingSpacer = NSView()
+            trailingSpacer.setContentHuggingPriority(
+                .fittingSizeCompression,
+                for: .horizontal
+            )
+            trailingSpacer.setContentCompressionResistancePriority(
+                .fittingSizeCompression,
+                for: .horizontal
+            )
             // 操作按钮始终紧跟在名称列后，避免“再次选择”等带状态文案的行被推到右侧。
-            let row = NSStackView(views: [nameLabel, actionButton, statusLabel])
+            let row = NSStackView(views: [
+                nameLabel,
+                actionButton,
+                statusLabel,
+                trailingSpacer,
+            ])
             row.translatesAutoresizingMaskIntoConstraints = false
             row.orientation = .horizontal
             row.alignment = .centerY
@@ -736,7 +751,7 @@ final class SettingsViewController: NSViewController {
         )
     }
 
-    /// 计算目录操作按钮的内容宽度，保证不同语言文案完整显示且不拉伸整行。
+    /// 计算目录操作按钮的内容宽度，保证不同语言文案完整显示。
     private func directoryActionButtonWidth(for title: String) -> CGFloat {
         let titleFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
         return ceil(
@@ -799,12 +814,22 @@ final class SettingsViewController: NSViewController {
                 textColor: DashboardPalette.primaryText
             )
         }
-        row.actionButtonWidthConstraint.constant = directoryActionButtonWidth(
-            for: model.actionTitle
-        )
         row.actionButton.setAccessibilityLabel(
             "\(model.providerName), \(model.actionTitle)"
         )
+        synchronizeDirectoryActionButtonWidths()
+    }
+
+    /// 同步目录操作列宽，避免同宽名称列与不同按钮宽度共同约束固定行宽。
+    private func synchronizeDirectoryActionButtonWidths() {
+        let sharedWidth = providerDirectoryRows.values
+            .filter { !$0.actionButton.isHidden }
+            .map { directoryActionButtonWidth(for: $0.actionButton.title) }
+            .max() ?? 64
+
+        for row in providerDirectoryRows.values {
+            row.actionButtonWidthConstraint.constant = sharedWidth
+        }
     }
 
     private func renderLaunchAtLoginState() {
