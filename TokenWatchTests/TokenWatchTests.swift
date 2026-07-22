@@ -1785,6 +1785,31 @@ struct TokenWatchTests {
         #expect(abs(reselectFrame.minX - refreshFrame.minX) <= 1)
         #expect(reselectStatusFrame.minX >= reselectFrame.maxX)
 
+        let directoryActionFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        let directoryActions = [claudeAction, opencodeAction]
+        for action in directoryActions {
+            let minimumWidth = ceil(
+                (action.title as NSString).size(
+                    withAttributes: [.font: directoryActionFont]
+                ).width + 24
+            )
+            #expect(action.frame.width >= minimumWidth)
+        }
+        #expect(abs(claudeAction.frame.width - opencodeAction.frame.width) <= 1)
+        let actionWidthConstraints = directoryActions.compactMap { action in
+            action.constraints.first { constraint in
+                constraint.firstAttribute == .width
+                    && constraint.relation == .equal
+            }
+        }
+        #expect(actionWidthConstraints.count == directoryActions.count)
+        let sharedActionWidth = try #require(
+            actionWidthConstraints.map(\.constant).max()
+        )
+        #expect(actionWidthConstraints.allSatisfy {
+            abs($0.constant - sharedActionWidth) <= 1
+        })
+
         let opencode = try #require(
             ProviderRegistry.allProviders.first { $0.id == .opencode }
         )
