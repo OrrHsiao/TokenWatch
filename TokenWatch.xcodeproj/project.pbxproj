@@ -29,8 +29,21 @@
 		AAA358242FDD7BFD0018086B /* TokenWatchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TokenWatchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AAA358372FDD7BFD0018086B /* Exceptions for "TokenWatch" folder in "TokenWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AAA358092FDD7BFB0018086B /* TokenWatch */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AAA3580C2FDD7BFB0018086B /* TokenWatch */ = {
+			exceptions = (
+				AAA358372FDD7BFD0018086B /* Exceptions for "TokenWatch" folder in "TokenWatch" target */,
+			);
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TokenWatch;
 			sourceTree = "<group>";
@@ -192,6 +205,17 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
+				"zh-Hant",
+				ja,
+				ko,
+				es,
+				de,
+				fr,
+				"pt-BR",
+				it,
+				nl,
+				pl,
 			);
 			mainGroup = AAA358012FDD7BFB0018086B;
 			minimizedProjectReferenceProxies = 1;
@@ -410,11 +434,8 @@
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Token Watch";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TokenWatch/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -457,11 +478,8 @@
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Token Watch";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TokenWatch/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
