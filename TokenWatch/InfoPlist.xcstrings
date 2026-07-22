@@ -1,0 +1,40 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "AI Token Watch" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
