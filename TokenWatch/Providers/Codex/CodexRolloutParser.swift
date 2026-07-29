@@ -2,7 +2,7 @@ import Foundation
 import os.log
 
 /// 与 ccusage loader 对齐的跨文件事件去重键；session ID 故意不参与。
-struct CodexEventDedupKey: Hashable, Sendable {
+struct CodexEventDedupKey: Hashable, Sendable, Codable {
     let timestampKey: String
     let model: String
     let rawInput: Int
@@ -13,7 +13,7 @@ struct CodexEventDedupKey: Hashable, Sendable {
 }
 
 /// 保留展示 entry 与上游原始计数，避免 per-file cache 丢失去重信息。
-struct CodexUsageCandidate: Sendable {
+struct CodexUsageCandidate: Sendable, Codable {
     let entry: ParsedUsageEntry
     let dedupKey: CodexEventDedupKey
 }
@@ -64,13 +64,18 @@ final class CodexRolloutParser: @unchecked Sendable {
         category: "CodexRolloutParser"
     )
     private let fileReader: any JSONLFileReading
+    private let diskStore: (any JSONLDiskCacheStoring<CodexUsageCandidate>)?
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
         CodexIncrementalState,
         CodexPricingSpeed
     >
 
-    init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
+    init(
+        fileReader: any JSONLFileReading = SystemJSONLFileReader(),
+        diskStore: (any JSONLDiskCacheStoring<CodexUsageCandidate>)? = SystemJSONLDiskCacheStore<CodexUsageCandidate>(namespace: "codex")
+    ) {
         self.fileReader = fileReader
+        self.diskStore = diskStore
         self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
             CodexIncrementalState,
             CodexPricingSpeed
@@ -126,6 +131,7 @@ final class CodexRolloutParser: @unchecked Sendable {
         let allCandidates: [CodexUsageCandidate] = cacheCoordinator.loadListedFiles(
             files,
             scope: pricingSpeed,
+            diskStore: diskStore,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
             build: { [self] fileInfo, snapshot, previous in

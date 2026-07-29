@@ -360,7 +360,7 @@ final class TokenStatsViewModel: Sendable {
             && states[id]?.errorMessage == nil
 
         let result: Result<ProviderLoadResult, Error> =
-            await Task.detached(priority: .userInitiated) {
+            await Task.detached(priority: .utility) {
                 do {
                     let entries = try providerCopy.loadEntries(
                         from: rootURL

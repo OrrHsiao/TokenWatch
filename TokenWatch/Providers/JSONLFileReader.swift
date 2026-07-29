@@ -2,13 +2,13 @@ import Darwin
 import Foundation
 
 /// 文件系统身份；device + inode 可区分同路径替换。
-struct JSONLFileIdentity: Equatable, Sendable {
+struct JSONLFileIdentity: Equatable, Sendable, Codable {
     let deviceID: UInt64
     let fileID: UInt64
 }
 
 /// 从已打开 descriptor 的 `fstat` 得到的文件快照元数据。
-struct JSONLFileMetadata: Equatable, Sendable {
+struct JSONLFileMetadata: Equatable, Sendable, Codable {
     let identity: JSONLFileIdentity?
     let size: UInt64
     let modificationDate: Date
