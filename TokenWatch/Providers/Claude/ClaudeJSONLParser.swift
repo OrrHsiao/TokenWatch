@@ -11,13 +11,18 @@ final class ClaudeJSONLParser: @unchecked Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLParser")
     private let fileReader: any JSONLFileReading
+    private let diskStore: (any JSONLDiskCacheStoring<ParsedUsageEntry>)?
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
         ClaudeFileState,
         JSONLUnscopedCacheScope
     >
 
-    init(fileReader: any JSONLFileReading = SystemJSONLFileReader()) {
+    init(
+        fileReader: any JSONLFileReading = SystemJSONLFileReader(),
+        diskStore: (any JSONLDiskCacheStoring<ParsedUsageEntry>)? = SystemJSONLDiskCacheStore<ParsedUsageEntry>(namespace: "claude")
+    ) {
         self.fileReader = fileReader
+        self.diskStore = diskStore
         self.cacheCoordinator = JSONLLastGoodCacheCoordinator<
             ClaudeFileState,
             JSONLUnscopedCacheScope
@@ -76,6 +81,7 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         let allCandidates: [ParsedUsageEntry] = cacheCoordinator.loadListedFiles(
             files,
             scope: .shared,
+            diskStore: diskStore,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
             build: { [self] fileInfo, snapshot, previous in

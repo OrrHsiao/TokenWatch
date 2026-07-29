@@ -8,7 +8,7 @@ import Foundation
 /// 旧版 ccusage / TokenTracker 强制要求 `requestId` 导致 DeepSeek/Kimi 等
 /// 不返回 `request-id` HTTP header 的 provider 出现 1.6-3.7× 多计
 /// （TokenTracker issue #64），因此这里 `requestId` 仅作可选拼接而非必要条件。
-struct ParsedUsageEntry: Sendable, Hashable {
+struct ParsedUsageEntry: Sendable, Hashable, Codable {
     let recordUUID: String
     let messageId: String          // assistant 消息全局唯一 ID（dedup 主键）
     let requestId: String?         // HTTP request-id，缺失不影响 dedup

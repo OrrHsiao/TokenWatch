@@ -41,10 +41,10 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AAA3580C2FDD7BFB0018086B /* TokenWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				AAA358372FDD7BFD0018086B /* Exceptions for "TokenWatch" folder in "TokenWatch" target */,
 			);
-			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TokenWatch;
 			sourceTree = "<group>";
 		};
