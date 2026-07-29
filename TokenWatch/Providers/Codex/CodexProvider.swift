@@ -18,7 +18,7 @@ struct CodexProvider: UsageProvider {
 
     init(
         scanner: CodexRolloutScanner = CodexRolloutScanner(),
-        parser: CodexRolloutParser = CodexRolloutParser(),
+        parser: CodexRolloutParser = CodexRolloutParser(diskStore: SystemJSONLDiskCacheStore(namespace: "codex")),
         serviceTierResolver: CodexServiceTierResolver = CodexServiceTierResolver()
     ) {
         self.scanner = scanner

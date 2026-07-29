@@ -90,107 +90,98 @@ final class JSONLLastGoodCacheCoordinator<
             initialDiskEntries = [:]
         }
 
-        let accumulator = ParallelLoadAccumulator(
-            fileCount: files.count,
-            initialDiskEntries: initialDiskEntries
-        )
+        var listedKeys = Set<String>()
+        var currentDiskEntries = initialDiskEntries
+        var isDiskCacheDirty = false
+        var allCandidates = [Candidate]()
         let scopeId = String(describing: scope)
 
-        // 2. 并发限流处理文件，避免占用 100% CPU 导致 Mac 系统卡顿
-        let totalCores = ProcessInfo.processInfo.activeProcessorCount
-        let maxConcurrency = max(1, min(4, totalCores - 2))
-        let semaphore = DispatchSemaphore(value: maxConcurrency)
-        let queue = DispatchQueue(
-            label: "com.xiaoao.TokenWatch.parallelParse",
-            qos: .utility,
-            attributes: .concurrent
-        )
-        let group = DispatchGroup()
+        // 2. 顺序处理所有列出的文件，避免 GCD 线程饥饿与死锁
+        for fileInfo in files {
+            let key = cacheKey(fileInfo)
+            listedKeys.insert(key)
 
-        for index in 0..<files.count {
-            semaphore.wait()
-            queue.async(group: group) {
-                defer { semaphore.signal() }
+            do {
+                let snapshot = try fileReader.openSnapshot(
+                    for: urlForFile(fileInfo)
+                )
+                defer { snapshot.stream.close() }
 
-                let fileInfo = files[index]
-                let key = cacheKey(fileInfo)
-                accumulator.recordListedKey(key)
-
-                do {
-                    let snapshot = try self.fileReader.openSnapshot(
-                        for: urlForFile(fileInfo)
-                    )
-                    defer { snapshot.stream.close() }
-
-                    // a. 先查内存 State 命中
-                    if let unchanged = self.unchangedState(
-                        for: key,
-                        matching: snapshot.metadata,
-                        scope: scope
-                    ) {
-                        accumulator.recordMemoryCacheHit(project(unchanged), at: index)
-                        return
-                    }
-
-                    // b. 再查磁盘缓存 命中 (无需重新解析 JSONL 行)
-                    if let diskEntry = accumulator.getDiskEntry(for: key),
-                       diskEntry.metadata == snapshot.metadata,
-                       diskEntry.scopeIdentifier == scopeId {
-                        accumulator.recordDiskCacheHit(diskEntry.candidates, at: index)
-                        return
-                    }
-
-                    // c. 未命中（新文件/已追加），进行增量或重新构建
-                    let previous = self.cachedState(for: key, scope: scope)
-                    let next = try build(fileInfo, snapshot, previous)
-                    let candidates = project(next)
-
-                    self.withLock {
-                        self.cachedFiles[key] = CachedFile(
-                            metadata: snapshot.metadata,
-                            scope: scope,
-                            state: next
-                        )
-                    }
-
-                    if diskStore != nil {
-                        let entry = JSONLDiskCacheEntry(
-                            key: key,
-                            scopeIdentifier: scopeId,
-                            metadata: snapshot.metadata,
-                            candidates: candidates
-                        )
-                        accumulator.updateDiskEntry(entry, at: index, candidates: candidates)
-                    } else {
-                        accumulator.recordResult(candidates, at: index)
-                    }
-                } catch {
-                    let lastGood = self.cachedState(for: key, scope: scope)
-                    let reused: Bool
-                    if let lastGood {
-                        accumulator.recordResult(project(lastGood), at: index)
-                        reused = true
-                    } else if let diskEntry = accumulator.getDiskEntry(for: key),
-                              diskEntry.scopeIdentifier == scopeId {
-                        accumulator.recordResult(diskEntry.candidates, at: index)
-                        reused = true
-                    } else {
-                        reused = false
-                    }
-                    onFailure(fileInfo, error, reused)
+                // a. 先查内存 State 命中
+                if let unchanged = unchangedState(
+                    for: key,
+                    matching: snapshot.metadata,
+                    scope: scope
+                ) {
+                    allCandidates.append(contentsOf: project(unchanged))
+                    continue
                 }
+
+                // b. 再查磁盘缓存 命中 (无需重新解析 JSONL 行)
+                if let diskEntry = currentDiskEntries[key],
+                   diskEntry.metadata == snapshot.metadata,
+                   diskEntry.scopeIdentifier == scopeId {
+                    withLock { cacheHitCount += 1 }
+                    allCandidates.append(contentsOf: diskEntry.candidates)
+                    continue
+                }
+
+                // c. 未命中（新文件/已追加），进行增量或重新构建
+                let previous = cachedState(for: key, scope: scope)
+                let next = try build(fileInfo, snapshot, previous)
+                let candidates = project(next)
+
+                withLock {
+                    cachedFiles[key] = CachedFile(
+                        metadata: snapshot.metadata,
+                        scope: scope,
+                        state: next
+                    )
+                }
+
+                if diskStore != nil {
+                    let entry = JSONLDiskCacheEntry(
+                        key: key,
+                        scopeIdentifier: scopeId,
+                        metadata: snapshot.metadata,
+                        candidates: candidates
+                    )
+                    currentDiskEntries[key] = entry
+                    isDiskCacheDirty = true
+                    allCandidates.append(contentsOf: candidates)
+                } else {
+                    allCandidates.append(contentsOf: candidates)
+                }
+            } catch {
+                let lastGood = cachedState(for: key, scope: scope)
+                let reused: Bool
+                if let lastGood {
+                    allCandidates.append(contentsOf: project(lastGood))
+                    reused = true
+                } else if let diskEntry = currentDiskEntries[key],
+                          diskEntry.scopeIdentifier == scopeId {
+                    allCandidates.append(contentsOf: diskEntry.candidates)
+                    reused = true
+                } else {
+                    reused = false
+                }
+                onFailure(fileInfo, error, reused)
             }
         }
 
-        group.wait()
-
         // 3. 内存与磁盘剪枝与保存
-        let (allCandidates, extraHitCount) = accumulator.finalize(diskStore: diskStore)
         withLock {
-            cachedFiles = cachedFiles.filter { accumulator.listedKeys.contains($0.key) }
-            cacheHitCount += extraHitCount
+            cachedFiles = cachedFiles.filter { listedKeys.contains($0.key) }
             if diskStore != nil {
-                diskEntries = accumulator.diskEntries
+                let countBefore = currentDiskEntries.count
+                currentDiskEntries = currentDiskEntries.filter { listedKeys.contains($0.key) }
+                if currentDiskEntries.count != countBefore {
+                    isDiskCacheDirty = true
+                }
+                diskEntries = currentDiskEntries
+                if isDiskCacheDirty {
+                    diskStore?.saveAll(currentDiskEntries)
+                }
             }
         }
 
@@ -241,75 +232,5 @@ final class JSONLLastGoodCacheCoordinator<
         lock.lock()
         defer { lock.unlock() }
         return body()
-    }
-}
-
-/// 并发加载过程中的结果与磁盘条目累加器
-private final class ParallelLoadAccumulator<Candidate: Codable & Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var resultsPerFile: [[Candidate]]
-    private(set) var listedKeys = Set<String>()
-    private(set) var diskEntries: [String: JSONLDiskCacheEntry<Candidate>]
-    private var isDiskCacheDirty = false
-    private var extraCacheHitCount = 0
-
-    init(fileCount: Int, initialDiskEntries: [String: JSONLDiskCacheEntry<Candidate>]) {
-        self.resultsPerFile = Array(repeating: [], count: fileCount)
-        self.diskEntries = initialDiskEntries
-    }
-
-    func recordListedKey(_ key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        listedKeys.insert(key)
-    }
-
-    func recordResult(_ candidates: [Candidate], at index: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        resultsPerFile[index] = candidates
-    }
-
-    func getDiskEntry(for key: String) -> JSONLDiskCacheEntry<Candidate>? {
-        lock.lock()
-        defer { lock.unlock() }
-        return diskEntries[key]
-    }
-
-    func recordDiskCacheHit(_ candidates: [Candidate], at index: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        extraCacheHitCount += 1
-        resultsPerFile[index] = candidates
-    }
-
-    func recordMemoryCacheHit(_ candidates: [Candidate], at index: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        resultsPerFile[index] = candidates
-    }
-
-    func updateDiskEntry(_ entry: JSONLDiskCacheEntry<Candidate>, at index: Int, candidates: [Candidate]) {
-        lock.lock()
-        defer { lock.unlock() }
-        diskEntries[entry.key] = entry
-        isDiskCacheDirty = true
-        resultsPerFile[index] = candidates
-    }
-
-    func finalize(diskStore: (any JSONLDiskCacheStoring<Candidate>)?) -> (candidates: [Candidate], extraHitCount: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        if diskStore != nil {
-            let countBefore = diskEntries.count
-            diskEntries = diskEntries.filter { listedKeys.contains($0.key) }
-            if diskEntries.count != countBefore {
-                isDiskCacheDirty = true
-            }
-            if isDiskCacheDirty {
-                diskStore?.saveAll(diskEntries)
-            }
-        }
-        return (resultsPerFile.flatMap { $0 }, extraCacheHitCount)
     }
 }

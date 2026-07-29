@@ -121,6 +121,7 @@ struct AppMainMenuBuilderTests {
             defaults: defaults,
             preferredLanguagesProvider: { ["zh-Hans"] }
         )
+        _ = NSApplication.shared
         let previousMainMenu = NSApp.mainMenu
         let previousWindowsMenu = NSApp.windowsMenu
         let controller = AppMainMenuController(

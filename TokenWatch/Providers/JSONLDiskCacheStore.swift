@@ -29,9 +29,17 @@ final class SystemJSONLDiskCacheStore<Candidate: Codable & Sendable>: JSONLDiskC
     private let currentVersion = 1
 
     init(namespace: String) {
-        let cachesDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        let folderURL = cachesDir.appendingPathComponent("TokenWatch/JSONLCache", isDirectory: true)
+        let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
+        let baseDir: URL
+        if isTesting {
+            baseDir = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("TokenWatchTestCaches-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
+        } else {
+            baseDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        }
+        let folderURL = baseDir.appendingPathComponent("TokenWatch/JSONLCache", isDirectory: true)
         try? FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
         self.fileURL = folderURL.appendingPathComponent("\(namespace).json")
     }
