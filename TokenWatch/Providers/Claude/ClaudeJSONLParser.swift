@@ -19,7 +19,7 @@ final class ClaudeJSONLParser: @unchecked Sendable {
 
     init(
         fileReader: any JSONLFileReading = SystemJSONLFileReader(),
-        diskStore: (any JSONLDiskCacheStoring<ParsedUsageEntry>)? = SystemJSONLDiskCacheStore<ParsedUsageEntry>(namespace: "claude")
+        diskStore: (any JSONLDiskCacheStoring<ParsedUsageEntry>)? = nil
     ) {
         self.fileReader = fileReader
         self.diskStore = diskStore

@@ -72,7 +72,7 @@ final class CodexRolloutParser: @unchecked Sendable {
 
     init(
         fileReader: any JSONLFileReading = SystemJSONLFileReader(),
-        diskStore: (any JSONLDiskCacheStoring<CodexUsageCandidate>)? = SystemJSONLDiskCacheStore<CodexUsageCandidate>(namespace: "codex")
+        diskStore: (any JSONLDiskCacheStoring<CodexUsageCandidate>)? = nil
     ) {
         self.fileReader = fileReader
         self.diskStore = diskStore

@@ -102,7 +102,7 @@ struct LiteLLMPriceCatalog: Sendable {
     }
 
     private static func loadEmbeddedCatalog() -> LiteLLMPriceCatalog {
-        guard let url = Bundle.main.url(forResource: "litellm_prices", withExtension: "json") else {
+        guard let url = Bundle.appResourceBundle.url(forResource: "litellm_prices", withExtension: "json") else {
             logger.warning("LiteLLM 定价快照未找到，catalog 将始终返回 nil")
             return LiteLLMPriceCatalog(entries: [:])
         }
@@ -127,5 +127,17 @@ struct LiteLLMPriceCatalog: Sendable {
                 return lhs.key > rhs.key
             }
             .map { ($0.key, $0.value.pricing) }
+    }
+}
+
+private final class LiteLLMPriceCatalogBundleToken {}
+
+extension Bundle {
+    static var appResourceBundle: Bundle {
+        let classBundle = Bundle(for: LiteLLMPriceCatalogBundleToken.self)
+        if classBundle.url(forResource: "litellm_prices", withExtension: "json") != nil {
+            return classBundle
+        }
+        return Bundle.main
     }
 }

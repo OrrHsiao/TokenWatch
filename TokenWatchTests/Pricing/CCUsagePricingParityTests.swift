@@ -103,7 +103,7 @@ struct CCUsagePricingParityTests {
     }
 
     private func bundledSHA256(resource: String) throws -> String {
-        let url = try #require(Bundle.main.url(
+        let url = try #require(Bundle.appResourceBundle.url(
             forResource: resource,
             withExtension: "json"
         ))
