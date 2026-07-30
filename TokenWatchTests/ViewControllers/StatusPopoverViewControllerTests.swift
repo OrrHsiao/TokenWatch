@@ -139,25 +139,25 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonToolTip == "Refresh Now")
     }
 
-    @Test("根视图使用状态栏弹窗背景视图")
-    func rootViewUsesPopoverBackgroundView() {
+    @Test("根视图复用主界面液态玻璃背景视图")
+    func rootViewUsesDashboardGlassBackgroundView() {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
 
-        #expect(controller.view is StatusPopoverRootView)
+        #expect(controller.view is DashboardGlassBackgroundView)
     }
 
-    @Test("弹窗根背景使用系统玻璃材质以匹配顶部三角形")
-    func rootBackgroundUsesSystemPopoverMaterial() throws {
+    @Test("弹窗根背景在 macOS 26 使用主界面同款原生液态玻璃")
+    func rootBackgroundUsesNativeLiquidGlass() throws {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
 
-        let rootView = try #require(controller.view as? StatusPopoverRootView)
-        #expect(rootView.material == .popover)
-        #expect(rootView.blendingMode == .withinWindow)
-        #expect(rootView.state == .active)
+        let rootView = try #require(controller.view as? DashboardGlassBackgroundView)
+        if #available(macOS 26.0, *) {
+            #expect(rootView.debugUsesNativeLiquidGlass)
+        }
     }
 
     @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")

@@ -295,7 +295,10 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     override func loadView() {
-        view = StatusPopoverRootView(frame: NSRect(origin: .zero, size: Self.contentSize))
+        view = DashboardGlassBackgroundView(
+            frame: NSRect(origin: .zero, size: Self.contentSize),
+            acceptsFirstResponder: true
+        )
         setupSubviews()
     }
 
@@ -367,12 +370,12 @@ final class StatusPopoverViewController: NSViewController {
 
         todayDescriptionRow.addSubview(todayDescriptionLabel)
         todayDescriptionRow.addSubview(todayRefreshButton)
-        view.addSubview(todayDescriptionRow)
-        view.addSubview(summaryStack)
-        view.addSubview(hoverLabel)
-        view.addSubview(collectionView)
-        view.addSubview(hourlyLineChartView)
-        view.addSubview(loadingOverlay)
+        addToRootGlass(todayDescriptionRow)
+        addToRootGlass(summaryStack)
+        addToRootGlass(hoverLabel)
+        addToRootGlass(collectionView)
+        addToRootGlass(hourlyLineChartView)
+        addToRootGlass(loadingOverlay)
 
         NSLayoutConstraint.activate([
             todayDescriptionRow.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
@@ -428,6 +431,15 @@ final class StatusPopoverViewController: NSViewController {
             loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
             loadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+    }
+
+    /// 将弹窗内容添加到与主界面一致的玻璃 contentView，避免内容覆盖原生玻璃效果。
+    private func addToRootGlass(_ subview: NSView) {
+        if let rootView = view as? DashboardGlassBackgroundView {
+            rootView.addContentSubview(subview)
+        } else {
+            view.addSubview(subview)
+        }
     }
 
     private func setupSummaryCards() {
@@ -694,21 +706,6 @@ private final class SummaryMetricCardView: NSView {
         layer?.backgroundColor = DashboardLayerColor.cgColor(style.backgroundColor, for: self)
         layer?.borderColor = DashboardLayerColor.cgColor(style.borderColor, for: self)
         layer?.borderWidth = style.borderWidth
-    }
-}
-
-/// 状态栏统计弹窗的系统玻璃背景，和 popover 箭头保持一致的材质层级。
-final class StatusPopoverRootView: NSVisualEffectView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        material = .popover
-        blendingMode = .withinWindow
-        state = .active
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("StatusPopoverRootView 不支持 storyboard 初始化")
     }
 }
 
