@@ -1,6 +1,6 @@
 import AppKit
 
-private final class DashboardSessionTableDocumentView: DashboardRoundedView {
+private final class DashboardSessionTableDocumentView: DashboardGlassCardView {
     /// AppKit 在 document 小于 overlay clip 时默认底部对齐；翻转坐标确保动态 gutter 留在底部而不裁表头。
     override var isFlipped: Bool { true }
 }
@@ -45,14 +45,14 @@ final class DashboardViewController: NSViewController {
     private let nowProvider: () -> Date
     private let calendar: Calendar
 
-    private let sidebarView = DashboardBackgroundView(backgroundColor: DashboardPalette.sidebarBackground)
-    private let mainContentContainer = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+    private let sidebarView = DashboardGlassBackgroundView()
+    private let mainContentContainer = DashboardGlassBackgroundView()
     private let overviewScrollView = NSScrollView()
-    private let overviewContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+    private let overviewContentView = NSView()
     private let overviewStack = NSStackView()
     private let sessionScrollView = NSScrollView()
     private let sessionTableScrollView = NSScrollView()
-    private let sessionContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+    private let sessionContentView = NSView()
     private let sessionStack = NSStackView()
     private let navButtonsStack = NSStackView()
     private let dataSourceRowsStack = NSStackView()
@@ -186,10 +186,7 @@ final class DashboardViewController: NSViewController {
     }
 
     override func loadView() {
-        view = DashboardBackgroundView(
-            frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
-            backgroundColor: DashboardPalette.appBackground
-        )
+        view = NSView(frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize))
         view.userInterfaceLayoutDirection = .leftToRight
     }
 
@@ -266,8 +263,8 @@ final class DashboardViewController: NSViewController {
         let privacyPolicyButton = makePrivacyPolicyButton()
         self.privacyPolicyButton = privacyPolicyButton
 
-        sidebarView.addSubview(rootStack)
-        sidebarView.addSubview(privacyPolicyButton)
+        sidebarView.addContentSubview(rootStack)
+        sidebarView.addContentSubview(privacyPolicyButton)
         NSLayoutConstraint.activate([
             rootStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: 20),
             rootStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -20),
@@ -476,8 +473,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 8
 
-        let card = DashboardRoundedView(backgroundColor: DashboardPalette.scanCardBackground, cornerRadius: 8)
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
@@ -609,15 +606,10 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .centerY
         stack.spacing = 8
 
-        let badge = DashboardRoundedView(
-            backgroundColor: DashboardPalette.sessionDateBackground,
-            cornerRadius: 7,
-            borderColor: DashboardPalette.sessionDateBorder,
-            borderWidth: 1
-        )
+        let badge = DashboardGlassCardView(cornerRadius: 7)
         badge.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsDateBadge")
         badge.setAccessibilityIdentifier("DashboardSessionsDateBadge")
-        badge.addSubview(stack)
+        badge.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             badge.heightAnchor.constraint(equalToConstant: 35),
@@ -640,8 +632,8 @@ final class DashboardViewController: NSViewController {
         sessionTodayButton.setAccessibilityIdentifier("DashboardSessionsTodayButton")
         sessionTodayButton.setAccessibilityLabel(title)
         sessionTodayButton.setDashboardStyle(
-            backgroundColor: DashboardPalette.sessionDateBackground,
-            borderColor: DashboardPalette.sessionDateBorder,
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder,
             borderWidth: 1,
             cornerRadius: 5,
             titleColor: DashboardPalette.primaryText,
@@ -684,13 +676,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 8
 
-        let card = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
@@ -740,8 +727,8 @@ final class DashboardViewController: NSViewController {
         refreshButton.layer?.cornerRadius = 8
         refreshButton.layer?.borderWidth = 1
         refreshButton.setDashboardLayerColors(
-            backgroundColor: DashboardPalette.panelBackground,
-            borderColor: DashboardPalette.border
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder
         )
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
         refreshButton.setContentHuggingPriority(.required, for: .horizontal)
@@ -814,13 +801,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 10
 
-        let card = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
@@ -850,13 +832,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 10
 
-        let card = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
@@ -1103,13 +1080,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 12
 
-        let panel = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        panel.addSubview(stack)
+        let panel = DashboardGlassCardView(cornerRadius: 8)
+        panel.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             panel.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumHeight),
@@ -1167,15 +1139,10 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 0
 
-        let table = DashboardSessionTableDocumentView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
+        let table = DashboardSessionTableDocumentView(cornerRadius: 8)
         table.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsTable")
         table.setAccessibilityIdentifier("DashboardSessionsTable")
-        table.addSubview(stack)
+        table.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             table.heightAnchor.constraint(equalToConstant: Self.sessionTableContentHeight),
@@ -1204,7 +1171,7 @@ final class DashboardViewController: NSViewController {
         sessionPaginationControlsStack.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPaginationControls")
         sessionPaginationControlsStack.setAccessibilityIdentifier("DashboardSessionsPaginationControls")
 
-        let view = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+        let view = NSView()
         view.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPagination")
         view.setAccessibilityIdentifier("DashboardSessionsPagination")
         view.addSubview(sessionPaginationRangeLabel)
@@ -1296,8 +1263,8 @@ final class DashboardViewController: NSViewController {
         isSelected: Bool,
         isEnabled: Bool
     ) {
-        let backgroundColor = isSelected ? DashboardPalette.accent : DashboardPalette.sessionDateBackground
-        let borderColor = isSelected ? DashboardPalette.accent : DashboardPalette.sessionDateBorder
+        let backgroundColor = isSelected ? DashboardPalette.rangeSelectedBackground : .clear
+        let borderColor = isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.glassControlBorder
         let textColor: NSColor
         if isSelected {
             textColor = DashboardPalette.rangeSelectedText
@@ -1566,7 +1533,7 @@ final class DashboardViewController: NSViewController {
 
     private func sessionTableRowBackground(at index: Int) -> NSColor {
         index.isMultiple(of: 2)
-            ? DashboardPalette.panelBackground
+            ? .clear
             : DashboardPalette.sessionTableAlternateRowBackground
     }
 
@@ -1583,7 +1550,7 @@ final class DashboardViewController: NSViewController {
         NSLayoutConstraint.deactivate(settingsConstraints)
         sessionScrollView.removeFromSuperview()
         if overviewScrollView.superview == nil {
-            mainContentContainer.addSubview(overviewScrollView)
+            mainContentContainer.addContentSubview(overviewScrollView)
         }
         overviewConstraints = [
             overviewScrollView.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
@@ -1604,7 +1571,7 @@ final class DashboardViewController: NSViewController {
         NSLayoutConstraint.deactivate(settingsConstraints)
         overviewScrollView.removeFromSuperview()
         if sessionScrollView.superview == nil {
-            mainContentContainer.addSubview(sessionScrollView)
+            mainContentContainer.addContentSubview(sessionScrollView)
         }
         sessionConstraints = [
             sessionScrollView.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
@@ -1626,8 +1593,7 @@ final class DashboardViewController: NSViewController {
         addChild(settingsViewController)
         settingsViewController.view.translatesAutoresizingMaskIntoConstraints = false
         settingsViewController.view.userInterfaceLayoutDirection = .leftToRight
-        mainContentContainer.addSubview(settingsViewController.view)
-        DashboardLayerColor.applyBackground(DashboardPalette.appBackground, to: settingsViewController.view)
+        mainContentContainer.addContentSubview(settingsViewController.view)
         settingsConstraints = [
             settingsViewController.view.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
             settingsViewController.view.trailingAnchor.constraint(equalTo: mainContentContainer.trailingAnchor),
@@ -1850,13 +1816,13 @@ final class DashboardViewController: NSViewController {
         for item in DashboardNavigationItem.allCases {
             guard let button = navButtons[item] else { continue }
             let isSelected = item == selectedNavigationItem
-            let backgroundColor = isSelected ? DashboardPalette.navigationSelectedBackground : DashboardPalette.sidebarBackground
+            let backgroundColor = isSelected ? DashboardPalette.navigationSelectedBackground : .clear
             (button as? DashboardNavigationButton)?.setDashboardBackgroundColor(backgroundColor)
             let tintColor = isSelected ? DashboardPalette.navigationSelectedText : DashboardPalette.secondaryText
             button.contentTintColor = tintColor
             (button as? DashboardNavigationButton)?.setVisualTint(tintColor)
         }
-        privacyPolicyButton?.setDashboardBackgroundColor(DashboardPalette.sidebarBackground)
+        privacyPolicyButton?.setDashboardBackgroundColor(.clear)
         privacyPolicyButton?.contentTintColor = DashboardPalette.secondaryText
         privacyPolicyButton?.setVisualTint(DashboardPalette.secondaryText)
     }
@@ -1866,8 +1832,8 @@ final class DashboardViewController: NSViewController {
             guard let button = rangeButtons[range] else { continue }
             let isSelected = range == selectedRange
             (button as? DashboardRangeButton)?.setDashboardLayerColors(
-                backgroundColor: isSelected ? DashboardPalette.rangeSelectedBackground : DashboardPalette.panelBackground,
-                borderColor: isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.border
+                backgroundColor: isSelected ? DashboardPalette.rangeSelectedBackground : .clear,
+                borderColor: isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.glassControlBorder
             )
             button.contentTintColor = isSelected ? DashboardPalette.rangeSelectedText : DashboardPalette.primaryText
         }

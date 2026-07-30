@@ -148,25 +148,16 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.view is StatusPopoverRootView)
     }
 
-    @Test("弹窗根背景使用系统 popover 背景以匹配顶部三角形")
-    func rootBackgroundMatchesPopoverArrowBackgroundInLightAndDark() throws {
+    @Test("弹窗根背景使用系统玻璃材质以匹配顶部三角形")
+    func rootBackgroundUsesSystemPopoverMaterial() throws {
         let controller = makeController()
-        let aquaAppearance = try #require(NSAppearance(named: .aqua))
-        let darkAppearance = try #require(NSAppearance(named: .darkAqua))
 
         controller.loadViewIfNeeded()
 
-        controller.view.appearance = aquaAppearance
-        refreshEffectiveAppearance(in: controller.view)
-        let aquaBackground = rgbHex(try #require(controller.view.layer?.backgroundColor))
-        let expectedAquaBackground = try rgbHex(NSColor.windowBackgroundColor, appearance: .aqua)
-        #expect(aquaBackground == expectedAquaBackground)
-
-        controller.view.appearance = darkAppearance
-        refreshEffectiveAppearance(in: controller.view)
-        let darkBackground = rgbHex(try #require(controller.view.layer?.backgroundColor))
-        let expectedDarkBackground = try rgbHex(NSColor.windowBackgroundColor, appearance: .darkAqua)
-        #expect(darkBackground == expectedDarkBackground)
+        let rootView = try #require(controller.view as? StatusPopoverRootView)
+        #expect(rootView.material == .popover)
+        #expect(rootView.blendingMode == .withinWindow)
+        #expect(rootView.state == .active)
     }
 
     @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")

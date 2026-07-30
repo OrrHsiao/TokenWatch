@@ -99,6 +99,9 @@ struct TokenWatchTests {
 
         #expect(window.title == "TokenWatch")
         #expect(window.titleVisibility == .hidden)
+        #expect(window.titlebarAppearsTransparent == false)
+        #expect(window.isOpaque == false)
+        #expect(window.backgroundColor == .clear)
         #expect(window.styleMask.contains(.titled))
         #expect(window.styleMask.contains(.closable))
         #expect(window.styleMask.contains(.miniaturizable))
@@ -958,12 +961,15 @@ struct TokenWatchTests {
             _ = lightSessionsButton.sendAction(lightSessionsButton.action, to: lightSessionsButton.target)
         }
 
-        let lightTable = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let lightTable = try #require(
+            lightController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let lightHeader = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let lightRow = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
-        #expect(rgbHex(try #require(lightTable.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(lightTable.debugUsesNativeLiquidGlass)
         #expect(rgbHex(try #require(lightHeader.layer?.backgroundColor)) == 0xF1F5F9)
-        #expect(rgbHex(try #require(lightRow.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(lightHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(lightRow.layer?.backgroundColor)) == 0)
 
         let dark = try #require(NSAppearance(named: .darkAqua))
         let darkController = ViewController(languageSettings: zhHansLanguageSettings())
@@ -975,12 +981,15 @@ struct TokenWatchTests {
             _ = darkSessionsButton.sendAction(darkSessionsButton.action, to: darkSessionsButton.target)
         }
 
-        let darkTable = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let darkTable = try #require(
+            darkController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let darkHeader = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let darkRow = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
-        #expect(rgbHex(try #require(darkTable.layer?.backgroundColor)) == 0x151B23)
-        #expect(rgbHex(try #require(darkHeader.layer?.backgroundColor)) == 0x202936)
-        #expect(rgbHex(try #require(darkRow.layer?.backgroundColor)) == 0x151B23)
+        #expect(darkTable.debugUsesNativeLiquidGlass)
+        #expect(rgbHex(try #require(darkHeader.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(darkHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(darkRow.layer?.backgroundColor)) == 0)
     }
 
     @MainActor
@@ -1021,9 +1030,15 @@ struct TokenWatchTests {
             _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
         }
 
-        let dateBadge = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge"))
-        let sessionMetricCard = try roundedAncestor(containingText: "会话数", root: viewController.view)
-        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let dateBadge = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge") as? DashboardGlassCardView
+        )
+        let sessionMetricCard = try #require(
+            roundedAncestor(containingText: "会话数", root: viewController.view) as? DashboardGlassCardView
+        )
+        let table = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let pagination = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPagination"))
         let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
         let providerLabel = try #require(row.textField(stringValue: "Claude Code"))
@@ -1031,12 +1046,10 @@ struct TokenWatchTests {
         let modelLabel = try #require(row.textField(stringValue: "model-recent"))
         let costLabel = try #require(row.textField(stringValue: "$0.00"))
 
-        #expect(rgbHex(try #require(dateBadge.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dateBadge.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(sessionMetricCard.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(sessionMetricCard.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(table.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(pagination.layer?.backgroundColor)) == 0xF4F6FA)
+        #expect(dateBadge.debugUsesNativeLiquidGlass)
+        #expect(sessionMetricCard.debugUsesNativeLiquidGlass)
+        #expect(table.debugUsesNativeLiquidGlass)
+        #expect(pagination.layer?.backgroundColor == nil)
         #expect(row.firstDescendant(identifier: "DashboardSessionsProviderBadge.claude") == nil)
         #expect(try rgbHex(try #require(copyButton.contentTintColor), appearance: .aqua) == 0x111827)
         #expect(try rgbHex(try #require(providerLabel.textColor), appearance: .aqua) == 0x2563EB)
@@ -1045,7 +1058,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardLayerColorsReapplyPencilLightColorsAfterAppearanceChangesToAqua() throws {
+    @Test func dashboardGlassCardsKeepTheirSurfaceAfterAppearanceChangesToAqua() throws {
         let dark = try #require(NSAppearance(named: .darkAqua))
         let aqua = try #require(NSAppearance(named: .aqua))
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
@@ -1064,21 +1077,29 @@ struct TokenWatchTests {
         let sidebar = try #require(root.firstDescendant(identifier: "DashboardSidebar"))
         let mainContent = try #require(root.firstDescendant(identifier: "DashboardMainContent"))
         let overviewButton = try #require(root.button(identifier: "DashboardNav.overview"))
-        let table = try #require(root.firstDescendant(identifier: "DashboardSessionsTable"))
+        let table = try #require(
+            root.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let tableHeader = try #require(root.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let tableRow = try #require(root.firstDescendant(identifier: "DashboardSessionsRow.0"))
         let paginationButton = try #require(root.button(identifier: "DashboardSessionsPagination.page.1"))
 
-        #expect(rgbHex(try #require(root.layer?.backgroundColor)) == 0xF4F6FA)
-        #expect(rgbHex(try #require(sidebar.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(mainContent.layer?.backgroundColor)) == 0xF4F6FA)
-        #expect(rgbHex(try #require(sessionsButton.layer?.backgroundColor)) == 0xEAF2FF)
-        #expect(rgbHex(try #require(overviewButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(table.layer?.backgroundColor)) == 0xFFFFFF)
+        let rootGlass = try #require(root as? DashboardGlassBackgroundView)
+        let sidebarGlass = try #require(sidebar as? DashboardGlassBackgroundView)
+        let mainContentGlass = try #require(mainContent as? DashboardGlassBackgroundView)
+        #expect(rootGlass.debugUsesNativeLiquidGlass)
+        #expect(sidebarGlass.debugUsesNativeLiquidGlass)
+        #expect(mainContentGlass.debugUsesNativeLiquidGlass)
+        #expect(rgbHex(try #require(sessionsButton.layer?.backgroundColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(sessionsButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(overviewButton.layer?.backgroundColor)) == 0)
+        #expect(table.debugUsesNativeLiquidGlass)
         #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
-        #expect(rgbHex(try #require(tableRow.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(tableHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(tableRow.layer?.backgroundColor)) == 0)
         #expect(rgbHex(try #require(paginationButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(paginationButton.layer?.borderColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(paginationButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(paginationButton.layer?.borderColor)) < 255)
     }
 
     @MainActor
@@ -1098,10 +1119,14 @@ struct TokenWatchTests {
             _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
         }
 
-        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let table = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let tableHeader = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let tableRow = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
-        let dateBadge = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge"))
+        let dateBadge = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge") as? DashboardGlassCardView
+        )
         let pagination = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPagination"))
         let previousButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.previous"))
         let selectedPageButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.page.1"))
@@ -1109,18 +1134,20 @@ struct TokenWatchTests {
         let previousTitleLabel = try #require(previousButton.textField(stringValue: "上一页"))
         let nextTitleLabel = try #require(nextButton.textField(stringValue: "下一页"))
 
-        #expect(rgbHex(try #require(table.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(table.layer?.borderColor)) == 0xD8DEE8)
+        #expect(table.debugUsesNativeLiquidGlass)
         #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
-        #expect(rgbHex(try #require(tableRow.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dateBadge.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dateBadge.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(pagination.layer?.backgroundColor)) == 0xF4F6FA)
-        #expect(rgbHex(try #require(previousButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(tableHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(tableRow.layer?.backgroundColor)) == 0)
+        #expect(dateBadge.debugUsesNativeLiquidGlass)
+        #expect(pagination.layer?.backgroundColor == nil)
+        #expect(alphaValue(try #require(previousButton.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(previousButton.layer?.borderColor)) < 255)
         #expect(rgbHex(try #require(selectedPageButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(nextButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(selectedPageButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(nextButton.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(nextButton.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(previousTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
         #expect(try rgbHex(try #require(nextTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
     }
@@ -1171,7 +1198,7 @@ struct TokenWatchTests {
         let copyButtonBackgroundColor = try #require(copyButton.layer?.backgroundColor)
         let copyButtonTitleLabel = try #require(copyButton.textField(stringValue: "session-light-row"))
 
-        #expect(rgbHex(try #require(row.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(row.layer?.backgroundColor)) == 0)
         #expect(alphaValue(copyButtonBackgroundColor) == 0)
         #expect(try rgbHex(try #require(copyButton.contentTintColor), appearance: .aqua) == 0x111827)
         #expect(try rgbHex(try #require(copyButtonTitleLabel.textColor), appearance: .aqua) == 0x111827)
@@ -1263,7 +1290,7 @@ struct TokenWatchTests {
         }
 
         let dataFoldersCard = try #require(
-            viewController.view.firstDescendant(identifier: "SettingsDataFoldersSection")
+            viewController.view.firstDescendant(identifier: "SettingsDataFoldersSection") as? DashboardGlassCardView
         )
         let authorizeButton = try #require(
             viewController.view.button(
@@ -1274,17 +1301,20 @@ struct TokenWatchTests {
         let autoRefreshPopUp = try #require(viewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
         let languagePopUp = try #require(viewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
 
-        #expect(rgbHex(try #require(dataFoldersCard.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dataFoldersCard.layer?.borderColor)) == 0xD8DEE8)
+        #expect(dataFoldersCard.debugUsesNativeLiquidGlass)
         #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(authorizeButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(authorizeButton.layer?.borderColor)) < 255)
+        #expect(alphaValue(try #require(refreshButton.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(refreshButton.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(refreshButton.contentTintColor), appearance: .aqua) == 0x111827)
-        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(autoRefreshPopUp.layer?.borderColor)) < 255)
+        #expect(alphaValue(try #require(languagePopUp.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(languagePopUp.layer?.borderColor)) < 255)
     }
 
     @MainActor
@@ -1428,11 +1458,12 @@ struct TokenWatchTests {
         let tintColor = try #require(selectedButton.contentTintColor)
 
         #expect(rgbHex(backgroundColor) == 0x2563EB)
+        #expect(alphaValue(backgroundColor) < 255)
         #expect(try rgbHex(tintColor, appearance: .aqua) == 0xFFFFFF)
     }
 
     @MainActor
-    @Test func dashboardAnalysisPanelsUsePencilLightPanelBorders() throws {
+    @Test func dashboardAnalysisPanelsUseNativeLiquidGlass() throws {
         let appearance = try #require(NSAppearance(named: .aqua))
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         appearance.performAsCurrentDrawingAppearance {
@@ -1441,9 +1472,8 @@ struct TokenWatchTests {
 
         for title in ["趋势", "模型消耗排行", "来源占比", "项目消耗"] {
             let panel = try panelTitled(title, root: viewController.view)
-            #expect(rgbHex(try #require(panel.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(panel.layer?.borderWidth == 1)
-            #expect(rgbHex(try #require(panel.layer?.borderColor)) == 0xD8DEE8)
+            let glassPanel = try #require(panel as? DashboardGlassCardView)
+            #expect(glassPanel.debugUsesNativeLiquidGlass)
         }
     }
 
@@ -1935,8 +1965,9 @@ struct TokenWatchTests {
         #expect(codexAction.title == "重新选择")
         #expect(!codexAction.isHidden)
         #expect(codexAction.isEnabled)
-        #expect(rgbHex(try #require(codexAction.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(codexAction.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(codexAction.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(codexAction.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(codexAction.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(codexAction.contentTintColor), appearance: .aqua) == 0x111827)
         let opencodeStatus = try #require(
             controller.view.firstDescendant(
@@ -1947,8 +1978,9 @@ struct TokenWatchTests {
         #expect(!opencodeStatus.isHidden)
         #expect(opencodeAction.title == "再次选择")
         #expect(!opencodeAction.isHidden)
-        #expect(rgbHex(try #require(opencodeAction.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(opencodeAction.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(opencodeAction.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(opencodeAction.layer?.borderColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(opencodeAction.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(opencodeAction.contentTintColor), appearance: .aqua) == 0x111827)
 
         controller.view.frame = NSRect(
@@ -2193,7 +2225,7 @@ struct TokenWatchTests {
             let dataFoldersCard = try #require(
                 controller.view.firstDescendant(
                     identifier: "SettingsDataFoldersSection"
-                )
+                ) as? DashboardGlassCardView
             )
             #expect(controller.view.bounds.contains(dataFoldersCard.frame))
             for identifier in [
@@ -2835,7 +2867,7 @@ struct TokenWatchTests {
             let dataFoldersCard = try #require(
                 controller.view.firstDescendant(
                     identifier: "SettingsDataFoldersSection"
-                )
+                ) as? DashboardGlassCardView
             )
             let title = try #require(
                 controller.view.textField(stringValue: "设置")
@@ -2867,12 +2899,8 @@ struct TokenWatchTests {
                 )
             )
 
-            #expect(
-                rgbHex(try #require(controller.view.layer?.backgroundColor))
-                    == 0xF4F6FA
-            )
-            #expect(rgbHex(try #require(dataFoldersCard.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(dataFoldersCard.layer?.borderColor)) == 0xD8DEE8)
+            #expect(controller.view.layer?.backgroundColor == nil)
+            #expect(dataFoldersCard.debugUsesNativeLiquidGlass)
             #expect(
                 try rgbHex(try #require(title.textColor), appearance: .aqua)
                     == 0x111827
@@ -2888,27 +2916,29 @@ struct TokenWatchTests {
                 ) == 0x111827
             )
             #expect(rgbHex(try #require(action.layer?.backgroundColor)) == 0x2563EB)
-            #expect(rgbHex(try #require(action.layer?.borderColor)) == 0x2563EB)
+            #expect(alphaValue(try #require(action.layer?.backgroundColor)) < 255)
+            #expect(alphaValue(try #require(action.layer?.borderColor)) < 255)
             #expect(
                 try rgbHex(
                     try #require(action.contentTintColor),
                     appearance: .aqua
                 ) == 0xFFFFFF
             )
-            #expect(rgbHex(try #require(refresh.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0xD8DEE8)
+            #expect(alphaValue(try #require(refresh.layer?.backgroundColor)) == 0)
+            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0xFFFFFF)
+            #expect(alphaValue(try #require(refresh.layer?.borderColor)) < 255)
             #expect(
                 try rgbHex(
                     try #require(refresh.contentTintColor),
                     appearance: .aqua
                 ) == 0x111827
             )
-            #expect(
-                rgbHex(try #require(autoRefresh.layer?.backgroundColor)) == 0xFFFFFF
-            )
-            #expect(rgbHex(try #require(autoRefresh.layer?.borderColor)) == 0xD8DEE8)
-            #expect(rgbHex(try #require(language.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(language.layer?.borderColor)) == 0xD8DEE8)
+            #expect(alphaValue(try #require(autoRefresh.layer?.backgroundColor)) == 0)
+            #expect(rgbHex(try #require(autoRefresh.layer?.borderColor)) == 0xFFFFFF)
+            #expect(alphaValue(try #require(autoRefresh.layer?.borderColor)) < 255)
+            #expect(alphaValue(try #require(language.layer?.backgroundColor)) == 0)
+            #expect(rgbHex(try #require(language.layer?.borderColor)) == 0xFFFFFF)
+            #expect(alphaValue(try #require(language.layer?.borderColor)) < 255)
         }
     }
 
@@ -3278,6 +3308,9 @@ private func textField(_ value: String, inPanelTitled title: String, root: NSVie
 private func panelTitled(_ title: String, root: NSView) throws -> NSView {
     let titleLabel = try #require(root.textField(stringValue: title))
     return try #require(titleLabel.firstAncestor { view in
+        if view is DashboardGlassCardView {
+            return true
+        }
         guard let cornerRadius = view.layer?.cornerRadius else { return false }
         return abs(cornerRadius - 8) < 0.1
     })
@@ -3287,6 +3320,9 @@ private func panelTitled(_ title: String, root: NSView) throws -> NSView {
 private func roundedAncestor(containingText text: String, root: NSView) throws -> NSView {
     let label = try #require(root.textField(stringValue: text))
     return try #require(label.firstAncestor { view in
+        if view is DashboardGlassCardView {
+            return true
+        }
         guard let cornerRadius = view.layer?.cornerRadius else { return false }
         return abs(cornerRadius - 8) < 0.1
     })

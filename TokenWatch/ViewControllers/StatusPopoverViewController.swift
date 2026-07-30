@@ -697,28 +697,18 @@ private final class SummaryMetricCardView: NSView {
     }
 }
 
-/// 跟随系统外观刷新 popover 背景色。
-final class StatusPopoverRootView: NSView {
+/// 状态栏统计弹窗的系统玻璃背景，和 popover 箭头保持一致的材质层级。
+final class StatusPopoverRootView: NSVisualEffectView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true
-        updateBackgroundColor()
+        material = .popover
+        blendingMode = .withinWindow
+        state = .active
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("StatusPopoverRootView 不支持 storyboard 初始化")
-    }
-
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        updateBackgroundColor()
-    }
-
-    private func updateBackgroundColor() {
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        }
     }
 }
 
