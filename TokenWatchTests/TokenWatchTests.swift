@@ -2389,22 +2389,6 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func settingsMapsUnavailableToDisabledOffSwitch() throws {
-        let controller = SettingsViewController(
-            isAuthorized: { false },
-            loginItemSettings: FakeLoginItemSettings(state: .unavailable),
-            languageSettings: zhHansLanguageSettings()
-        )
-        controller.loadViewIfNeeded()
-
-        let toggle = try #require(
-            controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
-        )
-        #expect(toggle.state == .off)
-        #expect(!toggle.isEnabled)
-    }
-
-    @MainActor
     @Test func settingsShowsRequiresApprovalGuidanceAndOpensSystemSettings() throws {
         let loginItemSettings = FakeLoginItemSettings(state: .requiresApproval)
         let controller = SettingsViewController(
@@ -2426,43 +2410,6 @@ struct TokenWatchTests {
         _ = openButton.sendAction(openButton.action, to: openButton.target)
         #expect(loginItemSettings.openSystemSettingsCallCount == 1)
         #expect(loginItemSettings.requestedStates.isEmpty)
-    }
-
-    @MainActor
-    @Test func settingsShowsUnavailableGuidanceAndRefreshesWhenAppBecomesActive() throws {
-        let loginItemSettings = FakeLoginItemSettings(state: .unavailable)
-        let controller = SettingsViewController(
-            isAuthorized: { false },
-            loginItemSettings: loginItemSettings,
-            languageSettings: zhHansLanguageSettings()
-        )
-        controller.loadViewIfNeeded()
-
-        let toggle = try #require(controller.view.switchControl(identifier: "LaunchAtLoginSwitch"))
-        let status = try #require(
-            controller.view.firstDescendant(identifier: "LaunchAtLoginStatusLabel") as? NSTextField
-        )
-        let openButton = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
-
-        #expect(status.stringValue == "当前无法使用开机自启动。")
-        #expect(!status.isHidden)
-        #expect(openButton.isHidden)
-
-        toggle.state = .on
-        _ = toggle.sendAction(toggle.action, to: toggle.target)
-        #expect(loginItemSettings.requestedStates.isEmpty)
-        #expect(toggle.state == .off)
-        #expect(!toggle.isEnabled)
-
-        loginItemSettings.state = .enabled
-        NotificationCenter.default.post(
-            name: NSApplication.didBecomeActiveNotification,
-            object: NSApp
-        )
-
-        #expect(toggle.state == .on)
-        #expect(toggle.isEnabled)
-        #expect(status.isHidden)
     }
 
     @MainActor

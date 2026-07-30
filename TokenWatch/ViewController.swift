@@ -1045,11 +1045,6 @@ final class SettingsViewController: NSViewController {
             launchAtLoginSwitch.isEnabled = true
             statusKey = .settingsLaunchAtLoginRequiresApproval
             showsOpenSettings = true
-        case .unavailable:
-            launchAtLoginSwitch.state = .off
-            launchAtLoginSwitch.isEnabled = false
-            statusKey = .settingsLaunchAtLoginUnavailable
-            showsOpenSettings = false
         }
 
         if let statusKey {

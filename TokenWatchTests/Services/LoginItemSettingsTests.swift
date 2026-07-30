@@ -10,7 +10,7 @@ struct LoginItemSettingsTests {
             (.notRegistered, .notRegistered),
             (.enabled, .enabled),
             (.requiresApproval, .requiresApproval),
-            (.notFound, .unavailable),
+            (.notFound, .notRegistered),
         ]
 
         for item in cases {
@@ -42,12 +42,12 @@ struct LoginItemSettingsTests {
         #expect(requiresApproval.registerCallCount == 0)
         #expect(requiresApproval.unregisterCallCount == 1)
 
-        let unavailable = FakeLoginItemService(status: .notFound)
-        let unavailableSettings = LoginItemSettings(service: unavailable)
-        try unavailableSettings.setEnabled(true)
-        try unavailableSettings.setEnabled(false)
-        #expect(unavailable.registerCallCount == 0)
-        #expect(unavailable.unregisterCallCount == 0)
+        let notFound = FakeLoginItemService(status: .notFound)
+        let notFoundSettings = LoginItemSettings(service: notFound)
+        try notFoundSettings.setEnabled(true)
+        try notFoundSettings.setEnabled(false)
+        #expect(notFound.registerCallCount == 1)
+        #expect(notFound.unregisterCallCount == 0)
     }
 
     @Test func opensSystemSettingsThroughAnIndependentAction() {

@@ -77,7 +77,6 @@ enum AppStringKey: CaseIterable, Sendable {
     case settingsAutoRefreshInterval
     case settingsLaunchAtLogin
     case settingsLaunchAtLoginRequiresApproval
-    case settingsLaunchAtLoginUnavailable
     case settingsOpenLoginItemsSettings
     case settingsLanguage
     case initialDirectoryAuthorizationGuideTitle
@@ -256,7 +255,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "自动刷新间隔",
         .settingsLaunchAtLogin: "开机自启动",
         .settingsLaunchAtLoginRequiresApproval: "需要在系统设置中批准开机自启动。",
-        .settingsLaunchAtLoginUnavailable: "当前无法使用开机自启动。",
         .settingsOpenLoginItemsSettings: "打开登录项设置",
         .settingsLanguage: "语言",
         .initialDirectoryAuthorizationGuideTitle: "设置数据文件夹",
@@ -414,7 +412,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "自動重新整理間隔",
         .settingsLaunchAtLogin: "開機自動啟動",
         .settingsLaunchAtLoginRequiresApproval: "需要在「系統設定」中核准登入時啟動。",
-        .settingsLaunchAtLoginUnavailable: "目前無法使用登入時啟動。",
         .settingsOpenLoginItemsSettings: "打開登入項目設定",
         .settingsLanguage: "語言",
         .initialDirectoryAuthorizationGuideTitle: "設定資料檔案夾",
@@ -572,7 +569,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "自動更新間隔",
         .settingsLaunchAtLogin: "ログイン時に起動",
         .settingsLaunchAtLoginRequiresApproval: "ログイン時に起動するには、システム設定での承認が必要です。",
-        .settingsLaunchAtLoginUnavailable: "現在、ログイン時の起動は利用できません。",
         .settingsOpenLoginItemsSettings: "ログイン項目設定を開く",
         .settingsLanguage: "言語",
         .initialDirectoryAuthorizationGuideTitle: "データフォルダを設定",
@@ -730,7 +726,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "자동 새로고침 간격",
         .settingsLaunchAtLogin: "로그인 시 실행",
         .settingsLaunchAtLoginRequiresApproval: "로그인 시 실행하려면 시스템 설정에서 승인이 필요합니다.",
-        .settingsLaunchAtLoginUnavailable: "현재 로그인 시 실행을 사용할 수 없습니다.",
         .settingsOpenLoginItemsSettings: "로그인 항목 설정 열기",
         .settingsLanguage: "언어",
         .initialDirectoryAuthorizationGuideTitle: "데이터 폴더 설정",
@@ -888,7 +883,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Intervalo de actualización automática",
         .settingsLaunchAtLogin: "Iniciar al iniciar sesión",
         .settingsLaunchAtLoginRequiresApproval: "Se requiere aprobación en Ajustes del Sistema para iniciar al iniciar sesión.",
-        .settingsLaunchAtLoginUnavailable: "El inicio al iniciar sesión no está disponible actualmente.",
         .settingsOpenLoginItemsSettings: "Abrir ajustes de ítems de inicio",
         .settingsLanguage: "Idioma",
         .initialDirectoryAuthorizationGuideTitle: "Configura las carpetas de datos",
@@ -1046,7 +1040,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Intervall für Auto-Aktualisierung",
         .settingsLaunchAtLogin: "Beim Anmelden starten",
         .settingsLaunchAtLoginRequiresApproval: "Für den Start bei der Anmeldung ist eine Genehmigung in den Systemeinstellungen erforderlich.",
-        .settingsLaunchAtLoginUnavailable: "Der Start bei der Anmeldung ist derzeit nicht verfügbar.",
         .settingsOpenLoginItemsSettings: "Anmeldeobjekteinstellungen öffnen",
         .settingsLanguage: "Sprache",
         .initialDirectoryAuthorizationGuideTitle: "Datenordner einrichten",
@@ -1204,7 +1197,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Intervalle d'actualisation auto",
         .settingsLaunchAtLogin: "Lancer à l’ouverture de session",
         .settingsLaunchAtLoginRequiresApproval: "L’approbation dans Réglages Système est requise pour le lancement à l’ouverture de session.",
-        .settingsLaunchAtLoginUnavailable: "Le lancement à l’ouverture de session est actuellement indisponible.",
         .settingsOpenLoginItemsSettings: "Ouvrir les réglages des éléments d’ouverture",
         .settingsLanguage: "Langue",
         .initialDirectoryAuthorizationGuideTitle: "Configurer les dossiers de données",
@@ -1362,7 +1354,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Intervalo de atualização automática",
         .settingsLaunchAtLogin: "Iniciar ao entrar",
         .settingsLaunchAtLoginRequiresApproval: "É necessária aprovação nos Ajustes do Sistema para iniciar ao entrar.",
-        .settingsLaunchAtLoginUnavailable: "A inicialização ao entrar não está disponível no momento.",
         .settingsOpenLoginItemsSettings: "Abrir ajustes de itens de início",
         .settingsLanguage: "Idioma",
         .initialDirectoryAuthorizationGuideTitle: "Configurar pastas de dados",
@@ -1520,7 +1511,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Intervallo di aggiornamento automatico",
         .settingsLaunchAtLogin: "Avvia all'accesso",
         .settingsLaunchAtLoginRequiresApproval: "Per l’avvio al login è necessaria l’approvazione in Impostazioni di Sistema.",
-        .settingsLaunchAtLoginUnavailable: "L’avvio al login non è attualmente disponibile.",
         .settingsOpenLoginItemsSettings: "Apri le impostazioni degli elementi login",
         .settingsLanguage: "Lingua",
         .initialDirectoryAuthorizationGuideTitle: "Configura le cartelle dati",
@@ -1678,7 +1668,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Interval voor automatisch verversen",
         .settingsLaunchAtLogin: "Start bij inloggen",
         .settingsLaunchAtLoginRequiresApproval: "Voor starten bij inloggen is goedkeuring in Systeeminstellingen vereist.",
-        .settingsLaunchAtLoginUnavailable: "Starten bij inloggen is momenteel niet beschikbaar.",
         .settingsOpenLoginItemsSettings: "Instellingen voor inlogonderdelen openen",
         .settingsLanguage: "Taal",
         .initialDirectoryAuthorizationGuideTitle: "Gegevensmappen instellen",
@@ -1836,7 +1825,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Interwał auto odświeżania",
         .settingsLaunchAtLogin: "Uruchamiaj przy logowaniu",
         .settingsLaunchAtLoginRequiresApproval: "Uruchamianie przy logowaniu wymaga zatwierdzenia w Ustawieniach systemowych.",
-        .settingsLaunchAtLoginUnavailable: "Uruchamianie przy logowaniu jest obecnie niedostępne.",
         .settingsOpenLoginItemsSettings: "Otwórz ustawienia rzeczy otwieranych",
         .settingsLanguage: "Język",
         .initialDirectoryAuthorizationGuideTitle: "Skonfiguruj foldery danych",
@@ -1994,7 +1982,6 @@ enum AppStrings {
         .settingsAutoRefreshInterval: "Auto Refresh Interval",
         .settingsLaunchAtLogin: "Launch at Login",
         .settingsLaunchAtLoginRequiresApproval: "Approval is required in System Settings to launch at login.",
-        .settingsLaunchAtLoginUnavailable: "Launch at login is currently unavailable.",
         .settingsOpenLoginItemsSettings: "Open Login Items Settings",
         .settingsLanguage: "Language",
         .initialDirectoryAuthorizationGuideTitle: "Set Up Data Folders",
