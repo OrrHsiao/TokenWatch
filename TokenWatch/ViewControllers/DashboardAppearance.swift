@@ -18,15 +18,15 @@ enum DashboardPalette {
     static let yellow = dynamicColor(light: 0xF59E0B, dark: 0xF5C451)
     static let purple = dynamicColor(light: 0x8B5CF6, dark: 0xA78BFA)
     static let glassControlBorder = dynamicColor(
-        light: 0xFFFFFF,
+        light: 0x64748B,
         dark: 0xFFFFFF,
-        lightAlpha: 0.72,
+        lightAlpha: 0.32,
         darkAlpha: 0.28
     )
     static let glassDivider = dynamicColor(
-        light: 0xFFFFFF,
+        light: 0x94A3B8,
         dark: 0xFFFFFF,
-        lightAlpha: 0.52,
+        lightAlpha: 0.28,
         darkAlpha: 0.16
     )
     static let navigationSelectedBackground = dynamicColor(
@@ -39,20 +39,20 @@ enum DashboardPalette {
     static let rangeSelectedBackground = dynamicColor(
         light: 0x2563EB,
         dark: 0x5AA2FF,
-        lightAlpha: 0.82,
+        lightAlpha: 0.58,
         darkAlpha: 0.32
     )
-    static let rangeSelectedText = dynamicColor(light: 0xFFFFFF, dark: 0xF5F7FA)
+    static let rangeSelectedText = dynamicColor(light: 0x1E3A8A, dark: 0xF5F7FA)
     static let rangeSelectedBorder = dynamicColor(
         light: 0x2563EB,
         dark: 0x5AA2FF,
-        lightAlpha: 0.82,
+        lightAlpha: 0.62,
         darkAlpha: 0.5
     )
     static let sessionTableHeaderBackground = dynamicColor(
-        light: 0xF1F5F9,
+        light: 0x2563EB,
         dark: 0xFFFFFF,
-        lightAlpha: 0.62,
+        lightAlpha: 0.10,
         darkAlpha: 0.14
     )
     static let sessionTableAlternateRowBackground = dynamicColor(
@@ -256,9 +256,12 @@ final class DashboardGlassBackgroundView: NSView {
 /// 主要信息卡在 macOS 26 使用常规 Liquid Glass，既保留背景透视也维持文字可读性。
 class DashboardGlassCardView: NSView {
     private let contentContainer = NSView()
+    private var nativeGlassView: NSView?
     private var usesNativeLiquidGlass = false
+    private var usesClearGlassStyle = false
 
     var debugUsesNativeLiquidGlass: Bool { usesNativeLiquidGlass }
+    var debugUsesClearGlassStyle: Bool { usesClearGlassStyle }
 
     init(cornerRadius: CGFloat) {
         super.init(frame: .zero)
@@ -269,6 +272,11 @@ class DashboardGlassCardView: NSView {
         fatalError("DashboardGlassCardView 必须用 init(cornerRadius:) 构造")
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateNativeGlassStyle()
+    }
+
     /// 将内容放入系统玻璃的 contentView，避免覆盖原生折射与边缘高光。
     func addContentSubview(_ view: NSView) {
         contentContainer.addSubview(view)
@@ -277,7 +285,6 @@ class DashboardGlassCardView: NSView {
     private func installGlassEffect(cornerRadius: CGFloat) {
         if #available(macOS 26.0, *) {
             let glassView = NSGlassEffectView(frame: .zero)
-            glassView.style = .regular
             glassView.cornerRadius = cornerRadius
             glassView.translatesAutoresizingMaskIntoConstraints = false
             glassView.contentView = contentContainer
@@ -293,6 +300,8 @@ class DashboardGlassCardView: NSView {
                 contentContainer.topAnchor.constraint(equalTo: glassView.topAnchor),
                 contentContainer.bottomAnchor.constraint(equalTo: glassView.bottomAnchor),
             ])
+            nativeGlassView = glassView
+            updateNativeGlassStyle()
             usesNativeLiquidGlass = true
             return
         }
@@ -320,6 +329,14 @@ class DashboardGlassCardView: NSView {
             contentContainer.topAnchor.constraint(equalTo: fallbackView.topAnchor),
             contentContainer.bottomAnchor.constraint(equalTo: fallbackView.bottomAnchor),
         ])
+    }
+
+    /// 浅色环境让内容卡使用透明玻璃，避免系统常规材质叠加成厚重白卡；暗色继续使用常规玻璃维持对比度。
+    private func updateNativeGlassStyle() {
+        guard #available(macOS 26.0, *), let nativeGlassView = nativeGlassView as? NSGlassEffectView else { return }
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        nativeGlassView.style = isDark ? .regular : .clear
+        usesClearGlassStyle = !isDark
     }
 }
 

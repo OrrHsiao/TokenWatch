@@ -956,6 +956,8 @@ struct TokenWatchTests {
         aqua.performAsCurrentDrawingAppearance {
             lightController.loadViewIfNeeded()
         }
+        lightController.view.appearance = aqua
+        refreshEffectiveAppearance(in: lightController.view)
         let lightSessionsButton = try #require(lightController.view.button(identifier: "DashboardNav.sessions"))
         aqua.performAsCurrentDrawingAppearance {
             _ = lightSessionsButton.sendAction(lightSessionsButton.action, to: lightSessionsButton.target)
@@ -967,7 +969,8 @@ struct TokenWatchTests {
         let lightHeader = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let lightRow = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
         #expect(lightTable.debugUsesNativeLiquidGlass)
-        #expect(rgbHex(try #require(lightHeader.layer?.backgroundColor)) == 0xF1F5F9)
+        #expect(lightTable.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(lightHeader.layer?.backgroundColor)) == 0x2563EB)
         #expect(alphaValue(try #require(lightHeader.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(lightRow.layer?.backgroundColor)) == 0)
 
@@ -976,6 +979,8 @@ struct TokenWatchTests {
         dark.performAsCurrentDrawingAppearance {
             darkController.loadViewIfNeeded()
         }
+        darkController.view.appearance = dark
+        refreshEffectiveAppearance(in: darkController.view)
         let darkSessionsButton = try #require(darkController.view.button(identifier: "DashboardNav.sessions"))
         dark.performAsCurrentDrawingAppearance {
             _ = darkSessionsButton.sendAction(darkSessionsButton.action, to: darkSessionsButton.target)
@@ -987,6 +992,7 @@ struct TokenWatchTests {
         let darkHeader = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let darkRow = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
         #expect(darkTable.debugUsesNativeLiquidGlass)
+        #expect(!darkTable.debugUsesClearGlassStyle)
         #expect(rgbHex(try #require(darkHeader.layer?.backgroundColor)) == 0xFFFFFF)
         #expect(alphaValue(try #require(darkHeader.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(darkRow.layer?.backgroundColor)) == 0)
@@ -1094,7 +1100,8 @@ struct TokenWatchTests {
         #expect(alphaValue(try #require(sessionsButton.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(overviewButton.layer?.backgroundColor)) == 0)
         #expect(table.debugUsesNativeLiquidGlass)
-        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
+        #expect(table.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0x2563EB)
         #expect(alphaValue(try #require(tableHeader.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(tableRow.layer?.backgroundColor)) == 0)
         #expect(rgbHex(try #require(paginationButton.layer?.backgroundColor)) == 0x2563EB)
@@ -1135,18 +1142,19 @@ struct TokenWatchTests {
         let nextTitleLabel = try #require(nextButton.textField(stringValue: "下一页"))
 
         #expect(table.debugUsesNativeLiquidGlass)
-        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
+        #expect(table.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0x2563EB)
         #expect(alphaValue(try #require(tableHeader.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(tableRow.layer?.backgroundColor)) == 0)
         #expect(dateBadge.debugUsesNativeLiquidGlass)
         #expect(pagination.layer?.backgroundColor == nil)
         #expect(alphaValue(try #require(previousButton.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(previousButton.layer?.borderColor)) < 255)
         #expect(rgbHex(try #require(selectedPageButton.layer?.backgroundColor)) == 0x2563EB)
         #expect(alphaValue(try #require(selectedPageButton.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(nextButton.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(nextButton.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(previousTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
         #expect(try rgbHex(try #require(nextTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
@@ -1302,18 +1310,19 @@ struct TokenWatchTests {
         let languagePopUp = try #require(viewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
 
         #expect(dataFoldersCard.debugUsesNativeLiquidGlass)
+        #expect(dataFoldersCard.debugUsesClearGlassStyle)
         #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
         #expect(alphaValue(try #require(authorizeButton.layer?.backgroundColor)) < 255)
         #expect(alphaValue(try #require(authorizeButton.layer?.borderColor)) < 255)
         #expect(alphaValue(try #require(refreshButton.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(refreshButton.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(refreshButton.contentTintColor), appearance: .aqua) == 0x111827)
         #expect(alphaValue(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(autoRefreshPopUp.layer?.borderColor)) < 255)
         #expect(alphaValue(try #require(languagePopUp.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(languagePopUp.layer?.borderColor)) < 255)
     }
 
@@ -1459,7 +1468,7 @@ struct TokenWatchTests {
 
         #expect(rgbHex(backgroundColor) == 0x2563EB)
         #expect(alphaValue(backgroundColor) < 255)
-        #expect(try rgbHex(tintColor, appearance: .aqua) == 0xFFFFFF)
+        #expect(try rgbHex(tintColor, appearance: .aqua) == 0x1E3A8A)
     }
 
     @MainActor
@@ -1469,11 +1478,14 @@ struct TokenWatchTests {
         appearance.performAsCurrentDrawingAppearance {
             viewController.loadViewIfNeeded()
         }
+        viewController.view.appearance = appearance
+        refreshEffectiveAppearance(in: viewController.view)
 
         for title in ["趋势", "模型消耗排行", "来源占比", "项目消耗"] {
             let panel = try panelTitled(title, root: viewController.view)
             let glassPanel = try #require(panel as? DashboardGlassCardView)
             #expect(glassPanel.debugUsesNativeLiquidGlass)
+            #expect(glassPanel.debugUsesClearGlassStyle)
         }
     }
 
@@ -1966,7 +1978,7 @@ struct TokenWatchTests {
         #expect(!codexAction.isHidden)
         #expect(codexAction.isEnabled)
         #expect(alphaValue(try #require(codexAction.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(codexAction.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(codexAction.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(codexAction.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(codexAction.contentTintColor), appearance: .aqua) == 0x111827)
         let opencodeStatus = try #require(
@@ -1979,7 +1991,7 @@ struct TokenWatchTests {
         #expect(opencodeAction.title == "再次选择")
         #expect(!opencodeAction.isHidden)
         #expect(alphaValue(try #require(opencodeAction.layer?.backgroundColor)) == 0)
-        #expect(rgbHex(try #require(opencodeAction.layer?.borderColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(opencodeAction.layer?.borderColor)) == 0x64748B)
         #expect(alphaValue(try #require(opencodeAction.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(opencodeAction.contentTintColor), appearance: .aqua) == 0x111827)
 
@@ -2863,6 +2875,8 @@ struct TokenWatchTests {
             appearance.performAsCurrentDrawingAppearance {
                 controller.loadViewIfNeeded()
             }
+            controller.view.appearance = appearance
+            refreshEffectiveAppearance(in: controller.view)
 
             let dataFoldersCard = try #require(
                 controller.view.firstDescendant(
@@ -2901,6 +2915,7 @@ struct TokenWatchTests {
 
             #expect(controller.view.layer?.backgroundColor == nil)
             #expect(dataFoldersCard.debugUsesNativeLiquidGlass)
+            #expect(dataFoldersCard.debugUsesClearGlassStyle)
             #expect(
                 try rgbHex(try #require(title.textColor), appearance: .aqua)
                     == 0x111827
@@ -2922,10 +2937,10 @@ struct TokenWatchTests {
                 try rgbHex(
                     try #require(action.contentTintColor),
                     appearance: .aqua
-                ) == 0xFFFFFF
+                ) == 0x1E3A8A
             )
             #expect(alphaValue(try #require(refresh.layer?.backgroundColor)) == 0)
-            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0x64748B)
             #expect(alphaValue(try #require(refresh.layer?.borderColor)) < 255)
             #expect(
                 try rgbHex(
@@ -2934,10 +2949,10 @@ struct TokenWatchTests {
                 ) == 0x111827
             )
             #expect(alphaValue(try #require(autoRefresh.layer?.backgroundColor)) == 0)
-            #expect(rgbHex(try #require(autoRefresh.layer?.borderColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(autoRefresh.layer?.borderColor)) == 0x64748B)
             #expect(alphaValue(try #require(autoRefresh.layer?.borderColor)) < 255)
             #expect(alphaValue(try #require(language.layer?.backgroundColor)) == 0)
-            #expect(rgbHex(try #require(language.layer?.borderColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(language.layer?.borderColor)) == 0x64748B)
             #expect(alphaValue(try #require(language.layer?.borderColor)) < 255)
         }
     }
