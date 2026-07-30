@@ -65,7 +65,16 @@ final class JSONLLastGoodCacheCoordinator<
         onFailure: @escaping @Sendable (FileInfo, Error, Bool) -> Void
     ) -> [Candidate] {
         guard !files.isEmpty else {
-            prune(keeping: [])
+            let emptyDiskEntries: [String: JSONLDiskCacheEntry<Candidate>] = [:]
+            withLock {
+                cachedFiles.removeAll()
+                if let diskStore {
+                    // scanner 已确认没有可用文件，直接覆盖旧持久化结果，避免删除日志后保留用量数据。
+                    diskEntries = emptyDiskEntries
+                    isDiskCacheLoaded = true
+                    diskStore.saveAll(emptyDiskEntries)
+                }
+            }
             return []
         }
 
@@ -218,12 +227,6 @@ final class JSONLLastGoodCacheCoordinator<
                 scope: scope,
                 state: state
             )
-        }
-    }
-
-    private func prune(keeping listedKeys: Set<String>) {
-        withLock {
-            cachedFiles = cachedFiles.filter { listedKeys.contains($0.key) }
         }
     }
 

@@ -268,6 +268,52 @@ struct JSONLLastGoodCacheCoordinatorTests {
         #expect(reader2.totalBytesRead == 0)
     }
 
+    @Test("空扫描会清除已持久化的缓存")
+    func emptyScanClearsPersistedDiskCache() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLDiskPrune-\(UUID().uuidString)")
+        let cacheFileURL = tempDir.appendingPathComponent("diskCache.json")
+        let logURL = tempDir.appendingPathComponent("test.jsonl")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        try Data("line1\n".utf8).write(to: logURL)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let listed = ListedFile(url: logURL)
+        let store = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
+            fileReader: RecordingJSONLFileReader()
+        )
+
+        let first = coordinator.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: store,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in try readLines(from: snapshot.stream) },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+        #expect(first == ["line1"])
+        #expect(!store.loadAll().isEmpty)
+
+        let emptyFiles: [ListedFile] = []
+        let cleared = coordinator.loadListedFiles(
+            emptyFiles,
+            scope: .standard,
+            diskStore: store,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in [] },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+
+        #expect(cleared.isEmpty)
+        let reloadedStore = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        #expect(reloadedStore.loadAll().isEmpty)
+    }
+
     private func readLines(from stream: any JSONLByteStream) throws -> [String] {
         try stream.seek(toOffset: 0)
         var data = Data()
