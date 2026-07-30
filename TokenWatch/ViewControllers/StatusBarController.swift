@@ -36,7 +36,6 @@ final class StatusBarController {
     )
     private var loadingAnimationTimer: Timer?
     private var loadingAnimationFrameIndex = 0
-    private static let loadingAnimationInterval: TimeInterval = 0.18
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -335,7 +334,7 @@ final class StatusBarController {
         loadingAnimationFrameIndex = 0
         renderLoadingAnimationFrame()
 
-        let timer = Timer(timeInterval: Self.loadingAnimationInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: StatusBarLoadingAnimation.frameInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.advanceLoadingAnimationFrame()
             }
