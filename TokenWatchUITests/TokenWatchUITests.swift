@@ -73,10 +73,16 @@ final class TokenWatchUITests: XCTestCase {
 
         let nextButton = app.buttons["DashboardSessionsPagination.next"]
         XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
+        let initialMinX = nextButton.frame.minX
 
-        // 验证 Table Scroll View 可滚动容器存在且可正常进行水平触控偏移
+        // 优先按一个方向滚动；若已在该方向的边界则反向滚动，必须观察到内容位置改变。
         tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
-        XCTAssertTrue(tableScrollView.exists)
+        var shiftedMinX = nextButton.frame.minX
+        if shiftedMinX >= initialMinX - 1 {
+            tableScrollView.scroll(byDeltaX: 400, deltaY: 0)
+            shiftedMinX = nextButton.frame.minX
+        }
+        XCTAssertLessThan(shiftedMinX, initialMinX - 1)
     }
 
     @MainActor
