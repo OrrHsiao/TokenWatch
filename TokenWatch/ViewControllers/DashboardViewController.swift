@@ -81,7 +81,13 @@ final class DashboardViewController: NSViewController {
     private let statusLabel = NSTextField(labelWithString: "")
     private let sessionTitleLabel = NSTextField(labelWithString: "")
     private let sessionSubtitleLabel = NSTextField(labelWithString: "")
-    private let sessionDateLabel = NSTextField(labelWithString: "")
+    private let sessionDatePicker = NSDatePicker()
+    private let sessionTodayButton = DashboardSessionButton(
+        title: "",
+        target: nil,
+        action: nil,
+        contentAlignment: .center
+    )
     private let sessionCountValueLabel = NSTextField(labelWithString: "0")
     private let sessionTokenValueLabel = NSTextField(labelWithString: "0")
     private let sessionCostValueLabel = NSTextField(labelWithString: "$0.00")
@@ -96,6 +102,7 @@ final class DashboardViewController: NSViewController {
     private var privacyPolicyButton: DashboardNavigationButton?
     private var selectedRange: DashboardRange = .sevenDays
     private var selectedNavigationItem: DashboardNavigationItem = .overview
+    private var selectedSessionDate: Date
     private var currentSessionPage = 1
     private var currentSettingsController: NSViewController?
     private var overviewConstraints: [NSLayoutConstraint] = []
@@ -127,6 +134,7 @@ final class DashboardViewController: NSViewController {
         self.nowProvider = nowProvider
         self.calendar = calendar
         self.languageSettings = languageSettings
+        selectedSessionDate = calendar.startOfDay(for: nowProvider())
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -582,11 +590,21 @@ final class DashboardViewController: NSViewController {
         iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
-        sessionDateLabel.font = .systemFont(ofSize: 12, weight: .semibold)
-        sessionDateLabel.textColor = DashboardPalette.primaryText
-        sessionDateLabel.lineBreakMode = .byTruncatingTail
+        sessionDatePicker.dateValue = selectedSessionDate
+        sessionDatePicker.datePickerElements = [.yearMonthDay]
+        sessionDatePicker.datePickerStyle = .textFieldAndStepper
+        sessionDatePicker.maxDate = calendar.startOfDay(for: nowProvider())
+        sessionDatePicker.font = .systemFont(ofSize: 12, weight: .semibold)
+        sessionDatePicker.textColor = DashboardPalette.primaryText
+        sessionDatePicker.target = self
+        sessionDatePicker.action = #selector(sessionDateChanged(_:))
+        sessionDatePicker.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsDatePicker")
+        sessionDatePicker.setAccessibilityIdentifier("DashboardSessionsDatePicker")
+        sessionDatePicker.setAccessibilityLabel(localized(.recentDetailsTime))
 
-        let stack = NSStackView(views: [iconView, sessionDateLabel])
+        configureSessionTodayButton()
+
+        let stack = NSStackView(views: [iconView, sessionDatePicker, sessionTodayButton])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
@@ -611,6 +629,28 @@ final class DashboardViewController: NSViewController {
             stack.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
         ])
         return badge
+    }
+
+    private func configureSessionTodayButton() {
+        let title = localized(.sidebarToday)
+        sessionTodayButton.setDashboardTitle(title)
+        sessionTodayButton.target = self
+        sessionTodayButton.action = #selector(sessionTodayButtonClicked(_:))
+        sessionTodayButton.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsTodayButton")
+        sessionTodayButton.setAccessibilityIdentifier("DashboardSessionsTodayButton")
+        sessionTodayButton.setAccessibilityLabel(title)
+        sessionTodayButton.setDashboardStyle(
+            backgroundColor: DashboardPalette.sessionDateBackground,
+            borderColor: DashboardPalette.sessionDateBorder,
+            borderWidth: 1,
+            cornerRadius: 5,
+            titleColor: DashboardPalette.primaryText,
+            font: .systemFont(ofSize: 12, weight: .semibold)
+        )
+        NSLayoutConstraint.activate([
+            sessionTodayButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
+            sessionTodayButton.heightAnchor.constraint(equalToConstant: 26),
+        ])
     }
 
     private func makeSessionMetricRow() -> NSView {
@@ -1664,6 +1704,23 @@ final class DashboardViewController: NSViewController {
         render()
     }
 
+    /// 根据右上角选择的本地日期筛选会话；未来日期会限制为今天，并回到结果的第一页。
+    @objc private func sessionDateChanged(_ sender: NSDatePicker) {
+        selectedSessionDate = min(
+            calendar.startOfDay(for: sender.dateValue),
+            calendar.startOfDay(for: nowProvider())
+        )
+        sender.dateValue = selectedSessionDate
+        currentSessionPage = 1
+        render()
+    }
+
+    /// 将会话筛选日期重置为当天。
+    @objc private func sessionTodayButtonClicked(_ sender: NSButton) {
+        sessionDatePicker.dateValue = calendar.startOfDay(for: nowProvider())
+        sessionDateChanged(sessionDatePicker)
+    }
+
     @objc private func copySessionIDButtonClicked(_ sender: NSButton) {
         guard let sessionID = sender.toolTip, !sessionID.isEmpty else { return }
         let pasteboard = NSPasteboard.general
@@ -1728,6 +1785,7 @@ final class DashboardViewController: NSViewController {
         updateNavigationTitles()
         updatePrivacyPolicyTitle()
         updateRangeButtonTitles()
+        updateSessionTodayButtonTitle()
     }
 
     private func updateNavigationTitles() {
@@ -1755,15 +1813,21 @@ final class DashboardViewController: NSViewController {
         button.updateTitle(title)
     }
 
+    private func updateSessionTodayButtonTitle() {
+        let title = localized(.sidebarToday)
+        sessionTodayButton.setDashboardTitle(title)
+        sessionTodayButton.setAccessibilityLabel(title)
+    }
+
     private func renderSessionPage(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
-        let selectedDate = nowProvider()
+        sessionDatePicker.maxDate = calendar.startOfDay(for: nowProvider())
         let snapshot = RecentSessionDetailsBuilder.build(
             states: states,
             period: .today,
-            now: selectedDate,
+            now: selectedSessionDate,
             calendar: calendar
         )
-        sessionDateLabel.stringValue = formatSessionDate(selectedDate)
+        sessionDatePicker.dateValue = selectedSessionDate
         sessionCountValueLabel.stringValue = formatInt(snapshot.totalSessionCount)
         sessionTokenValueLabel.stringValue = CompactNumberFormatter.format(snapshot.totalTokens)
         sessionCostValueLabel.stringValue = formatCurrency(snapshot.totalCost)
@@ -1773,9 +1837,13 @@ final class DashboardViewController: NSViewController {
             snapshot: snapshot,
             totalProviderCount: states.count
         )
-        // 加载反馈已由侧边栏提供；避免额外状态行撑高默认视口并级联压窄表格。
+        // 空表格行已包含“没有会话”提示；不再重复显示状态行，避免撑高视口后出现纵向滚动条并压窄表格。
         let hasLoadingProvider = snapshot.loadingProviderCount > 0
-        sessionStatusLabel.isHidden = hasLoadingProvider || sessionStatusLabel.stringValue.isEmpty
+        let hasEmptySessionState = snapshot.rows.isEmpty
+            && sessionStatusLabel.stringValue == localized(.dashboardSessionsEmptyToday)
+        sessionStatusLabel.isHidden = hasLoadingProvider
+            || hasEmptySessionState
+            || sessionStatusLabel.stringValue.isEmpty
     }
 
     private func updateNavigationSelection() {
@@ -2034,6 +2102,7 @@ final class DashboardViewController: NSViewController {
         let identifier = button.identifier?.rawValue ?? button.accessibilityIdentifier()
         return identifier.hasPrefix("DashboardRange.")
             || identifier.hasPrefix("DashboardSessionsPagination.")
+            || identifier == "DashboardSessionsTodayButton"
             || identifier == "DashboardRefreshButton"
             || identifier == "RefreshAllDataButton"
             || identifier.hasPrefix("ProviderDirectoryAction.")
@@ -2099,12 +2168,6 @@ final class DashboardViewController: NSViewController {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    private func formatSessionDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
     }
 
     private func sessionStatusText(
