@@ -157,6 +157,8 @@ struct TokenWatchTests {
         })
         #expect(brandIcon.image != nil)
         #expect(brandIcon.image?.isTemplate == false)
+        #expect(brandIcon.layer?.cornerRadius == 8)
+        #expect(brandIcon.layer?.masksToBounds == true)
 
         let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
             guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
