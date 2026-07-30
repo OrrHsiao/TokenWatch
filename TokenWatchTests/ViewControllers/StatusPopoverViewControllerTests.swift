@@ -169,6 +169,25 @@ struct StatusPopoverViewControllerTests {
         #expect(darkBackground == expectedDarkBackground)
     }
 
+    @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")
+    func loadingOverlayCoversPopoverWithStatusBarAnimation() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        #expect(!controller.debugLoadingOverlayIsVisible)
+
+        controller.debugSetLoadingOverlayVisible(true)
+
+        #expect(controller.debugLoadingOverlayIsVisible)
+        #expect(controller.debugLoadingOverlayUsesGlassMaterial)
+        #expect(controller.debugLoadingOverlayCoversRootView)
+        #expect(controller.debugLoadingOverlayMessage == "正在更新中，首次加载耗时较久，请耐心等待～")
+        #expect(controller.debugLoadingOverlaySymbolName == StatusBarLoadingAnimation.symbolNames.first)
+
+        controller.debugSetLoadingOverlayVisible(false)
+        #expect(!controller.debugLoadingOverlayIsVisible)
+    }
+
     @Test("浅色外观保留主界面 Pencil 文本和卡片调色板")
     func lightAppearanceUsesDashboardPaletteForCardsAndText() throws {
         let controller = makeController()

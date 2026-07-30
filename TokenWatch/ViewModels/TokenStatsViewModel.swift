@@ -42,6 +42,8 @@ final class TokenStatsViewModel: Sendable {
 
     /// 当前所有 provider 的状态(只读)
     private(set) var states: [ProviderID: ProviderState] = [:]
+    /// 首次全量加载是否已结束，供首次展示主界面时决定是否继续显示加载态。
+    private(set) var hasCompletedInitialLoad = false
 
     /// observer 注册凭证;移除 observer 时使用
     struct ObservationToken: Hashable, Sendable {
@@ -58,6 +60,7 @@ final class TokenStatsViewModel: Sendable {
     private let nowProvider: @Sendable () -> Date
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
+    private var isInitialLoadInProgress = false
     private var entryFingerprints: [ProviderID: UsageEntriesFingerprint] = [:]
 
     init(
@@ -142,6 +145,11 @@ final class TokenStatsViewModel: Sendable {
     /// 显式标 `@MainActor [weak self]` 时会崩(编译器内部错误);
     /// 改为 `await self.loadStats(...)` 让 main actor 自动 hop,行为等价且 self 由 AppDelegate 持有不会循环引用。
     func loadAllStats(mode: LoadMode = .interactive) async {
+        let completesInitialLoad = !hasCompletedInitialLoad && !isInitialLoadInProgress
+        if completesInitialLoad {
+            isInitialLoadInProgress = true
+        }
+
         await withTaskGroup(of: Void.self) { group in
             for provider in providers {
                 let id = provider.id
@@ -149,6 +157,14 @@ final class TokenStatsViewModel: Sendable {
                     await self.loadStats(for: id, mode: mode)
                 }
             }
+        }
+
+        guard completesInitialLoad else { return }
+        isInitialLoadInProgress = false
+        hasCompletedInitialLoad = true
+        // 所有 provider 都结束后额外发一次通知，让首次加载遮罩在最后一项状态更新后关闭。
+        if let providerID = providers.first?.id {
+            notifyStateChange(providerID)
         }
     }
 

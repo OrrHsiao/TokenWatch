@@ -10,6 +10,11 @@ import AppKit
 import SwiftUI
 @testable import TokenWatch
 
+@MainActor
+private final class InitialLoadCompletionState {
+    var hasCompleted = false
+}
+
 struct TokenWatchTests {
 
     @MainActor
@@ -24,6 +29,16 @@ struct TokenWatchTests {
         await coordinator.performStartupWork()
 
         #expect(events == ["cleanup", "load"])
+    }
+
+    @MainActor
+    @Test("首次全量加载完成后发布完成状态")
+    func initialLoadCompletionStateIsSetAfterLoadAllStats() async {
+        let viewModel = TokenStatsViewModel(providers: [])
+
+        #expect(!viewModel.hasCompletedInitialLoad)
+        await viewModel.loadAllStats()
+        #expect(viewModel.hasCompletedInitialLoad)
     }
 
     @MainActor
@@ -234,6 +249,87 @@ struct TokenWatchTests {
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("37 分钟前更新。不依赖任何网络 API。"))
         #expect(!labels.contains("本地记录已就绪。不依赖任何网络 API。"))
+    }
+
+    @MainActor
+    @Test func dashboardInitialLoadUsesStatusPopoverLoadingStyleAndKeepsSidebarVisible() throws {
+        let initialLoadCompletion = InitialLoadCompletionState()
+        var states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            .codex: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
+        ]
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { states },
+            initialLoadCompletionProvider: { initialLoadCompletion.hasCompleted },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let loadingOverlay = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardInitialLoadingOverlay") as? LoadingOverlayView
+        )
+        let mainContent = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardMainContent")
+        )
+        #expect(!loadingOverlay.isHidden)
+        #expect(loadingOverlay.frame == mainContent.frame)
+        #expect(loadingOverlay.material == .hudWindow)
+        #expect(loadingOverlay.debugMessage == "正在更新中，首次加载耗时较久，请耐心等待～")
+        #expect(loadingOverlay.debugSymbolName == StatusBarLoadingAnimation.symbolNames.first)
+
+        states[.claude]?.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        #expect(!loadingOverlay.isHidden)
+
+        states[.claude]?.isLoading = false
+        states[.codex]?.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(!loadingOverlay.isHidden)
+
+        states[.codex]?.isLoading = false
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(!loadingOverlay.isHidden)
+
+        initialLoadCompletion.hasCompleted = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(loadingOverlay.isHidden)
+    }
+
+    @MainActor
+    @Test func dashboardLaterRefreshShowsOnlySidebarLoadingIndicator() throws {
+        var state = TokenStatsViewModel.ProviderState(
+            stats: UsageAggregator().aggregate([]),
+            isLoading: true,
+            errorMessage: nil,
+            needsAuthorization: false
+        )
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { [.claude: state] },
+            initialLoadCompletionProvider: { true },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        state.isLoading = false
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        state.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+
+        let loadingOverlay = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardInitialLoadingOverlay")
+        )
+        let scanIndicator = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardScanLoadingIndicator")
+                as? NSProgressIndicator
+        )
+        #expect(loadingOverlay.isHidden)
+        #expect(!scanIndicator.isHidden)
+        #expect(scanIndicator.style == .spinning)
     }
 
     @MainActor

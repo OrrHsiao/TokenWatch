@@ -79,6 +79,9 @@ enum StatusBarTitleBuilder {
 ///
 /// 保持为纯 helper,让帧顺序和循环规则可单测;AppKit timer 只负责按索引取图。
 enum StatusBarLoadingAnimation {
+    /// 状态栏与弹窗 loading 动画共用的帧间隔,确保两处视觉节奏一致。
+    static let frameInterval: TimeInterval = 0.18
+
     static let symbolNames = [
         "gauge.with.dots.needle.0percent",
         "gauge.with.dots.needle.33percent",

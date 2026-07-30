@@ -36,6 +36,7 @@ final class DashboardViewController: NSViewController {
 
     private let settingsViewController: SettingsViewController
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
+    private let initialLoadCompletionProvider: @MainActor () -> Bool
     private let refreshAction: @MainActor () async -> Void
     private let languageSettings: AppLanguageSettings
     private let nowProvider: () -> Date
@@ -52,7 +53,9 @@ final class DashboardViewController: NSViewController {
     private let sessionStack = NSStackView()
     private let navButtonsStack = NSStackView()
     private let dataSourceRowsStack = NSStackView()
+    private let scanLoadingIndicator = NSProgressIndicator()
     private let scanStatusBodyLabel = NSTextField(labelWithString: "")
+    private let initialLoadingOverlay = LoadingOverlayView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
@@ -98,6 +101,9 @@ final class DashboardViewController: NSViewController {
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
             (NSApp.delegate as? AppDelegate)?.viewModel.states ?? [:]
         },
+        initialLoadCompletionProvider: @escaping @MainActor () -> Bool = {
+            (NSApp.delegate as? AppDelegate)?.viewModel.hasCompletedInitialLoad ?? true
+        },
         refreshAction: @escaping @MainActor () async -> Void = {
             if let viewModel = (NSApp.delegate as? AppDelegate)?.viewModel {
                 await viewModel.loadAllStats()
@@ -109,6 +115,7 @@ final class DashboardViewController: NSViewController {
     ) {
         self.settingsViewController = settingsViewController
         self.stateProvider = stateProvider
+        self.initialLoadCompletionProvider = initialLoadCompletionProvider
         self.refreshAction = refreshAction
         self.nowProvider = nowProvider
         self.calendar = calendar
@@ -213,6 +220,7 @@ final class DashboardViewController: NSViewController {
             mainContentContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         installOverviewContent()
+        configureInitialLoadingOverlay()
     }
 
     private func setupSidebar() {
@@ -431,12 +439,24 @@ final class DashboardViewController: NSViewController {
         title.font = .systemFont(ofSize: 12, weight: .semibold)
         title.textColor = DashboardPalette.primaryText
 
+        scanLoadingIndicator.style = .spinning
+        scanLoadingIndicator.controlSize = .small
+        scanLoadingIndicator.isIndeterminate = true
+        scanLoadingIndicator.isHidden = true
+        scanLoadingIndicator.identifier = NSUserInterfaceItemIdentifier("DashboardScanLoadingIndicator")
+        scanLoadingIndicator.setAccessibilityIdentifier("DashboardScanLoadingIndicator")
+
         scanStatusBodyLabel.font = .systemFont(ofSize: 12)
         scanStatusBodyLabel.textColor = DashboardPalette.secondaryText
         scanStatusBodyLabel.maximumNumberOfLines = 0
         scanStatusBodyLabel.lineBreakMode = .byWordWrapping
 
-        let stack = NSStackView(views: [title, scanStatusBodyLabel])
+        let statusRow = NSStackView(views: [scanLoadingIndicator, scanStatusBodyLabel])
+        statusRow.orientation = .horizontal
+        statusRow.alignment = .centerY
+        statusRow.spacing = 6
+
+        let stack = NSStackView(views: [title, statusRow])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -450,9 +470,23 @@ final class DashboardViewController: NSViewController {
             stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
             stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
             title.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            scanStatusBodyLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            statusRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         return card
+    }
+
+    private func configureInitialLoadingOverlay() {
+        initialLoadingOverlay.identifier = NSUserInterfaceItemIdentifier("DashboardInitialLoadingOverlay")
+        initialLoadingOverlay.setAccessibilityIdentifier("DashboardInitialLoadingOverlay")
+        view.addSubview(initialLoadingOverlay)
+
+        NSLayoutConstraint.activate([
+            initialLoadingOverlay.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
+            initialLoadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            initialLoadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            initialLoadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        initialLoadingOverlay.setLoading(!initialLoadCompletionProvider())
     }
 
     private func makeHeaderView() -> NSView {
@@ -1552,7 +1586,7 @@ final class DashboardViewController: NSViewController {
 
         updateRangeButtons()
         updateNavigationSelection()
-        setRefreshButtonLoading(states.values.contains { $0.isLoading })
+        updateLoadingFeedback(states: states)
         rebuildDataSourceRows(states: states)
         trendView.configure(
             buckets: rangeSnapshot.trendBuckets,
@@ -1666,6 +1700,30 @@ final class DashboardViewController: NSViewController {
         refreshButton.image?.isTemplate = true
         refreshButton.imageHugsTitle = true
         refreshButton.contentTintColor = DashboardPalette.primaryText
+    }
+
+    /// 首次扫描期间用主内容区遮罩阻止交互，直到 ViewModel 确认所有 provider 都结束加载。
+    /// 后续刷新只显示侧边栏的非阻塞指示器，避免遮挡已有统计数据。
+    private func updateLoadingFeedback(
+        states: [ProviderID: TokenStatsViewModel.ProviderState]
+    ) {
+        let isLoading = states.values.contains { $0.isLoading }
+        setRefreshButtonLoading(isLoading)
+        setScanLoadingIndicatorVisible(isLoading)
+        setInitialLoadingVisible(!initialLoadCompletionProvider())
+    }
+
+    private func setScanLoadingIndicatorVisible(_ isVisible: Bool) {
+        scanLoadingIndicator.isHidden = !isVisible
+        if isVisible {
+            scanLoadingIndicator.startAnimation(nil)
+        } else {
+            scanLoadingIndicator.stopAnimation(nil)
+        }
+    }
+
+    private func setInitialLoadingVisible(_ isVisible: Bool) {
+        initialLoadingOverlay.setLoading(isVisible)
     }
 
     private func scanStatusText(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> String {
@@ -1993,9 +2051,6 @@ final class DashboardViewController: NSViewController {
         }
         if rangeSnapshot.totalTokens == 0 {
             return AppStrings.text(.statusTotalNoTokenData, language: languageSettings.resolvedLanguage)
-        }
-        if totalSnapshot.loadingProviderCount > 0 {
-            return AppStrings.text(.statusPartialLoading, language: languageSettings.resolvedLanguage)
         }
         return ""
     }
