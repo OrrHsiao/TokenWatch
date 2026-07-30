@@ -261,6 +261,8 @@ enum MainWindowFactory {
         let contentController = ViewController(languageSettings: languageSettings)
         window.title = "TokenWatch"
         window.titleVisibility = .hidden
+        window.isOpaque = false
+        window.backgroundColor = .clear
         window.isReleasedWhenClosed = false
         window.contentViewController = contentController
         window.initialFirstResponder = contentController.view

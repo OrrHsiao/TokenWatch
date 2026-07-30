@@ -48,9 +48,8 @@ class ViewController: NSViewController {
     }
 
     override func loadView() {
-        view = DashboardBackgroundView(
+        view = DashboardGlassBackgroundView(
             frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
-            backgroundColor: DashboardPalette.appBackground,
             acceptsFirstResponder: true
         )
         view.setAccessibilityIdentifier("DashboardRootView")
@@ -66,7 +65,11 @@ class ViewController: NSViewController {
     private func installDashboard() {
         addChild(dashboardViewController)
         dashboardViewController.view.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(dashboardViewController.view)
+        if let rootView = view as? DashboardGlassBackgroundView {
+            rootView.addContentSubview(dashboardViewController.view)
+        } else {
+            view.addSubview(dashboardViewController.view)
+        }
 
         NSLayoutConstraint.activate([
             dashboardViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -132,8 +135,8 @@ private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefre
 
     func applyDashboardLayerColors() {
         wantsLayer = true
-        layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.panelBackground, for: self)
-        layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.border, for: self)
+        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.glassControlBorder, for: self)
     }
 }
 
@@ -369,14 +372,13 @@ final class SettingsViewController: NSViewController {
     }
 
     override func loadView() {
-        view = DashboardBackgroundView(
+        view = NSView(
             frame: NSRect(
                 x: 0,
                 y: 0,
                 width: 480,
                 height: Self.minimumContentHeight
-            ),
-            backgroundColor: DashboardPalette.appBackground
+            )
         )
     }
 
@@ -698,13 +700,8 @@ final class SettingsViewController: NSViewController {
         identifier: String,
         title: NSTextField,
         content: [NSView]
-    ) -> DashboardRoundedView {
-        let section = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 12,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
+    ) -> DashboardGlassCardView {
+        let section = DashboardGlassCardView(cornerRadius: 12)
         section.identifier = NSUserInterfaceItemIdentifier(identifier)
         section.setAccessibilityIdentifier(identifier)
         section.translatesAutoresizingMaskIntoConstraints = false
@@ -721,7 +718,7 @@ final class SettingsViewController: NSViewController {
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 14
-        section.addSubview(stack)
+        section.addContentSubview(stack)
 
         var constraints = [
             stack.leadingAnchor.constraint(equalTo: section.leadingAnchor, constant: 20),
@@ -746,7 +743,7 @@ final class SettingsViewController: NSViewController {
 
     private func makeSettingsDivider() -> DashboardBackgroundView {
         let divider = DashboardBackgroundView(
-            backgroundColor: DashboardPalette.subtleBorder
+            backgroundColor: DashboardPalette.glassDivider
         )
         divider.translatesAutoresizingMaskIntoConstraints = false
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
@@ -981,16 +978,16 @@ final class SettingsViewController: NSViewController {
             applySettingsButtonStyle(
                 row.actionButton,
                 title: model.actionTitle,
-                backgroundColor: DashboardPalette.accent,
-                borderColor: DashboardPalette.accent,
+                backgroundColor: DashboardPalette.rangeSelectedBackground,
+                borderColor: DashboardPalette.rangeSelectedBorder,
                 textColor: DashboardPalette.rangeSelectedText
             )
         case .neutral:
             applySettingsButtonStyle(
                 row.actionButton,
                 title: model.actionTitle,
-                backgroundColor: DashboardPalette.panelBackground,
-                borderColor: DashboardPalette.border,
+                backgroundColor: .clear,
+                borderColor: DashboardPalette.glassControlBorder,
                 textColor: DashboardPalette.primaryText
             )
         }
@@ -1152,8 +1149,8 @@ final class SettingsViewController: NSViewController {
         applySettingsButtonStyle(
             refreshButton,
             title: AppStrings.text(.refreshNow, language: language),
-            backgroundColor: DashboardPalette.panelBackground,
-            borderColor: DashboardPalette.border,
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder,
             textColor: DashboardPalette.primaryText
         )
         autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
@@ -1171,8 +1168,8 @@ final class SettingsViewController: NSViewController {
         applySettingsButtonStyle(
             openLoginItemsSettingsButton,
             title: AppStrings.text(.settingsOpenLoginItemsSettings, language: language),
-            backgroundColor: DashboardPalette.panelBackground,
-            borderColor: DashboardPalette.border,
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder,
             textColor: DashboardPalette.primaryText
         )
         reloadAutoRefreshIntervalPopUp(language: language)
