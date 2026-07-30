@@ -261,8 +261,10 @@ enum MainWindowFactory {
         let contentController = ViewController(languageSettings: languageSettings)
         window.title = "TokenWatch"
         window.titleVisibility = .hidden
+        // 调度中心为透明窗口生成缩略图时，`.clear` 玻璃会采样桌面背景，
+        // 从而在浅色模式下显示为深色。使用淡白半透明底色以保留透视感并稳定缩略图颜色。
         window.isOpaque = false
-        window.backgroundColor = .clear
+        window.backgroundColor = DashboardPalette.translucentAppBackground
         window.isReleasedWhenClosed = false
         window.contentViewController = contentController
         window.initialFirstResponder = contentController.view

@@ -2,6 +2,12 @@ import AppKit
 
 enum DashboardPalette {
     static let appBackground = dynamicColor(light: 0xF4F6FA, dark: 0x0B0F14)
+    static let translucentAppBackground = dynamicColor(
+        light: 0xF4F6FA,
+        dark: 0x0B0F14,
+        lightAlpha: 0.1,
+        darkAlpha: 0.1
+    )
     static let sidebarBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
     static let panelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x151B23)
     static let deepPanelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)

@@ -101,7 +101,8 @@ struct TokenWatchTests {
         #expect(window.titleVisibility == .hidden)
         #expect(window.titlebarAppearsTransparent == false)
         #expect(window.isOpaque == false)
-        #expect(window.backgroundColor == .clear)
+        #expect(try rgbHex(window.backgroundColor, appearance: .aqua) == 0xF4F6FA)
+        #expect(abs(window.backgroundColor.alphaComponent - 0.1) < 0.001)
         #expect(window.styleMask.contains(.titled))
         #expect(window.styleMask.contains(.closable))
         #expect(window.styleMask.contains(.miniaturizable))
@@ -1443,6 +1444,7 @@ struct TokenWatchTests {
     @MainActor
     @Test func dashboardPaletteUsesPencilLightColorsInAquaAppearance() throws {
         #expect(try rgbHex(DashboardPalette.appBackground, appearance: .aqua) == 0xF4F6FA)
+        #expect(abs(DashboardPalette.translucentAppBackground.alphaComponent - 0.1) < 0.001)
         #expect(try rgbHex(DashboardPalette.sidebarBackground, appearance: .aqua) == 0xFFFFFF)
         #expect(try rgbHex(DashboardPalette.panelBackground, appearance: .aqua) == 0xFFFFFF)
         #expect(try rgbHex(DashboardPalette.deepPanelBackground, appearance: .aqua) == 0xFFFFFF)
