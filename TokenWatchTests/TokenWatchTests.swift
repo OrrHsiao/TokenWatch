@@ -594,12 +594,12 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains { $0.contains("（25.0%）") })
+        #expect(labels.contains("25.0%"))
         #expect(labels.contains("输入 $60.00 / 输出 $30.00 / 推理 $30.00"))
     }
 
     @MainActor
-    @Test func dashboardTotalTokenDetailShowsAllTokenBuckets() throws {
+    @Test func dashboardPlacesCacheHitRateAfterTotalTokenValue() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
         let viewController = DashboardViewController(
@@ -632,10 +632,28 @@ struct TokenWatchTests {
 
         viewController.loadViewIfNeeded()
 
+        viewController.view.layoutSubtreeIfNeeded()
+
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("1.9M"))
-        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存 0.7M（36.8%） / 推理 0.3M"))
-        #expect(!labels.contains { $0.contains("缓存命中率") })
+        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存 0.7M / 推理 0.3M"))
+        let totalTokenValue = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardTotalTokenValue") as? NSTextField
+        )
+        let cacheHitRateTitle = try #require(
+            viewController.view.firstDescendant(identifier: "AppStringKey.dashboardCacheHitRate") as? NSTextField
+        )
+        let cacheHitRateValue = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardCacheHitRateValue") as? NSTextField
+        )
+        #expect(cacheHitRateTitle.stringValue == "缓存命中率")
+        #expect(cacheHitRateValue.stringValue == "36.8%")
+        let totalTokenValueFrame = totalTokenValue.convert(totalTokenValue.bounds, to: viewController.view)
+        let cacheHitRateTitleFrame = cacheHitRateTitle.convert(cacheHitRateTitle.bounds, to: viewController.view)
+        #expect(cacheHitRateTitleFrame.minX > totalTokenValueFrame.maxX)
+        #expect((cacheHitRateTitle.superview as? NSStackView)?.orientation == .vertical)
+        #expect(cacheHitRateTitle.font?.pointSize == 11)
+        #expect(cacheHitRateValue.font?.pointSize == 13)
     }
 
     @MainActor
@@ -650,7 +668,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存 0.0M（0%）"))
+        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存 0.0M"))
     }
 
     @MainActor
@@ -1260,8 +1278,9 @@ struct TokenWatchTests {
         #expect(rgbHex(try #require(dataFoldersCard.layer?.borderColor)) == 0xD8DEE8)
         #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
         #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0x2563EB)
+        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(try rgbHex(try #require(refreshButton.contentTintColor), appearance: .aqua) == 0x111827)
         #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
         #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
         #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
@@ -1606,6 +1625,68 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardAnalysisListsShowAllRowsInScrollablePanels() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let stats = UsageAggregator().aggregate((1...8).map { index in
+            makeDashboardEntry(
+                sessionID: "s\(index)",
+                date: dateTime(2026, 6, 20, hour: index, minute: 0, calendar: calendar),
+                model: "model-\(index)",
+                input: 1_000 - index,
+                cwd: "/work/project-\(index)"
+            )
+        })
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let modelPanelLabels = try labels(inPanelTitled: "模型消耗排行", root: viewController.view)
+        let projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        for index in 1...8 {
+            #expect(modelPanelLabels.contains("model-\(index)"))
+            #expect(projectPanelLabels.contains("project-\(index)"))
+        }
+
+        let modelRowsScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardModelRowsScrollView") as? NSScrollView
+        )
+        let projectRowsScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        #expect(!modelRowsScrollView.hasVerticalScroller)
+        #expect(!projectRowsScrollView.hasVerticalScroller)
+        #expect(try #require(modelRowsScrollView.documentView).frame.height > modelRowsScrollView.contentView.bounds.height)
+        #expect(try #require(projectRowsScrollView.documentView).frame.height > projectRowsScrollView.contentView.bounds.height)
+
+        let sourcePanel = try panelTitled("来源占比", root: viewController.view)
+        let projectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let modelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        #expect(sourcePanel.frame.height < projectPanel.frame.height)
+        #expect(projectPanel.frame.height > modelPanel.frame.height)
+        #expect(abs(modelPanel.frame.height - 232) < 0.5)
+        let sourcePanelFrame = sourcePanel.convert(sourcePanel.bounds, to: viewController.view)
+        let projectPanelFrame = projectPanel.convert(projectPanel.bounds, to: viewController.view)
+        let modelPanelFrame = modelPanel.convert(modelPanel.bounds, to: viewController.view)
+        #expect(abs(sourcePanelFrame.minY - projectPanelFrame.maxY - 18) < 0.5)
+        #expect(abs(projectPanelFrame.minY - modelPanelFrame.minY) < 0.5)
+    }
+
+    @MainActor
     @Test func dashboardProjectPanelMergesProjectsWithSameDisplayName() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
@@ -1820,7 +1901,10 @@ struct TokenWatchTests {
             authorizationAction: { _ in false },
             languageSettings: zhHansLanguageSettings()
         )
-        controller.loadViewIfNeeded()
+        let appearance = try #require(NSAppearance(named: .aqua))
+        appearance.performAsCurrentDrawingAppearance {
+            controller.loadViewIfNeeded()
+        }
 
         let claudeAction = try #require(
             controller.view.button(identifier: "ProviderDirectoryAction.claude")
@@ -1851,6 +1935,9 @@ struct TokenWatchTests {
         #expect(codexAction.title == "重新选择")
         #expect(!codexAction.isHidden)
         #expect(codexAction.isEnabled)
+        #expect(rgbHex(try #require(codexAction.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(codexAction.layer?.borderColor)) == 0xD8DEE8)
+        #expect(try rgbHex(try #require(codexAction.contentTintColor), appearance: .aqua) == 0x111827)
         let opencodeStatus = try #require(
             controller.view.firstDescendant(
                 identifier: "ProviderDirectoryStatus.opencode"
@@ -1860,6 +1947,9 @@ struct TokenWatchTests {
         #expect(!opencodeStatus.isHidden)
         #expect(opencodeAction.title == "再次选择")
         #expect(!opencodeAction.isHidden)
+        #expect(rgbHex(try #require(opencodeAction.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(opencodeAction.layer?.borderColor)) == 0xD8DEE8)
+        #expect(try rgbHex(try #require(opencodeAction.contentTintColor), appearance: .aqua) == 0x111827)
 
         controller.view.frame = NSRect(
             x: 0,
@@ -1920,6 +2010,7 @@ struct TokenWatchTests {
         #expect(errorModel.statusText == "无法读取所选目录")
         #expect(errorModel.showsStatus)
         #expect(errorModel.actionTitle == "再次选择")
+        #expect(errorModel.actionStyle == .neutral)
         #expect(errorModel.showsAction)
     }
 
@@ -2804,8 +2895,14 @@ struct TokenWatchTests {
                     appearance: .aqua
                 ) == 0xFFFFFF
             )
-            #expect(rgbHex(try #require(refresh.layer?.backgroundColor)) == 0x2563EB)
-            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0x2563EB)
+            #expect(rgbHex(try #require(refresh.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0xD8DEE8)
+            #expect(
+                try rgbHex(
+                    try #require(refresh.contentTintColor),
+                    appearance: .aqua
+                ) == 0x111827
+            )
             #expect(
                 rgbHex(try #require(autoRefresh.layer?.backgroundColor)) == 0xFFFFFF
             )
