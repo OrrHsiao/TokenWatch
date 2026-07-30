@@ -373,6 +373,9 @@ final class DashboardViewController: NSViewController {
         logoView.translatesAutoresizingMaskIntoConstraints = false
         logoView.image = AppLogoImage.make()
         logoView.imageScaling = .scaleProportionallyUpOrDown
+        logoView.wantsLayer = true
+        logoView.layer?.cornerRadius = 8
+        logoView.layer?.masksToBounds = true
         logoView.identifier = NSUserInterfaceItemIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
         logoView.setAccessibilityIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
         logoView.setAccessibilityLabel("AI Token Watch")
