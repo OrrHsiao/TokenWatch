@@ -1863,6 +1863,7 @@ final class DashboardViewController: NSViewController {
         return identifier.hasPrefix("DashboardRange.")
             || identifier.hasPrefix("DashboardSessionsPagination.")
             || identifier == "DashboardRefreshButton"
+            || identifier == "RefreshAllDataButton"
             || identifier.hasPrefix("ProviderDirectoryAction.")
     }
 

@@ -1148,7 +1148,9 @@ struct TokenWatchTests {
             _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
         }
 
-        let settingsPanel = try #require(viewController.view.firstDescendant(identifier: "SettingsPanel"))
+        let dataFoldersCard = try #require(
+            viewController.view.firstDescendant(identifier: "SettingsDataFoldersSection")
+        )
         let authorizeButton = try #require(
             viewController.view.button(
                 identifier: "ProviderDirectoryAction.claude"
@@ -1158,12 +1160,12 @@ struct TokenWatchTests {
         let autoRefreshPopUp = try #require(viewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
         let languagePopUp = try #require(viewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
 
-        #expect(rgbHex(try #require(settingsPanel.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(settingsPanel.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(dataFoldersCard.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(dataFoldersCard.layer?.borderColor)) == 0xD8DEE8)
         #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
         #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0x2563EB)
+        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0x2563EB)
         #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
         #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
         #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
@@ -1171,7 +1173,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func settingsSelectedDirectoryHidesDirectoryAction() throws {
+    @Test func settingsSelectedDirectoryShowsReselectAction() throws {
         let appearance = try #require(NSAppearance(named: .aqua))
         let controller = SettingsViewController(
             isAuthorized: { true },
@@ -1184,8 +1186,9 @@ struct TokenWatchTests {
         let button = try #require(
             controller.view.button(identifier: "ProviderDirectoryAction.claude")
         )
-        #expect(button.isHidden)
-        #expect(!button.isEnabled)
+        #expect(!button.isHidden)
+        #expect(button.isEnabled)
+        #expect(button.title == "重新选择")
     }
 
     @MainActor
@@ -1738,7 +1741,8 @@ struct TokenWatchTests {
                 identifier: "ProviderDirectoryStatus.claude"
             ) as? NSTextField
         )
-        #expect(claudeStatus.isHidden)
+        #expect(claudeStatus.stringValue == "未选择")
+        #expect(!claudeStatus.isHidden)
         #expect(claudeAction.title == "去授权")
         #expect(!claudeAction.isHidden)
         let codexStatus = try #require(
@@ -1746,10 +1750,11 @@ struct TokenWatchTests {
                 identifier: "ProviderDirectoryStatus.codex"
             ) as? NSTextField
         )
-        #expect(codexStatus.stringValue == "已授权")
+        #expect(codexStatus.stringValue == "所选文件夹中未发现数据")
         #expect(!codexStatus.isHidden)
-        #expect(codexAction.isHidden)
-        #expect(!codexAction.isEnabled)
+        #expect(codexAction.title == "重新选择")
+        #expect(!codexAction.isHidden)
+        #expect(codexAction.isEnabled)
         let opencodeStatus = try #require(
             controller.view.firstDescendant(
                 identifier: "ProviderDirectoryStatus.opencode"
@@ -1767,26 +1772,19 @@ struct TokenWatchTests {
             height: SettingsViewController.minimumContentHeight
         )
         controller.view.layoutSubtreeIfNeeded()
-        let refreshAction = try #require(
-            controller.view.button(identifier: "RefreshAllDataButton")
-        )
         let reselectFrame = opencodeAction.convert(
             opencodeAction.bounds,
-            to: controller.view
-        )
-        let refreshFrame = refreshAction.convert(
-            refreshAction.bounds,
             to: controller.view
         )
         let reselectStatusFrame = opencodeStatus.convert(
             opencodeStatus.bounds,
             to: controller.view
         )
-        #expect(abs(reselectFrame.minX - refreshFrame.minX) <= 1)
-        #expect(reselectStatusFrame.minX >= reselectFrame.maxX)
+        #expect(reselectFrame.maxX > controller.view.bounds.midX)
+        #expect(reselectStatusFrame.minX < reselectFrame.minX)
 
         let directoryActionFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        let directoryActions = [claudeAction, opencodeAction]
+        let directoryActions = [claudeAction, codexAction, opencodeAction]
         for action in directoryActions {
             let minimumWidth = ceil(
                 (action.title as NSString).size(
@@ -1902,10 +1900,10 @@ struct TokenWatchTests {
 
         #expect((controller.view.firstDescendant(
             identifier: "ProviderDirectoryStatus.claude"
-        ) as? NSTextField)?.stringValue == "已授权")
+        ) as? NSTextField)?.stringValue == "已选择")
         #expect(controller.view.button(
             identifier: "ProviderDirectoryAction.claude"
-        )?.isHidden == true)
+        )?.isHidden == false)
         #expect(codexLabel.stringValue == codexTextBefore)
         #expect(requestedStateIDs == [.claude])
 
@@ -1989,7 +1987,7 @@ struct TokenWatchTests {
     @MainActor
     @Test("设置三行目录控件和既有设置项在最小高度内不裁切")
     func settingsProviderRowsFitMinimumHeight() throws {
-        #expect(SettingsViewController.minimumContentHeight == 540)
+        #expect(SettingsViewController.minimumContentHeight == 700)
 
         func assertFits(_ controller: SettingsViewController) throws {
             controller.loadViewIfNeeded()
@@ -2005,10 +2003,12 @@ struct TokenWatchTests {
                 controller.view.frame.height
                     == SettingsViewController.minimumContentHeight
             )
-            let panel = try #require(
-                controller.view.firstDescendant(identifier: "SettingsPanel")
+            let dataFoldersCard = try #require(
+                controller.view.firstDescendant(
+                    identifier: "SettingsDataFoldersSection"
+                )
             )
-            #expect(controller.view.bounds.contains(panel.frame))
+            #expect(controller.view.bounds.contains(dataFoldersCard.frame))
             for identifier in [
                 "ProviderDirectoryStatus.claude",
                 "ProviderDirectoryStatus.codex",
@@ -2092,16 +2092,6 @@ struct TokenWatchTests {
                     identifier: "ProviderDirectoryRow.\(id.rawValue)"
                 ) as? NSStackView
             )
-            let name = try #require(
-                controller.view.firstDescendant(
-                    identifier: "ProviderDirectoryName.\(id.rawValue)"
-                )
-            )
-            let status = try #require(
-                controller.view.firstDescendant(
-                    identifier: "ProviderDirectoryStatus.\(id.rawValue)"
-                )
-            )
             let action = try #require(
                 controller.view.button(
                     identifier: "ProviderDirectoryAction.\(id.rawValue)"
@@ -2109,8 +2099,16 @@ struct TokenWatchTests {
             )
 
             #expect(row.orientation == .horizontal)
-            #expect(row.arrangedSubviews.contains(name))
-            #expect(row.arrangedSubviews.contains(status))
+            #expect(
+                row.firstDescendant(
+                    identifier: "ProviderDirectoryName.\(id.rawValue)"
+                ) != nil
+            )
+            #expect(
+                row.firstDescendant(
+                    identifier: "ProviderDirectoryStatus.\(id.rawValue)"
+                ) != nil
+            )
             #expect(row.arrangedSubviews.contains(action))
         }
     }
@@ -2128,6 +2126,9 @@ struct TokenWatchTests {
 
         let panel = try #require(
             controller.view.firstDescendant(identifier: "SettingsPanel")
+        )
+        let settingsTitle = try #require(
+            controller.view.textField(stringValue: "设置")
         )
         let dataFoldersTitle = try #require(
             controller.view.firstDescendant(identifier: "DataFoldersTitleLabel")
@@ -2155,6 +2156,10 @@ struct TokenWatchTests {
             controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
         )
         let panelFrame = panel.convert(panel.bounds, to: controller.view)
+        let settingsTitleFrame = settingsTitle.convert(
+            settingsTitle.bounds,
+            to: controller.view
+        )
         let titleFrame = dataFoldersTitle.convert(
             dataFoldersTitle.bounds,
             to: controller.view
@@ -2177,21 +2182,48 @@ struct TokenWatchTests {
             launchAtLogin.bounds,
             to: controller.view
         )
-        // 下拉框、普通按钮和开关使用不同的 AppKit 对齐边距。
-        let nativeControlFrameTolerance: CGFloat = 6
+        let dataFoldersHeader = try #require(
+            controller.view.firstDescendant(
+                identifier: "SettingsSectionHeader.SettingsDataFoldersSection"
+            ) as? NSStackView
+        )
+        let dataRefreshHeader = try #require(
+            controller.view.firstDescendant(
+                identifier: "SettingsSectionHeader.SettingsDataRefreshSection"
+            ) as? NSStackView
+        )
+        let appPreferencesHeader = try #require(
+            controller.view.firstDescendant(
+                identifier: "SettingsSectionHeader.SettingsAppPreferencesSection"
+            ) as? NSStackView
+        )
 
         #expect(abs(panelFrame.minX - 28) <= 1)
         #expect(abs(panelFrame.maxX - controller.view.bounds.maxX + 28) <= 1)
         #expect(abs(panelFrame.width - controller.view.bounds.width + 56) <= 1)
         #expect(titleFrame.minY > dataRefreshTitleFrame.minY)
         #expect(dataRefreshTitleFrame.minY > appPreferencesTitleFrame.minY)
-        #expect(autoRefreshFrame.minY > refreshFrame.maxY)
+        #expect(abs(refreshFrame.midY - settingsTitleFrame.midY) <= 1)
+        #expect(abs(refreshFrame.maxX - panelFrame.maxX + 24) <= 1)
+        #expect(refresh.title == "立即刷新")
         #expect(languageFrame.minY > launchAtLoginFrame.maxY)
-        #expect(abs(autoRefreshFrame.minX - refreshFrame.minX) <= nativeControlFrameTolerance)
-        #expect(abs(autoRefreshFrame.minX - languageFrame.minX) <= 1)
-        #expect(abs(autoRefreshFrame.minX - launchAtLoginFrame.minX) <= nativeControlFrameTolerance)
+        #expect(abs(autoRefreshFrame.width - 132) <= 1)
+        #expect(abs(autoRefreshFrame.height - 32) <= 1)
+        #expect(abs(languageFrame.width - 132) <= 1)
+        #expect(abs(languageFrame.height - 32) <= 1)
+        #expect(refreshFrame.maxX < panelFrame.maxX)
+        #expect(languageFrame.maxX < panelFrame.maxX)
+        #expect(launchAtLoginFrame.maxX < panelFrame.maxX)
+        #expect(dataFoldersHeader.subviews.allSatisfy { !($0 is NSImageView) })
+        #expect(dataRefreshHeader.subviews.allSatisfy { !($0 is NSImageView) })
+        #expect(appPreferencesHeader.subviews.allSatisfy { !($0 is NSImageView) })
 
         for id in ProviderID.allCases {
+            let row = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryRow.\(id.rawValue)"
+                ) as? NSStackView
+            )
             let name = try #require(
                 controller.view.firstDescendant(
                     identifier: "ProviderDirectoryName.\(id.rawValue)"
@@ -2205,10 +2237,11 @@ struct TokenWatchTests {
             let nameFrame = name.convert(name.bounds, to: controller.view)
             let actionFrame = action.convert(action.bounds, to: controller.view)
 
-            #expect(abs(nameFrame.minX - titleFrame.minX) <= 3)
-            #expect(actionFrame.maxX < panelFrame.midX)
-            #expect(abs(actionFrame.minX - refreshFrame.minX) <= 1)
+            #expect(abs(nameFrame.minX - titleFrame.minX) <= 1)
+            #expect(actionFrame.minX > panelFrame.midX)
+            #expect(actionFrame.maxX < panelFrame.maxX)
             #expect(action.alignment == .center)
+            #expect(!row.arrangedSubviews.contains { $0 is NSImageView })
             let paragraphStyle = try #require(
                 action.attributedTitle.attribute(
                     .paragraphStyle,
@@ -2294,10 +2327,11 @@ struct TokenWatchTests {
                     identifier: "ProviderDirectoryAction.\(id.rawValue)"
                 )
             )
-            #expect(status.stringValue == "已授权")
+            #expect(status.stringValue == "已选择")
             #expect(!status.isHidden)
-            #expect(action.isHidden)
-            #expect(!action.isEnabled)
+            #expect(action.title == "重新选择")
+            #expect(!action.isHidden)
+            #expect(action.isEnabled)
         }
     }
 
@@ -2477,7 +2511,7 @@ struct TokenWatchTests {
             #expect(claude.accessibilityLabel() == "Claude Code, 去授权")
             #expect(codex.accessibilityLabel() == "Codex, 去授权")
             #expect(opencode.accessibilityLabel() == "opencode, 去授权")
-            #expect(refresh.accessibilityLabel() == "刷新全部数据")
+            #expect(refresh.accessibilityLabel() == "立即刷新")
             #expect(openSettings.accessibilityLabel() == "打开登录项设置")
 
             languageSettings.selectedPreference = .en
@@ -2488,7 +2522,7 @@ struct TokenWatchTests {
             #expect(claude.accessibilityLabel() == "Claude Code, Authorize")
             #expect(codex.accessibilityLabel() == "Codex, Authorize")
             #expect(opencode.accessibilityLabel() == "opencode, Authorize")
-            #expect(refresh.accessibilityLabel() == "Refresh All Data")
+            #expect(refresh.accessibilityLabel() == "Refresh Now")
             #expect(openSettings.accessibilityLabel() == "Open Login Items Settings")
         }
     }
@@ -2664,8 +2698,10 @@ struct TokenWatchTests {
                 controller.loadViewIfNeeded()
             }
 
-            let panel = try #require(
-                controller.view.firstDescendant(identifier: "SettingsPanel")
+            let dataFoldersCard = try #require(
+                controller.view.firstDescendant(
+                    identifier: "SettingsDataFoldersSection"
+                )
             )
             let title = try #require(
                 controller.view.textField(stringValue: "设置")
@@ -2701,8 +2737,8 @@ struct TokenWatchTests {
                 rgbHex(try #require(controller.view.layer?.backgroundColor))
                     == 0xF4F6FA
             )
-            #expect(rgbHex(try #require(panel.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(panel.layer?.borderColor)) == 0xD8DEE8)
+            #expect(rgbHex(try #require(dataFoldersCard.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(rgbHex(try #require(dataFoldersCard.layer?.borderColor)) == 0xD8DEE8)
             #expect(
                 try rgbHex(try #require(title.textColor), appearance: .aqua)
                     == 0x111827
@@ -2725,8 +2761,8 @@ struct TokenWatchTests {
                     appearance: .aqua
                 ) == 0xFFFFFF
             )
-            #expect(rgbHex(try #require(refresh.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0xD8DEE8)
+            #expect(rgbHex(try #require(refresh.layer?.backgroundColor)) == 0x2563EB)
+            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0x2563EB)
             #expect(
                 rgbHex(try #require(autoRefresh.layer?.backgroundColor)) == 0xFFFFFF
             )

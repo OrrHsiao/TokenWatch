@@ -137,15 +137,61 @@ private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefre
     }
 }
 
+private final class SettingsStatusDotView: NSView, DashboardAppearanceRefreshable {
+    private var color: NSColor
+
+    init(color: NSColor) {
+        self.color = color
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 4
+        translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: 8),
+            heightAnchor.constraint(equalToConstant: 8),
+        ])
+        updateColor()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("SettingsStatusDotView 必须使用 init(color:) 构造")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    func setColor(_ color: NSColor) {
+        self.color = color
+        updateColor()
+    }
+
+    func refreshDashboardAppearance() {
+        updateColor()
+    }
+
+    private func updateColor() {
+        layer?.backgroundColor = DashboardLayerColor.cgColor(color, for: self)
+    }
+}
+
 enum ProviderDirectoryActionStyle: Sendable, Equatable {
     case primary
     case neutral
+}
+
+enum ProviderDirectoryStatusStyle: Sendable, Equatable {
+    case success
+    case warning
+    case error
 }
 
 struct ProviderDirectoryRowModel: Sendable, Equatable {
     let providerID: ProviderID
     let providerName: String
     let statusText: String
+    let statusStyle: ProviderDirectoryStatusStyle
     let showsStatus: Bool
     let actionTitle: String
     let actionStyle: ProviderDirectoryActionStyle
@@ -161,26 +207,36 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
         let statusKey: AppStringKey
         let actionKey: AppStringKey
         let actionStyle: ProviderDirectoryActionStyle
+        let statusStyle: ProviderDirectoryStatusStyle
         let showsStatus: Bool
         let showsAction: Bool
         switch state.directoryState {
         case .notSelected:
-            statusKey = .dashboardUnauthorized
+            statusKey = .settingsDirectoryNotSelected
             actionKey = .settingsChooseDirectory
             actionStyle = .primary
-            // 常规未授权时，按钮本身就是唯一的下一步；保留失败信息的可见性。
-            showsStatus = state.directoryAuthorizationErrorMessage != nil
-            showsAction = true
-        case .selected, .selectedNoData:
-            statusKey = .settingsAuthorized
-            actionKey = .settingsAuthorized
-            actionStyle = .neutral
+            statusStyle = state.directoryAuthorizationErrorMessage == nil ? .warning : .error
             showsStatus = true
-            showsAction = false
+            showsAction = true
+        case .selected:
+            statusKey = .settingsDirectorySelected
+            actionKey = .settingsReselectDirectory
+            actionStyle = .neutral
+            statusStyle = .success
+            showsStatus = true
+            showsAction = true
+        case .selectedNoData:
+            statusKey = .settingsDirectoryNoData
+            actionKey = .settingsReselectDirectory
+            actionStyle = .neutral
+            statusStyle = .warning
+            showsStatus = true
+            showsAction = true
         case .needsReselection:
             statusKey = .settingsDirectoryNeedsReselection
             actionKey = .settingsChooseAgain
             actionStyle = .primary
+            statusStyle = state.directoryAuthorizationErrorMessage == nil ? .warning : .error
             showsStatus = true
             showsAction = true
         }
@@ -192,6 +248,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
             providerID: provider.id,
             providerName: provider.displayName,
             statusText: statusText,
+            statusStyle: statusStyle,
             showsStatus: showsStatus,
             actionTitle: AppStrings.text(actionKey, language: language),
             actionStyle: actionStyle,
@@ -203,11 +260,14 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
 
 /// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
-    static let minimumContentHeight: CGFloat = 540
+    static let minimumContentHeight: CGFloat = 700
     private static let directoryActionHorizontalPadding: CGFloat = 24
+    private static let valueControlWidth: CGFloat = 132
+    private static let valueControlHeight: CGFloat = 32
 
     private struct ProviderDirectoryRowViews {
         let nameLabel: NSTextField
+        let statusDotView: SettingsStatusDotView
         let statusLabel: NSTextField
         let actionButton: DashboardRangeButton
         let actionButtonWidthConstraint: NSLayoutConstraint
@@ -347,10 +407,10 @@ final class SettingsViewController: NSViewController {
     }
 
     private func setupSubviews() {
-        titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 26, weight: .bold)
         titleLabel.textColor = DashboardPalette.primaryText
 
-        descriptionLabel.font = .systemFont(ofSize: 13)
+        descriptionLabel.font = .systemFont(ofSize: 12)
         descriptionLabel.textColor = DashboardPalette.secondaryText
         descriptionLabel.lineBreakMode = .byWordWrapping
         descriptionLabel.maximumNumberOfLines = 0
@@ -410,58 +470,89 @@ final class SettingsViewController: NSViewController {
         refreshButton.setAccessibilityIdentifier("RefreshAllDataButton")
         refreshButton.target = self
         refreshButton.action = #selector(refreshButtonClicked)
+        refreshButton.image = NSImage(
+            systemSymbolName: "arrow.clockwise",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(
+            .init(pointSize: 13, weight: .semibold)
+        )
+        refreshButton.image?.isTemplate = true
+        refreshButton.imagePosition = .imageLeading
+        refreshButton.imageHugsTitle = true
+        refreshButton.setContentHuggingPriority(.required, for: .horizontal)
+        refreshButton.setContentCompressionResistancePriority(
+            .required,
+            for: .horizontal
+        )
+        refreshButton.widthAnchor.constraint(
+            greaterThanOrEqualToConstant: 104
+        ).isActive = true
 
-        let autoRefreshIntervalStack = NSStackView(views: [autoRefreshIntervalLabel, autoRefreshIntervalPopUpButton])
-        autoRefreshIntervalStack.orientation = .horizontal
-        autoRefreshIntervalStack.alignment = .centerY
-        autoRefreshIntervalStack.spacing = 8
+        let refreshRowSpacer = makeFlexibleSpacer()
+        let refreshRow = NSStackView(views: [
+            autoRefreshIntervalLabel,
+            refreshRowSpacer,
+            autoRefreshIntervalPopUpButton,
+        ])
+        refreshRow.orientation = .horizontal
+        refreshRow.alignment = .centerY
+        refreshRow.spacing = 12
+        autoRefreshIntervalLabel.lineBreakMode = .byTruncatingTail
+        autoRefreshIntervalLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+        autoRefreshIntervalPopUpButton.widthAnchor.constraint(
+            equalToConstant: Self.valueControlWidth
+        ).isActive = true
+        autoRefreshIntervalPopUpButton.heightAnchor.constraint(
+            equalToConstant: Self.valueControlHeight
+        ).isActive = true
 
-        let launchAtLoginControlRow = NSStackView(views: [launchAtLoginLabel, launchAtLoginSwitch])
-        launchAtLoginControlRow.orientation = .horizontal
-        launchAtLoginControlRow.alignment = .centerY
-        launchAtLoginControlRow.spacing = 8
-
-        let refreshButtonSpacer = NSView()
-        let loginSettingsButtonSpacer = NSView()
-        var controlColumnConstraints = [
-            autoRefreshIntervalLabel.widthAnchor.constraint(
-                greaterThanOrEqualToConstant: 104
-            ),
-            languageLabel.widthAnchor.constraint(
-                equalTo: autoRefreshIntervalLabel.widthAnchor
-            ),
-            launchAtLoginLabel.widthAnchor.constraint(
-                equalTo: autoRefreshIntervalLabel.widthAnchor
-            ),
-            refreshButtonSpacer.widthAnchor.constraint(
-                equalTo: autoRefreshIntervalLabel.widthAnchor
-            ),
-            loginSettingsButtonSpacer.widthAnchor.constraint(
-                equalTo: autoRefreshIntervalLabel.widthAnchor
-            ),
-        ]
-        for row in providerDirectoryRows.values {
-            controlColumnConstraints.append(
-                row.nameLabel.widthAnchor.constraint(
-                    equalTo: autoRefreshIntervalLabel.widthAnchor
-                )
-            )
-        }
-
-        let refreshButtonRow = NSStackView(views: [
-            refreshButtonSpacer,
+        let titleRowSpacer = makeFlexibleSpacer()
+        let titleRow = NSStackView(views: [
+            titleLabel,
+            titleRowSpacer,
             refreshButton,
         ])
-        refreshButtonRow.orientation = .horizontal
-        refreshButtonRow.alignment = .centerY
-        refreshButtonRow.spacing = 8
+        titleRow.orientation = .horizontal
+        titleRow.alignment = .centerY
+        titleRow.spacing = 12
 
+        let languageRowSpacer = makeFlexibleSpacer()
+        let languageRow = NSStackView(views: [
+            languageLabel,
+            languageRowSpacer,
+            languagePopUpButton,
+        ])
+        languageRow.orientation = .horizontal
+        languageRow.alignment = .centerY
+        languageRow.spacing = 12
+        languagePopUpButton.widthAnchor.constraint(
+            equalToConstant: Self.valueControlWidth
+        ).isActive = true
+        languagePopUpButton.heightAnchor.constraint(
+            equalToConstant: Self.valueControlHeight
+        ).isActive = true
+
+        let launchAtLoginRowSpacer = makeFlexibleSpacer()
+        let launchAtLoginControlRow = NSStackView(views: [
+            launchAtLoginLabel,
+            launchAtLoginRowSpacer,
+            launchAtLoginSwitch,
+        ])
+        launchAtLoginControlRow.orientation = .horizontal
+        launchAtLoginControlRow.alignment = .centerY
+        launchAtLoginControlRow.spacing = 12
+
+        let loginSettingsButtonSpacer = makeFlexibleSpacer()
         openLoginItemsSettingsRow.addArrangedSubview(loginSettingsButtonSpacer)
         openLoginItemsSettingsRow.addArrangedSubview(openLoginItemsSettingsButton)
         openLoginItemsSettingsRow.orientation = .horizontal
         openLoginItemsSettingsRow.alignment = .centerY
         openLoginItemsSettingsRow.spacing = 8
 
+        let preferencesDivider = makeSettingsDivider()
         let launchAtLoginSettingsStack = NSStackView(views: [
             launchAtLoginControlRow,
             launchAtLoginStatusLabel,
@@ -470,11 +561,37 @@ final class SettingsViewController: NSViewController {
         launchAtLoginSettingsStack.orientation = .vertical
         launchAtLoginSettingsStack.alignment = .leading
         launchAtLoginSettingsStack.spacing = 6
+        NSLayoutConstraint.activate([
+            launchAtLoginControlRow.widthAnchor.constraint(
+                equalTo: launchAtLoginSettingsStack.widthAnchor
+            ),
+            launchAtLoginStatusLabel.widthAnchor.constraint(
+                equalTo: launchAtLoginSettingsStack.widthAnchor
+            ),
+            openLoginItemsSettingsRow.widthAnchor.constraint(
+                equalTo: launchAtLoginSettingsStack.widthAnchor
+            ),
+        ])
 
-        let languageStack = NSStackView(views: [languageLabel, languagePopUpButton])
-        languageStack.orientation = .horizontal
-        languageStack.alignment = .centerY
-        languageStack.spacing = 8
+        let appPreferencesContent = NSStackView(views: [
+            languageRow,
+            preferencesDivider,
+            launchAtLoginSettingsStack,
+        ])
+        appPreferencesContent.orientation = .vertical
+        appPreferencesContent.alignment = .leading
+        appPreferencesContent.spacing = 14
+        NSLayoutConstraint.activate([
+            languageRow.widthAnchor.constraint(
+                equalTo: appPreferencesContent.widthAnchor
+            ),
+            preferencesDivider.widthAnchor.constraint(
+                equalTo: appPreferencesContent.widthAnchor
+            ),
+            launchAtLoginSettingsStack.widthAnchor.constraint(
+                equalTo: appPreferencesContent.widthAnchor
+            ),
+        ])
 
         let dataFoldersSection = makeSettingsSection(
             identifier: "SettingsDataFoldersSection",
@@ -484,16 +601,16 @@ final class SettingsViewController: NSViewController {
         let dataRefreshSection = makeSettingsSection(
             identifier: "SettingsDataRefreshSection",
             title: dataRefreshTitleLabel,
-            content: [autoRefreshIntervalStack, refreshButtonRow]
+            content: [refreshRow]
         )
         let appPreferencesSection = makeSettingsSection(
             identifier: "SettingsAppPreferencesSection",
             title: appPreferencesTitleLabel,
-            content: [languageStack, launchAtLoginSettingsStack]
+            content: [appPreferencesContent]
         )
 
         let contentStack = NSStackView(views: [
-            titleLabel,
+            titleRow,
             descriptionLabel,
             dataFoldersSection,
             dataRefreshSection,
@@ -503,25 +620,17 @@ final class SettingsViewController: NSViewController {
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
         contentStack.spacing = 0
-        contentStack.setCustomSpacing(4, after: titleLabel)
-        contentStack.setCustomSpacing(14, after: descriptionLabel)
-        contentStack.setCustomSpacing(14, after: dataFoldersSection)
-        contentStack.setCustomSpacing(14, after: dataRefreshSection)
+        contentStack.setCustomSpacing(4, after: titleRow)
+        contentStack.setCustomSpacing(24, after: descriptionLabel)
+        contentStack.setCustomSpacing(16, after: dataFoldersSection)
+        contentStack.setCustomSpacing(16, after: dataRefreshSection)
 
-        let panel = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
+        let panel = NSView()
         panel.identifier = NSUserInterfaceItemIdentifier("SettingsPanel")
         panel.setAccessibilityIdentifier("SettingsPanel")
         panel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(contentStack)
         view.addSubview(panel)
-        // 等所有控件位于同一视图层级后再启用跨行的列对齐约束。
-        // 否则 AppKit 无法找到共同祖先，设置页首次加载会失败。
-        NSLayoutConstraint.activate(controlColumnConstraints)
         NSLayoutConstraint.activate([
             panel.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
@@ -555,10 +664,10 @@ final class SettingsViewController: NSViewController {
                 equalTo: panel.bottomAnchor,
                 constant: -24
             ),
-            descriptionLabel.widthAnchor.constraint(
+            titleRow.widthAnchor.constraint(
                 equalTo: contentStack.widthAnchor
             ),
-            providerDirectoryStack.widthAnchor.constraint(
+            descriptionLabel.widthAnchor.constraint(
                 equalTo: contentStack.widthAnchor
             ),
             dataFoldersSection.widthAnchor.constraint(
@@ -570,9 +679,6 @@ final class SettingsViewController: NSViewController {
             appPreferencesSection.widthAnchor.constraint(
                 equalTo: contentStack.widthAnchor
             ),
-            launchAtLoginSettingsStack.widthAnchor.constraint(
-                equalTo: appPreferencesSection.widthAnchor
-            ),
         ])
 
         reloadLocalizedText()
@@ -582,7 +688,7 @@ final class SettingsViewController: NSViewController {
         _ label: NSTextField,
         identifier: String
     ) {
-        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.font = .systemFont(ofSize: 15, weight: .semibold)
         label.textColor = DashboardPalette.primaryText
         label.identifier = NSUserInterfaceItemIdentifier(identifier)
         label.setAccessibilityIdentifier(identifier)
@@ -592,27 +698,71 @@ final class SettingsViewController: NSViewController {
         identifier: String,
         title: NSTextField,
         content: [NSView]
-    ) -> NSStackView {
-        let section = NSStackView(views: [title] + content)
-        section.orientation = .vertical
-        section.alignment = .leading
-        section.spacing = 8
+    ) -> DashboardRoundedView {
+        let section = DashboardRoundedView(
+            backgroundColor: DashboardPalette.panelBackground,
+            cornerRadius: 12,
+            borderColor: DashboardPalette.border,
+            borderWidth: 1
+        )
         section.identifier = NSUserInterfaceItemIdentifier(identifier)
         section.setAccessibilityIdentifier(identifier)
+        section.translatesAutoresizingMaskIntoConstraints = false
+
+        let header = NSStackView()
+        header.identifier = NSUserInterfaceItemIdentifier("SettingsSectionHeader.\(identifier)")
+        header.setAccessibilityIdentifier("SettingsSectionHeader.\(identifier)")
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        header.addArrangedSubview(title)
+
+        let stack = NSStackView(views: [header] + content)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 14
+        section.addSubview(stack)
+
+        var constraints = [
+            stack.leadingAnchor.constraint(equalTo: section.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: section.trailingAnchor, constant: -20),
+            stack.topAnchor.constraint(equalTo: section.topAnchor, constant: 18),
+            stack.bottomAnchor.constraint(equalTo: section.bottomAnchor, constant: -18),
+            header.widthAnchor.constraint(equalTo: stack.widthAnchor),
+        ]
+        for view in content {
+            constraints.append(view.widthAnchor.constraint(equalTo: stack.widthAnchor))
+        }
+        NSLayoutConstraint.activate(constraints)
         return section
+    }
+
+    private func makeFlexibleSpacer() -> NSView {
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.fittingSizeCompression, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.fittingSizeCompression, for: .horizontal)
+        return spacer
+    }
+
+    private func makeSettingsDivider() -> DashboardBackgroundView {
+        let divider = DashboardBackgroundView(
+            backgroundColor: DashboardPalette.subtleBorder
+        )
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        return divider
     }
 
     /// 依照注入 providers 的稳定顺序建立目录设置行。
     private func configureProviderDirectoryRows() {
         providerDirectoryStack.orientation = .vertical
-        // 与其余设置项一致，目录行按内容宽度从左侧开始，不随宽窗口拉散。
         providerDirectoryStack.alignment = .leading
         providerDirectoryStack.distribution = .fill
-        providerDirectoryStack.spacing = 8
+        providerDirectoryStack.spacing = 0
 
         for (index, provider) in providers.enumerated() {
             let nameLabel = NSTextField(labelWithString: provider.displayName)
-            nameLabel.font = .systemFont(ofSize: 13, weight: .medium)
+            nameLabel.font = .systemFont(ofSize: 14, weight: .semibold)
             nameLabel.textColor = DashboardPalette.primaryText
             nameLabel.identifier = NSUserInterfaceItemIdentifier(
                 "ProviderDirectoryName.\(provider.id.rawValue)"
@@ -625,10 +775,21 @@ final class SettingsViewController: NSViewController {
                 .required,
                 for: .horizontal
             )
+
+            let statusDotView = SettingsStatusDotView(
+                color: DashboardPalette.yellow
+            )
+            statusDotView.identifier = NSUserInterfaceItemIdentifier(
+                "ProviderDirectoryStatusDot.\(provider.id.rawValue)"
+            )
+            statusDotView.setAccessibilityIdentifier(
+                "ProviderDirectoryStatusDot.\(provider.id.rawValue)"
+            )
+            statusDotView.setAccessibilityElement(false)
+
             let statusLabel = NSTextField(labelWithString: "")
             statusLabel.font = .systemFont(ofSize: 12)
             statusLabel.textColor = DashboardPalette.secondaryText
-            // 错误详情可通过辅助功能和悬停提示读取；设置页保持紧凑，避免长翻译撑高窗口。
             statusLabel.maximumNumberOfLines = 1
             statusLabel.lineBreakMode = .byTruncatingTail
             statusLabel.identifier = NSUserInterfaceItemIdentifier(
@@ -639,6 +800,26 @@ final class SettingsViewController: NSViewController {
             )
             statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
             statusLabel.setContentCompressionResistancePriority(
+                .defaultLow,
+                for: .horizontal
+            )
+
+            let statusStack = NSStackView(views: [statusDotView, statusLabel])
+            statusStack.orientation = .horizontal
+            statusStack.alignment = .centerY
+            statusStack.spacing = 6
+            statusStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            statusStack.setContentCompressionResistancePriority(
+                .defaultLow,
+                for: .horizontal
+            )
+
+            let providerInfoStack = NSStackView(views: [nameLabel, statusStack])
+            providerInfoStack.orientation = .vertical
+            providerInfoStack.alignment = .leading
+            providerInfoStack.spacing = 4
+            providerInfoStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            providerInfoStack.setContentCompressionResistancePriority(
                 .defaultLow,
                 for: .horizontal
             )
@@ -670,28 +851,17 @@ final class SettingsViewController: NSViewController {
             )
             actionButtonWidthConstraint.isActive = true
 
-            // 隐藏状态时由尾部空白吸收剩余宽度，避免名称列挤压统一宽度的操作按钮。
-            let trailingSpacer = NSView()
-            trailingSpacer.setContentHuggingPriority(
-                .fittingSizeCompression,
-                for: .horizontal
-            )
-            trailingSpacer.setContentCompressionResistancePriority(
-                .fittingSizeCompression,
-                for: .horizontal
-            )
-            // 操作按钮始终紧跟在名称列后，避免“再次选择”等带状态文案的行被推到右侧。
+            let trailingSpacer = makeFlexibleSpacer()
             let row = NSStackView(views: [
-                nameLabel,
-                actionButton,
-                statusLabel,
+                providerInfoStack,
                 trailingSpacer,
+                actionButton,
             ])
             row.translatesAutoresizingMaskIntoConstraints = false
             row.orientation = .horizontal
             row.alignment = .centerY
             row.distribution = .fill
-            row.spacing = 8
+            row.spacing = 12
             row.identifier = NSUserInterfaceItemIdentifier(
                 "ProviderDirectoryRow.\(provider.id.rawValue)"
             )
@@ -699,19 +869,28 @@ final class SettingsViewController: NSViewController {
                 "ProviderDirectoryRow.\(provider.id.rawValue)"
             )
             row.heightAnchor.constraint(
-                greaterThanOrEqualToConstant: 36
+                greaterThanOrEqualToConstant: 60
             ).isActive = true
-            // 目录行使用内容区全宽，让较长的重新选择提示保持单行，
-            // 同时不改变名称列与操作按钮的左侧对齐位置。
-            row.widthAnchor.constraint(equalToConstant: 376).isActive = true
 
             providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(
                 nameLabel: nameLabel,
+                statusDotView: statusDotView,
                 statusLabel: statusLabel,
                 actionButton: actionButton,
                 actionButtonWidthConstraint: actionButtonWidthConstraint
             )
             providerDirectoryStack.addArrangedSubview(row)
+            row.widthAnchor.constraint(
+                equalTo: providerDirectoryStack.widthAnchor
+            ).isActive = true
+
+            if index < providers.count - 1 {
+                let divider = makeSettingsDivider()
+                providerDirectoryStack.addArrangedSubview(divider)
+                divider.widthAnchor.constraint(
+                    equalTo: providerDirectoryStack.widthAnchor
+                ).isActive = true
+            }
         }
     }
 
@@ -786,10 +965,11 @@ final class SettingsViewController: NSViewController {
         row.nameLabel.stringValue = model.providerName
         row.statusLabel.stringValue = model.statusText
         row.statusLabel.isHidden = !model.showsStatus
+        row.statusDotView.isHidden = !model.showsStatus
+        let statusColor = providerStatusColor(for: model.statusStyle)
+        row.statusDotView.setColor(statusColor)
         row.statusLabel.toolTip = model.showsStatus ? model.statusText : nil
-        row.statusLabel.textColor = model.showsAction
-            ? DashboardPalette.secondaryText
-            : DashboardPalette.green
+        row.statusLabel.textColor = statusColor
         row.statusLabel.setAccessibilityLabel(
             "\(model.providerName), \(model.statusText)"
         )
@@ -820,7 +1000,20 @@ final class SettingsViewController: NSViewController {
         synchronizeDirectoryActionButtonWidths()
     }
 
-    /// 同步目录操作列宽，避免同宽名称列与不同按钮宽度共同约束固定行宽。
+    private func providerStatusColor(
+        for style: ProviderDirectoryStatusStyle
+    ) -> NSColor {
+        switch style {
+        case .success:
+            return DashboardPalette.green
+        case .warning:
+            return DashboardPalette.yellow
+        case .error:
+            return DashboardPalette.statusInactive
+        }
+    }
+
+    /// 同步目录操作列宽，让每一行尾部操作保持一致的视觉节奏。
     private func synchronizeDirectoryActionButtonWidths() {
         let sharedWidth = providerDirectoryRows.values
             .filter { !$0.actionButton.isHidden }
@@ -950,7 +1143,7 @@ final class SettingsViewController: NSViewController {
             language: language
         )
         dataFoldersTitleLabel.stringValue = AppStrings.text(
-            .settingsDataFoldersTitle,
+            .dashboardDataSources,
             language: language
         )
         dataRefreshTitleLabel.stringValue = AppStrings.text(
@@ -963,10 +1156,10 @@ final class SettingsViewController: NSViewController {
         )
         applySettingsButtonStyle(
             refreshButton,
-            title: AppStrings.text(.settingsRefreshAllData, language: language),
-            backgroundColor: DashboardPalette.panelBackground,
-            borderColor: DashboardPalette.border,
-            textColor: DashboardPalette.primaryText
+            title: AppStrings.text(.refreshNow, language: language),
+            backgroundColor: DashboardPalette.accent,
+            borderColor: DashboardPalette.accent,
+            textColor: DashboardPalette.rangeSelectedText
         )
         autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
         autoRefreshIntervalPopUpButton.setAccessibilityLabel(
