@@ -74,7 +74,6 @@ enum AppStringKey: CaseIterable, Sendable {
     case settingsReselectDirectory
     case settingsChooseAgain
     case settingsAuthorized
-    case settingsRefreshAllData
     case settingsAutoRefreshInterval
     case settingsLaunchAtLogin
     case settingsLaunchAtLoginRequiresApproval
@@ -254,7 +253,6 @@ enum AppStrings {
         .settingsReselectDirectory: "重新选择",
         .settingsChooseAgain: "再次选择",
         .settingsAuthorized: "已授权",
-        .settingsRefreshAllData: "刷新全部数据",
         .settingsAutoRefreshInterval: "自动刷新间隔",
         .settingsLaunchAtLogin: "开机自启动",
         .settingsLaunchAtLoginRequiresApproval: "需要在系统设置中批准开机自启动。",
@@ -413,7 +411,6 @@ enum AppStrings {
         .settingsReselectDirectory: "重新選擇",
         .settingsChooseAgain: "再次選擇",
         .settingsAuthorized: "已授權",
-        .settingsRefreshAllData: "重新整理全部資料",
         .settingsAutoRefreshInterval: "自動重新整理間隔",
         .settingsLaunchAtLogin: "開機自動啟動",
         .settingsLaunchAtLoginRequiresApproval: "需要在「系統設定」中核准登入時啟動。",
@@ -572,7 +569,6 @@ enum AppStrings {
         .settingsReselectDirectory: "フォルダを変更",
         .settingsChooseAgain: "もう一度選択",
         .settingsAuthorized: "許可済み",
-        .settingsRefreshAllData: "すべてのデータを更新",
         .settingsAutoRefreshInterval: "自動更新間隔",
         .settingsLaunchAtLogin: "ログイン時に起動",
         .settingsLaunchAtLoginRequiresApproval: "ログイン時に起動するには、システム設定での承認が必要です。",
@@ -731,7 +727,6 @@ enum AppStrings {
         .settingsReselectDirectory: "폴더 변경",
         .settingsChooseAgain: "다시 선택",
         .settingsAuthorized: "허용됨",
-        .settingsRefreshAllData: "모든 데이터 새로고침",
         .settingsAutoRefreshInterval: "자동 새로고침 간격",
         .settingsLaunchAtLogin: "로그인 시 실행",
         .settingsLaunchAtLoginRequiresApproval: "로그인 시 실행하려면 시스템 설정에서 승인이 필요합니다.",
@@ -890,7 +885,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Cambiar carpeta",
         .settingsChooseAgain: "Elegir de nuevo",
         .settingsAuthorized: "Autorizado",
-        .settingsRefreshAllData: "Actualizar todos los datos",
         .settingsAutoRefreshInterval: "Intervalo de actualización automática",
         .settingsLaunchAtLogin: "Iniciar al iniciar sesión",
         .settingsLaunchAtLoginRequiresApproval: "Se requiere aprobación en Ajustes del Sistema para iniciar al iniciar sesión.",
@@ -1049,7 +1043,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Ordner ändern",
         .settingsChooseAgain: "Erneut auswählen",
         .settingsAuthorized: "Autorisiert",
-        .settingsRefreshAllData: "Alle Daten aktualisieren",
         .settingsAutoRefreshInterval: "Intervall für Auto-Aktualisierung",
         .settingsLaunchAtLogin: "Beim Anmelden starten",
         .settingsLaunchAtLoginRequiresApproval: "Für den Start bei der Anmeldung ist eine Genehmigung in den Systemeinstellungen erforderlich.",
@@ -1208,7 +1201,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Changer de dossier",
         .settingsChooseAgain: "Choisir à nouveau",
         .settingsAuthorized: "Autorisé",
-        .settingsRefreshAllData: "Actualiser toutes les données",
         .settingsAutoRefreshInterval: "Intervalle d'actualisation auto",
         .settingsLaunchAtLogin: "Lancer à l’ouverture de session",
         .settingsLaunchAtLoginRequiresApproval: "L’approbation dans Réglages Système est requise pour le lancement à l’ouverture de session.",
@@ -1367,7 +1359,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Alterar pasta",
         .settingsChooseAgain: "Escolher novamente",
         .settingsAuthorized: "Autorizado",
-        .settingsRefreshAllData: "Atualizar todos os dados",
         .settingsAutoRefreshInterval: "Intervalo de atualização automática",
         .settingsLaunchAtLogin: "Iniciar ao entrar",
         .settingsLaunchAtLoginRequiresApproval: "É necessária aprovação nos Ajustes do Sistema para iniciar ao entrar.",
@@ -1526,7 +1517,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Cambia cartella",
         .settingsChooseAgain: "Scegli di nuovo",
         .settingsAuthorized: "Autorizzato",
-        .settingsRefreshAllData: "Aggiorna tutti i dati",
         .settingsAutoRefreshInterval: "Intervallo di aggiornamento automatico",
         .settingsLaunchAtLogin: "Avvia all'accesso",
         .settingsLaunchAtLoginRequiresApproval: "Per l’avvio al login è necessaria l’approvazione in Impostazioni di Sistema.",
@@ -1685,7 +1675,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Map wijzigen",
         .settingsChooseAgain: "Opnieuw kiezen",
         .settingsAuthorized: "Geautoriseerd",
-        .settingsRefreshAllData: "Alle gegevens verversen",
         .settingsAutoRefreshInterval: "Interval voor automatisch verversen",
         .settingsLaunchAtLogin: "Start bij inloggen",
         .settingsLaunchAtLoginRequiresApproval: "Voor starten bij inloggen is goedkeuring in Systeeminstellingen vereist.",
@@ -1844,7 +1833,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Zmień folder",
         .settingsChooseAgain: "Wybierz ponownie",
         .settingsAuthorized: "Autoryzowano",
-        .settingsRefreshAllData: "Odśwież wszystkie dane",
         .settingsAutoRefreshInterval: "Interwał auto odświeżania",
         .settingsLaunchAtLogin: "Uruchamiaj przy logowaniu",
         .settingsLaunchAtLoginRequiresApproval: "Uruchamianie przy logowaniu wymaga zatwierdzenia w Ustawieniach systemowych.",
@@ -2003,7 +1991,6 @@ enum AppStrings {
         .settingsReselectDirectory: "Reselect",
         .settingsChooseAgain: "Choose Again",
         .settingsAuthorized: "Authorized",
-        .settingsRefreshAllData: "Refresh All Data",
         .settingsAutoRefreshInterval: "Auto Refresh Interval",
         .settingsLaunchAtLogin: "Launch at Login",
         .settingsLaunchAtLoginRequiresApproval: "Approval is required in System Settings to launch at login.",
