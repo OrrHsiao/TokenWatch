@@ -59,6 +59,7 @@ enum AppStringKey: CaseIterable, Sendable {
     case dashboardInput
     case dashboardOutput
     case dashboardCache
+    case dashboardCacheHitRate
     case dashboardReasoning
     case dashboardSessionsEmptyToday
     case settingsTitle
@@ -237,6 +238,7 @@ enum AppStrings {
         .dashboardInput: "输入",
         .dashboardOutput: "输出",
         .dashboardCache: "缓存",
+        .dashboardCacheHitRate: "缓存命中率",
         .dashboardReasoning: "推理",
         .dashboardSessionsEmptyToday: "当天暂无会话记录",
         .settingsTitle: "设置",
@@ -394,6 +396,7 @@ enum AppStrings {
         .dashboardInput: "輸入",
         .dashboardOutput: "輸出",
         .dashboardCache: "快取",
+        .dashboardCacheHitRate: "快取命中率",
         .dashboardReasoning: "推理",
         .dashboardSessionsEmptyToday: "當天暫無會話記錄",
         .settingsTitle: "設定",
@@ -551,6 +554,7 @@ enum AppStrings {
         .dashboardInput: "入力",
         .dashboardOutput: "出力",
         .dashboardCache: "キャッシュ",
+        .dashboardCacheHitRate: "キャッシュヒット率",
         .dashboardReasoning: "推論",
         .dashboardSessionsEmptyToday: "当日のセッション記録はありません",
         .settingsTitle: "設定",
@@ -708,6 +712,7 @@ enum AppStrings {
         .dashboardInput: "입력",
         .dashboardOutput: "출력",
         .dashboardCache: "캐시",
+        .dashboardCacheHitRate: "캐시 적중률",
         .dashboardReasoning: "추론",
         .dashboardSessionsEmptyToday: "오늘 세션 기록이 없습니다",
         .settingsTitle: "설정",
@@ -865,6 +870,7 @@ enum AppStrings {
         .dashboardInput: "Entrada",
         .dashboardOutput: "Salida",
         .dashboardCache: "Caché",
+        .dashboardCacheHitRate: "Tasa de aciertos de caché",
         .dashboardReasoning: "Razonamiento",
         .dashboardSessionsEmptyToday: "No hay registros de sesiones hoy",
         .settingsTitle: "Configuración",
@@ -1022,6 +1028,7 @@ enum AppStrings {
         .dashboardInput: "Eingabe",
         .dashboardOutput: "Ausgabe",
         .dashboardCache: "Cache",
+        .dashboardCacheHitRate: "Cache-Trefferrate",
         .dashboardReasoning: "Reasoning",
         .dashboardSessionsEmptyToday: "Heute keine Sitzungsaufzeichnungen",
         .settingsTitle: "Einstellungen",
@@ -1179,6 +1186,7 @@ enum AppStrings {
         .dashboardInput: "Entrée",
         .dashboardOutput: "Sortie",
         .dashboardCache: "Cache",
+        .dashboardCacheHitRate: "Taux de réussite du cache",
         .dashboardReasoning: "Raisonnement",
         .dashboardSessionsEmptyToday: "Aucun enregistrement de session aujourd'hui",
         .settingsTitle: "Paramètres",
@@ -1336,6 +1344,7 @@ enum AppStrings {
         .dashboardInput: "Entrada",
         .dashboardOutput: "Saída",
         .dashboardCache: "Cache",
+        .dashboardCacheHitRate: "Taxa de acerto do cache",
         .dashboardReasoning: "Raciocínio",
         .dashboardSessionsEmptyToday: "Sem registros de sessão hoje",
         .settingsTitle: "Configurações",
@@ -1493,6 +1502,7 @@ enum AppStrings {
         .dashboardInput: "Input",
         .dashboardOutput: "Output",
         .dashboardCache: "Cache",
+        .dashboardCacheHitRate: "Percentuale di hit della cache",
         .dashboardReasoning: "Ragionamento",
         .dashboardSessionsEmptyToday: "Nessun record di sessione oggi",
         .settingsTitle: "Impostazioni",
@@ -1650,6 +1660,7 @@ enum AppStrings {
         .dashboardInput: "Invoer",
         .dashboardOutput: "Uitvoer",
         .dashboardCache: "Cache",
+        .dashboardCacheHitRate: "Cache-hitpercentage",
         .dashboardReasoning: "Redenering",
         .dashboardSessionsEmptyToday: "Vandaag geen sessierecords",
         .settingsTitle: "Instellingen",
@@ -1807,6 +1818,7 @@ enum AppStrings {
         .dashboardInput: "Wejście",
         .dashboardOutput: "Wyjście",
         .dashboardCache: "Pamięć cache",
+        .dashboardCacheHitRate: "Współczynnik trafień w pamięci podręcznej",
         .dashboardReasoning: "Rozumowanie",
         .dashboardSessionsEmptyToday: "Brak rekordów sesji dzisiaj",
         .settingsTitle: "Ustawienia",
@@ -1964,6 +1976,7 @@ enum AppStrings {
         .dashboardInput: "Input",
         .dashboardOutput: "Output",
         .dashboardCache: "Cache",
+        .dashboardCacheHitRate: "Cache Hit Rate",
         .dashboardReasoning: "Reasoning",
         .dashboardSessionsEmptyToday: "No session records today",
         .settingsTitle: "Settings",

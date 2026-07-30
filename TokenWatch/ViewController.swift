@@ -235,7 +235,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
         case .needsReselection:
             statusKey = .settingsDirectoryNeedsReselection
             actionKey = .settingsChooseAgain
-            actionStyle = .primary
+            actionStyle = .neutral
             statusStyle = state.directoryAuthorizationErrorMessage == nil ? .warning : .error
             showsStatus = true
             showsAction = true
@@ -1152,9 +1152,9 @@ final class SettingsViewController: NSViewController {
         applySettingsButtonStyle(
             refreshButton,
             title: AppStrings.text(.refreshNow, language: language),
-            backgroundColor: DashboardPalette.accent,
-            borderColor: DashboardPalette.accent,
-            textColor: DashboardPalette.rangeSelectedText
+            backgroundColor: DashboardPalette.panelBackground,
+            borderColor: DashboardPalette.border,
+            textColor: DashboardPalette.primaryText
         )
         autoRefreshIntervalLabel.stringValue = AppStrings.text(.settingsAutoRefreshInterval, language: language)
         autoRefreshIntervalPopUpButton.setAccessibilityLabel(

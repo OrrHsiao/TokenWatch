@@ -487,7 +487,6 @@ private enum DashboardProjectRows {
                 }
                 return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
             }
-            .prefix(4)
             .map { DashboardProjectRow(name: $0.key, tokens: $0.value) }
     }
 

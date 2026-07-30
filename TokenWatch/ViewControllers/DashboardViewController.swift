@@ -17,6 +17,9 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableMinimumWidth: CGFloat = 880
     private static let sessionTableColumnSpacing: CGFloat = 4
     private static let sessionTableHorizontalPadding: CGFloat = 10
+    private static let sourceSharePanelMinimumHeight: CGFloat = 200
+    private static let analysisRowsViewportHeight: CGFloat = 164
+    private static let analysisRowsPanelMinimumHeight: CGFloat = 232
     private static let sessionPageSize = 10
     private static let sessionTableHeaderHeight: CGFloat = 44
     private static let sessionTableRowHeight: CGFloat = 48
@@ -60,6 +63,8 @@ final class DashboardViewController: NSViewController {
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let totalTokenValueLabel = NSTextField(labelWithString: "0")
+    private let cacheHitRateTitleLabel = NSTextField(labelWithString: "")
+    private let cacheHitRateValueLabel = NSTextField(labelWithString: "0%")
     private let totalTokenDetailLabel = NSTextField(labelWithString: "")
     private let totalCostValueLabel = NSTextField(labelWithString: "$0.00")
     private let totalCostDetailLabel = NSTextField(labelWithString: "")
@@ -67,10 +72,12 @@ final class DashboardViewController: NSViewController {
     private let sessionDetailLabel = NSTextField(labelWithString: "")
     private let trendView = DashboardTrendView()
     private let modelRowsStack = NSStackView()
+    private let modelRowsScrollView = NSScrollView()
     private let emptyModelLabel = NSTextField(labelWithString: "")
     private let sourceDonutView = DashboardDonutView()
     private let sourceLegendStack = NSStackView()
     private let projectRowsStack = NSStackView()
+    private let projectRowsScrollView = NSScrollView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let sessionTitleLabel = NSTextField(labelWithString: "")
     private let sessionSubtitleLabel = NSTextField(labelWithString: "")
@@ -706,11 +713,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeMetricRow() -> NSView {
-        let tokenCard = makeMetricCard(
-            titleKey: .dashboardMetricTotalTokens,
-            valueLabel: totalTokenValueLabel,
-            detailLabel: totalTokenDetailLabel
-        )
+        let tokenCard = makeTotalTokenMetricCard()
         let costCard = makeMetricCard(
             titleKey: .dashboardMetricTotalCost,
             valueLabel: totalCostValueLabel,
@@ -730,6 +733,62 @@ final class DashboardViewController: NSViewController {
             row.heightAnchor.constraint(greaterThanOrEqualToConstant: 128),
         ])
         return row
+    }
+
+    private func makeTotalTokenMetricCard() -> NSView {
+        let titleLabel = localizedLabel(.dashboardMetricTotalTokens)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = DashboardPalette.secondaryText
+
+        totalTokenValueLabel.identifier = NSUserInterfaceItemIdentifier("DashboardTotalTokenValue")
+        totalTokenValueLabel.setAccessibilityIdentifier("DashboardTotalTokenValue")
+        totalTokenValueLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .semibold)
+        totalTokenValueLabel.textColor = DashboardPalette.primaryText
+        totalTokenValueLabel.lineBreakMode = .byTruncatingTail
+
+        setLocalizedKey(.dashboardCacheHitRate, for: cacheHitRateTitleLabel)
+        cacheHitRateTitleLabel.font = .systemFont(ofSize: 11)
+        cacheHitRateTitleLabel.textColor = DashboardPalette.secondaryText
+        cacheHitRateValueLabel.identifier = NSUserInterfaceItemIdentifier("DashboardCacheHitRateValue")
+        cacheHitRateValueLabel.setAccessibilityIdentifier("DashboardCacheHitRateValue")
+        cacheHitRateValueLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        cacheHitRateValueLabel.textColor = DashboardPalette.primaryText
+
+        totalTokenDetailLabel.font = .systemFont(ofSize: 12)
+        totalTokenDetailLabel.textColor = DashboardPalette.secondaryText
+        totalTokenDetailLabel.maximumNumberOfLines = 2
+        totalTokenDetailLabel.lineBreakMode = .byTruncatingTail
+
+        let cacheHitRateStack = NSStackView(views: [cacheHitRateTitleLabel, cacheHitRateValueLabel])
+        cacheHitRateStack.orientation = .vertical
+        cacheHitRateStack.alignment = .leading
+        cacheHitRateStack.spacing = 2
+
+        let valueRow = NSStackView(views: [totalTokenValueLabel, cacheHitRateStack])
+        valueRow.orientation = .horizontal
+        valueRow.alignment = .centerY
+        valueRow.spacing = 12
+
+        let stack = NSStackView(views: [titleLabel, valueRow, totalTokenDetailLabel])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+
+        let card = DashboardRoundedView(
+            backgroundColor: DashboardPalette.panelBackground,
+            cornerRadius: 8,
+            borderColor: DashboardPalette.border,
+            borderWidth: 1
+        )
+        card.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -16),
+        ])
+        return card
     }
 
     private func makeMetricCard(titleKey: AppStringKey, valueLabel: NSTextField, detailLabel: NSTextField) -> NSView {
@@ -779,6 +838,7 @@ final class DashboardViewController: NSViewController {
         let rightColumn = NSStackView()
         rightColumn.orientation = .vertical
         rightColumn.alignment = .leading
+        rightColumn.distribution = .fill
         rightColumn.spacing = Self.rowGap
         addFullWidthArrangedSubview(makeSourcePanel(), to: rightColumn)
         addFullWidthArrangedSubview(makeProjectPanel(), to: rightColumn)
@@ -861,16 +921,23 @@ final class DashboardViewController: NSViewController {
         emptyModelLabel.font = .systemFont(ofSize: 12)
         emptyModelLabel.textColor = DashboardPalette.secondaryText
 
-        let stack = NSStackView(views: [modelRowsStack, emptyModelLabel])
+        let rowsScrollView = makeScrollableRowsView(
+            rowsStack: modelRowsStack,
+            scrollView: modelRowsScrollView,
+            identifier: "DashboardModelRowsScrollView"
+        )
+        let stack = NSStackView(views: [rowsScrollView, emptyModelLabel])
         stack.orientation = .vertical
         stack.alignment = .width
         stack.spacing = 8
-        return makePanel(
+        let panel = makePanel(
             titleKey: .dashboardModelRankTitle,
             subtitleKey: nil,
             content: stack,
-            minimumHeight: 232
+            minimumHeight: Self.analysisRowsPanelMinimumHeight
         )
+        panel.heightAnchor.constraint(equalToConstant: Self.analysisRowsPanelMinimumHeight).isActive = true
+        return panel
     }
 
     private func makeSourcePanel() -> NSView {
@@ -887,14 +954,61 @@ final class DashboardViewController: NSViewController {
             sourceDonutView.widthAnchor.constraint(equalToConstant: 132),
             sourceDonutView.heightAnchor.constraint(equalToConstant: 132),
         ])
-        return makePanel(titleKey: .dashboardSourceShareTitle, subtitleKey: nil, content: body, minimumHeight: 230)
+        let panel = makePanel(
+            titleKey: .dashboardSourceShareTitle,
+            subtitleKey: nil,
+            content: body,
+            minimumHeight: Self.sourceSharePanelMinimumHeight
+        )
+        panel.heightAnchor.constraint(equalToConstant: Self.sourceSharePanelMinimumHeight).isActive = true
+        panel.setContentHuggingPriority(.required, for: .vertical)
+        return panel
     }
 
     private func makeProjectPanel() -> NSView {
         projectRowsStack.orientation = .vertical
         projectRowsStack.alignment = .width
         projectRowsStack.spacing = 10
-        return makePanel(titleKey: .dashboardProjectUsageTitle, subtitleKey: nil, content: projectRowsStack, minimumHeight: 232)
+        let rowsScrollView = makeScrollableRowsView(
+            rowsStack: projectRowsStack,
+            scrollView: projectRowsScrollView,
+            identifier: "DashboardProjectRowsScrollView"
+        )
+        let panel = makePanel(
+            titleKey: .dashboardProjectUsageTitle,
+            subtitleKey: nil,
+            content: rowsScrollView,
+            minimumHeight: Self.analysisRowsPanelMinimumHeight
+        )
+        return panel
+    }
+
+    /// 创建固定可视高度的条目滚动区，条目超出可视高度时仍可通过滚轮滚动查看。
+    private func makeScrollableRowsView(
+        rowsStack: NSStackView,
+        scrollView: NSScrollView,
+        identifier: String
+    ) -> NSScrollView {
+        let clipView = scrollView.contentView
+        scrollView.identifier = NSUserInterfaceItemIdentifier(identifier)
+        scrollView.setAccessibilityIdentifier(identifier)
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasHorizontalScroller = false
+        scrollView.hasVerticalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.documentView = rowsStack
+
+        rowsStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            scrollView.heightAnchor.constraint(equalToConstant: Self.analysisRowsViewportHeight),
+            rowsStack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
+            rowsStack.topAnchor.constraint(equalTo: clipView.topAnchor),
+            rowsStack.widthAnchor.constraint(equalTo: clipView.widthAnchor),
+            rowsStack.heightAnchor.constraint(greaterThanOrEqualTo: clipView.heightAnchor),
+        ])
+        return scrollView
     }
 
     private func makePanel(
@@ -1573,6 +1687,7 @@ final class DashboardViewController: NSViewController {
         let summary = rangeSnapshot.summary
 
         totalTokenValueLabel.stringValue = CompactNumberFormatter.formatMillions(summary.totalTokens)
+        cacheHitRateValueLabel.stringValue = formatCacheHitRate(summary)
         totalTokenDetailLabel.stringValue = formatTokenBreakdown(summary)
         totalCostValueLabel.stringValue = formatCurrency(summary.cost)
         totalCostDetailLabel.stringValue = formatCostBreakdown(summary)
@@ -1789,9 +1904,8 @@ final class DashboardViewController: NSViewController {
     private func rebuildModelRows(_ rows: [TotalStatsModelRow]) {
         clearStack(modelRowsStack)
         emptyModelLabel.isHidden = !rows.isEmpty
-        let visibleRows = Array(rows.prefix(5))
-        let maxTokens = visibleRows.map(\.totalTokens).max() ?? 0
-        for (index, row) in visibleRows.enumerated() {
+        let maxTokens = rows.map(\.totalTokens).max() ?? 0
+        for (index, row) in rows.enumerated() {
             addFullWidthArrangedSubview(DashboardBarRowView(
                 title: row.modelName,
                 value: formatInt(row.totalTokens),
@@ -1831,7 +1945,7 @@ final class DashboardViewController: NSViewController {
             return
         }
         let maxTokens = rows.map(\.tokens).max() ?? 0
-        for (index, row) in rows.prefix(4).enumerated() {
+        for (index, row) in rows.enumerated() {
             addFullWidthArrangedSubview(DashboardBarRowView(
                 title: row.name,
                 value: formatInt(row.tokens),
@@ -1937,21 +2051,11 @@ final class DashboardViewController: NSViewController {
         ]
         let cacheTokens = summary.cacheReadTokens.addingSaturated(summary.cacheCreationTokens)
         let cacheText = CompactNumberFormatter.formatMillions(cacheTokens)
-        let cacheHitRateText = localizedParenthetical(formatCacheHitRate(summary))
-        parts.append("\(localized(.dashboardCache)) \(cacheText)\(cacheHitRateText)")
+        parts.append("\(localized(.dashboardCache)) \(cacheText)")
         if summary.reasoningTokens > 0 {
             parts.append("\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
         }
         return parts.joined(separator: " / ")
-    }
-
-    private func localizedParenthetical(_ value: String) -> String {
-        switch language {
-        case .zhHans, .zhHant:
-            return "（\(value)）"
-        default:
-            return " (\(value))"
-        }
     }
 
     private func formatCacheHitRate(_ summary: DashboardUsageSummary) -> String {
