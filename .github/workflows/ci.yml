@@ -69,7 +69,9 @@ jobs:
 
   ui-tests:
     name: macOS UI Tests
-    runs-on: macos-latest
+    # macOS 26 的原生 Liquid Glass 会让 XCTest 将卡片内按钮误判为不可点击；
+    # 项目最低支持 macOS 15，固定该 runner 可稳定验证实际交互。
+    runs-on: macos-15
     if: github.event_name != 'pull_request'
 
     steps:
