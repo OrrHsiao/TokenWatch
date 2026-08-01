@@ -1728,8 +1728,13 @@ struct TokenWatchTests {
         let sourcePanelFrame = sourcePanel.convert(sourcePanel.bounds, to: viewController.view)
         let projectPanelFrame = projectPanel.convert(projectPanel.bounds, to: viewController.view)
         let modelPanelFrame = modelPanel.convert(modelPanel.bounds, to: viewController.view)
+        let projectRowsScrollFrame = projectRowsScrollView.convert(
+            projectRowsScrollView.bounds,
+            to: viewController.view
+        )
         #expect(abs(sourcePanelFrame.minY - projectPanelFrame.maxY - 18) < 0.5)
         #expect(abs(projectPanelFrame.minY - modelPanelFrame.minY) < 0.5)
+        #expect(abs(projectRowsScrollFrame.minY - projectPanelFrame.minY - 18) < 0.5)
     }
 
     @MainActor
