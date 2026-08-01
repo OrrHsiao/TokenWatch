@@ -944,7 +944,8 @@ final class DashboardViewController: NSViewController {
         let rowsScrollView = makeScrollableRowsView(
             rowsStack: modelRowsStack,
             scrollView: modelRowsScrollView,
-            identifier: "DashboardModelRowsScrollView"
+            identifier: "DashboardModelRowsScrollView",
+            viewportHeight: Self.analysisRowsViewportHeight
         )
         let stack = NSStackView(views: [rowsScrollView, emptyModelLabel])
         stack.orientation = .vertical
@@ -992,22 +993,25 @@ final class DashboardViewController: NSViewController {
         let rowsScrollView = makeScrollableRowsView(
             rowsStack: projectRowsStack,
             scrollView: projectRowsScrollView,
-            identifier: "DashboardProjectRowsScrollView"
+            identifier: "DashboardProjectRowsScrollView",
+            viewportHeight: nil
         )
         let panel = makePanel(
             titleKey: .dashboardProjectUsageTitle,
             subtitleKey: nil,
             content: rowsScrollView,
-            minimumHeight: Self.analysisRowsPanelMinimumHeight
+            minimumHeight: Self.analysisRowsPanelMinimumHeight,
+            contentFillsAvailableHeight: true
         )
         return panel
     }
 
-    /// 创建固定可视高度的条目滚动区，条目超出可视高度时仍可通过滚轮滚动查看。
+    /// 创建条目滚动区；可指定固定可视高度，或让它填满父面板剩余的垂直空间。
     private func makeScrollableRowsView(
         rowsStack: NSStackView,
         scrollView: NSScrollView,
-        identifier: String
+        identifier: String,
+        viewportHeight: CGFloat?
     ) -> NSScrollView {
         let clipView = scrollView.contentView
         scrollView.identifier = NSUserInterfaceItemIdentifier(identifier)
@@ -1021,13 +1025,19 @@ final class DashboardViewController: NSViewController {
         scrollView.documentView = rowsStack
 
         rowsStack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            scrollView.heightAnchor.constraint(equalToConstant: Self.analysisRowsViewportHeight),
+        var constraints = [
             rowsStack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
             rowsStack.topAnchor.constraint(equalTo: clipView.topAnchor),
             rowsStack.widthAnchor.constraint(equalTo: clipView.widthAnchor),
             rowsStack.heightAnchor.constraint(greaterThanOrEqualTo: clipView.heightAnchor),
-        ])
+        ]
+        if let viewportHeight {
+            constraints.append(scrollView.heightAnchor.constraint(equalToConstant: viewportHeight))
+        } else {
+            // 项目面板会随同栏内容拉伸；降低滚动区的垂直 hugging，让新增高度落在这里。
+            scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        }
+        NSLayoutConstraint.activate(constraints)
         return scrollView
     }
 
@@ -1036,7 +1046,8 @@ final class DashboardViewController: NSViewController {
         subtitleKey: AppStringKey?,
         content: NSView,
         minimumHeight: CGFloat,
-        trailingHeaderContent: NSView? = nil
+        trailingHeaderContent: NSView? = nil,
+        contentFillsAvailableHeight: Bool = false
     ) -> NSView {
         let titleLabel = localizedLabel(titleKey)
         titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
@@ -1086,15 +1097,20 @@ final class DashboardViewController: NSViewController {
         let panel = DashboardGlassCardView(cornerRadius: 8)
         panel.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
+        var constraints = [
             panel.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumHeight),
             stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18),
             stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18),
             stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18),
             headerView.widthAnchor.constraint(equalTo: stack.widthAnchor),
             content.widthAnchor.constraint(equalTo: stack.widthAnchor),
-        ])
+        ]
+        constraints.append(
+            contentFillsAvailableHeight
+                ? stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -18)
+                : stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18)
+        )
+        NSLayoutConstraint.activate(constraints)
         return panel
     }
 
