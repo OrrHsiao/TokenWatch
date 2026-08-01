@@ -113,6 +113,17 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonImageAccessibilityDescription == "Refreshing")
     }
 
+    @Test("印地语摘要、今日说明和刷新提示使用已审定文案")
+    func hindiLanguageLocalizesSummaryDescriptionAndRefreshTooltip() {
+        let controller = makeController(language: .hiIN)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugSummaryCards.map(\.title) == ["महीना", "सप्ताह", "आज", "दैनिक औसत"])
+        #expect(controller.debugTodayDescriptionText == "आज कोई टोकन उपयोग नहीं")
+        #expect(controller.debugRefreshButtonToolTip == "अभी रीफ़्रेश करें")
+    }
+
     @Test("语言切换时重新渲染弹窗可见文案")
     func languageChangeRerendersVisibleText() throws {
         let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
@@ -120,7 +131,7 @@ struct StatusPopoverViewControllerTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans"] })
-        languageSettings.selectedPreference = .zhHans
+        languageSettings.selectedPreference = .language(.zhHans)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },
@@ -132,7 +143,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugSummaryCards.map(\.title) == ["本月", "本周", "今日", "日均"])
         #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
 
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         #expect(controller.debugSummaryCards.map(\.title) == ["Month", "Week", "Today", "Daily Avg"])
         #expect(controller.debugTodayDescriptionText == "No token usage today")
@@ -158,6 +169,15 @@ struct StatusPopoverViewControllerTests {
         if #available(macOS 26.0, *) {
             #expect(rootView.debugUsesNativeLiquidGlass)
         }
+    }
+
+    @Test("阿拉伯语弹窗根视图仍固定左到右")
+    func arabicPopoverRootStaysLeftToRight() {
+        let controller = makeController(language: .ar)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.view.userInterfaceLayoutDirection == .leftToRight)
     }
 
     @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")
@@ -326,9 +346,9 @@ struct StatusPopoverViewControllerTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: {
-            language == .zhHans ? ["zh-Hans"] : ["en-US"]
+            [language.rawValue]
         })
-        languageSettings.selectedPreference = language == .zhHans ? .zhHans : .en
+        languageSettings.selectedPreference = .language(language)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },

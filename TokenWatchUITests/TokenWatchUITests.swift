@@ -22,7 +22,7 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["AI Token Watch"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["本地 AI 用量监控"].exists)
         XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["总 Token"].exists)
+        XCTAssertTrue(app.staticTexts["总 Tokens"].exists)
         XCTAssertTrue(app.staticTexts["总费用"].exists)
         XCTAssertTrue(app.staticTexts["会话数"].exists)
         XCTAssertTrue(app.staticTexts["模型消耗排行"].exists)
@@ -184,12 +184,30 @@ final class TokenWatchUITests: XCTestCase {
             )
         }
     }
+
+    @MainActor
+    func testArabicLaunchUsesLocalizedCopyAndKeepsLTRLayout() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting(languagePreference: "ar", systemLanguage: "ar")
+
+        let overviewButton = app.buttons["DashboardNav.overview"]
+        let dashboardTitle = app.staticTexts["نظرة عامة على الاستخدام"]
+        XCTAssertTrue(overviewButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(dashboardTitle.waitForExistence(timeout: 5))
+        XCTAssertLessThan(overviewButton.frame.minX, dashboardTitle.frame.minX)
+
+        let settingsButton = app.buttons["DashboardNav.settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.click()
+        XCTAssertTrue(app.staticTexts["الإعدادات"].waitForExistence(timeout: 5))
+    }
 }
 
 extension XCUIApplication {
     func launchForUITesting(
-        languagePreference: String = "zh-Hans",
-        skipInitialDirectoryAuthorizationGuide: Bool = true
+        languagePreference: String = "zh-CN",
+        skipInitialDirectoryAuthorizationGuide: Bool = true,
+        systemLanguage: String? = nil
     ) {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
@@ -214,6 +232,12 @@ extension XCUIApplication {
         } else {
             launchArguments += [
                 "--force-initial-directory-authorization-guide",
+            ]
+        }
+        if let systemLanguage {
+            launchArguments += [
+                "-AppleLanguages", "(\(systemLanguage))",
+                "-AppleLocale", systemLanguage,
             ]
         }
         launch()

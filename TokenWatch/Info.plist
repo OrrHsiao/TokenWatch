@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
+    <string>en-US</string>
     <key>CFBundleDisplayName</key>
     <string>AI Token Watch</string>
     <key>CFBundleExecutable</key>
@@ -14,18 +14,71 @@
     <string>6.0</string>
     <key>CFBundleLocalizations</key>
     <array>
-        <string>zh-Hans</string>
-        <string>zh-Hant</string>
-        <string>en</string>
-        <string>ja</string>
-        <string>ko</string>
-        <string>es</string>
-        <string>de</string>
-        <string>fr</string>
+        <string>en-US</string>
+        <string>am</string>
+        <string>ar</string>
+        <string>bg-BG</string>
+        <string>bn-BD</string>
+        <string>bs-BA</string>
+        <string>ca-ES</string>
+        <string>cs-CZ</string>
+        <string>da-DK</string>
+        <string>de-DE</string>
+        <string>el-GR</string>
+        <string>es-419</string>
+        <string>es-ES</string>
+        <string>et-EE</string>
+        <string>fa</string>
+        <string>fi-FI</string>
+        <string>fr-CA</string>
+        <string>fr-FR</string>
+        <string>gu-IN</string>
+        <string>hi-IN</string>
+        <string>hr-HR</string>
+        <string>hu-HU</string>
+        <string>hy-AM</string>
+        <string>id-ID</string>
+        <string>is-IS</string>
+        <string>it-IT</string>
+        <string>ja-JP</string>
+        <string>ka-GE</string>
+        <string>kk</string>
+        <string>kn-IN</string>
+        <string>ko-KR</string>
+        <string>lt</string>
+        <string>lv-LV</string>
+        <string>mk-MK</string>
+        <string>ml</string>
+        <string>mn</string>
+        <string>mr-IN</string>
+        <string>ms-MY</string>
+        <string>my-MM</string>
+        <string>nb-NO</string>
+        <string>nl-NL</string>
+        <string>pa</string>
+        <string>pl-PL</string>
         <string>pt-BR</string>
-        <string>it</string>
-        <string>nl</string>
-        <string>pl</string>
+        <string>pt-PT</string>
+        <string>ro-RO</string>
+        <string>ru-RU</string>
+        <string>sk-SK</string>
+        <string>sl-SI</string>
+        <string>so-SO</string>
+        <string>sq-AL</string>
+        <string>sr-RS</string>
+        <string>sv-SE</string>
+        <string>sw-TZ</string>
+        <string>ta-IN</string>
+        <string>te-IN</string>
+        <string>th-TH</string>
+        <string>tl</string>
+        <string>tr-TR</string>
+        <string>uk-UA</string>
+        <string>ur</string>
+        <string>vi-VN</string>
+        <string>zh-CN</string>
+        <string>zh-HK</string>
+        <string>zh-TW</string>
     </array>
     <key>CFBundleName</key>
     <string>$(PRODUCT_NAME)</string>

@@ -81,6 +81,7 @@ final class StatusBarController {
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.statusMenu.userInterfaceLayoutDirection = .leftToRight
 
         configureButton()
         configurePopover()
@@ -146,6 +147,7 @@ final class StatusBarController {
 
     private func configureButton() {
         guard let button = statusItem.button else { return }
+        button.userInterfaceLayoutDirection = .leftToRight
         // 用 NSStatusBarButton 原生 image + attributedTitle 渲染图标与双行文字。
         // 自定义 NSStackView 子视图会进入 macOS 26 的 NSStatusItemScene 布局管线,
         // 与状态栏自适应宽度互相 invalidation,空闲时也可能持续重绘。
