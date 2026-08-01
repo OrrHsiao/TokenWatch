@@ -6,6 +6,8 @@ import Testing
 @Suite("BundleLocalization")
 struct BundleLocalizationTests {
     private static let expectedLocalizationCodes = Set(AppLanguage.allCases.map(\.rawValue))
+    // Xcode 会将 Tagalog 的 InfoPlist 字符串目录规范化为 `fil`，产品偏好仍使用 Codex 的 `tl` 代码。
+    private static let infoPlistResourceAliases = ["tl": "fil"]
 
     @Test("应用 Bundle 声明全部支持语言")
     func bundleDeclaresAllSupportedLanguages() throws {
@@ -19,12 +21,13 @@ struct BundleLocalizationTests {
         #expect(Set(bundle.localizations).isSuperset(of: expected))
 
         for language in expected.sorted() {
+            let infoPlistLocalization = Self.infoPlistResourceAliases[language] ?? language
             let resourcePath = try #require(
                 bundle.path(
                     forResource: "InfoPlist",
                     ofType: "strings",
                     inDirectory: nil,
-                    forLocalization: language
+                    forLocalization: infoPlistLocalization
                 )
             )
             let values = try #require(

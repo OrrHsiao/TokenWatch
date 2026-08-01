@@ -295,10 +295,12 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     override func loadView() {
-        view = DashboardGlassBackgroundView(
+        let root = DashboardGlassBackgroundView(
             frame: NSRect(origin: .zero, size: Self.contentSize),
             acceptsFirstResponder: true
         )
+        root.userInterfaceLayoutDirection = .leftToRight
+        view = root
         setupSubviews()
     }
 

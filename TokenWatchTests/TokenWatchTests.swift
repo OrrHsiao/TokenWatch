@@ -7,6 +7,7 @@
 
 import Testing
 import AppKit
+import Foundation
 import SwiftUI
 @testable import TokenWatch
 
@@ -14,6 +15,18 @@ import SwiftUI
 private final class InitialLoadCompletionState {
     var hasCompleted = false
 }
+
+// 设置菜单验收独立抄录冻结顺序，避免从生产 catalog 复制同一处错误。
+private let frozenSettingsLocaleIdentifiers = [
+    "en-US", "am", "ar", "bg-BG", "bn-BD", "bs-BA", "ca-ES", "cs-CZ",
+    "da-DK", "de-DE", "el-GR", "es-419", "es-ES", "et-EE", "fa", "fi-FI",
+    "fr-CA", "fr-FR", "gu-IN", "hi-IN", "hr-HR", "hu-HU", "hy-AM", "id-ID",
+    "is-IS", "it-IT", "ja-JP", "ka-GE", "kk", "kn-IN", "ko-KR", "lt",
+    "lv-LV", "mk-MK", "ml", "mn", "mr-IN", "ms-MY", "my-MM", "nb-NO",
+    "nl-NL", "pa", "pl-PL", "pt-BR", "pt-PT", "ro-RO", "ru-RU", "sk-SK",
+    "sl-SI", "so-SO", "sq-AL", "sr-RS", "sv-SE", "sw-TZ", "ta-IN", "te-IN",
+    "th-TH", "tl", "tr-TR", "uk-UA", "ur", "vi-VN", "zh-CN", "zh-HK", "zh-TW",
+]
 
 struct TokenWatchTests {
 
@@ -512,7 +525,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("总 Token"))
+        #expect(labels.contains("总 Tokens"))
         #expect(labels.contains("总费用"))
         #expect(labels.contains("会话数"))
         #expect(labels.contains("趋势"))
@@ -2276,7 +2289,7 @@ struct TokenWatchTests {
             languageSettings: zhHansLanguageSettings()
         ))
 
-        for preference in [AppLanguagePreference.de, .fr] {
+        for preference: AppLanguagePreference in [.language(.de), .language(.fr)] {
             try withTemporaryDefaults { defaults in
                 let settings = AppLanguageSettings(
                     defaults: defaults,
@@ -2699,7 +2712,7 @@ struct TokenWatchTests {
             #expect(refresh.accessibilityLabel() == "立即刷新")
             #expect(openSettings.accessibilityLabel() == "打开登录项设置")
 
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
 
             #expect(autoRefresh.accessibilityLabel() == "Auto Refresh Interval")
             #expect(launchAtLogin.accessibilityLabel() == "Launch at Login")
@@ -2783,21 +2796,8 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            #expect(popUpButton.itemTitles == [
-                "跟随系统",
-                "简体中文",
-                "繁體中文",
-                "English",
-                "日本語",
-                "한국어",
-                "Español",
-                "Deutsch",
-                "Français",
-                "Português (Brasil)",
-                "Italiano",
-                "Nederlands",
-                "Polski",
-            ])
+            #expect(popUpButton.numberOfItems == 66)
+            #expect(popUpButton.itemTitles == frozenLanguageMenuTitles(systemTitle: "跟随系统"))
             #expect(popUpButton.titleOfSelectedItem == "跟随系统")
         }
     }
@@ -2976,29 +2976,15 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            popUpButton.selectItem(withTitle: "English")
+            popUpButton.selectItem(withTitle: AppLanguage.ptPT.nativeDisplayName)
             _ = popUpButton.sendAction(popUpButton.action, to: popUpButton.target)
 
             let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
-            #expect(labels.contains("Settings"))
-            #expect(labels.contains("Language"))
-            #expect(popUpButton.itemTitles == [
-                "System",
-                "简体中文",
-                "繁體中文",
-                "English",
-                "日本語",
-                "한국어",
-                "Español",
-                "Deutsch",
-                "Français",
-                "Português (Brasil)",
-                "Italiano",
-                "Nederlands",
-                "Polski",
-            ])
-            #expect(popUpButton.titleOfSelectedItem == "English")
+            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "pt-PT")
+            #expect(labels.contains("Definições"))
+            #expect(labels.contains("Idioma"))
+            #expect(popUpButton.itemTitles == frozenLanguageMenuTitles(systemTitle: "Sistema"))
+            #expect(popUpButton.titleOfSelectedItem == AppLanguage.ptPT.nativeDisplayName)
         }
     }
 
@@ -3006,7 +2992,7 @@ struct TokenWatchTests {
     @Test func dashboardUsesEnglishCopyWhenLanguageIsEnglish() throws {
         withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
             let viewController = ViewController(languageSettings: languageSettings)
             viewController.loadViewIfNeeded()
 
@@ -3031,24 +3017,35 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardRefreshesVisibleCopyAfterLanguageChange() throws {
-        withTemporaryDefaults { defaults in
-            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
-            let viewController = ViewController(languageSettings: languageSettings)
-            viewController.loadViewIfNeeded()
+    @Test func languageChangeDoesNotInvokeDashboardRefreshAction() async throws {
+        let suiteName = "TokenWatchTests.LanguageChange.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
-            languageSettings.selectedPreference = .en
+        let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+        languageSettings.selectedPreference = .language(.zhHans)
+        var refreshActionCallCount = 0
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: languageSettings),
+            stateProvider: { [:] },
+            refreshAction: { refreshActionCallCount += 1 },
+            languageSettings: languageSettings
+        )
+        viewController.loadViewIfNeeded()
 
-            let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
-                guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
-                return button.title
+        #expect(viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue).contains("用量总览"))
+
+        languageSettings.selectedPreference = .language(.ukUA)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
             }
-            let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-
-            #expect(navTitles == ["Overview", "Sessions", "Settings"])
-            #expect(labels.contains("Usage Overview"))
-            #expect(!labels.contains("用量总览"))
         }
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Огляд використання"))
+        #expect(!labels.contains("用量总览"))
+        #expect(refreshActionCallCount == 0)
     }
 }
 
@@ -3163,6 +3160,13 @@ private func withTemporaryDefaults(_ body: (UserDefaults) throws -> Void) rethro
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
     try body(defaults)
+}
+
+private func frozenLanguageMenuTitles(systemTitle: String) -> [String] {
+    [systemTitle] + frozenSettingsLocaleIdentifiers.map { localeIdentifier in
+        Locale(identifier: localeIdentifier).localizedString(forIdentifier: localeIdentifier)
+            ?? localeIdentifier
+    }
 }
 
 @MainActor
