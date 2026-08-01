@@ -221,12 +221,12 @@ final class DashboardGlassBackgroundView: NSView {
     }
 
     private func installGlassEffect() {
-        if #available(macOS 26.0, *) {
-            let glassView = NSGlassEffectView(frame: .zero)
-            glassView.style = .clear
-            glassView.cornerRadius = 0
+        if #available(macOS 26.0, *), let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
+            let glassView = glassClass.init(frame: .zero)
+            glassView.setValue(0, forKey: "style")
+            glassView.setValue(CGFloat(0), forKey: "cornerRadius")
             glassView.translatesAutoresizingMaskIntoConstraints = false
-            glassView.contentView = contentContainer
+            glassView.setValue(contentContainer, forKey: "contentView")
             addSubview(glassView)
             NSLayoutConstraint.activate([
                 glassView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -289,11 +289,11 @@ class DashboardGlassCardView: NSView {
     }
 
     private func installGlassEffect(cornerRadius: CGFloat) {
-        if #available(macOS 26.0, *) {
-            let glassView = NSGlassEffectView(frame: .zero)
-            glassView.cornerRadius = cornerRadius
+        if #available(macOS 26.0, *), let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
+            let glassView = glassClass.init(frame: .zero)
+            glassView.setValue(cornerRadius, forKey: "cornerRadius")
             glassView.translatesAutoresizingMaskIntoConstraints = false
-            glassView.contentView = contentContainer
+            glassView.setValue(contentContainer, forKey: "contentView")
             contentContainer.translatesAutoresizingMaskIntoConstraints = false
             addSubview(glassView)
             NSLayoutConstraint.activate([
@@ -339,9 +339,9 @@ class DashboardGlassCardView: NSView {
 
     /// 浅色环境让内容卡使用透明玻璃，避免系统常规材质叠加成厚重白卡；暗色继续使用常规玻璃维持对比度。
     private func updateNativeGlassStyle() {
-        guard #available(macOS 26.0, *), let nativeGlassView = nativeGlassView as? NSGlassEffectView else { return }
+        guard #available(macOS 26.0, *), let nativeGlassView = nativeGlassView else { return }
         let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        nativeGlassView.style = isDark ? .regular : .clear
+        nativeGlassView.setValue(isDark ? 1 : 0, forKey: "style")
         usesClearGlassStyle = !isDark
     }
 }
