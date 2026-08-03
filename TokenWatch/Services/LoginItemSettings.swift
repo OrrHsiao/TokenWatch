@@ -5,7 +5,6 @@ enum LoginItemSettingsState: Sendable, Equatable {
     case notRegistered
     case enabled
     case requiresApproval
-    case unavailable
 }
 
 /// 登录项设置抽象；设置页只消费稳定领域状态，不直接依赖 ServiceManagement。
@@ -57,9 +56,9 @@ final class LoginItemSettings: LoginItemSettingsControlling {
         case .requiresApproval:
             return .requiresApproval
         case .notFound:
-            return .unavailable
+            return .notRegistered
         @unknown default:
-            return .unavailable
+            return .notRegistered
         }
     }
 

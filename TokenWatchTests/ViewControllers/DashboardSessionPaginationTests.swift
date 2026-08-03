@@ -67,6 +67,59 @@ struct DashboardSessionPaginationTests {
     }
 
     @MainActor
+    @Test("日期选择器限制到今天且当天按钮可重置筛选")
+    func dashboardSessionDatePickerLimitsFutureDatesAndResetsToToday() throws {
+        let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let previousDay = dateTime(2026, 7, 3, hour: 12, minute: 0)
+        let futureDay = dateTime(2026, 7, 5, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { [
+                .claude: .init(
+                    stats: nil,
+                    entries: [
+                        makeEntry(sessionID: "today", timestamp: now, inputTokens: 1),
+                        makeEntry(sessionID: "previous-day", timestamp: previousDay, inputTokens: 1),
+                    ],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                ),
+            ] },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+        #expect(visibleValues(in: controller.view).contains("today"))
+        #expect(!visibleValues(in: controller.view).contains("previous-day"))
+
+        let datePicker = try #require(
+            findView(withIdentifier: "DashboardSessionsDatePicker", in: controller.view) as? NSDatePicker
+        )
+        #expect(datePicker.maxDate == calendar().startOfDay(for: now))
+        datePicker.dateValue = previousDay
+        datePicker.sendAction(datePicker.action, to: datePicker.target)
+
+        #expect(!visibleValues(in: controller.view).contains("today"))
+        #expect(visibleValues(in: controller.view).contains("previous-day"))
+        #expect(datePicker.dateValue == calendar().startOfDay(for: previousDay))
+
+        try button(withIdentifier: "DashboardSessionsTodayButton", in: controller.view).performClick(nil)
+        #expect(visibleValues(in: controller.view).contains("today"))
+        #expect(!visibleValues(in: controller.view).contains("previous-day"))
+        #expect(datePicker.dateValue == calendar().startOfDay(for: now))
+
+        datePicker.dateValue = futureDay
+        datePicker.sendAction(datePicker.action, to: datePicker.target)
+        #expect(datePicker.dateValue == calendar().startOfDay(for: now))
+        #expect(visibleValues(in: controller.view).contains("today"))
+    }
+
+    @MainActor
     @Test("默认窗口无需滚动即可完整显示表头、十行数据与分页栏")
     func dashboardDefaultWindowShowsAllColumnsTenRowsAndPaginationWithoutScrolling() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
@@ -193,6 +246,40 @@ struct DashboardSessionPaginationTests {
         try expectDefaultSessionViewportWithoutScrollRanges(
             in: controller,
             hiddenStatusLabel: loadingLabel,
+            visibleRowIdentifier: "DashboardSessionsRow.0"
+        )
+    }
+
+    @MainActor
+    @Test("无会话时默认会话页不产生双向滚动范围")
+    func dashboardEmptySessionsDoNotExposeSessionScrollRanges() throws {
+        let now = dateTime(2026, 7, 4, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { [
+                .claude: .init(
+                    stats: nil,
+                    entries: [],
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                ),
+            ] },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        controller.view.setFrameSize(MainWindowFactory.contentSize)
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let emptyStatusLabel = try textField(withString: "当天暂无会话记录", in: controller.view)
+        try expectDefaultSessionViewportWithoutScrollRanges(
+            in: controller,
+            hiddenStatusLabel: emptyStatusLabel,
             visibleRowIdentifier: "DashboardSessionsRow.0"
         )
     }

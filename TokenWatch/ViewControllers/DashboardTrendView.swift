@@ -472,7 +472,7 @@ private struct DashboardTrendChartContent: View {
     }
 
     private var axisValueName: String {
-        language.periodAxisValueName
+        AppStrings.text(.periodAxisValueName, language: language)
     }
 
     private var tokenAreaGradient: LinearGradient {
@@ -563,7 +563,12 @@ final class DashboardDonutView: NSView {
             startAngle -= sweep
         }
 
-        DashboardPalette.panelBackground.setFill()
-        NSBezierPath(ovalIn: rect.insetBy(dx: rect.width * 0.27, dy: rect.height * 0.27)).fill()
+        let hole = NSBezierPath(ovalIn: rect.insetBy(dx: rect.width * 0.27, dy: rect.height * 0.27))
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        context.setBlendMode(.clear)
+        NSColor.clear.setFill()
+        hole.fill()
+        context.restoreGState()
     }
 }

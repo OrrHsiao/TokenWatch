@@ -139,6 +139,25 @@ struct MonthlyTokenChartBuilderTests {
         #expect(snapshot.monthBuckets[9].monthLabel == "9")
     }
 
+    @Test("波斯语月名仍按公历月份编号")
+    func persianMonthNamesUseGregorianMonthNumbers() {
+        #expect(UsageStatsPeriod.shortMonthName(for: 1, language: .fa) == "ژانویه")
+        #expect(UsageStatsPeriod.shortMonthName(for: 3, language: .fa) == "مارس")
+    }
+
+    @Test("完整格式文案控制时间标题语序和图表辅助功能标签")
+    func completeLocalizedFormatsControlPeriodText() {
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .en) == "Today has no token data")
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .zhHans) == "本日暂无 Token 数据")
+        #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .en) == "Today token bar chart")
+        #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .en) == "Today cost bar chart")
+        #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .zhHans) == "本日 token 柱状图")
+        #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .zhHans) == "本日 费用柱状图")
+        #expect(UsageStatsPeriod.today.emptyDataText(language: .es419) == "No hay datos de tokens — Hoy")
+        #expect(UsageStatsPeriod.today.tokenChartAccessibilityLabel(language: .es419) == "Gráfica de barras de tokens: Hoy")
+        #expect(UsageStatsPeriod.today.costChartAccessibilityLabel(language: .es419) == "Gráfica de barras de costos: Hoy")
+    }
+
     @Test("跨年边界只统计最近十二个月")
     func ignoresMonthsOutsideRecentTwelveMonthWindow() {
         let calendar = utcCalendar()

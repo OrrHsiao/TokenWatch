@@ -216,6 +216,104 @@ struct JSONLLastGoodCacheCoordinatorTests {
         #expect(coordinator.debugCachedFileCount == 0)
     }
 
+    @Test("磁盘持久化缓存可跨 Coordinator 实例实现冷启动命中")
+    func diskCacheHitAcrossCoordinatorInstances() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLDiskCoordinator-\(UUID().uuidString)")
+        let cacheFileURL = tempDir.appendingPathComponent("diskCache.json")
+        let logURL = tempDir.appendingPathComponent("test.jsonl")
+
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        try Data("line1\nline2\n".utf8).write(to: logURL)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let listed = ListedFile(url: logURL)
+        let store1 = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let reader1 = RecordingJSONLFileReader()
+        let coordinator1 = JSONLLastGoodCacheCoordinator<[String], Scope>(fileReader: reader1)
+
+        let result1 = coordinator1.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: store1,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in try readLines(from: snapshot.stream) },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+        #expect(result1 == ["line1", "line2"])
+
+        // 模拟全新的冷启动进程：创建全新的 Reader、DiskStore 与 Coordinator
+        let store2 = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let reader2 = RecordingJSONLFileReader()
+        let coordinator2 = JSONLLastGoodCacheCoordinator<[String], Scope>(fileReader: reader2)
+
+        let result2 = coordinator2.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: store2,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in
+                Issue.record("磁盘缓存命中的文件不应重新触发 build")
+                return []
+            },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+
+        #expect(result2 == ["line1", "line2"])
+        #expect(coordinator2.debugCacheHitCount == 1)
+        #expect(reader2.totalBytesRead == 0)
+    }
+
+    @Test("空扫描会清除已持久化的缓存")
+    func emptyScanClearsPersistedDiskCache() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLDiskPrune-\(UUID().uuidString)")
+        let cacheFileURL = tempDir.appendingPathComponent("diskCache.json")
+        let logURL = tempDir.appendingPathComponent("test.jsonl")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        try Data("line1\n".utf8).write(to: logURL)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let listed = ListedFile(url: logURL)
+        let store = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
+            fileReader: RecordingJSONLFileReader()
+        )
+
+        let first = coordinator.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: store,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in try readLines(from: snapshot.stream) },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+        #expect(first == ["line1"])
+        #expect(!store.loadAll().isEmpty)
+
+        let emptyFiles: [ListedFile] = []
+        let cleared = coordinator.loadListedFiles(
+            emptyFiles,
+            scope: .standard,
+            diskStore: store,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in [] },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+
+        #expect(cleared.isEmpty)
+        let reloadedStore = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        #expect(reloadedStore.loadAll().isEmpty)
+    }
+
     private func readLines(from stream: any JSONLByteStream) throws -> [String] {
         try stream.seek(toOffset: 0)
         var data = Data()

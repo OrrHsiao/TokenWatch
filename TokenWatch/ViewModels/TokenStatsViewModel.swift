@@ -1,6 +1,17 @@
 import Foundation
 import os.log
 
+enum ProviderDirectoryState: Sendable, Equatable {
+    case notSelected
+    case selected
+    case selectedNoData
+    case needsReselection
+
+    var needsAuthorization: Bool {
+        self == .notSelected || self == .needsReselection
+    }
+}
+
 /// 多 provider 用量统计 ViewModel
 ///
 /// 每个 provider 维护独立 ProviderState(stats / loading / error / 授权状态),
@@ -24,10 +35,15 @@ final class TokenStatsViewModel: Sendable {
         var errorMessage: String?
         var needsAuthorization = true
         var lastRefreshedAt: Date?
+        var directoryState: ProviderDirectoryState = .notSelected
+        var directoryAuthorizationErrorMessage: String?
+        var isAuthorizing = false
     }
 
     /// 当前所有 provider 的状态(只读)
     private(set) var states: [ProviderID: ProviderState] = [:]
+    /// 首次全量加载是否已结束，供首次展示主界面时决定是否继续显示加载态。
+    private(set) var hasCompletedInitialLoad = false
 
     /// observer 注册凭证;移除 observer 时使用
     struct ObservationToken: Hashable, Sendable {
@@ -45,6 +61,7 @@ final class TokenStatsViewModel: Sendable {
     private let widgetSnapshotPublisher: (any WidgetSnapshotPublishing)?
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
+    private var isInitialLoadInProgress = false
     private var entryFingerprints: [ProviderID: UsageEntriesFingerprint] = [:]
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var isLoadingAllStats = false
@@ -83,8 +100,30 @@ final class TokenStatsViewModel: Sendable {
         }
     }
 
-    nonisolated static func cannotAccessHomeMessage(language: AppLanguage) -> String {
-        AppStrings.text(.errorCannotAccessHome, language: language)
+    nonisolated static func cannotAccessDataDirectoryMessage(
+        providerName: String,
+        language: AppLanguage
+    ) -> String {
+        String(
+            format: AppStrings.text(
+                .errorCannotAccessProviderDirectoryFormat,
+                language: language
+            ),
+            providerName
+        )
+    }
+
+    nonisolated static func authorizationFailedMessage(
+        providerName: String,
+        language: AppLanguage
+    ) -> String {
+        String(
+            format: AppStrings.text(
+                .errorProviderDirectoryAuthorizationFailedFormat,
+                language: language
+            ),
+            providerName
+        )
     }
 
     nonisolated static func loadFailedMessage(error: Error, language: AppLanguage) -> String {
@@ -132,6 +171,10 @@ final class TokenStatsViewModel: Sendable {
         }
         isLoadingAllStats = true
         defer { isLoadingAllStats = false }
+        let completesInitialLoad = !hasCompletedInitialLoad && !isInitialLoadInProgress
+        if completesInitialLoad {
+            isInitialLoadInProgress = true
+        }
 
         await withTaskGroup(of: Void.self) { group in
             for provider in providers {
@@ -139,6 +182,15 @@ final class TokenStatsViewModel: Sendable {
                 group.addTask {
                     await self.loadStats(for: id, mode: mode)
                 }
+            }
+        }
+
+        if completesInitialLoad {
+            isInitialLoadInProgress = false
+            hasCompletedInitialLoad = true
+            // 所有 provider 都结束后额外发一次通知，让首次加载遮罩在最后一项状态更新后关闭。
+            if let providerID = providers.first?.id {
+                notifyStateChange(providerID)
             }
         }
 
@@ -180,132 +232,401 @@ final class TokenStatsViewModel: Sendable {
         }
     }
 
-    /// 加载指定 provider 的统计
-    func loadStats(for id: ProviderID, mode: LoadMode = .interactive) async {
-        guard let provider = provider(for: id) else { return }
-        guard loadGate.enter(id) else {
-            logger.info("\(provider.displayName) 已在刷新中,跳过重复请求")
+    private func setDirectoryState(
+        _ directoryState: ProviderDirectoryState,
+        for id: ProviderID
+    ) {
+        states[id]?.directoryState = directoryState
+        states[id]?.needsAuthorization =
+            directoryState.needsAuthorization
+    }
+
+    /// 清除仅属于一个 provider 的解析结果。
+    /// - Returns: 清理前是否存在需要通知 UI 的数据或刷新时间。
+    @discardableResult
+    private func clearProviderData(for id: ProviderID) -> Bool {
+        let hadData = states[id]?.stats != nil
+            || states[id]?.entries != nil
+            || entryFingerprints[id] != nil
+            || states[id]?.lastRefreshedAt != nil
+
+        states[id]?.stats = nil
+        states[id]?.entries = nil
+        states[id]?.lastRefreshedAt = nil
+        entryFingerprints.removeValue(forKey: id)
+        return hadData
+    }
+
+    /// 加载指定 provider 的统计。
+    /// 授权面板活动时跳过加载；取得 gate 后才允许开始 bookmark 恢复。
+    func loadStats(
+        for id: ProviderID,
+        mode: LoadMode = .interactive
+    ) async {
+        guard let provider = provider(for: id) else {
             return
         }
+        guard states[id]?.isAuthorizing != true else {
+            logger.info(
+                "\(provider.displayName) 正在选择数据目录,跳过刷新"
+            )
+            return
+        }
+        guard loadGate.enter(id) else {
+            logger.info(
+                "\(provider.displayName) 已在刷新中,跳过重复请求"
+            )
+            return
+        }
+
+        await performLoad(for: provider, mode: mode)
+    }
+
+    /// 执行已取得 provider load gate 的完整加载。
+    /// 所有 return 路径都由 defer 释放 gate。
+    private func performLoad(
+        for provider: any UsageProvider,
+        mode: LoadMode
+    ) async {
+        let id = provider.id
         defer { loadGate.leave(id) }
 
-        let sendsLoadingNotifications = (mode == .interactive)
+        let sendsLoadingNotifications = mode == .interactive
         if sendsLoadingNotifications {
             states[id]?.isLoading = true
             states[id]?.errorMessage = nil
             notifyStateChange(id)
         }
 
-        // Step 1: 检查 Bookmark
-        if !bookmarkManager.hasBookmark(forKey: provider.bookmarkKey) {
-            let shouldNotify = states[id]?.needsAuthorization != true
-                || states[id]?.isLoading == true
-                || states[id]?.errorMessage != nil
-            states[id]?.needsAuthorization = true
-            states[id]?.isLoading = false
+        guard bookmarkManager.hasBookmark(
+            forKey: provider.bookmarkKey
+        ) else {
+            let previousDirectoryState =
+                states[id]?.directoryState
+            let previousDirectoryError =
+                states[id]?.directoryAuthorizationErrorMessage
+            let previousLoadError = states[id]?.errorMessage
+            let wasLoading = states[id]?.isLoading == true
+            let clearedData = clearProviderData(for: id)
+
             states[id]?.errorMessage = nil
-            logger.info("\(provider.displayName) 未授权,需要用户操作")
-            if sendsLoadingNotifications || shouldNotify {
-                notifyStateChange(id)
-            }
-            return
-        }
-
-        // Step 2: 恢复 Bookmark
-        guard let rootURL = bookmarkManager.restoreBookmarkAndAccess(forKey: provider.bookmarkKey) else {
-            let message = Self.cannotAccessHomeMessage(language: languageSettings.resolvedLanguage)
-            let shouldNotify = states[id]?.errorMessage != message
-                || states[id]?.needsAuthorization != true
-                || states[id]?.isLoading == true
-            states[id]?.errorMessage = message
-            states[id]?.needsAuthorization = true
             states[id]?.isLoading = false
-            logger.error("\(provider.displayName) Bookmark 恢复失败")
-            if sendsLoadingNotifications || shouldNotify {
+
+            if previousDirectoryState == .needsReselection {
+                // restore 失败已删除 bookmark；静默刷新不能把该状态
+                // 和 provider-specific 错误降级为普通未选择。
+                setDirectoryState(.needsReselection, for: id)
+            } else {
+                setDirectoryState(.notSelected, for: id)
+                states[id]?.directoryAuthorizationErrorMessage = nil
+            }
+
+            logger.info(
+                "\(provider.displayName) 尚未选择数据目录"
+            )
+
+            let shouldNotify = sendsLoadingNotifications
+                || clearedData
+                || wasLoading
+                || previousLoadError != nil
+                || previousDirectoryState
+                    != states[id]?.directoryState
+                || previousDirectoryError
+                    != states[id]?
+                        .directoryAuthorizationErrorMessage
+            if shouldNotify {
                 notifyStateChange(id)
             }
             return
         }
-        defer { bookmarkManager.stopAccessing(forKey: provider.bookmarkKey) }
-        states[id]?.needsAuthorization = false
 
-        // Step 3-5: 后台扫 + 解析 + 聚合
+        guard let rootURL =
+            bookmarkManager.restoreBookmarkAndAccess(
+                forKey: provider.bookmarkKey
+            )
+        else {
+            let message =
+                Self.cannotAccessDataDirectoryMessage(
+                    providerName: provider.displayName,
+                    language: languageSettings.resolvedLanguage
+                )
+            let previousDirectoryState =
+                states[id]?.directoryState
+            let previousDirectoryError =
+                states[id]?.directoryAuthorizationErrorMessage
+            let previousLoadError = states[id]?.errorMessage
+            let wasLoading = states[id]?.isLoading == true
+            let clearedData = clearProviderData(for: id)
+
+            setDirectoryState(.needsReselection, for: id)
+            states[id]?.directoryAuthorizationErrorMessage =
+                message
+            states[id]?.errorMessage = nil
+            states[id]?.isLoading = false
+
+            logger.error(
+                "\(provider.displayName) Bookmark 恢复失败"
+            )
+
+            let shouldNotify = sendsLoadingNotifications
+                || clearedData
+                || wasLoading
+                || previousLoadError != nil
+                || previousDirectoryState
+                    != states[id]?.directoryState
+                || previousDirectoryError != message
+            if shouldNotify {
+                notifyStateChange(id)
+            }
+            return
+        }
+        defer {
+            bookmarkManager.stopAccessing(
+                forKey: provider.bookmarkKey
+            )
+        }
+
+        guard provider.validateDataRoot(rootURL) == .valid else {
+            let message = AppStrings.text(
+                .settingsDirectoryNoData,
+                language: languageSettings.resolvedLanguage
+            )
+            let previousDirectoryState = states[id]?.directoryState
+            let previousDirectoryError =
+                states[id]?.directoryAuthorizationErrorMessage
+            let previousLoadError = states[id]?.errorMessage
+            let wasLoading = states[id]?.isLoading == true
+            let clearedData = clearProviderData(for: id)
+
+            // 目录可访问并不代表它属于当前 provider；缺少必要结构时
+            // 提示用户重新选择，但不把“结构存在且暂时无记录”误判为选错。
+            setDirectoryState(.needsReselection, for: id)
+            states[id]?.directoryAuthorizationErrorMessage = message
+            states[id]?.errorMessage = nil
+            states[id]?.isLoading = false
+
+            logger.error(
+                "\(provider.displayName) 目录缺少预期数据结构，需要重新选择"
+            )
+
+            let shouldNotify = sendsLoadingNotifications
+                || clearedData
+                || wasLoading
+                || previousLoadError != nil
+                || previousDirectoryState != .needsReselection
+                || previousDirectoryError != message
+            if shouldNotify {
+                notifyStateChange(id)
+            }
+            return
+        }
+
+        // bookmark 可恢复即表示目录仍已选择；parser 失败不能把
+        // 该状态改回未选择或 needsReselection。
+        let restoredDirectoryPresentationChanged =
+            states[id]?.directoryState != .selected
+            || states[id]?.needsAuthorization != false
+            || states[id]?
+                .directoryAuthorizationErrorMessage != nil
+        setDirectoryState(.selected, for: id)
+        states[id]?.directoryAuthorizationErrorMessage = nil
+
         let aggregator = self.aggregator
         let logger = self.logger
         let providerCopy = provider
         let previousFingerprint = entryFingerprints[id]
-        let canReuseExistingStats = states[id]?.stats != nil && states[id]?.errorMessage == nil
+        let canReuseExistingStats =
+            states[id]?.stats != nil
+            && states[id]?.errorMessage == nil
 
-        let result: Result<ProviderLoadResult, Error> = await Task.detached(priority: .userInitiated) {
-            do {
-                let entries = try providerCopy.loadEntries(from: rootURL)
-                logger.info("\(providerCopy.displayName) 解析得 \(entries.count) 条记录")
-                let fingerprint = UsageEntriesFingerprint.make(from: entries)
-                if canReuseExistingStats, previousFingerprint == fingerprint {
-                    return .success(.unchanged(entryCount: entries.count))
+        let result: Result<ProviderLoadResult, Error> =
+            await Task.detached(priority: .utility) {
+                do {
+                    let entries = try providerCopy.loadEntries(
+                        from: rootURL
+                    )
+                    logger.info(
+                        "\(providerCopy.displayName) 解析得 \(entries.count) 条记录"
+                    )
+                    let fingerprint =
+                        UsageEntriesFingerprint.make(
+                            from: entries
+                        )
+                    if canReuseExistingStats,
+                       previousFingerprint == fingerprint {
+                        return .success(
+                            .unchanged(
+                                entryCount: entries.count
+                            )
+                        )
+                    }
+
+                    let stats = aggregator.aggregate(entries)
+                    return .success(
+                        .loaded(
+                            stats: stats,
+                            entries: entries,
+                            fingerprint: fingerprint,
+                            entryCount: entries.count
+                        )
+                    )
+                } catch {
+                    return .failure(error)
                 }
-                let stats = aggregator.aggregate(entries)
-                return .success(.loaded(stats: stats, entries: entries, fingerprint: fingerprint, entryCount: entries.count))
-            } catch {
-                return .failure(error)
-            }
-        }.value
+            }.value
 
         switch result {
-        case .success(.loaded(let stats, let entries, let fingerprint, _)):
+        case .success(
+            .loaded(
+                let stats,
+                let entries,
+                let fingerprint,
+                _
+            )
+        ):
             entryFingerprints[id] = fingerprint
             states[id]?.stats = stats
             states[id]?.entries = entries
-            states[id]?.needsAuthorization = false
+            setDirectoryState(
+                entries.isEmpty ? .selectedNoData : .selected,
+                for: id
+            )
+            states[id]?.directoryAuthorizationErrorMessage =
+                nil
             states[id]?.errorMessage = nil
             states[id]?.lastRefreshedAt = nowProvider()
             states[id]?.isLoading = false
             notifyStateChange(id)
-        case .success(.unchanged):
+
+        case .success(.unchanged(let entryCount)):
+            let targetDirectoryState:
+                ProviderDirectoryState =
+                    entryCount == 0
+                    ? .selectedNoData
+                    : .selected
+            let shouldNotify = sendsLoadingNotifications
+                || restoredDirectoryPresentationChanged
+                || states[id]?.directoryState
+                    != targetDirectoryState
+                || states[id]?
+                    .directoryAuthorizationErrorMessage != nil
+                || states[id]?.errorMessage != nil
+                || states[id]?.isLoading == true
+
+            setDirectoryState(
+                targetDirectoryState,
+                for: id
+            )
+            states[id]?.directoryAuthorizationErrorMessage =
+                nil
+            states[id]?.errorMessage = nil
             states[id]?.lastRefreshedAt = nowProvider()
-            if sendsLoadingNotifications {
-                states[id]?.isLoading = false
+            states[id]?.isLoading = false
+            if shouldNotify {
                 notifyStateChange(id)
             }
+
         case .failure(let error):
             let message = Self.loadFailedMessage(
                 error: error,
                 language: languageSettings.resolvedLanguage
             )
-            let shouldNotify = states[id]?.errorMessage != message || states[id]?.isLoading == true
+            let shouldNotify = sendsLoadingNotifications
+                || restoredDirectoryPresentationChanged
+                || states[id]?.errorMessage != message
+                || states[id]?.isLoading == true
+
+            // stats、entries 与 fingerprint 保留最后一次成功值；
+            // bookmark 已成功恢复，所以目录状态保持 selected。
+            setDirectoryState(.selected, for: id)
+            states[id]?.directoryAuthorizationErrorMessage =
+                nil
             states[id]?.errorMessage = message
             states[id]?.lastRefreshedAt = nowProvider()
-            logger.error("\(provider.displayName) 加载失败: \(error.localizedDescription)")
             states[id]?.isLoading = false
-            if sendsLoadingNotifications || shouldNotify {
+            logger.error(
+                "\(provider.displayName) 加载失败: \(error.localizedDescription)"
+            )
+            if shouldNotify {
                 notifyStateChange(id)
             }
         }
     }
 
-    /// 将所有共享同一 bookmark key 的 provider 标记为已授权并通知 UI。
-    /// 用户目录授权是跨 provider 共享的,所以在任一 Tab 授权成功后其它 Tab 不应继续显示授权按钮。
-    func markProvidersAuthorized(sharingBookmarkWith provider: any UsageProvider) {
-        for candidate in providers where candidate.bookmarkKey == provider.bookmarkKey {
-            states[candidate.id]?.needsAuthorization = false
-            states[candidate.id]?.errorMessage = nil
-            notifyStateChange(candidate.id)
-        }
-    }
-
-    /// 触发指定 provider 的授权流程
-    /// - Returns: 用户完成授权并保存 bookmark 时返回 true;取消或 provider 不存在时返回 false
+    /// 为指定 provider 显示数据目录选择面板。
+    /// - Parameter id: 唯一 provider 标识。
+    /// - Returns: bookmark 成功保存时返回 true；取消、保存失败、
+    ///   provider 不存在或已有同 provider 目录操作时返回 false。
     @discardableResult
-    func requestAuthorization(for id: ProviderID) async -> Bool {
-        guard let provider = provider(for: id) else { return false }
-        if let _ = await bookmarkManager.promptUserToSelectDirectory(forProvider: provider) {
-            markProvidersAuthorized(sharingBookmarkWith: provider)
-            logger.info("\(provider.displayName) 用户授权成功")
-            await loadAllStats()
-            return true
-        } else {
-            logger.info("\(provider.displayName) 用户取消授权")
+    func requestAuthorization(
+        for id: ProviderID
+    ) async -> Bool {
+        guard let provider = provider(for: id) else {
             return false
+        }
+        guard !loadGate.isActive(id),
+              states[id]?.isAuthorizing != true
+        else {
+            logger.info(
+                "\(provider.displayName) 正在执行目录操作,跳过重复授权"
+            )
+            return false
+        }
+
+        states[id]?.isAuthorizing = true
+        notifyStateChange(id)
+
+        let result =
+            await bookmarkManager.promptUserToSelectDirectory(
+                forProvider: provider
+            )
+
+        switch result {
+        case .cancelled:
+            states[id]?.isAuthorizing = false
+            logger.info(
+                "\(provider.displayName) 用户取消目录选择"
+            )
+            notifyStateChange(id)
+            return false
+
+        case .failed:
+            states[id]?.isAuthorizing = false
+            states[id]?.directoryAuthorizationErrorMessage =
+                Self.authorizationFailedMessage(
+                    providerName: provider.displayName,
+                    language: languageSettings.resolvedLanguage
+                )
+            logger.error(
+                "\(provider.displayName) 目录授权保存失败"
+            )
+            notifyStateChange(id)
+            return false
+
+        case .authorized(_):
+            states[id]?.isAuthorizing = false
+            states[id]?.directoryAuthorizationErrorMessage =
+                nil
+            setDirectoryState(.selected, for: id)
+
+            // 从 isAuthorizing 切到 load gate 的过程必须保持原子：
+            // 此处之前没有 observer 回调，此处也不能插入 await。
+            guard loadGate.enter(id) else {
+                logger.error(
+                    "\(provider.displayName) 授权成功后未能取得加载门禁"
+                )
+                notifyStateChange(id)
+                return true
+            }
+
+            logger.info(
+                "\(provider.displayName) 用户授权成功"
+            )
+            await performLoad(
+                for: provider,
+                mode: .interactive
+            )
+            return true
         }
     }
 
@@ -329,6 +650,10 @@ struct ProviderLoadGate {
 
     mutating func leave(_ id: ProviderID) {
         activeProviderIDs.remove(id)
+    }
+
+    func isActive(_ id: ProviderID) -> Bool {
+        activeProviderIDs.contains(id)
     }
 }
 

@@ -84,11 +84,11 @@ struct PricingTable: Sendable {
 
     private static func loadBundled() -> PricingTable {
         load(
-            liteLLMURL: Bundle.main.url(
+            liteLLMURL: Bundle.appResourceBundle.url(
                 forResource: "litellm_prices",
                 withExtension: "json"
             ),
-            modelsDevURL: Bundle.main.url(
+            modelsDevURL: Bundle.appResourceBundle.url(
                 forResource: "models-dev-pricing",
                 withExtension: "json"
             )

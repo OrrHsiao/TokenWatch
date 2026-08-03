@@ -6,12 +6,16 @@
 //
 
 import Cocoa
+import os.log
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
-    private static let initialAuthorizationPromptedKey = "TokenWatch.didPromptInitialHomeAuthorization"
     private static let openMainWindowOnLaunchKey = "TokenWatch.openMainWindowOnLaunch"
+
+    static let supportURL = URL(
+        string: "https://orrhsiao.github.io/TokenWatch/support/"
+    )!
 
     /// ViewModel 实例,协调数据加载和统计计算
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
@@ -24,6 +28,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindowController: NSWindowController?
 
     private let languageSettings: AppLanguageSettings
+    private let externalURLOpener: (URL) -> Bool
+    private let initialDirectoryAuthorizationGuide: InitialDirectoryAuthorizationGuide
+    private var isInitialDirectoryAuthorizationGuidePending = false
+    private var isInitialDirectoryAuthorizationGuidePresentationScheduled = false
 
     override init() {
         let settings = AppLanguageSettings.shared
@@ -32,11 +40,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: settings,
             widgetSnapshotPublisher: WidgetSnapshotPublisherFactory.makeLive()
         )
+        self.externalURLOpener = { NSWorkspace.shared.open($0) }
+        self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
     }
 
     init(
         languageSettings: AppLanguageSettings,
+        externalURLOpener: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
         widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil
     ) {
         self.languageSettings = languageSettings
@@ -44,6 +55,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: languageSettings,
             widgetSnapshotPublisher: widgetSnapshotPublisher
         )
+        self.externalURLOpener = externalURLOpener
+        self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
     }
 
@@ -58,27 +71,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             _ = presentMainWindow()
         }
 
-        // 首次无授权时主动弹出用户目录授权;其余启动路径保持原有自动加载行为。
-        Task { @MainActor in
-            let coordinator = AppLaunchAuthorizationCoordinator(
-                hasBookmark: {
-                    SecurityScopedBookmarkManager.shared.hasBookmark(forKey: ProviderAuthorization.homeBookmarkKey)
-                },
-                hasPromptedInitialAuthorization: {
-                    Self.hasPromptedInitialAuthorization()
-                },
-                markInitialAuthorizationPrompted: {
-                    UserDefaults.standard.set(true, forKey: Self.initialAuthorizationPromptedKey)
-                },
-                loadAllStats: { [viewModel] in
-                    await viewModel.loadAllStats()
-                },
-                requestInitialAuthorization: { [viewModel] in
-                    guard let providerID = ProviderRegistry.allProviders.first?.id else { return false }
-                    return await viewModel.requestAuthorization(for: providerID)
-                }
-            )
-            await coordinator.performStartupWork()
+        // 在启动加载前快照首次安装条件，避免失效 bookmark 清理后被误判为新安装。
+        let shouldPresentInitialDirectoryAuthorizationGuide =
+            initialDirectoryAuthorizationGuide.shouldPresent()
+
+        // 首次未授权时，必须优先让用户选择目录；若与本地扫描并行，扫描门禁会使
+        // 设置页的目录操作暂时不可用，造成“去授权”按钮无法点击的错觉。
+        if shouldPresentInitialDirectoryAuthorizationGuide {
+            // 即使本次不扫描，也要移除不再使用的旧 Home 授权状态。
+            LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
+
+            // 先结束应用启动事件，避免窗口置前请求被启动流程覆盖。
+            DispatchQueue.main.async { [weak self] in
+                self?.requestInitialDirectoryAuthorizationGuide()
+            }
+        } else {
+            let viewModel = self.viewModel
+
+            // 常规启动不触发目录面板；仅清理旧共享授权，再按 provider 独立状态加载。
+            Task { @MainActor [viewModel] in
+                let coordinator = AppLaunchDataCoordinator(
+                    clearLegacyAuthorization: {
+                        LegacyAuthorizationCleaner.removeLegacyState(from: .standard)
+                    },
+                    loadAllStats: { [viewModel] in
+                        await viewModel.loadAllStats()
+                    }
+                )
+                await coordinator.performStartupWork()
+            }
         }
     }
 
@@ -106,9 +127,73 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         presentMainWindow()?.showSettingsFromMainMenu(sender)
     }
 
+    /// 请求首次无目录授权引导；确认后仅进入设置页，不请求任何文件夹权限。
+    private func requestInitialDirectoryAuthorizationGuide() {
+        guard !isInitialDirectoryAuthorizationGuidePending else { return }
+        isInitialDirectoryAuthorizationGuidePending = true
+        presentInitialDirectoryAuthorizationGuideWhenReady()
+    }
+
+    /// 在启动事件结束后的下一轮主线程显示引导，避免依赖主窗口的可见或焦点时序。
+    private func presentInitialDirectoryAuthorizationGuideWhenReady() {
+        guard !isInitialDirectoryAuthorizationGuidePresentationScheduled else { return }
+        isInitialDirectoryAuthorizationGuidePresentationScheduled = true
+
+        // 让 applicationDidFinishLaunching 的当前事件完整结束，再开启应用级标准提示框。
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isInitialDirectoryAuthorizationGuidePresentationScheduled = false
+            guard self.isInitialDirectoryAuthorizationGuidePending else { return }
+
+            self.showInitialDirectoryAuthorizationGuide()
+            self.isInitialDirectoryAuthorizationGuidePending = false
+        }
+    }
+
+    /// 显示首次目录设置引导。
+    /// 使用应用级标准提示框，避免首次启动时主窗口尚未获取焦点而导致 sheet 不可见。
+    private func showInitialDirectoryAuthorizationGuide() {
+        let language = languageSettings.resolvedLanguage
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = AppStrings.text(
+            .initialDirectoryAuthorizationGuideTitle,
+            language: language
+        )
+        alert.informativeText = AppStrings.text(
+            .initialDirectoryAuthorizationGuideMessage,
+            language: language
+        )
+        alert.addButton(withTitle: AppStrings.text(
+            .initialDirectoryAuthorizationGuideOpenSettings,
+            language: language
+        ))
+        alert.addButton(withTitle: AppStrings.text(
+            .initialDirectoryAuthorizationGuideLater,
+            language: language
+        ))
+
+        // runModal 不依赖父窗口成为 key window，首次启动时也能稳定呈现。
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        initialDirectoryAuthorizationGuide.markPresented()
+        if response == .alertFirstButtonReturn {
+            showSettings(nil)
+        }
+    }
+
     /// 立即重新加载所有 provider 的统计数据。
     @objc func refreshNow(_ sender: Any?) {
         Task { await viewModel.loadAllStats() }
+    }
+
+    /// 使用默认浏览器打开公开支持页面。
+    @objc func openSupport(_ sender: Any?) {
+        guard externalURLOpener(Self.supportURL) else {
+            NSLog("TokenWatch failed to open the support page")
+            return
+        }
     }
 
     private func presentMainWindow() -> ViewController? {
@@ -160,10 +245,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private static func hasPromptedInitialAuthorization() -> Bool {
-        UserDefaults.standard.bool(forKey: initialAuthorizationPromptedKey)
-            || ProcessInfo.processInfo.arguments.contains("-\(initialAuthorizationPromptedKey)")
-    }
 }
 
 /// 将持久化的启动偏好转换为窗口展示决策；未保存过偏好时保持默认打开。
@@ -190,6 +271,10 @@ enum MainWindowFactory {
         let contentController = ViewController(languageSettings: languageSettings)
         window.title = "TokenWatch"
         window.titleVisibility = .hidden
+        // 调度中心为透明窗口生成缩略图时，`.clear` 玻璃会采样桌面背景，
+        // 从而在浅色模式下显示为深色。使用淡白半透明底色以保留透视感并稳定缩略图颜色。
+        window.isOpaque = false
+        window.backgroundColor = DashboardPalette.translucentAppBackground
         window.isReleasedWhenClosed = false
         window.contentViewController = contentController
         window.initialFirstResponder = contentController.view
@@ -199,31 +284,35 @@ enum MainWindowFactory {
     }
 }
 
-/// 协调应用启动时的数据加载和首次授权弹窗。
+enum LegacyAuthorizationCleaner {
+    static let homeBookmarkKey = "HomeDirectoryBookmark"
+    static let initialPromptKey = "TokenWatch.didPromptInitialHomeAuthorization"
+    private static let logger = Logger(
+        subsystem: "com.xiaoao.TokenWatch",
+        category: "LegacyAuthorizationCleaner"
+    )
+
+    /// 删除旧共享 Home 授权状态，不迁移也不触碰 provider 独立 bookmark。
+    /// - Parameter defaults: 保存遗留键的偏好域。
+    static func removeLegacyState(from defaults: UserDefaults) {
+        let removedLegacyState = defaults.object(forKey: homeBookmarkKey) != nil
+            || defaults.object(forKey: initialPromptKey) != nil
+        defaults.removeObject(forKey: homeBookmarkKey)
+        defaults.removeObject(forKey: initialPromptKey)
+        if removedLegacyState {
+            logger.info("已清理旧 Home 目录授权状态")
+        }
+    }
+}
+
 @MainActor
-struct AppLaunchAuthorizationCoordinator {
-    let hasBookmark: () -> Bool
-    let hasPromptedInitialAuthorization: () -> Bool
-    let markInitialAuthorizationPrompted: () -> Void
+struct AppLaunchDataCoordinator {
+    let clearLegacyAuthorization: () -> Void
     let loadAllStats: () async -> Void
-    let requestInitialAuthorization: () async -> Bool
 
-    /// 执行启动流程:已有授权直接加载;首次缺失授权则弹出授权,取消后回落为普通未授权状态。
+    /// 执行无交互启动流程：先清理旧授权，再按现有 provider 状态加载。
     func performStartupWork() async {
-        if hasBookmark() {
-            await loadAllStats()
-            return
-        }
-
-        guard !hasPromptedInitialAuthorization() else {
-            await loadAllStats()
-            return
-        }
-
-        markInitialAuthorizationPrompted()
-        let didAuthorize = await requestInitialAuthorization()
-        if !didAuthorize {
-            await loadAllStats()
-        }
+        clearLegacyAuthorization()
+        await loadAllStats()
     }
 }

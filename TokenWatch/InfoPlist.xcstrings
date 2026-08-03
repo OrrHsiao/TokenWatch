@@ -1,0 +1,822 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "am" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "bg-BG" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "bn-BD" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "bs-BA" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ca-ES" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "cs-CZ" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "da-DK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "el-GR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "AI Token Watch"
+          }
+        },
+        "en-US" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "et-EE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fa" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fi-FI" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "tl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fr-CA" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "gu-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hi-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hr-HR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hu-HU" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hy-AM" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "id-ID" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "is-IS" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "it-IT" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ja-JP" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ka-GE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "kk" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "kn-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ko-KR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "lt" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "lv-LV" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "mk-MK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "mn" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "mr-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ms-MY" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "my-MM" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "nb-NO" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "nl-NL" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pl-PL" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ro-RO" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ru-RU" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sk-SK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sl-SI" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "so-SO" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sq-AL" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sr-RS" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sv-SE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sw-TZ" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ta-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "te-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "th-TH" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "tr-TR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "uk-UA" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "vi-VN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "zh-CN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "zh-TW" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "am" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "bg-BG" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "bn-BD" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "bs-BA" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ca-ES" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "cs-CZ" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "da-DK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "el-GR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "AI Token Watch"
+          }
+        },
+        "en-US" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "et-EE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fa" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fi-FI" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "tl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fr-CA" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "gu-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hi-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hr-HR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hu-HU" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "hy-AM" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "id-ID" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "is-IS" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "it-IT" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ja-JP" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ka-GE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "kk" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "kn-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ko-KR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "lt" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "lv-LV" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "mk-MK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "mn" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "mr-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ms-MY" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "my-MM" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "nb-NO" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "nl-NL" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pl-PL" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ro-RO" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ru-RU" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sk-SK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sl-SI" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "so-SO" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sq-AL" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sr-RS" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sv-SE" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "sw-TZ" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ta-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "te-IN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "th-TH" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "tr-TR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "uk-UA" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "vi-VN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "zh-CN" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        },
+        "zh-TW" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "AI Token Watch"
+          }
+        }
+      }
+    },
+    "NSHumanReadableCopyright" : {
+      "comment" : "Copyright (human-readable)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : ""
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -77,6 +77,13 @@
 			);
 			target = C0D300012FD0000000000009 /* TokenWatchWidgets */;
 		};
+		AAA358372FDD7BFD0018086B /* Exceptions for "TokenWatch" folder in "TokenWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AAA358092FDD7BFB0018086B /* TokenWatch */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -95,6 +102,9 @@
 		};
 		AAA3580C2FDD7BFB0018086B /* TokenWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AAA358372FDD7BFD0018086B /* Exceptions for "TokenWatch" folder in "TokenWatch" target */,
+			);
 			path = TokenWatch;
 			sourceTree = "<group>";
 		};
@@ -290,10 +300,74 @@
 				};
 			};
 			buildConfigurationList = AAA358052FDD7BFB0018086B /* Build configuration list for PBXProject "TokenWatch" */;
-			developmentRegion = en;
+			developmentRegion = "en-US";
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				"en-US",
+				am,
+				ar,
+				"bg-BG",
+				"bn-BD",
+				"bs-BA",
+				"ca-ES",
+				"cs-CZ",
+				"da-DK",
+				"de-DE",
+				"el-GR",
+				"es-419",
+				"es-ES",
+				"et-EE",
+				fa,
+				"fi-FI",
+				"fr-CA",
+				"fr-FR",
+				"gu-IN",
+				"hi-IN",
+				"hr-HR",
+				"hu-HU",
+				"hy-AM",
+				"id-ID",
+				"is-IS",
+				"it-IT",
+				"ja-JP",
+				"ka-GE",
+				kk,
+				"kn-IN",
+				"ko-KR",
+				lt,
+				"lv-LV",
+				"mk-MK",
+				ml,
+				mn,
+				"mr-IN",
+				"ms-MY",
+				"my-MM",
+				"nb-NO",
+				"nl-NL",
+				pa,
+				"pl-PL",
+				"pt-BR",
+				"pt-PT",
+				"ro-RO",
+				"ru-RU",
+				"sk-SK",
+				"sl-SI",
+				"so-SO",
+				"sq-AL",
+				"sr-RS",
+				"sv-SE",
+				"sw-TZ",
+				"ta-IN",
+				"te-IN",
+				"th-TH",
+				tl,
+				"tr-TR",
+				"uk-UA",
+				ur,
+				"vi-VN",
+				"zh-CN",
+				"zh-HK",
+				"zh-TW",
 				Base,
 			);
 			mainGroup = AAA358012FDD7BFB0018086B;
@@ -534,17 +608,14 @@
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Token Watch";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TokenWatch/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.tokenwatch;
 				PRODUCT_MODULE_NAME = TokenWatch;
 				PRODUCT_NAME = "AI Token Watch";
@@ -582,17 +653,14 @@
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Token Watch";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TokenWatch/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.tokenwatch;
 				PRODUCT_MODULE_NAME = TokenWatch;
 				PRODUCT_NAME = "AI Token Watch";
@@ -614,7 +682,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.TokenWatchTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -634,7 +702,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.TokenWatchTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -652,7 +720,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.TokenWatchUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -670,7 +738,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.TokenWatchUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -701,7 +769,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.tokenwatch.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -734,7 +802,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoao.tokenwatch.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

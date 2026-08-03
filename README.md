@@ -41,22 +41,26 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch d
 
 ## Supported Sources
 
-| Source | Local data read by AI Token Watch | Notes |
+AI Token Watch never opens a file picker automatically at launch. In **Settings**, use the **Data Folders** section to choose only the providers you use.
+
+| Source | Folder selected by the user | Data read inside that folder |
 | --- | --- | --- |
-| Claude Code | `~/.claude/projects/**/*.jsonl` | Deduplicates by `message.id`, with `requestId` as an optional suffix. |
-| Codex | `~/.codex/sessions/**/rollout-*.jsonl` and archived sessions | Uses `last_token_usage` when available, otherwise derives deltas from total token counts. |
-| opencode | `~/.local/share/opencode/opencode.db` | Reads assistant messages from SQLite in read-only mode and preserves upstream cost when present. |
+| Claude Code | Claude Code data folder | `projects/**/*.jsonl` |
+| Codex | Codex data folder | `sessions/**/rollout-*.jsonl`, `archived_sessions/**`, and optional `config.toml` |
+| opencode | opencode data folder | `opencode.db` |
+
+Each provider stores an independent read-only security-scoped bookmark. Leaving one provider unselected does not block selected providers.
 
 ## Privacy
 
 AI Token Watch is designed as a local-only utility.
 
-- It reads files only after you grant access through the macOS open panel.
-- It stores security-scoped bookmarks in `UserDefaults` so the app can reopen the same local folders later.
+- It reads a provider folder only after you explicitly choose that folder in the standard macOS open panel.
+- It stores one security-scoped bookmark per selected provider in `UserDefaults` so it can reopen that folder later.
 - It does not upload usage records, project paths, prompts, responses, or pricing data.
 - It does not include analytics or telemetry.
 
-The app may display local project paths from the agent logs because those paths are part of the source data.
+The app may display local project paths from the agent logs because those paths are part of the source data. See the [Privacy Policy](https://orrhsiao.github.io/TokenWatch/privacy/).
 
 ## Install
 
@@ -65,7 +69,8 @@ Download the latest packaged app from the [GitHub Releases page](https://github.
 1. Download `AI-Token-Watch-macOS-universal.zip` from the latest release.
 2. Unzip the archive.
 3. Move `AI Token Watch.app` to `/Applications`.
-4. Open AI Token Watch and authorize access to your user directory when prompted.
+4. Open AI Token Watch. Launch does not open a file picker.
+5. Open **Settings** and, in **Data Folders**, choose the folder for each provider you use.
 
 If macOS says `AI Token Watch.app is damaged and can't be opened. You should move it to the Trash.`, confirm that the app came from the official AI Token Watch release page, then go to **System Settings > Privacy & Security**. In the Security section, click **Open Anyway** for AI Token Watch, then open AI Token Watch again and choose **Open** when prompted.
 
@@ -75,13 +80,13 @@ To build from source instead:
 2. Open `TokenWatch.xcodeproj` in Xcode.
 3. Select the `TokenWatch` scheme.
 4. Build and run on macOS.
-5. In the app, open settings and authorize access to your user directory when prompted.
+5. Open **Settings** and choose provider folders in **Data Folders**.
 
 ## First Run
 
-AI Token Watch asks for user-directory access once, then scans supported provider folders under your home directory. If you do not use one of the supported tools, that provider will simply have no data.
+AI Token Watch does not request access at launch. Open **Settings**, find **Data Folders**, and choose each provider's data folder with the standard macOS folder picker. You can cancel without changing that provider's existing selection or data.
 
-You can refresh manually from the window or menu bar popover. Automatic refresh intervals can be changed in settings.
+Selected providers load independently. An unselected provider shows that its folder has not been selected; an empty selected folder shows that no data was found. You can refresh manually from the window or menu bar popover, and change automatic refresh intervals in Settings.
 
 ## Build
 
@@ -111,7 +116,7 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platfo
 
 ## Architecture
 
-Each provider owns its scanner and parser, then emits shared `ParsedUsageEntry` values. `PricingEngine` and `UsageAggregator` turn those entries into summaries that are rendered by AppKit view controllers.
+Each provider owns its scanner, parser, selected data-root contract, and read-only security-scoped bookmark, then emits shared `ParsedUsageEntry` values. `PricingEngine` and `UsageAggregator` turn those entries into summaries that are rendered by AppKit view controllers. Provider authorization and loading states remain independent in `TokenStatsViewModel`.
 
 ```text
 Provider scanner/parser

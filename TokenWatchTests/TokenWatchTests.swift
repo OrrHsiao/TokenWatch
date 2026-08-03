@@ -7,105 +7,81 @@
 
 import Testing
 import AppKit
+import Foundation
 import SwiftUI
 @testable import TokenWatch
+
+@MainActor
+private final class InitialLoadCompletionState {
+    var hasCompleted = false
+}
+
+// 设置菜单验收独立抄录冻结顺序，避免从生产 catalog 复制同一处错误。
+private let frozenSettingsLocaleIdentifiers = [
+    "en-US", "am", "ar", "bg-BG", "bn-BD", "bs-BA", "ca-ES", "cs-CZ",
+    "da-DK", "de-DE", "el-GR", "es-419", "es-ES", "et-EE", "fa", "fi-FI",
+    "fr-CA", "fr-FR", "gu-IN", "hi-IN", "hr-HR", "hu-HU", "hy-AM", "id-ID",
+    "is-IS", "it-IT", "ja-JP", "ka-GE", "kk", "kn-IN", "ko-KR", "lt",
+    "lv-LV", "mk-MK", "ml", "mn", "mr-IN", "ms-MY", "my-MM", "nb-NO",
+    "nl-NL", "pa", "pl-PL", "pt-BR", "pt-PT", "ro-RO", "ru-RU", "sk-SK",
+    "sl-SI", "so-SO", "sq-AL", "sr-RS", "sv-SE", "sw-TZ", "ta-IN", "te-IN",
+    "th-TH", "tl", "tr-TR", "uk-UA", "ur", "vi-VN", "zh-CN", "zh-HK", "zh-TW",
+]
 
 struct TokenWatchTests {
 
     @MainActor
-    @Test func firstLaunchWithoutBookmarkRequestsInitialAuthorization() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
-
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { false },
-            hasPromptedInitialAuthorization: { false },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return true
-            }
+    @Test("启动只清理遗留授权再加载数据")
+    func startupOnlyCleansLegacyStateThenLoadsStats() async {
+        var events: [String] = []
+        let coordinator = AppLaunchDataCoordinator(
+            clearLegacyAuthorization: { events.append("cleanup") },
+            loadAllStats: { events.append("load") }
         )
 
         await coordinator.performStartupWork()
 
-        #expect(didRequestAuthorization)
-        #expect(didMarkPrompted)
-        #expect(!didLoadAllStats)
+        #expect(events == ["cleanup", "load"])
     }
 
     @MainActor
-    @Test func startupWithBookmarkLoadsStatsWithoutInitialAuthorization() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
+    @Test("首次全量加载完成后发布完成状态")
+    func initialLoadCompletionStateIsSetAfterLoadAllStats() async {
+        let viewModel = TokenStatsViewModel(providers: [])
 
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { true },
-            hasPromptedInitialAuthorization: { false },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return true
-            }
-        )
-
-        await coordinator.performStartupWork()
-
-        #expect(didLoadAllStats)
-        #expect(!didRequestAuthorization)
-        #expect(!didMarkPrompted)
+        #expect(!viewModel.hasCompletedInitialLoad)
+        await viewModel.loadAllStats()
+        #expect(viewModel.hasCompletedInitialLoad)
     }
 
     @MainActor
-    @Test func startupAfterInitialPromptAttemptLoadsStatsWithoutReprompting() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
-
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { false },
-            hasPromptedInitialAuthorization: { true },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return true
-            }
+    @Test("遗留清理不影响新 provider bookmark 和其他偏好")
+    func legacyCleanupPreservesProviderBookmarksAndOtherPreferences() throws {
+        let suiteName = "LegacyAuthorizationCleaner-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(Data([1]), forKey: "HomeDirectoryBookmark")
+        defaults.set(true, forKey: "TokenWatch.didPromptInitialHomeAuthorization")
+        defaults.set(Data([2]), forKey: "ClaudeDataDirectoryBookmark")
+        defaults.set(Data([3]), forKey: "CodexDataDirectoryBookmark")
+        defaults.set(Data([4]), forKey: "OpenCodeDataDirectoryBookmark")
+        defaults.set(
+            true,
+            forKey: InitialDirectoryAuthorizationGuide.storageKey
         )
+        defaults.set("minutes5", forKey: "TokenWatch.autoRefreshInterval")
+        defaults.set("en", forKey: AppLanguageSettings.storageKey)
 
-        await coordinator.performStartupWork()
+        LegacyAuthorizationCleaner.removeLegacyState(from: defaults)
 
-        #expect(didLoadAllStats)
-        #expect(!didRequestAuthorization)
-        #expect(!didMarkPrompted)
-    }
-
-    @MainActor
-    @Test func canceledInitialAuthorizationFallsBackToStatsLoad() async {
-        var didLoadAllStats = false
-        var didRequestAuthorization = false
-        var didMarkPrompted = false
-
-        let coordinator = AppLaunchAuthorizationCoordinator(
-            hasBookmark: { false },
-            hasPromptedInitialAuthorization: { false },
-            markInitialAuthorizationPrompted: { didMarkPrompted = true },
-            loadAllStats: { didLoadAllStats = true },
-            requestInitialAuthorization: {
-                didRequestAuthorization = true
-                return false
-            }
-        )
-
-        await coordinator.performStartupWork()
-
-        #expect(didRequestAuthorization)
-        #expect(didMarkPrompted)
-        #expect(didLoadAllStats)
+        #expect(defaults.object(forKey: "HomeDirectoryBookmark") == nil)
+        #expect(defaults.object(forKey: "TokenWatch.didPromptInitialHomeAuthorization") == nil)
+        #expect(defaults.data(forKey: "ClaudeDataDirectoryBookmark") == Data([2]))
+        #expect(defaults.data(forKey: "CodexDataDirectoryBookmark") == Data([3]))
+        #expect(defaults.data(forKey: "OpenCodeDataDirectoryBookmark") == Data([4]))
+        #expect(defaults.bool(forKey: InitialDirectoryAuthorizationGuide.storageKey))
+        #expect(defaults.string(forKey: "TokenWatch.autoRefreshInterval") == "minutes5")
+        #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
     }
 
     @Test func appBundleDoesNotDeclareMainStoryboard() throws {
@@ -136,6 +112,10 @@ struct TokenWatchTests {
 
         #expect(window.title == "TokenWatch")
         #expect(window.titleVisibility == .hidden)
+        #expect(window.titlebarAppearsTransparent == false)
+        #expect(window.isOpaque == false)
+        #expect(try rgbHex(window.backgroundColor, appearance: .aqua) == 0xF4F6FA)
+        #expect(abs(window.backgroundColor.alphaComponent - 0.1) < 0.001)
         #expect(window.styleMask.contains(.titled))
         #expect(window.styleMask.contains(.closable))
         #expect(window.styleMask.contains(.miniaturizable))
@@ -191,6 +171,8 @@ struct TokenWatchTests {
         })
         #expect(brandIcon.image != nil)
         #expect(brandIcon.image?.isTemplate == false)
+        #expect(brandIcon.layer?.cornerRadius == 8)
+        #expect(brandIcon.layer?.masksToBounds == true)
 
         let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
             guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
@@ -286,6 +268,118 @@ struct TokenWatchTests {
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("37 分钟前更新。不依赖任何网络 API。"))
         #expect(!labels.contains("本地记录已就绪。不依赖任何网络 API。"))
+    }
+
+    @MainActor
+    @Test func dashboardInitialLoadUsesStatusPopoverLoadingStyleAndKeepsSidebarVisible() throws {
+        let initialLoadCompletion = InitialLoadCompletionState()
+        var states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
+            .codex: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
+        ]
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { states },
+            initialLoadCompletionProvider: { initialLoadCompletion.hasCompleted },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let loadingOverlay = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardInitialLoadingOverlay") as? LoadingOverlayView
+        )
+        let mainContent = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardMainContent")
+        )
+        #expect(!loadingOverlay.isHidden)
+        #expect(loadingOverlay.frame == mainContent.frame)
+        #expect(loadingOverlay.material == .hudWindow)
+        #expect(loadingOverlay.debugMessage == "正在更新中，首次加载耗时较久，请耐心等待～")
+        #expect(loadingOverlay.debugSymbolName == StatusBarLoadingAnimation.symbolNames.first)
+
+        states[.claude]?.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        #expect(!loadingOverlay.isHidden)
+
+        states[.claude]?.isLoading = false
+        states[.codex]?.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(!loadingOverlay.isHidden)
+
+        states[.codex]?.isLoading = false
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(!loadingOverlay.isHidden)
+
+        initialLoadCompletion.hasCompleted = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(loadingOverlay.isHidden)
+    }
+
+    @MainActor
+    @Test func dashboardLaterRefreshShowsOnlySidebarLoadingIndicator() throws {
+        var state = TokenStatsViewModel.ProviderState(
+            stats: UsageAggregator().aggregate([]),
+            isLoading: true,
+            errorMessage: nil,
+            needsAuthorization: false
+        )
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { [.claude: state] },
+            initialLoadCompletionProvider: { true },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        state.isLoading = false
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        state.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+
+        let loadingOverlay = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardInitialLoadingOverlay")
+        )
+        let scanIndicator = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardScanLoadingIndicator")
+                as? NSProgressIndicator
+        )
+        #expect(loadingOverlay.isHidden)
+        #expect(!scanIndicator.isHidden)
+        #expect(scanIndicator.style == .spinning)
+    }
+
+    @MainActor
+    @Test func dashboardSettingsRemainInteractiveDuringInitialLoad() throws {
+        let initialLoadCompletion = InitialLoadCompletionState()
+        var state = TokenStatsViewModel.ProviderState(
+            stats: nil,
+            isLoading: false,
+            errorMessage: nil,
+            needsAuthorization: false
+        )
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { [.claude: state] },
+            initialLoadCompletionProvider: { initialLoadCompletion.hasCompleted },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let loadingOverlay = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardInitialLoadingOverlay")
+        )
+        #expect(!loadingOverlay.isHidden)
+
+        viewController.showSettings()
+        #expect(loadingOverlay.isHidden)
+
+        state.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        #expect(loadingOverlay.isHidden)
     }
 
     @MainActor
@@ -438,7 +532,22 @@ struct TokenWatchTests {
         let settingsButton = try #require(viewController.view.button(identifier: "DashboardNav.settings"))
         _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
         viewController.view.layoutSubtreeIfNeeded()
-        try assertFocusable(["AuthorizationActionButton", "RefreshAllDataButton"])
+        let providerDirectoryButtons = try ProviderID.allCases.map { id in
+            try #require(
+                viewController.view.button(
+                    identifier: "ProviderDirectoryAction.\(id.rawValue)"
+                )
+            )
+        }
+        for button in providerDirectoryButtons {
+            let identifier = try #require(button.identifier?.rawValue)
+            if button.isEnabled {
+                try assertFocusable([identifier])
+            } else {
+                assertDisabledAndRejectsKeyboardFocus([button])
+            }
+        }
+        try assertFocusable(["RefreshAllDataButton"])
     }
 
     @MainActor
@@ -447,7 +556,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("总 Token"))
+        #expect(labels.contains("总 Tokens"))
         #expect(labels.contains("总费用"))
         #expect(labels.contains("会话数"))
         #expect(labels.contains("趋势"))
@@ -535,12 +644,12 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains { $0.contains("（25.0%）") })
+        #expect(labels.contains("25.0%"))
         #expect(labels.contains("输入 $60.00 / 输出 $30.00 / 推理 $30.00"))
     }
 
     @MainActor
-    @Test func dashboardTotalTokenDetailShowsAllTokenBuckets() throws {
+    @Test func dashboardPlacesCacheHitRateAfterTotalTokenValue() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
         let viewController = DashboardViewController(
@@ -573,10 +682,28 @@ struct TokenWatchTests {
 
         viewController.loadViewIfNeeded()
 
+        viewController.view.layoutSubtreeIfNeeded()
+
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("1.9M"))
-        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存 0.7M（36.8%） / 推理 0.3M"))
-        #expect(!labels.contains { $0.contains("缓存命中率") })
+        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存 0.7M / 推理 0.3M"))
+        let totalTokenValue = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardTotalTokenValue") as? NSTextField
+        )
+        let cacheHitRateTitle = try #require(
+            viewController.view.firstDescendant(identifier: "AppStringKey.dashboardCacheHitRate") as? NSTextField
+        )
+        let cacheHitRateValue = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardCacheHitRateValue") as? NSTextField
+        )
+        #expect(cacheHitRateTitle.stringValue == "缓存命中率")
+        #expect(cacheHitRateValue.stringValue == "36.8%")
+        let totalTokenValueFrame = totalTokenValue.convert(totalTokenValue.bounds, to: viewController.view)
+        let cacheHitRateTitleFrame = cacheHitRateTitle.convert(cacheHitRateTitle.bounds, to: viewController.view)
+        #expect(cacheHitRateTitleFrame.minX > totalTokenValueFrame.maxX)
+        #expect((cacheHitRateTitle.superview as? NSStackView)?.orientation == .vertical)
+        #expect(cacheHitRateTitle.font?.pointSize == 11)
+        #expect(cacheHitRateValue.font?.pointSize == 13)
     }
 
     @MainActor
@@ -591,7 +718,7 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存 0.0M（0%）"))
+        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存 0.0M"))
     }
 
     @MainActor
@@ -683,6 +810,107 @@ struct TokenWatchTests {
         #expect(abs(monthTitleFrame.minX - sevenDayTitleFrame.minX) <= 1)
         #expect(abs(monthTitleFrame.maxY - sevenDayTitleFrame.maxY) <= 1)
         #expect(abs(monthValueFrame.maxX - sevenDayValueFrame.maxX) <= 1)
+    }
+
+    @MainActor
+    @Test func dashboardProjectListTopStaysAlignedAcrossRanges() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let recentEntries = (1...2).map { index in
+            makeDashboardEntry(
+                sessionID: "recent-\(index)",
+                date: dateTime(2026, 6, 20, hour: index, minute: 0, calendar: calendar),
+                model: "model-\(index)",
+                input: 1_000 - index,
+                cwd: "/work/recent-project-\(index)"
+            )
+        }
+        let olderEntries = (1...8).map { index in
+            makeDashboardEntry(
+                sessionID: "older-\(index)",
+                date: dateTime(2026, 6, 1, hour: index, minute: 0, calendar: calendar),
+                model: "older-model-\(index)",
+                input: 900 - index,
+                cwd: "/work/older-project-\(index)"
+            )
+        }
+        let stats = UsageAggregator().aggregate(recentEntries + olderEntries)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let sevenDayProjectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let sevenDayModelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        let sevenDayProjectList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        let sevenDayModelList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardModelRowsScrollView") as? NSScrollView
+        )
+        let sevenDayProjectFrame = sevenDayProjectPanel.convert(sevenDayProjectPanel.bounds, to: viewController.view)
+        let sevenDayModelFrame = sevenDayModelPanel.convert(sevenDayModelPanel.bounds, to: viewController.view)
+        let sevenDayProjectListFrame = sevenDayProjectList.convert(sevenDayProjectList.bounds, to: viewController.view)
+        let sevenDayModelListFrame = sevenDayModelList.convert(sevenDayModelList.bounds, to: viewController.view)
+
+        try clickDashboardRange("month", in: viewController)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let monthProjectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let monthModelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        let monthProjectList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        let monthModelList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardModelRowsScrollView") as? NSScrollView
+        )
+        let monthProjectFrame = monthProjectPanel.convert(monthProjectPanel.bounds, to: viewController.view)
+        let monthModelFrame = monthModelPanel.convert(monthModelPanel.bounds, to: viewController.view)
+        let monthProjectListFrame = monthProjectList.convert(monthProjectList.bounds, to: viewController.view)
+        let monthModelListFrame = monthModelList.convert(monthModelList.bounds, to: viewController.view)
+
+        try clickDashboardRange("sevenDays", in: viewController)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let returnedSevenDayProjectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let returnedSevenDayProjectList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        let returnedSevenDayProjectFrame = returnedSevenDayProjectPanel.convert(
+            returnedSevenDayProjectPanel.bounds,
+            to: viewController.view
+        )
+        let returnedSevenDayProjectListFrame = returnedSevenDayProjectList.convert(
+            returnedSevenDayProjectList.bounds,
+            to: viewController.view
+        )
+
+        #expect(abs(sevenDayProjectFrame.minY - sevenDayModelFrame.minY) < 0.5)
+        #expect(abs(sevenDayProjectFrame.maxY - sevenDayModelFrame.maxY) < 0.5)
+        #expect(abs(monthProjectFrame.minY - monthModelFrame.minY) < 0.5)
+        #expect(abs(monthProjectFrame.maxY - monthModelFrame.maxY) < 0.5)
+        #expect(abs(monthProjectFrame.maxY - sevenDayProjectFrame.maxY) < 0.5)
+        #expect(abs(monthProjectListFrame.maxY - sevenDayProjectListFrame.maxY) < 0.5)
+        #expect(abs(sevenDayProjectListFrame.minY - sevenDayModelListFrame.minY) < 0.5)
+        #expect(abs(sevenDayProjectListFrame.maxY - sevenDayModelListFrame.maxY) < 0.5)
+        #expect(abs(monthProjectListFrame.minY - monthModelListFrame.minY) < 0.5)
+        #expect(abs(monthProjectListFrame.maxY - monthModelListFrame.maxY) < 0.5)
+        #expect(abs(returnedSevenDayProjectFrame.maxY - sevenDayProjectFrame.maxY) < 0.5)
+        #expect(abs(returnedSevenDayProjectListFrame.maxY - sevenDayProjectListFrame.maxY) < 0.5)
     }
 
     @MainActor
@@ -876,34 +1104,46 @@ struct TokenWatchTests {
         aqua.performAsCurrentDrawingAppearance {
             lightController.loadViewIfNeeded()
         }
+        lightController.view.appearance = aqua
+        refreshEffectiveAppearance(in: lightController.view)
         let lightSessionsButton = try #require(lightController.view.button(identifier: "DashboardNav.sessions"))
         aqua.performAsCurrentDrawingAppearance {
             _ = lightSessionsButton.sendAction(lightSessionsButton.action, to: lightSessionsButton.target)
         }
 
-        let lightTable = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let lightTable = try #require(
+            lightController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let lightHeader = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let lightRow = try #require(lightController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
-        #expect(rgbHex(try #require(lightTable.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(lightHeader.layer?.backgroundColor)) == 0xF1F5F9)
-        #expect(rgbHex(try #require(lightRow.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(lightTable.debugUsesNativeLiquidGlass)
+        #expect(lightTable.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(lightHeader.layer?.backgroundColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(lightHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(lightRow.layer?.backgroundColor)) == 0)
 
         let dark = try #require(NSAppearance(named: .darkAqua))
         let darkController = ViewController(languageSettings: zhHansLanguageSettings())
         dark.performAsCurrentDrawingAppearance {
             darkController.loadViewIfNeeded()
         }
+        darkController.view.appearance = dark
+        refreshEffectiveAppearance(in: darkController.view)
         let darkSessionsButton = try #require(darkController.view.button(identifier: "DashboardNav.sessions"))
         dark.performAsCurrentDrawingAppearance {
             _ = darkSessionsButton.sendAction(darkSessionsButton.action, to: darkSessionsButton.target)
         }
 
-        let darkTable = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let darkTable = try #require(
+            darkController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let darkHeader = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let darkRow = try #require(darkController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
-        #expect(rgbHex(try #require(darkTable.layer?.backgroundColor)) == 0x151B23)
-        #expect(rgbHex(try #require(darkHeader.layer?.backgroundColor)) == 0x202936)
-        #expect(rgbHex(try #require(darkRow.layer?.backgroundColor)) == 0x151B23)
+        #expect(darkTable.debugUsesNativeLiquidGlass)
+        #expect(!darkTable.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(darkHeader.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(darkHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(darkRow.layer?.backgroundColor)) == 0)
     }
 
     @MainActor
@@ -944,9 +1184,15 @@ struct TokenWatchTests {
             _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
         }
 
-        let dateBadge = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge"))
-        let sessionMetricCard = try roundedAncestor(containingText: "会话数", root: viewController.view)
-        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let dateBadge = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge") as? DashboardGlassCardView
+        )
+        let sessionMetricCard = try #require(
+            roundedAncestor(containingText: "会话数", root: viewController.view) as? DashboardGlassCardView
+        )
+        let table = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let pagination = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPagination"))
         let row = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
         let providerLabel = try #require(row.textField(stringValue: "Claude Code"))
@@ -954,12 +1200,10 @@ struct TokenWatchTests {
         let modelLabel = try #require(row.textField(stringValue: "model-recent"))
         let costLabel = try #require(row.textField(stringValue: "$0.00"))
 
-        #expect(rgbHex(try #require(dateBadge.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dateBadge.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(sessionMetricCard.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(sessionMetricCard.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(table.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(pagination.layer?.backgroundColor)) == 0xF4F6FA)
+        #expect(dateBadge.debugUsesNativeLiquidGlass)
+        #expect(sessionMetricCard.debugUsesNativeLiquidGlass)
+        #expect(table.debugUsesNativeLiquidGlass)
+        #expect(pagination.layer?.backgroundColor == nil)
         #expect(row.firstDescendant(identifier: "DashboardSessionsProviderBadge.claude") == nil)
         #expect(try rgbHex(try #require(copyButton.contentTintColor), appearance: .aqua) == 0x111827)
         #expect(try rgbHex(try #require(providerLabel.textColor), appearance: .aqua) == 0x2563EB)
@@ -968,7 +1212,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardLayerColorsReapplyPencilLightColorsAfterAppearanceChangesToAqua() throws {
+    @Test func dashboardGlassCardsKeepTheirSurfaceAfterAppearanceChangesToAqua() throws {
         let dark = try #require(NSAppearance(named: .darkAqua))
         let aqua = try #require(NSAppearance(named: .aqua))
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
@@ -987,21 +1231,30 @@ struct TokenWatchTests {
         let sidebar = try #require(root.firstDescendant(identifier: "DashboardSidebar"))
         let mainContent = try #require(root.firstDescendant(identifier: "DashboardMainContent"))
         let overviewButton = try #require(root.button(identifier: "DashboardNav.overview"))
-        let table = try #require(root.firstDescendant(identifier: "DashboardSessionsTable"))
+        let table = try #require(
+            root.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let tableHeader = try #require(root.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let tableRow = try #require(root.firstDescendant(identifier: "DashboardSessionsRow.0"))
         let paginationButton = try #require(root.button(identifier: "DashboardSessionsPagination.page.1"))
 
-        #expect(rgbHex(try #require(root.layer?.backgroundColor)) == 0xF4F6FA)
-        #expect(rgbHex(try #require(sidebar.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(mainContent.layer?.backgroundColor)) == 0xF4F6FA)
-        #expect(rgbHex(try #require(sessionsButton.layer?.backgroundColor)) == 0xEAF2FF)
-        #expect(rgbHex(try #require(overviewButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(table.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
-        #expect(rgbHex(try #require(tableRow.layer?.backgroundColor)) == 0xFFFFFF)
+        let rootGlass = try #require(root as? DashboardGlassBackgroundView)
+        let sidebarGlass = try #require(sidebar as? DashboardGlassBackgroundView)
+        let mainContentGlass = try #require(mainContent as? DashboardGlassBackgroundView)
+        #expect(rootGlass.debugUsesNativeLiquidGlass)
+        #expect(sidebarGlass.debugUsesNativeLiquidGlass)
+        #expect(mainContentGlass.debugUsesNativeLiquidGlass)
+        #expect(rgbHex(try #require(sessionsButton.layer?.backgroundColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(sessionsButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(overviewButton.layer?.backgroundColor)) == 0)
+        #expect(table.debugUsesNativeLiquidGlass)
+        #expect(table.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(tableHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(tableRow.layer?.backgroundColor)) == 0)
         #expect(rgbHex(try #require(paginationButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(paginationButton.layer?.borderColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(paginationButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(paginationButton.layer?.borderColor)) < 255)
     }
 
     @MainActor
@@ -1021,10 +1274,14 @@ struct TokenWatchTests {
             _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
         }
 
-        let table = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTable"))
+        let table = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsTable") as? DashboardGlassCardView
+        )
         let tableHeader = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsTableHeader"))
         let tableRow = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsRow.0"))
-        let dateBadge = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge"))
+        let dateBadge = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardSessionsDateBadge") as? DashboardGlassCardView
+        )
         let pagination = try #require(viewController.view.firstDescendant(identifier: "DashboardSessionsPagination"))
         let previousButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.previous"))
         let selectedPageButton = try #require(viewController.view.button(identifier: "DashboardSessionsPagination.page.1"))
@@ -1032,18 +1289,21 @@ struct TokenWatchTests {
         let previousTitleLabel = try #require(previousButton.textField(stringValue: "上一页"))
         let nextTitleLabel = try #require(nextButton.textField(stringValue: "下一页"))
 
-        #expect(rgbHex(try #require(table.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(table.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0xF1F5F9)
-        #expect(rgbHex(try #require(tableRow.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dateBadge.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(dateBadge.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(pagination.layer?.backgroundColor)) == 0xF4F6FA)
-        #expect(rgbHex(try #require(previousButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(table.debugUsesNativeLiquidGlass)
+        #expect(table.debugUsesClearGlassStyle)
+        #expect(rgbHex(try #require(tableHeader.layer?.backgroundColor)) == 0x2563EB)
+        #expect(alphaValue(try #require(tableHeader.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(tableRow.layer?.backgroundColor)) == 0)
+        #expect(dateBadge.debugUsesNativeLiquidGlass)
+        #expect(pagination.layer?.backgroundColor == nil)
+        #expect(alphaValue(try #require(previousButton.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(previousButton.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(previousButton.layer?.borderColor)) < 255)
         #expect(rgbHex(try #require(selectedPageButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(nextButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(selectedPageButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(nextButton.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(nextButton.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(nextButton.layer?.borderColor)) < 255)
         #expect(try rgbHex(try #require(previousTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
         #expect(try rgbHex(try #require(nextTitleLabel.textColor), appearance: .aqua) == 0x6B7280)
     }
@@ -1094,7 +1354,7 @@ struct TokenWatchTests {
         let copyButtonBackgroundColor = try #require(copyButton.layer?.backgroundColor)
         let copyButtonTitleLabel = try #require(copyButton.textField(stringValue: "session-light-row"))
 
-        #expect(rgbHex(try #require(row.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(alphaValue(try #require(row.layer?.backgroundColor)) == 0)
         #expect(alphaValue(copyButtonBackgroundColor) == 0)
         #expect(try rgbHex(try #require(copyButton.contentTintColor), appearance: .aqua) == 0x111827)
         #expect(try rgbHex(try #require(copyButtonTitleLabel.textColor), appearance: .aqua) == 0x111827)
@@ -1185,26 +1445,37 @@ struct TokenWatchTests {
             _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
         }
 
-        let settingsPanel = try #require(viewController.view.firstDescendant(identifier: "SettingsPanel"))
-        let authorizeButton = try #require(viewController.view.button(identifier: "AuthorizationActionButton"))
+        let dataFoldersCard = try #require(
+            viewController.view.firstDescendant(identifier: "SettingsDataFoldersSection") as? DashboardGlassCardView
+        )
+        let authorizeButton = try #require(
+            viewController.view.button(
+                identifier: "ProviderDirectoryAction.claude"
+            )
+        )
         let refreshButton = try #require(viewController.view.button(identifier: "RefreshAllDataButton"))
         let autoRefreshPopUp = try #require(viewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
         let languagePopUp = try #require(viewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
 
-        #expect(rgbHex(try #require(settingsPanel.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(settingsPanel.layer?.borderColor)) == 0xD8DEE8)
+        #expect(dataFoldersCard.debugUsesNativeLiquidGlass)
+        #expect(dataFoldersCard.debugUsesClearGlassStyle)
         #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
-        #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
-        #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xD8DEE8)
+        #expect(alphaValue(try #require(authorizeButton.layer?.backgroundColor)) < 255)
+        #expect(alphaValue(try #require(authorizeButton.layer?.borderColor)) < 255)
+        #expect(alphaValue(try #require(refreshButton.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(refreshButton.layer?.borderColor)) < 255)
+        #expect(try rgbHex(try #require(refreshButton.contentTintColor), appearance: .aqua) == 0x111827)
+        #expect(alphaValue(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(autoRefreshPopUp.layer?.borderColor)) < 255)
+        #expect(alphaValue(try #require(languagePopUp.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(languagePopUp.layer?.borderColor)) < 255)
     }
 
     @MainActor
-    @Test func settingsAuthorizedButtonUsesNeutralLightColors() throws {
+    @Test func settingsSelectedDirectoryShowsReselectAction() throws {
         let appearance = try #require(NSAppearance(named: .aqua))
         let controller = SettingsViewController(
             isAuthorized: { true },
@@ -1214,11 +1485,12 @@ struct TokenWatchTests {
             controller.loadViewIfNeeded()
         }
 
-        let button = try #require(controller.view.button(identifier: "AuthorizationActionButton"))
-        #expect(!button.isEnabled)
-        #expect(rgbHex(try #require(button.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(rgbHex(try #require(button.layer?.borderColor)) == 0xD8DEE8)
-        #expect(try rgbHex(try #require(button.contentTintColor), appearance: .aqua) == 0x6B7280)
+        let button = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.claude")
+        )
+        #expect(!button.isHidden)
+        #expect(button.isEnabled)
+        #expect(button.title == "重新选择")
     }
 
     @MainActor
@@ -1317,6 +1589,7 @@ struct TokenWatchTests {
     @MainActor
     @Test func dashboardPaletteUsesPencilLightColorsInAquaAppearance() throws {
         #expect(try rgbHex(DashboardPalette.appBackground, appearance: .aqua) == 0xF4F6FA)
+        #expect(abs(DashboardPalette.translucentAppBackground.alphaComponent - 0.1) < 0.001)
         #expect(try rgbHex(DashboardPalette.sidebarBackground, appearance: .aqua) == 0xFFFFFF)
         #expect(try rgbHex(DashboardPalette.panelBackground, appearance: .aqua) == 0xFFFFFF)
         #expect(try rgbHex(DashboardPalette.deepPanelBackground, appearance: .aqua) == 0xFFFFFF)
@@ -1343,22 +1616,25 @@ struct TokenWatchTests {
         let tintColor = try #require(selectedButton.contentTintColor)
 
         #expect(rgbHex(backgroundColor) == 0x2563EB)
-        #expect(try rgbHex(tintColor, appearance: .aqua) == 0xFFFFFF)
+        #expect(alphaValue(backgroundColor) < 255)
+        #expect(try rgbHex(tintColor, appearance: .aqua) == 0x1E3A8A)
     }
 
     @MainActor
-    @Test func dashboardAnalysisPanelsUsePencilLightPanelBorders() throws {
+    @Test func dashboardAnalysisPanelsUseNativeLiquidGlass() throws {
         let appearance = try #require(NSAppearance(named: .aqua))
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         appearance.performAsCurrentDrawingAppearance {
             viewController.loadViewIfNeeded()
         }
+        viewController.view.appearance = appearance
+        refreshEffectiveAppearance(in: viewController.view)
 
         for title in ["趋势", "模型消耗排行", "来源占比", "项目消耗"] {
             let panel = try panelTitled(title, root: viewController.view)
-            #expect(rgbHex(try #require(panel.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(panel.layer?.borderWidth == 1)
-            #expect(rgbHex(try #require(panel.layer?.borderColor)) == 0xD8DEE8)
+            let glassPanel = try #require(panel as? DashboardGlassCardView)
+            #expect(glassPanel.debugUsesNativeLiquidGlass)
+            #expect(glassPanel.debugUsesClearGlassStyle)
         }
     }
 
@@ -1537,6 +1813,80 @@ struct TokenWatchTests {
         #expect(!projectPanelLabels.contains("model-alpha"))
         #expect(!projectPanelLabels.contains("model-beta"))
         #expect(!projectPanelLabels.contains("legacy-app"))
+    }
+
+    @MainActor
+    @Test func dashboardAnalysisListsShowAllRowsInScrollablePanels() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let stats = UsageAggregator().aggregate((1...8).map { index in
+            makeDashboardEntry(
+                sessionID: "s\(index)",
+                date: dateTime(2026, 6, 20, hour: index, minute: 0, calendar: calendar),
+                model: "model-\(index)",
+                input: 1_000 - index,
+                cwd: "/work/project-\(index)"
+            )
+        })
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let modelPanelLabels = try labels(inPanelTitled: "模型消耗排行", root: viewController.view)
+        let projectPanelLabels = try labels(inPanelTitled: "项目消耗", root: viewController.view)
+        for index in 1...8 {
+            #expect(modelPanelLabels.contains("model-\(index)"))
+            #expect(projectPanelLabels.contains("project-\(index)"))
+        }
+
+        let modelRowsScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardModelRowsScrollView") as? NSScrollView
+        )
+        let projectRowsScrollView = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        #expect(!modelRowsScrollView.hasVerticalScroller)
+        #expect(!projectRowsScrollView.hasVerticalScroller)
+        #expect(try #require(modelRowsScrollView.documentView).frame.height > modelRowsScrollView.contentView.bounds.height)
+        #expect(try #require(projectRowsScrollView.documentView).frame.height > projectRowsScrollView.contentView.bounds.height)
+
+        let sourcePanel = try panelTitled("来源占比", root: viewController.view)
+        let trendPanel = try panelTitled("趋势", root: viewController.view)
+        let projectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let modelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        #expect(abs(sourcePanel.frame.height - trendPanel.frame.height) < 0.5)
+        #expect(abs(projectPanel.frame.height - modelPanel.frame.height) < 0.5)
+        #expect(abs(modelPanel.frame.height - 232) < 0.5)
+        let sourcePanelFrame = sourcePanel.convert(sourcePanel.bounds, to: viewController.view)
+        let projectPanelFrame = projectPanel.convert(projectPanel.bounds, to: viewController.view)
+        let modelPanelFrame = modelPanel.convert(modelPanel.bounds, to: viewController.view)
+        let modelRowsScrollFrame = modelRowsScrollView.convert(
+            modelRowsScrollView.bounds,
+            to: viewController.view
+        )
+        let projectRowsScrollFrame = projectRowsScrollView.convert(
+            projectRowsScrollView.bounds,
+            to: viewController.view
+        )
+        #expect(abs(sourcePanelFrame.minY - projectPanelFrame.maxY - 18) < 0.5)
+        #expect(abs(projectPanelFrame.minY - modelPanelFrame.minY) < 0.5)
+        #expect(abs(projectPanelFrame.maxY - modelPanelFrame.maxY) < 0.5)
+        #expect(abs(projectRowsScrollFrame.minY - modelRowsScrollFrame.minY) < 0.5)
+        #expect(abs(projectRowsScrollFrame.maxY - modelRowsScrollFrame.maxY) < 0.5)
     }
 
     @MainActor
@@ -1720,56 +2070,659 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func mainMenuSettingsCommandShowsSettingsActions() throws {
-        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
-        viewController.loadViewIfNeeded()
-
-        viewController.showSettingsFromMainMenu(nil)
-
-        let mainContent = try #require(viewController.view.firstDescendant(identifier: "DashboardMainContent"))
-        let buttonTitles = mainContent.allDescendants(ofType: NSButton.self).map(\.title)
-        #expect(buttonTitles.contains("去授权") || buttonTitles.contains("已授权"))
-        #expect(buttonTitles.contains("刷新全部数据"))
-        #expect(!buttonTitles.contains("隐私政策"))
-    }
-
-    @MainActor
-    @Test func settingsAuthorizationRowReflectsExistingAuthorization() throws {
-        let settingsViewController = SettingsViewController(
-            isAuthorized: { true },
+    @Test("设置页显示三个 provider 独立目录控件")
+    func settingsShowsIndependentProviderDirectoryRows() throws {
+        let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(
+                stats: nil,
+                entries: nil,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: true,
+                directoryState: .notSelected
+            ),
+            .codex: .init(
+                stats: nil,
+                entries: [],
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false,
+                directoryState: .selectedNoData
+            ),
+            .opencode: .init(
+                stats: nil,
+                entries: nil,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: true,
+                directoryState: .needsReselection
+            ),
+        ]
+        let controller = SettingsViewController(
+            providers: ProviderRegistry.allProviders,
+            providerState: { states[$0] },
+            authorizationAction: { _ in false },
             languageSettings: zhHansLanguageSettings()
         )
-        settingsViewController.loadViewIfNeeded()
+        let appearance = try #require(NSAppearance(named: .aqua))
+        appearance.performAsCurrentDrawingAppearance {
+            controller.loadViewIfNeeded()
+        }
 
-        let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("通用访问权限"))
+        let claudeAction = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.claude")
+        )
+        let codexAction = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.codex")
+        )
+        let opencodeAction = try #require(
+            controller.view.button(identifier: "ProviderDirectoryAction.opencode")
+        )
 
-        let authorizedButton = try #require(settingsViewController.view.allDescendants(ofType: NSButton.self).first {
-            $0.title == "已授权"
+        let claudeStatus = try #require(
+            controller.view.firstDescendant(
+                identifier: "ProviderDirectoryStatus.claude"
+            ) as? NSTextField
+        )
+        #expect(claudeStatus.stringValue == "未选择")
+        #expect(!claudeStatus.isHidden)
+        #expect(claudeAction.title == "去授权")
+        #expect(!claudeAction.isHidden)
+        let codexStatus = try #require(
+            controller.view.firstDescendant(
+                identifier: "ProviderDirectoryStatus.codex"
+            ) as? NSTextField
+        )
+        #expect(codexStatus.stringValue == "所选文件夹中未发现数据")
+        #expect(!codexStatus.isHidden)
+        #expect(codexAction.title == "重新选择")
+        #expect(!codexAction.isHidden)
+        #expect(codexAction.isEnabled)
+        #expect(alphaValue(try #require(codexAction.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(codexAction.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(codexAction.layer?.borderColor)) < 255)
+        #expect(try rgbHex(try #require(codexAction.contentTintColor), appearance: .aqua) == 0x111827)
+        let opencodeStatus = try #require(
+            controller.view.firstDescendant(
+                identifier: "ProviderDirectoryStatus.opencode"
+            ) as? NSTextField
+        )
+        #expect(opencodeStatus.stringValue == "需要重新选择")
+        #expect(!opencodeStatus.isHidden)
+        #expect(opencodeAction.title == "再次选择")
+        #expect(!opencodeAction.isHidden)
+        #expect(alphaValue(try #require(opencodeAction.layer?.backgroundColor)) == 0)
+        #expect(rgbHex(try #require(opencodeAction.layer?.borderColor)) == 0x64748B)
+        #expect(alphaValue(try #require(opencodeAction.layer?.borderColor)) < 255)
+        #expect(try rgbHex(try #require(opencodeAction.contentTintColor), appearance: .aqua) == 0x111827)
+
+        controller.view.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: 480,
+            height: SettingsViewController.minimumContentHeight
+        )
+        controller.view.layoutSubtreeIfNeeded()
+        let reselectFrame = opencodeAction.convert(
+            opencodeAction.bounds,
+            to: controller.view
+        )
+        let reselectStatusFrame = opencodeStatus.convert(
+            opencodeStatus.bounds,
+            to: controller.view
+        )
+        #expect(reselectFrame.maxX > controller.view.bounds.midX)
+        #expect(reselectStatusFrame.minX < reselectFrame.minX)
+
+        let directoryActionFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        let directoryActions = [claudeAction, codexAction, opencodeAction]
+        for action in directoryActions {
+            let minimumWidth = ceil(
+                (action.title as NSString).size(
+                    withAttributes: [.font: directoryActionFont]
+                ).width + 24
+            )
+            #expect(action.frame.width >= minimumWidth)
+        }
+        #expect(abs(claudeAction.frame.width - opencodeAction.frame.width) <= 1)
+        let actionWidthConstraints = directoryActions.compactMap { action in
+            action.constraints.first { constraint in
+                constraint.firstAttribute == .width
+                    && constraint.relation == .equal
+            }
+        }
+        #expect(actionWidthConstraints.count == directoryActions.count)
+        let sharedActionWidth = try #require(
+            actionWidthConstraints.map(\.constant).max()
+        )
+        #expect(actionWidthConstraints.allSatisfy {
+            abs($0.constant - sharedActionWidth) <= 1
         })
-        #expect(!authorizedButton.isEnabled)
 
-        let buttonTitles = settingsViewController.view.allDescendants(ofType: NSButton.self).map(\.title)
-        #expect(!buttonTitles.contains("去授权"))
+        let opencode = try #require(
+            ProviderRegistry.allProviders.first { $0.id == .opencode }
+        )
+        let errorModel = ProviderDirectoryRowModel.make(
+            provider: opencode,
+            state: .init(
+                stats: nil,
+                entries: nil,
+                directoryState: .needsReselection,
+                directoryAuthorizationErrorMessage: "无法读取所选目录"
+            ),
+            language: .zhHans
+        )
+        #expect(errorModel.statusText == "无法读取所选目录")
+        #expect(errorModel.showsStatus)
+        #expect(errorModel.actionTitle == "再次选择")
+        #expect(errorModel.actionStyle == .neutral)
+        #expect(errorModel.showsAction)
     }
 
     @MainActor
-    @Test func settingsAuthorizationRowUsesHorizontalSettingLayout() throws {
-        let settingsViewController = SettingsViewController(
+    @Test("三个目录按钮均把正确 provider 传给授权动作并可等待完成")
+    func settingsDirectoryButtonsRouteProviderID() async throws {
+        let providers = ProviderRegistry.allProviders
+        let expectedResults: [ProviderID: Bool] = [
+            .claude: true,
+            .codex: false,
+            .opencode: true,
+        ]
+        var requested: [ProviderID] = []
+        let controller = SettingsViewController(
+            providers: providers,
+            providerState: { _ in .init(stats: nil, entries: nil) },
+            authorizationAction: { id in
+                requested.append(id)
+                return expectedResults[id] ?? false
+            },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        var completedResults: [Bool] = []
+        for provider in providers {
+            let button = try #require(controller.view.button(
+                identifier: "ProviderDirectoryAction.\(provider.id.rawValue)"
+            ))
+            completedResults.append(
+                await controller.performDirectoryAuthorization(
+                    forButtonTag: button.tag
+                )
+            )
+        }
+
+        #expect(requested == providers.map { $0.id })
+        #expect(completedResults == [true, false, true])
+
+        #expect(!(await controller.performDirectoryAuthorization(forButtonTag: -1)))
+        #expect(requested == providers.map { $0.id })
+    }
+
+    @MainActor
+    @Test("provider 通知只读取并刷新指定目录行")
+    func settingsDirectoryRowsRefreshAfterProviderNotification() throws {
+        var states = Dictionary(uniqueKeysWithValues: ProviderID.allCases.map {
+            ($0, TokenStatsViewModel.ProviderState(stats: nil, entries: nil))
+        })
+        var requestedStateIDs: [ProviderID] = []
+        let controller = SettingsViewController(
+            providers: ProviderRegistry.allProviders,
+            providerState: {
+                requestedStateIDs.append($0)
+                return states[$0]
+            },
+            authorizationAction: { _ in false },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+        requestedStateIDs.removeAll()
+        let codexLabel = try #require(
+            controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.codex") as? NSTextField
+        )
+        let codexTextBefore = codexLabel.stringValue
+
+        states[.claude]?.directoryState = .selected
+        states[.claude]?.needsAuthorization = false
+        NotificationCenter.default.post(
+            name: .providerStateDidChange,
+            object: nil,
+            userInfo: ["providerID": ProviderID.claude]
+        )
+
+        #expect((controller.view.firstDescendant(
+            identifier: "ProviderDirectoryStatus.claude"
+        ) as? NSTextField)?.stringValue == "已选择")
+        #expect(controller.view.button(
+            identifier: "ProviderDirectoryAction.claude"
+        )?.isHidden == false)
+        #expect(codexLabel.stringValue == codexTextBefore)
+        #expect(requestedStateIDs == [.claude])
+
+        requestedStateIDs.removeAll()
+        NotificationCenter.default.post(
+            name: .providerStateDidChange,
+            object: nil
+        )
+        #expect(requestedStateIDs.isEmpty)
+    }
+
+    @MainActor
+    @Test("加载或授权期间只禁用对应 provider 按钮")
+    func settingsKeepsDirectoryButtonsDisabledDuringLoadOrAuthorization() throws {
+        let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(stats: nil, entries: nil, isLoading: true),
+            .codex: .init(stats: nil, entries: nil, isAuthorizing: true),
+            .opencode: .init(stats: nil, entries: nil),
+        ]
+        let controller = SettingsViewController(
+            providers: ProviderRegistry.allProviders,
+            providerState: { states[$0] },
+            authorizationAction: { _ in false },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        #expect(controller.view.button(identifier: "ProviderDirectoryAction.claude")?.isEnabled == false)
+        #expect(controller.view.button(identifier: "ProviderDirectoryAction.codex")?.isEnabled == false)
+        #expect(controller.view.button(identifier: "ProviderDirectoryAction.opencode")?.isEnabled == true)
+    }
+
+    @MainActor
+    @Test("总览只在全部无数据时提示选择文件夹")
+    func dashboardEmptyStateRequestsDataFolderSelection() throws {
+        let languageSettings = zhHansLanguageSettings()
+        let allUnselected = DashboardViewController(
+            settingsViewController: SettingsViewController(
+                isAuthorized: { false },
+                languageSettings: languageSettings
+            ),
+            stateProvider: {
+                Dictionary(uniqueKeysWithValues: ProviderID.allCases.map {
+                    ($0, TokenStatsViewModel.ProviderState(stats: nil, entries: nil))
+                })
+            },
+            refreshAction: {},
+            languageSettings: languageSettings
+        )
+        allUnselected.loadViewIfNeeded()
+        #expect(allUnselected.view.visibleTextValues().contains(
+            "请在设置中选择一个或多个数据文件夹"
+        ))
+
+        let partialData = DashboardViewController(
+            settingsViewController: SettingsViewController(
+                isAuthorized: { false },
+                languageSettings: languageSettings
+            ),
+            stateProvider: { [
+                .claude: .init(
+                    stats: makeDashboardStats(
+                        byDay: ["2026-07-16": makeDashboardSummary(total: 1_000)]
+                    ),
+                    entries: [],
+                    needsAuthorization: false,
+                    directoryState: .selected
+                ),
+                .codex: .init(stats: nil, entries: nil),
+                .opencode: .init(stats: nil, entries: nil),
+            ] },
+            refreshAction: {},
+            languageSettings: languageSettings
+        )
+        partialData.loadViewIfNeeded()
+        #expect(!partialData.view.visibleTextValues().contains(
+            "请在设置中选择一个或多个数据文件夹"
+        ))
+    }
+
+    @MainActor
+    @Test("设置三行目录控件和既有设置项在最小高度内不裁切")
+    func settingsProviderRowsFitMinimumHeight() throws {
+        #expect(SettingsViewController.minimumContentHeight == 700)
+
+        func assertFits(_ controller: SettingsViewController) throws {
+            controller.loadViewIfNeeded()
+            controller.view.frame = NSRect(
+                x: 0,
+                y: 0,
+                width: 480,
+                height: SettingsViewController.minimumContentHeight
+            )
+            controller.view.layoutSubtreeIfNeeded()
+
+            #expect(
+                controller.view.frame.height
+                    == SettingsViewController.minimumContentHeight
+            )
+            let dataFoldersCard = try #require(
+                controller.view.firstDescendant(
+                    identifier: "SettingsDataFoldersSection"
+                ) as? DashboardGlassCardView
+            )
+            #expect(controller.view.bounds.contains(dataFoldersCard.frame))
+            for identifier in [
+                "ProviderDirectoryStatus.claude",
+                "ProviderDirectoryStatus.codex",
+                "ProviderDirectoryStatus.opencode",
+                "ProviderDirectoryAction.claude",
+                "ProviderDirectoryAction.codex",
+                "ProviderDirectoryAction.opencode",
+                "AutoRefreshIntervalPopUpButton",
+                "LaunchAtLoginSwitch",
+                "LanguagePreferencePopUpButton",
+                "RefreshAllDataButton",
+            ] {
+                let control = try #require(
+                    controller.view.firstDescendant(identifier: identifier)
+                )
+                #expect(controller.view.bounds.contains(
+                    control.convert(control.bounds, to: controller.view)
+                ))
+            }
+        }
+
+        try assertFits(SettingsViewController(
+            providerState: { _ in .init(stats: nil, entries: nil) },
+            authorizationAction: { _ in false },
+            languageSettings: zhHansLanguageSettings()
+        ))
+
+        for preference: AppLanguagePreference in [.language(.de), .language(.fr)] {
+            try withTemporaryDefaults { defaults in
+                let settings = AppLanguageSettings(
+                    defaults: defaults,
+                    preferredLanguagesProvider: { ["en"] }
+                )
+                settings.selectedPreference = preference
+                let directoryError = String(
+                    format: AppStrings.text(
+                        .errorCannotAccessProviderDirectoryFormat,
+                        language: settings.resolvedLanguage
+                    ),
+                    "opencode"
+                )
+                let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+                    .claude: .init(
+                        stats: nil,
+                        entries: nil,
+                        directoryState: .needsReselection
+                    ),
+                    .codex: .init(
+                        stats: nil,
+                        entries: [],
+                        directoryState: .selectedNoData
+                    ),
+                    .opencode: .init(
+                        stats: nil,
+                        entries: nil,
+                        directoryState: .needsReselection,
+                        directoryAuthorizationErrorMessage: directoryError
+                    ),
+                ]
+                try assertFits(SettingsViewController(
+                    providerState: { states[$0] },
+                    authorizationAction: { _ in false },
+                    languageSettings: settings
+                ))
+            }
+        }
+    }
+
+    @MainActor
+    @Test("设置三行目录控件保持水平布局")
+    func settingsProviderDirectoryRowsUseHorizontalLayout() throws {
+        let controller = SettingsViewController(
             isAuthorized: { false },
             languageSettings: zhHansLanguageSettings()
         )
-        settingsViewController.loadViewIfNeeded()
+        controller.loadViewIfNeeded()
 
-        let permissionStack = try #require(settingsViewController.view.allDescendants(ofType: NSStackView.self).first { stack in
-            let labels = stack.arrangedSubviews.compactMap { ($0 as? NSTextField)?.stringValue }
-            let buttons = stack.arrangedSubviews.compactMap { ($0 as? NSButton)?.title }
-            return labels.contains("通用访问权限") && buttons.contains("去授权")
-        })
-        #expect(permissionStack.orientation == .horizontal)
+        for id in ProviderID.allCases {
+            let row = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryRow.\(id.rawValue)"
+                ) as? NSStackView
+            )
+            let action = try #require(
+                controller.view.button(
+                    identifier: "ProviderDirectoryAction.\(id.rawValue)"
+                )
+            )
 
-        let buttonTitles = settingsViewController.view.allDescendants(ofType: NSButton.self).map { $0.title }
-        #expect(!buttonTitles.contains("已授权"))
+            #expect(row.orientation == .horizontal)
+            #expect(
+                row.firstDescendant(
+                    identifier: "ProviderDirectoryName.\(id.rawValue)"
+                ) != nil
+            )
+            #expect(
+                row.firstDescendant(
+                    identifier: "ProviderDirectoryStatus.\(id.rawValue)"
+                ) != nil
+            )
+            #expect(row.arrangedSubviews.contains(action))
+        }
+    }
+
+    @MainActor
+    @Test("宽窗口中的目录行左对齐且不缩窄设置面板")
+    func settingsDirectoryRowsAlignLeadingWithoutShrinkingPanel() throws {
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let panel = try #require(
+            controller.view.firstDescendant(identifier: "SettingsPanel")
+        )
+        let settingsTitle = try #require(
+            controller.view.textField(stringValue: "设置")
+        )
+        let dataFoldersTitle = try #require(
+            controller.view.firstDescendant(identifier: "DataFoldersTitleLabel")
+        )
+        let dataRefreshTitle = try #require(
+            controller.view.firstDescendant(identifier: "DataRefreshTitleLabel")
+        )
+        let appPreferencesTitle = try #require(
+            controller.view.firstDescendant(identifier: "AppPreferencesTitleLabel")
+        )
+        let autoRefresh = try #require(
+            controller.view.popUpButton(
+                identifier: "AutoRefreshIntervalPopUpButton"
+            )
+        )
+        let refresh = try #require(
+            controller.view.button(identifier: "RefreshAllDataButton")
+        )
+        let language = try #require(
+            controller.view.popUpButton(
+                identifier: "LanguagePreferencePopUpButton"
+            )
+        )
+        let launchAtLogin = try #require(
+            controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+        )
+        let panelFrame = panel.convert(panel.bounds, to: controller.view)
+        let settingsTitleFrame = settingsTitle.convert(
+            settingsTitle.bounds,
+            to: controller.view
+        )
+        let titleFrame = dataFoldersTitle.convert(
+            dataFoldersTitle.bounds,
+            to: controller.view
+        )
+        let dataRefreshTitleFrame = dataRefreshTitle.convert(
+            dataRefreshTitle.bounds,
+            to: controller.view
+        )
+        let appPreferencesTitleFrame = appPreferencesTitle.convert(
+            appPreferencesTitle.bounds,
+            to: controller.view
+        )
+        let autoRefreshFrame = autoRefresh.convert(
+            autoRefresh.bounds,
+            to: controller.view
+        )
+        let refreshFrame = refresh.convert(refresh.bounds, to: controller.view)
+        let languageFrame = language.convert(language.bounds, to: controller.view)
+        let launchAtLoginFrame = launchAtLogin.convert(
+            launchAtLogin.bounds,
+            to: controller.view
+        )
+        let dataFoldersHeader = try #require(
+            controller.view.firstDescendant(
+                identifier: "SettingsSectionHeader.SettingsDataFoldersSection"
+            ) as? NSStackView
+        )
+        let dataRefreshHeader = try #require(
+            controller.view.firstDescendant(
+                identifier: "SettingsSectionHeader.SettingsDataRefreshSection"
+            ) as? NSStackView
+        )
+        let appPreferencesHeader = try #require(
+            controller.view.firstDescendant(
+                identifier: "SettingsSectionHeader.SettingsAppPreferencesSection"
+            ) as? NSStackView
+        )
+
+        #expect(abs(panelFrame.minX - 28) <= 1)
+        #expect(abs(panelFrame.maxX - controller.view.bounds.maxX + 28) <= 1)
+        #expect(abs(panelFrame.width - controller.view.bounds.width + 56) <= 1)
+        #expect(titleFrame.minY > dataRefreshTitleFrame.minY)
+        #expect(dataRefreshTitleFrame.minY > appPreferencesTitleFrame.minY)
+        #expect(abs(refreshFrame.midY - settingsTitleFrame.midY) <= 1)
+        #expect(abs(refreshFrame.maxX - panelFrame.maxX + 24) <= 1)
+        #expect(refresh.title == "立即刷新")
+        #expect(languageFrame.minY > launchAtLoginFrame.maxY)
+        #expect(abs(autoRefreshFrame.height - 32) <= 1)
+        #expect(abs(languageFrame.height - 32) <= 1)
+        #expect(refreshFrame.maxX < panelFrame.maxX)
+        #expect(languageFrame.maxX < panelFrame.maxX)
+        #expect(launchAtLoginFrame.maxX < panelFrame.maxX)
+        #expect(dataFoldersHeader.subviews.allSatisfy { !($0 is NSImageView) })
+        #expect(dataRefreshHeader.subviews.allSatisfy { !($0 is NSImageView) })
+        #expect(appPreferencesHeader.subviews.allSatisfy { !($0 is NSImageView) })
+
+        for id in ProviderID.allCases {
+            let row = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryRow.\(id.rawValue)"
+                ) as? NSStackView
+            )
+            let name = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryName.\(id.rawValue)"
+                )
+            )
+            let action = try #require(
+                controller.view.button(
+                    identifier: "ProviderDirectoryAction.\(id.rawValue)"
+                )
+            )
+            let nameFrame = name.convert(name.bounds, to: controller.view)
+            let actionFrame = action.convert(action.bounds, to: controller.view)
+
+            #expect(abs(nameFrame.minX - titleFrame.minX) <= 1)
+            #expect(actionFrame.minX > panelFrame.midX)
+            #expect(actionFrame.maxX < panelFrame.maxX)
+            #expect(action.alignment == .center)
+            #expect(!row.arrangedSubviews.contains { $0 is NSImageView })
+            let paragraphStyle = try #require(
+                action.attributedTitle.attribute(
+                    .paragraphStyle,
+                    at: 0,
+                    effectiveRange: nil
+                ) as? NSParagraphStyle
+            )
+            #expect(paragraphStyle.alignment == .center)
+        }
+    }
+
+    @MainActor
+    @Test func mainMenuSettingsCommandShowsProviderDirectoryActions() throws {
+        let viewController = ViewController(
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+
+        viewController.showSettingsFromMainMenu(nil)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let mainContent = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardMainContent")
+        )
+        let panel = try #require(
+            mainContent.firstDescendant(identifier: "SettingsPanel")
+        )
+        let claudeAction = try #require(
+            mainContent.button(identifier: "ProviderDirectoryAction.claude")
+        )
+        let mainContentFrame = mainContent.convert(
+            mainContent.bounds,
+            to: viewController.view
+        )
+        let panelFrame = panel.convert(panel.bounds, to: viewController.view)
+        let claudeActionFrame = claudeAction.convert(
+            claudeAction.bounds,
+            to: viewController.view
+        )
+
+        #expect(!panel.isHidden)
+        #expect(panelFrame.width > 0)
+        #expect(panelFrame.height > 0)
+        #expect(abs(panelFrame.minX - mainContentFrame.minX - 28) <= 1)
+        #expect(abs(panelFrame.maxX - mainContentFrame.maxX + 28) <= 1)
+        #expect(claudeActionFrame.width > 0)
+        #expect(claudeActionFrame.height > 0)
+        #expect(panelFrame.contains(claudeActionFrame))
+        #expect(claudeAction.alignment == .center)
+
+        for id in ProviderID.allCases {
+            #expect(
+                mainContent.firstDescendant(
+                    identifier: "ProviderDirectoryAction.\(id.rawValue)"
+                ) != nil
+            )
+        }
+        #expect(
+            mainContent.firstDescendant(identifier: "RefreshAllDataButton") != nil
+        )
+        #expect(
+            mainContent.firstDescendant(identifier: "PrivacyPolicyButton") == nil
+        )
+    }
+
+    @MainActor
+    @Test func settingsDirectoryRowsReflectExistingSelections() throws {
+        let controller = SettingsViewController(
+            isAuthorized: { true },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+
+        for id in ProviderID.allCases {
+            let status = try #require(
+                controller.view.firstDescendant(
+                    identifier: "ProviderDirectoryStatus.\(id.rawValue)"
+                ) as? NSTextField
+            )
+            let action = try #require(
+                controller.view.button(
+                    identifier: "ProviderDirectoryAction.\(id.rawValue)"
+                )
+            )
+            #expect(status.stringValue == "已选择")
+            #expect(!status.isHidden)
+            #expect(action.title == "重新选择")
+            #expect(!action.isHidden)
+            #expect(action.isEnabled)
+        }
     }
 
     @MainActor
@@ -1826,22 +2779,6 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func settingsMapsUnavailableToDisabledOffSwitch() throws {
-        let controller = SettingsViewController(
-            isAuthorized: { false },
-            loginItemSettings: FakeLoginItemSettings(state: .unavailable),
-            languageSettings: zhHansLanguageSettings()
-        )
-        controller.loadViewIfNeeded()
-
-        let toggle = try #require(
-            controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
-        )
-        #expect(toggle.state == .off)
-        #expect(!toggle.isEnabled)
-    }
-
-    @MainActor
     @Test func settingsShowsRequiresApprovalGuidanceAndOpensSystemSettings() throws {
         let loginItemSettings = FakeLoginItemSettings(state: .requiresApproval)
         let controller = SettingsViewController(
@@ -1866,43 +2803,6 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func settingsShowsUnavailableGuidanceAndRefreshesWhenAppBecomesActive() throws {
-        let loginItemSettings = FakeLoginItemSettings(state: .unavailable)
-        let controller = SettingsViewController(
-            isAuthorized: { false },
-            loginItemSettings: loginItemSettings,
-            languageSettings: zhHansLanguageSettings()
-        )
-        controller.loadViewIfNeeded()
-
-        let toggle = try #require(controller.view.switchControl(identifier: "LaunchAtLoginSwitch"))
-        let status = try #require(
-            controller.view.firstDescendant(identifier: "LaunchAtLoginStatusLabel") as? NSTextField
-        )
-        let openButton = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
-
-        #expect(status.stringValue == "当前无法使用开机自启动。")
-        #expect(!status.isHidden)
-        #expect(openButton.isHidden)
-
-        toggle.state = .on
-        _ = toggle.sendAction(toggle.action, to: toggle.target)
-        #expect(loginItemSettings.requestedStates.isEmpty)
-        #expect(toggle.state == .off)
-        #expect(!toggle.isEnabled)
-
-        loginItemSettings.state = .enabled
-        NotificationCenter.default.post(
-            name: NSApplication.didBecomeActiveNotification,
-            object: NSApp
-        )
-
-        #expect(toggle.state == .on)
-        #expect(toggle.isEnabled)
-        #expect(status.isHidden)
-    }
-
-    @MainActor
     @Test func settingsRefreshesLocalizedAccessibilityLabels() throws {
         try withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(
@@ -1917,27 +2817,49 @@ struct TokenWatchTests {
             )
             controller.loadViewIfNeeded()
 
-            let autoRefresh = try #require(controller.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
-            let launchAtLogin = try #require(controller.view.switchControl(identifier: "LaunchAtLoginSwitch"))
-            let language = try #require(controller.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            let authorize = try #require(controller.view.button(identifier: "AuthorizationActionButton"))
-            let refresh = try #require(controller.view.button(identifier: "RefreshAllDataButton"))
-            let openSettings = try #require(controller.view.button(identifier: "OpenLoginItemsSettingsButton"))
+            let autoRefresh = try #require(controller.view.popUpButton(
+                identifier: "AutoRefreshIntervalPopUpButton"
+            ))
+            let launchAtLogin = try #require(controller.view.switchControl(
+                identifier: "LaunchAtLoginSwitch"
+            ))
+            let language = try #require(controller.view.popUpButton(
+                identifier: "LanguagePreferencePopUpButton"
+            ))
+            let claude = try #require(controller.view.button(
+                identifier: "ProviderDirectoryAction.claude"
+            ))
+            let codex = try #require(controller.view.button(
+                identifier: "ProviderDirectoryAction.codex"
+            ))
+            let opencode = try #require(controller.view.button(
+                identifier: "ProviderDirectoryAction.opencode"
+            ))
+            let refresh = try #require(controller.view.button(
+                identifier: "RefreshAllDataButton"
+            ))
+            let openSettings = try #require(controller.view.button(
+                identifier: "OpenLoginItemsSettingsButton"
+            ))
 
             #expect(autoRefresh.accessibilityLabel() == "自动刷新间隔")
             #expect(launchAtLogin.accessibilityLabel() == "开机自启动")
             #expect(language.accessibilityLabel() == "语言")
-            #expect(authorize.accessibilityLabel() == "去授权")
-            #expect(refresh.accessibilityLabel() == "刷新全部数据")
+            #expect(claude.accessibilityLabel() == "Claude Code, 去授权")
+            #expect(codex.accessibilityLabel() == "Codex, 去授权")
+            #expect(opencode.accessibilityLabel() == "opencode, 去授权")
+            #expect(refresh.accessibilityLabel() == "立即刷新")
             #expect(openSettings.accessibilityLabel() == "打开登录项设置")
 
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
 
             #expect(autoRefresh.accessibilityLabel() == "Auto Refresh Interval")
             #expect(launchAtLogin.accessibilityLabel() == "Launch at Login")
             #expect(language.accessibilityLabel() == "Language")
-            #expect(authorize.accessibilityLabel() == "Authorize")
-            #expect(refresh.accessibilityLabel() == "Refresh All Data")
+            #expect(claude.accessibilityLabel() == "Claude Code, Authorize")
+            #expect(codex.accessibilityLabel() == "Codex, Authorize")
+            #expect(opencode.accessibilityLabel() == "opencode, Authorize")
+            #expect(refresh.accessibilityLabel() == "Refresh Now")
             #expect(openSettings.accessibilityLabel() == "Open Login Items Settings")
         }
     }
@@ -2013,21 +2935,8 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            #expect(popUpButton.itemTitles == [
-                "跟随系统",
-                "简体中文",
-                "繁體中文",
-                "English",
-                "日本語",
-                "한국어",
-                "Español",
-                "Deutsch",
-                "Français",
-                "Português (Brasil)",
-                "Italiano",
-                "Nederlands",
-                "Polski",
-            ])
+            #expect(popUpButton.numberOfItems == 66)
+            #expect(popUpButton.itemTitles == frozenLanguageMenuTitles(systemTitle: "跟随系统"))
             #expect(popUpButton.titleOfSelectedItem == "跟随系统")
         }
     }
@@ -2035,27 +2944,68 @@ struct TokenWatchTests {
     @MainActor
     @Test func settingsControlsExposeStableAccessibilityIdentifiers() throws {
         try withTemporaryDefaults { defaults in
-            let settingsViewController = SettingsViewController(
+            let controller = SettingsViewController(
                 isAuthorized: { false },
                 autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
                 languageSettings: zhHansLanguageSettings(defaults: defaults)
             )
-            settingsViewController.loadViewIfNeeded()
+            controller.loadViewIfNeeded()
 
-            let buttons = settingsViewController.view.allDescendants(ofType: NSButton.self)
-            #expect(buttons.first { $0.title == "去授权" }?.accessibilityIdentifier() == "AuthorizationActionButton")
-            #expect(buttons.first { $0.title == "刷新全部数据" }?.accessibilityIdentifier() == "RefreshAllDataButton")
-            #expect(buttons.first { $0.title == "隐私政策" } == nil)
-            #expect(settingsViewController.view.button(identifier: "PrivacyPolicyButton") == nil)
+            for id in ProviderID.allCases {
+                let rowIdentifier = "ProviderDirectoryRow.\(id.rawValue)"
+                let nameIdentifier = "ProviderDirectoryName.\(id.rawValue)"
+                let statusIdentifier = "ProviderDirectoryStatus.\(id.rawValue)"
+                let actionIdentifier = "ProviderDirectoryAction.\(id.rawValue)"
+                let row = try #require(
+                    controller.view.firstDescendant(identifier: rowIdentifier)
+                )
+                let name = try #require(
+                    controller.view.firstDescendant(identifier: nameIdentifier)
+                )
+                let status = try #require(
+                    controller.view.firstDescendant(identifier: statusIdentifier)
+                )
+                let action = try #require(
+                    controller.view.button(identifier: actionIdentifier)
+                )
+                #expect(row.accessibilityIdentifier() == rowIdentifier)
+                #expect(name.accessibilityIdentifier() == nameIdentifier)
+                #expect(status.accessibilityIdentifier() == statusIdentifier)
+                #expect(action.accessibilityIdentifier() == actionIdentifier)
+            }
 
-            let autoRefreshPopUp = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
-            #expect(autoRefreshPopUp.accessibilityIdentifier() == "AutoRefreshIntervalPopUpButton")
+            let refresh = try #require(
+                controller.view.button(identifier: "RefreshAllDataButton")
+            )
+            #expect(refresh.accessibilityIdentifier() == "RefreshAllDataButton")
+            #expect(controller.view.button(identifier: "PrivacyPolicyButton") == nil)
 
-            let launchAtLoginSwitch = try #require(settingsViewController.view.switchControl(identifier: "LaunchAtLoginSwitch"))
-            #expect(launchAtLoginSwitch.accessibilityIdentifier() == "LaunchAtLoginSwitch")
+            let autoRefresh = try #require(
+                controller.view.popUpButton(
+                    identifier: "AutoRefreshIntervalPopUpButton"
+                )
+            )
+            #expect(
+                autoRefresh.accessibilityIdentifier()
+                    == "AutoRefreshIntervalPopUpButton"
+            )
 
-            let languagePopUp = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            #expect(languagePopUp.accessibilityIdentifier() == "LanguagePreferencePopUpButton")
+            let launchAtLogin = try #require(
+                controller.view.switchControl(identifier: "LaunchAtLoginSwitch")
+            )
+            #expect(
+                launchAtLogin.accessibilityIdentifier() == "LaunchAtLoginSwitch"
+            )
+
+            let language = try #require(
+                controller.view.popUpButton(
+                    identifier: "LanguagePreferencePopUpButton"
+                )
+            )
+            #expect(
+                language.accessibilityIdentifier()
+                    == "LanguagePreferencePopUpButton"
+            )
         }
     }
 
@@ -2063,39 +3013,93 @@ struct TokenWatchTests {
     @Test func settingsPageUsesPencilLightColors() throws {
         try withTemporaryDefaults { defaults in
             let appearance = try #require(NSAppearance(named: .aqua))
-            let settingsViewController = SettingsViewController(
+            let controller = SettingsViewController(
                 isAuthorized: { false },
                 autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
                 languageSettings: zhHansLanguageSettings(defaults: defaults)
             )
             appearance.performAsCurrentDrawingAppearance {
-                settingsViewController.loadViewIfNeeded()
+                controller.loadViewIfNeeded()
             }
+            controller.view.appearance = appearance
+            refreshEffectiveAppearance(in: controller.view)
 
-            let panel = try #require(settingsViewController.view.firstDescendant(identifier: "SettingsPanel"))
-            let titleLabel = try #require(settingsViewController.view.textField(stringValue: "设置"))
-            let descriptionLabel = try #require(settingsViewController.view.textField(stringValue: "管理 AI Token Watch 的通用访问权限和数据刷新。"))
-            let authorizationLabel = try #require(settingsViewController.view.textField(stringValue: "通用访问权限"))
-            let authorizeButton = try #require(settingsViewController.view.button(identifier: "AuthorizationActionButton"))
-            let refreshButton = try #require(settingsViewController.view.button(identifier: "RefreshAllDataButton"))
-            let autoRefreshPopUp = try #require(settingsViewController.view.popUpButton(identifier: "AutoRefreshIntervalPopUpButton"))
-            let languagePopUp = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
+            let dataFoldersCard = try #require(
+                controller.view.firstDescendant(
+                    identifier: "SettingsDataFoldersSection"
+                ) as? DashboardGlassCardView
+            )
+            let title = try #require(
+                controller.view.textField(stringValue: "设置")
+            )
+            let description = try #require(
+                controller.view.textField(
+                    stringValue: "选择各数据源的数据文件夹并管理数据刷新。"
+                )
+            )
+            let dataFoldersTitle = try #require(
+                controller.view.firstDescendant(
+                    identifier: "DataFoldersTitleLabel"
+                ) as? NSTextField
+            )
+            let action = try #require(
+                controller.view.button(identifier: "ProviderDirectoryAction.claude")
+            )
+            let refresh = try #require(
+                controller.view.button(identifier: "RefreshAllDataButton")
+            )
+            let autoRefresh = try #require(
+                controller.view.popUpButton(
+                    identifier: "AutoRefreshIntervalPopUpButton"
+                )
+            )
+            let language = try #require(
+                controller.view.popUpButton(
+                    identifier: "LanguagePreferencePopUpButton"
+                )
+            )
 
-            #expect(rgbHex(try #require(settingsViewController.view.layer?.backgroundColor)) == 0xF4F6FA)
-            #expect(rgbHex(try #require(panel.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(panel.layer?.borderColor)) == 0xD8DEE8)
-            #expect(try rgbHex(try #require(titleLabel.textColor), appearance: .aqua) == 0x111827)
-            #expect(try rgbHex(try #require(descriptionLabel.textColor), appearance: .aqua) == 0x6B7280)
-            #expect(try rgbHex(try #require(authorizationLabel.textColor), appearance: .aqua) == 0x111827)
-            #expect(rgbHex(try #require(authorizeButton.layer?.backgroundColor)) == 0x2563EB)
-            #expect(rgbHex(try #require(authorizeButton.layer?.borderColor)) == 0x2563EB)
-            #expect(try rgbHex(try #require(authorizeButton.contentTintColor), appearance: .aqua) == 0xFFFFFF)
-            #expect(rgbHex(try #require(refreshButton.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(refreshButton.layer?.borderColor)) == 0xD8DEE8)
-            #expect(rgbHex(try #require(autoRefreshPopUp.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(autoRefreshPopUp.layer?.borderColor)) == 0xD8DEE8)
-            #expect(rgbHex(try #require(languagePopUp.layer?.backgroundColor)) == 0xFFFFFF)
-            #expect(rgbHex(try #require(languagePopUp.layer?.borderColor)) == 0xD8DEE8)
+            #expect(controller.view.layer?.backgroundColor == nil)
+            #expect(dataFoldersCard.debugUsesNativeLiquidGlass)
+            #expect(dataFoldersCard.debugUsesClearGlassStyle)
+            #expect(
+                try rgbHex(try #require(title.textColor), appearance: .aqua)
+                    == 0x111827
+            )
+            #expect(
+                try rgbHex(try #require(description.textColor), appearance: .aqua)
+                    == 0x6B7280
+            )
+            #expect(
+                try rgbHex(
+                    try #require(dataFoldersTitle.textColor),
+                    appearance: .aqua
+                ) == 0x111827
+            )
+            #expect(rgbHex(try #require(action.layer?.backgroundColor)) == 0x2563EB)
+            #expect(alphaValue(try #require(action.layer?.backgroundColor)) < 255)
+            #expect(alphaValue(try #require(action.layer?.borderColor)) < 255)
+            #expect(
+                try rgbHex(
+                    try #require(action.contentTintColor),
+                    appearance: .aqua
+                ) == 0x1E3A8A
+            )
+            #expect(alphaValue(try #require(refresh.layer?.backgroundColor)) == 0)
+            #expect(rgbHex(try #require(refresh.layer?.borderColor)) == 0x64748B)
+            #expect(alphaValue(try #require(refresh.layer?.borderColor)) < 255)
+            #expect(
+                try rgbHex(
+                    try #require(refresh.contentTintColor),
+                    appearance: .aqua
+                ) == 0x111827
+            )
+            #expect(alphaValue(try #require(autoRefresh.layer?.backgroundColor)) == 0)
+            #expect(rgbHex(try #require(autoRefresh.layer?.borderColor)) == 0x64748B)
+            #expect(alphaValue(try #require(autoRefresh.layer?.borderColor)) < 255)
+            #expect(alphaValue(try #require(language.layer?.backgroundColor)) == 0)
+            #expect(rgbHex(try #require(language.layer?.borderColor)) == 0x64748B)
+            #expect(alphaValue(try #require(language.layer?.borderColor)) < 255)
         }
     }
 
@@ -2111,29 +3115,15 @@ struct TokenWatchTests {
             settingsViewController.loadViewIfNeeded()
 
             let popUpButton = try #require(settingsViewController.view.popUpButton(identifier: "LanguagePreferencePopUpButton"))
-            popUpButton.selectItem(withTitle: "English")
+            popUpButton.selectItem(withTitle: AppLanguage.ptPT.nativeDisplayName)
             _ = popUpButton.sendAction(popUpButton.action, to: popUpButton.target)
 
             let labels = settingsViewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "en")
-            #expect(labels.contains("Settings"))
-            #expect(labels.contains("Language"))
-            #expect(popUpButton.itemTitles == [
-                "System",
-                "简体中文",
-                "繁體中文",
-                "English",
-                "日本語",
-                "한국어",
-                "Español",
-                "Deutsch",
-                "Français",
-                "Português (Brasil)",
-                "Italiano",
-                "Nederlands",
-                "Polski",
-            ])
-            #expect(popUpButton.titleOfSelectedItem == "English")
+            #expect(defaults.string(forKey: AppLanguageSettings.storageKey) == "pt-PT")
+            #expect(labels.contains("Definições"))
+            #expect(labels.contains("Idioma"))
+            #expect(popUpButton.itemTitles == frozenLanguageMenuTitles(systemTitle: "Sistema"))
+            #expect(popUpButton.titleOfSelectedItem == AppLanguage.ptPT.nativeDisplayName)
         }
     }
 
@@ -2141,7 +3131,7 @@ struct TokenWatchTests {
     @Test func dashboardUsesEnglishCopyWhenLanguageIsEnglish() throws {
         withTemporaryDefaults { defaults in
             let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
-            languageSettings.selectedPreference = .en
+            languageSettings.selectedPreference = .language(.en)
             let viewController = ViewController(languageSettings: languageSettings)
             viewController.loadViewIfNeeded()
 
@@ -2166,24 +3156,35 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test func dashboardRefreshesVisibleCopyAfterLanguageChange() throws {
-        withTemporaryDefaults { defaults in
-            let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
-            let viewController = ViewController(languageSettings: languageSettings)
-            viewController.loadViewIfNeeded()
+    @Test func languageChangeDoesNotInvokeDashboardRefreshAction() async throws {
+        let suiteName = "TokenWatchTests.LanguageChange.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
-            languageSettings.selectedPreference = .en
+        let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+        languageSettings.selectedPreference = .language(.zhHans)
+        var refreshActionCallCount = 0
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: languageSettings),
+            stateProvider: { [:] },
+            refreshAction: { refreshActionCallCount += 1 },
+            languageSettings: languageSettings
+        )
+        viewController.loadViewIfNeeded()
 
-            let navTitles: [String] = viewController.view.allDescendants(ofType: NSButton.self).compactMap { button -> String? in
-                guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
-                return button.title
+        #expect(viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue).contains("用量总览"))
+
+        languageSettings.selectedPreference = .language(.ukUA)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
             }
-            let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-
-            #expect(navTitles == ["Overview", "Sessions", "Settings"])
-            #expect(labels.contains("Usage Overview"))
-            #expect(!labels.contains("用量总览"))
         }
+
+        let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains("Огляд використання"))
+        #expect(!labels.contains("用量总览"))
+        #expect(refreshActionCallCount == 0)
     }
 }
 
@@ -2298,6 +3299,13 @@ private func withTemporaryDefaults(_ body: (UserDefaults) throws -> Void) rethro
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
     try body(defaults)
+}
+
+private func frozenLanguageMenuTitles(systemTitle: String) -> [String] {
+    [systemTitle] + frozenSettingsLocaleIdentifiers.map { localeIdentifier in
+        Locale(identifier: localeIdentifier).localizedString(forIdentifier: localeIdentifier)
+            ?? localeIdentifier
+    }
 }
 
 @MainActor
@@ -2465,6 +3473,9 @@ private func textField(_ value: String, inPanelTitled title: String, root: NSVie
 private func panelTitled(_ title: String, root: NSView) throws -> NSView {
     let titleLabel = try #require(root.textField(stringValue: title))
     return try #require(titleLabel.firstAncestor { view in
+        if view is DashboardGlassCardView {
+            return true
+        }
         guard let cornerRadius = view.layer?.cornerRadius else { return false }
         return abs(cornerRadius - 8) < 0.1
     })
@@ -2474,6 +3485,9 @@ private func panelTitled(_ title: String, root: NSView) throws -> NSView {
 private func roundedAncestor(containingText text: String, root: NSView) throws -> NSView {
     let label = try #require(root.textField(stringValue: text))
     return try #require(label.firstAncestor { view in
+        if view is DashboardGlassCardView {
+            return true
+        }
         guard let cornerRadius = view.layer?.cornerRadius else { return false }
         return abs(cornerRadius - 8) < 0.1
     })

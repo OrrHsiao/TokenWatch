@@ -244,7 +244,7 @@ private struct TodayHourlyTokenLineChartContent: View {
     }
 
     private var axisValueName: String {
-        language.periodAxisValueName
+        AppStrings.text(.periodAxisValueName, language: language)
     }
 
     private var areaGradient: LinearGradient {

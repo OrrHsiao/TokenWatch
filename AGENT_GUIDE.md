@@ -50,6 +50,9 @@ ci(actions): 优化构建缓存策略
 
 ### Build
 ```bash
+# 优先规则
+优先使用 Xcode MCP 进行构建、测试和调试，在Xcode MCP不可用时，再回退到xcodebuild
+
 # Build the app (Debug)
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Debug -derivedDataPath .build/DerivedData build
 
@@ -59,6 +62,9 @@ xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -configuration Relea
 
 ### Test
 ```bash
+# 优先规则
+优先使用 Xcode MCP 进行构建、测试和调试，在Xcode MCP不可用时，再回退到xcodebuild
+
 # Run all tests (unit + UI)
 xcodebuild -project TokenWatch.xcodeproj -scheme TokenWatch -destination 'platform=macOS' -derivedDataPath .build/DerivedData test
 
