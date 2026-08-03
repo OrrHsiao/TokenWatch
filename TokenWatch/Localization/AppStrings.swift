@@ -18,9 +18,12 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case sidebarToday
     case sidebarSettings
     case dashboardOverviewNavigation
+    case dashboardWidgetsNavigation
     case dashboardSessionsNavigation
     case dashboardOverviewTitle
     case dashboardOverviewSubtitle
+    case dashboardWidgetsTitle
+    case dashboardWidgetsSubtitle
     case dashboardSessionsTitle
     case dashboardSessionsSubtitle
     case dashboardDataSources
@@ -175,13 +178,16 @@ enum AppStrings {
     )
     private static let missingLocalizationSentinel = "__TOKENWATCH_MISSING_LOCALIZATION__"
 
-    /// Provider directory management and widget copy were added after the 65-locale resource set.
+    /// Provider directory management and newer Dashboard pages were added after the 65-locale resource set.
     /// New locales intentionally fall back to the reviewed English copy for these keys.
     static let englishFallbackKeys: Set<AppStringKey> = [
         .chooseDirectoryPrompt,
         .claudeDataDirectoryOpenPanelMessage,
         .codexDataDirectoryOpenPanelMessage,
         .dashboardCacheHitRate,
+        .dashboardWidgetsNavigation,
+        .dashboardWidgetsSubtitle,
+        .dashboardWidgetsTitle,
         .errorCannotAccessProviderDirectoryFormat,
         .errorProviderDirectoryAuthorizationFailedFormat,
         .initialDirectoryAuthorizationGuideLater,

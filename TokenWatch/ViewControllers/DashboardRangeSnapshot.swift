@@ -2,6 +2,7 @@ import Foundation
 
 enum DashboardNavigationItem: String, CaseIterable {
     case overview
+    case widgets
     case sessions
     case settings
 
@@ -13,6 +14,8 @@ enum DashboardNavigationItem: String, CaseIterable {
         switch self {
         case .overview:
             return AppStrings.text(.dashboardOverviewNavigation, language: language)
+        case .widgets:
+            return AppStrings.text(.dashboardWidgetsNavigation, language: language)
         case .sessions:
             return AppStrings.text(.dashboardSessionsNavigation, language: language)
         case .settings:
@@ -23,6 +26,7 @@ enum DashboardNavigationItem: String, CaseIterable {
     var symbolName: String {
         switch self {
         case .overview: return "waveform.path.ecg"
+        case .widgets: return "square.grid.2x2"
         case .sessions: return "message"
         case .settings: return "gearshape"
         }

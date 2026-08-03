@@ -9,9 +9,12 @@
 "sidebarToday" = "Vandaag";
 "sidebarSettings" = "Instellingen";
 "dashboardOverviewNavigation" = "Overzicht";
+"dashboardWidgetsNavigation" = "Onderdelen";
 "dashboardSessionsNavigation" = "Sessies";
 "dashboardOverviewTitle" = "Gebruiksoverzicht";
 "dashboardOverviewSubtitle" = "Vat lokale records samen uit Claude Code, Codex rollout en opencode SQLite";
+"dashboardWidgetsTitle" = "Onderdelen";
+"dashboardWidgetsSubtitle" = "Bekijk voorbeelden van de onderdelen die beschikbaar zijn in TokenWatch.";
 "dashboardSessionsTitle" = "Sessies";
 "dashboardSessionsSubtitle" = "Bekijk sessie-aggregaten, kosten en gebruiksrecords op recente activiteit";
 "dashboardDataSources" = "Gegevensbronnen";

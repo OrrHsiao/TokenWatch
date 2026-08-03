@@ -16,6 +16,7 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "de-DE", key: .languageSystem, reason: "System 在德语中使用相同拼写。"),
     .init(localeIdentifier: "de-DE", key: .dashboardTrendTitle, reason: "Trend 在德语数据界面中使用相同拼写。"),
     .init(localeIdentifier: "de-DE", key: .dashboardCache, reason: "Cache 是德语技术界面沿用的术语。"),
+    .init(localeIdentifier: "de-DE", key: .dashboardWidgetsSubtitle, reason: "保留 TokenWatch 产品名后与英文存在词组重叠。"),
     .init(localeIdentifier: "de-DE", key: .dashboardReasoning, reason: "Reasoning 是模型能力名称，德语界面保留英文。"),
     .init(localeIdentifier: "de-DE", key: .recentDetailsTool, reason: "Tool 是开发工具语境中保留的英文列名。"),
 
@@ -37,11 +38,13 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "it-IT", key: .dashboardInput, reason: "Input 是模型用量语境中保留的英文指标名。"),
     .init(localeIdentifier: "it-IT", key: .dashboardOutput, reason: "Output 是模型用量语境中保留的英文指标名。"),
     .init(localeIdentifier: "it-IT", key: .dashboardCache, reason: "Cache 是意大利语技术界面沿用的术语。"),
+    .init(localeIdentifier: "it-IT", key: .dashboardWidgetsSubtitle, reason: "保留 TokenWatch 产品名后与英文存在词组重叠。"),
     .init(localeIdentifier: "it-IT", key: .mainMenuZoom, reason: "Zoom 是意大利语 macOS 界面沿用的通用术语。"),
 
     .init(localeIdentifier: "nl-NL", key: .dashboardMetricRecords, reason: "Records 是荷兰语数据界面采用的英文指标名。"),
     .init(localeIdentifier: "nl-NL", key: .dashboardTrendTitle, reason: "Trend 在荷兰语中使用相同拼写。"),
     .init(localeIdentifier: "nl-NL", key: .dashboardCache, reason: "Cache 是荷兰语技术界面沿用的术语。"),
+    .init(localeIdentifier: "nl-NL", key: .dashboardWidgetsSubtitle, reason: "保留 TokenWatch 产品名后与英文存在词组重叠。"),
     .init(localeIdentifier: "nl-NL", key: .recentDetailsTool, reason: "Tool 在荷兰语开发工具语境中使用相同拼写。"),
     .init(localeIdentifier: "nl-NL", key: .recentDetailsProject, reason: "Project 在荷兰语中使用相同拼写。"),
     .init(localeIdentifier: "nl-NL", key: .recentDetailsModel, reason: "Model 在荷兰语中使用相同拼写。"),

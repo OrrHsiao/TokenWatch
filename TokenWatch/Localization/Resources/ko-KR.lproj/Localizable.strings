@@ -9,9 +9,12 @@
 "sidebarToday" = "오늘";
 "sidebarSettings" = "설정";
 "dashboardOverviewNavigation" = "개요";
+"dashboardWidgetsNavigation" = "위젯";
 "dashboardSessionsNavigation" = "세션";
 "dashboardOverviewTitle" = "사용량 개요";
 "dashboardOverviewSubtitle" = "Claude Code, Codex rollout, opencode SQLite의 로컬 기록을 요약합니다";
+"dashboardWidgetsTitle" = "위젯";
+"dashboardWidgetsSubtitle" = "TokenWatch에서 현재 지원되는 위젯의 예시 스타일을 확인하세요.";
 "dashboardSessionsTitle" = "세션";
 "dashboardSessionsSubtitle" = "최근 시간순으로 세션 집계, 비용, 사용 기록을 확인합니다";
 "dashboardDataSources" = "데이터 소스";

@@ -9,9 +9,12 @@
 "sidebarToday" = "今日";
 "sidebarSettings" = "設定";
 "dashboardOverviewNavigation" = "概要";
+"dashboardWidgetsNavigation" = "ウィジェット";
 "dashboardSessionsNavigation" = "セッション";
 "dashboardOverviewTitle" = "使用量の概要";
 "dashboardOverviewSubtitle" = "Claude Code、Codex rollout、opencode SQLite のローカル記録を集計します";
+"dashboardWidgetsTitle" = "ウィジェット";
+"dashboardWidgetsSubtitle" = "TokenWatch で現在サポートしているウィジェットの表示例です。";
 "dashboardSessionsTitle" = "セッション";
 "dashboardSessionsSubtitle" = "最新順でセッション集計、コスト、使用記録を確認します";
 "dashboardDataSources" = "データソース";

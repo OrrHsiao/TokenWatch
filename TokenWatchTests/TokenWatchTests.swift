@@ -178,7 +178,7 @@ struct TokenWatchTests {
             guard button.identifier?.rawValue.hasPrefix("DashboardNav.") == true else { return nil }
             return button.title
         }
-        #expect(navTitles == ["总览", "会话", "设置"])
+        #expect(navTitles == ["总览", "小组件", "会话", "设置"])
         #expect(viewController.view.button(identifier: "DashboardNav.timeline") == nil)
         #expect(viewController.view.button(identifier: "DashboardNav.models") == nil)
         #expect(viewController.view.button(identifier: "DashboardNav.projects") == nil)
@@ -487,6 +487,7 @@ struct TokenWatchTests {
 
         try assertFocusable([
             "DashboardNav.overview",
+            "DashboardNav.widgets",
             "DashboardNav.sessions",
             "DashboardNav.settings",
             "DashboardRange.day",
@@ -954,7 +955,7 @@ struct TokenWatchTests {
         viewController.view.setFrameSize(MainWindowFactory.contentSize)
         viewController.view.layoutSubtreeIfNeeded()
 
-        for item in ["overview", "sessions", "settings"] {
+        for item in ["overview", "widgets", "sessions", "settings"] {
             let identifier = "DashboardNav.\(item)"
             let button = try #require(viewController.view.button(identifier: identifier))
             let icon = try #require(button.firstDescendant(identifier: "\(identifier).icon"))
@@ -3141,7 +3142,7 @@ struct TokenWatchTests {
             }
             let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
 
-            #expect(navTitles == ["Overview", "Sessions", "Settings"])
+            #expect(navTitles == ["Overview", "Widgets", "Sessions", "Settings"])
             #expect(labels.contains("Usage Overview"))
             #expect(labels.contains("Summarizes local records from Claude Code, Codex rollout, and opencode SQLite"))
             #expect(labels.contains("Data Sources"))
