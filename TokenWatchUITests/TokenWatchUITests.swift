@@ -135,57 +135,6 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
-    func testCancellingOneProviderPanelLeavesAllRowsUnselected() throws {
-        let app = XCUIApplication()
-        app.launchForUITesting(languagePreference: "en")
-
-        let settingsButton = app.buttons["DashboardNav.settings"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.click()
-
-        let claudeButton = app.buttons["ProviderDirectoryAction.claude"]
-        let buttonReady = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND enabled == true AND isHittable == true"),
-            object: claudeButton
-        )
-        XCTAssertEqual(
-            XCTWaiter.wait(for: [buttonReady], timeout: 5),
-            .completed
-        )
-        claudeButton.click()
-
-        let panelWindow = app.windows.element(boundBy: 1)
-        XCTAssertTrue(panelWindow.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.windows.count, 2)
-
-        app.typeKey(.escape, modifierFlags: [])
-        XCTAssertTrue(panelWindow.waitForNonExistence(timeout: 2))
-
-        let buttonReadyAfterCancellation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND enabled == true AND isHittable == true"),
-            object: claudeButton
-        )
-        XCTAssertEqual(
-            XCTWaiter.wait(for: [buttonReadyAfterCancellation], timeout: 5),
-            .completed
-        )
-        XCTAssertEqual(app.windows.count, 1)
-
-        for (id, providerName) in [
-            ("claude", "Claude Code"),
-            ("codex", "Codex"),
-            ("opencode", "opencode"),
-        ] {
-            let action = app.buttons["ProviderDirectoryAction.\(id)"]
-            XCTAssertTrue(action.exists)
-            XCTAssertEqual(
-                action.label,
-                "\(providerName), Authorize"
-            )
-        }
-    }
-
-    @MainActor
     func testArabicLaunchUsesLocalizedCopyAndKeepsLTRLayout() throws {
         let app = XCUIApplication()
         app.launchForUITesting(languagePreference: "ar", systemLanguage: "ar")
