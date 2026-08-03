@@ -211,6 +211,7 @@ final class DashboardViewController: NSViewController {
         selectedNavigationItem = .settings
         updateNavigationSelection()
         installSettingsContent()
+        setInitialLoadingVisible(!initialLoadCompletionProvider())
     }
 
     private func setupLayout() {
@@ -1864,7 +1865,7 @@ final class DashboardViewController: NSViewController {
     }
 
     /// 首次扫描期间用主内容区遮罩阻止交互，直到 ViewModel 确认所有 provider 都结束加载。
-    /// 后续刷新只显示侧边栏的非阻塞指示器，避免遮挡已有统计数据。
+    /// 设置页需要保留目录授权操作，后续刷新只显示侧边栏的非阻塞指示器。
     private func updateLoadingFeedback(
         states: [ProviderID: TokenStatsViewModel.ProviderState]
     ) {
@@ -1884,7 +1885,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func setInitialLoadingVisible(_ isVisible: Bool) {
-        initialLoadingOverlay.setLoading(isVisible)
+        initialLoadingOverlay.setLoading(isVisible && selectedNavigationItem != .settings)
     }
 
     private func scanStatusText(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> String {
