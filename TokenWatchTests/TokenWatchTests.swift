@@ -782,6 +782,107 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardProjectListTopStaysAlignedAcrossRanges() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let recentEntries = (1...2).map { index in
+            makeDashboardEntry(
+                sessionID: "recent-\(index)",
+                date: dateTime(2026, 6, 20, hour: index, minute: 0, calendar: calendar),
+                model: "model-\(index)",
+                input: 1_000 - index,
+                cwd: "/work/recent-project-\(index)"
+            )
+        }
+        let olderEntries = (1...8).map { index in
+            makeDashboardEntry(
+                sessionID: "older-\(index)",
+                date: dateTime(2026, 6, 1, hour: index, minute: 0, calendar: calendar),
+                model: "older-model-\(index)",
+                input: 900 - index,
+                cwd: "/work/older-project-\(index)"
+            )
+        }
+        let stats = UsageAggregator().aggregate(recentEntries + olderEntries)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let sevenDayProjectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let sevenDayModelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        let sevenDayProjectList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        let sevenDayModelList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardModelRowsScrollView") as? NSScrollView
+        )
+        let sevenDayProjectFrame = sevenDayProjectPanel.convert(sevenDayProjectPanel.bounds, to: viewController.view)
+        let sevenDayModelFrame = sevenDayModelPanel.convert(sevenDayModelPanel.bounds, to: viewController.view)
+        let sevenDayProjectListFrame = sevenDayProjectList.convert(sevenDayProjectList.bounds, to: viewController.view)
+        let sevenDayModelListFrame = sevenDayModelList.convert(sevenDayModelList.bounds, to: viewController.view)
+
+        try clickDashboardRange("month", in: viewController)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let monthProjectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let monthModelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        let monthProjectList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        let monthModelList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardModelRowsScrollView") as? NSScrollView
+        )
+        let monthProjectFrame = monthProjectPanel.convert(monthProjectPanel.bounds, to: viewController.view)
+        let monthModelFrame = monthModelPanel.convert(monthModelPanel.bounds, to: viewController.view)
+        let monthProjectListFrame = monthProjectList.convert(monthProjectList.bounds, to: viewController.view)
+        let monthModelListFrame = monthModelList.convert(monthModelList.bounds, to: viewController.view)
+
+        try clickDashboardRange("sevenDays", in: viewController)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        let returnedSevenDayProjectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let returnedSevenDayProjectList = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardProjectRowsScrollView") as? NSScrollView
+        )
+        let returnedSevenDayProjectFrame = returnedSevenDayProjectPanel.convert(
+            returnedSevenDayProjectPanel.bounds,
+            to: viewController.view
+        )
+        let returnedSevenDayProjectListFrame = returnedSevenDayProjectList.convert(
+            returnedSevenDayProjectList.bounds,
+            to: viewController.view
+        )
+
+        #expect(abs(sevenDayProjectFrame.minY - sevenDayModelFrame.minY) < 0.5)
+        #expect(abs(sevenDayProjectFrame.maxY - sevenDayModelFrame.maxY) < 0.5)
+        #expect(abs(monthProjectFrame.minY - monthModelFrame.minY) < 0.5)
+        #expect(abs(monthProjectFrame.maxY - monthModelFrame.maxY) < 0.5)
+        #expect(abs(monthProjectFrame.maxY - sevenDayProjectFrame.maxY) < 0.5)
+        #expect(abs(monthProjectListFrame.maxY - sevenDayProjectListFrame.maxY) < 0.5)
+        #expect(abs(sevenDayProjectListFrame.minY - sevenDayModelListFrame.minY) < 0.5)
+        #expect(abs(sevenDayProjectListFrame.maxY - sevenDayModelListFrame.maxY) < 0.5)
+        #expect(abs(monthProjectListFrame.minY - monthModelListFrame.minY) < 0.5)
+        #expect(abs(monthProjectListFrame.maxY - monthModelListFrame.maxY) < 0.5)
+        #expect(abs(returnedSevenDayProjectFrame.maxY - sevenDayProjectFrame.maxY) < 0.5)
+        #expect(abs(returnedSevenDayProjectListFrame.maxY - sevenDayProjectListFrame.maxY) < 0.5)
+    }
+
+    @MainActor
     @Test func dashboardTextUsesLeftAlignment() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
@@ -1733,21 +1834,28 @@ struct TokenWatchTests {
         #expect(try #require(projectRowsScrollView.documentView).frame.height > projectRowsScrollView.contentView.bounds.height)
 
         let sourcePanel = try panelTitled("来源占比", root: viewController.view)
+        let trendPanel = try panelTitled("趋势", root: viewController.view)
         let projectPanel = try panelTitled("项目消耗", root: viewController.view)
         let modelPanel = try panelTitled("模型消耗排行", root: viewController.view)
-        #expect(sourcePanel.frame.height < projectPanel.frame.height)
-        #expect(projectPanel.frame.height > modelPanel.frame.height)
+        #expect(abs(sourcePanel.frame.height - trendPanel.frame.height) < 0.5)
+        #expect(abs(projectPanel.frame.height - modelPanel.frame.height) < 0.5)
         #expect(abs(modelPanel.frame.height - 232) < 0.5)
         let sourcePanelFrame = sourcePanel.convert(sourcePanel.bounds, to: viewController.view)
         let projectPanelFrame = projectPanel.convert(projectPanel.bounds, to: viewController.view)
         let modelPanelFrame = modelPanel.convert(modelPanel.bounds, to: viewController.view)
+        let modelRowsScrollFrame = modelRowsScrollView.convert(
+            modelRowsScrollView.bounds,
+            to: viewController.view
+        )
         let projectRowsScrollFrame = projectRowsScrollView.convert(
             projectRowsScrollView.bounds,
             to: viewController.view
         )
         #expect(abs(sourcePanelFrame.minY - projectPanelFrame.maxY - 18) < 0.5)
         #expect(abs(projectPanelFrame.minY - modelPanelFrame.minY) < 0.5)
-        #expect(abs(projectRowsScrollFrame.minY - projectPanelFrame.minY - 18) < 0.5)
+        #expect(abs(projectPanelFrame.maxY - modelPanelFrame.maxY) < 0.5)
+        #expect(abs(projectRowsScrollFrame.minY - modelRowsScrollFrame.minY) < 0.5)
+        #expect(abs(projectRowsScrollFrame.maxY - modelRowsScrollFrame.maxY) < 0.5)
     }
 
     @MainActor

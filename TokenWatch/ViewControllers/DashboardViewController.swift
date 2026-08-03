@@ -17,7 +17,7 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableMinimumWidth: CGFloat = 880
     private static let sessionTableColumnSpacing: CGFloat = 4
     private static let sessionTableHorizontalPadding: CGFloat = 10
-    private static let sourceSharePanelMinimumHeight: CGFloat = 200
+    private static let sourceSharePanelMinimumHeight: CGFloat = 230
     private static let analysisRowsViewportHeight: CGFloat = 164
     private static let analysisRowsPanelMinimumHeight: CGFloat = 232
     private static let sessionPageSize = 10
@@ -852,16 +852,20 @@ final class DashboardViewController: NSViewController {
         leftColumn.orientation = .vertical
         leftColumn.alignment = .leading
         leftColumn.spacing = Self.rowGap
-        addFullWidthArrangedSubview(makeTrendPanel(), to: leftColumn)
-        addFullWidthArrangedSubview(makeModelRankPanel(), to: leftColumn)
+        let trendPanel = makeTrendPanel()
+        let modelRankPanel = makeModelRankPanel()
+        addFullWidthArrangedSubview(trendPanel, to: leftColumn)
+        addFullWidthArrangedSubview(modelRankPanel, to: leftColumn)
 
         let rightColumn = NSStackView()
         rightColumn.orientation = .vertical
         rightColumn.alignment = .leading
         rightColumn.distribution = .fill
         rightColumn.spacing = Self.rowGap
-        addFullWidthArrangedSubview(makeSourcePanel(), to: rightColumn)
-        addFullWidthArrangedSubview(makeProjectPanel(), to: rightColumn)
+        let sourcePanel = makeSourcePanel()
+        let projectPanel = makeProjectPanel()
+        addFullWidthArrangedSubview(sourcePanel, to: rightColumn)
+        addFullWidthArrangedSubview(projectPanel, to: rightColumn)
 
         let section = NSView()
         section.addSubview(leftColumn)
@@ -878,6 +882,9 @@ final class DashboardViewController: NSViewController {
             rightColumn.topAnchor.constraint(equalTo: section.topAnchor),
             rightColumn.bottomAnchor.constraint(equalTo: section.bottomAnchor),
             rightColumn.widthAnchor.constraint(equalToConstant: 330),
+            // 两列按行配对，避免统计范围改变后项目数量决定右下卡片的高度。
+            sourcePanel.heightAnchor.constraint(equalTo: trendPanel.heightAnchor),
+            projectPanel.heightAnchor.constraint(equalTo: modelRankPanel.heightAnchor),
         ])
         return section
     }
@@ -981,8 +988,6 @@ final class DashboardViewController: NSViewController {
             content: body,
             minimumHeight: Self.sourceSharePanelMinimumHeight
         )
-        panel.heightAnchor.constraint(equalToConstant: Self.sourceSharePanelMinimumHeight).isActive = true
-        panel.setContentHuggingPriority(.required, for: .vertical)
         return panel
     }
 
@@ -994,24 +999,24 @@ final class DashboardViewController: NSViewController {
             rowsStack: projectRowsStack,
             scrollView: projectRowsScrollView,
             identifier: "DashboardProjectRowsScrollView",
-            viewportHeight: nil
+            // 固定可视区高度，避免切换统计范围后随项目行数改变列表顶缘。
+            viewportHeight: Self.analysisRowsViewportHeight
         )
         let panel = makePanel(
             titleKey: .dashboardProjectUsageTitle,
             subtitleKey: nil,
             content: rowsScrollView,
-            minimumHeight: Self.analysisRowsPanelMinimumHeight,
-            contentFillsAvailableHeight: true
+            minimumHeight: Self.analysisRowsPanelMinimumHeight
         )
         return panel
     }
 
-    /// 创建条目滚动区；可指定固定可视高度，或让它填满父面板剩余的垂直空间。
+    /// 创建固定可视高度的条目滚动区，超出可视区的条目仍可通过滚动查看。
     private func makeScrollableRowsView(
         rowsStack: NSStackView,
         scrollView: NSScrollView,
         identifier: String,
-        viewportHeight: CGFloat?
+        viewportHeight: CGFloat
     ) -> NSScrollView {
         let clipView = scrollView.contentView
         scrollView.identifier = NSUserInterfaceItemIdentifier(identifier)
@@ -1025,19 +1030,13 @@ final class DashboardViewController: NSViewController {
         scrollView.documentView = rowsStack
 
         rowsStack.translatesAutoresizingMaskIntoConstraints = false
-        var constraints = [
+        NSLayoutConstraint.activate([
             rowsStack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
             rowsStack.topAnchor.constraint(equalTo: clipView.topAnchor),
             rowsStack.widthAnchor.constraint(equalTo: clipView.widthAnchor),
             rowsStack.heightAnchor.constraint(greaterThanOrEqualTo: clipView.heightAnchor),
-        ]
-        if let viewportHeight {
-            constraints.append(scrollView.heightAnchor.constraint(equalToConstant: viewportHeight))
-        } else {
-            // 项目面板会随同栏内容拉伸；降低滚动区的垂直 hugging，让新增高度落在这里。
-            scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
-        }
-        NSLayoutConstraint.activate(constraints)
+            scrollView.heightAnchor.constraint(equalToConstant: viewportHeight),
+        ])
         return scrollView
     }
 
@@ -1046,8 +1045,7 @@ final class DashboardViewController: NSViewController {
         subtitleKey: AppStringKey?,
         content: NSView,
         minimumHeight: CGFloat,
-        trailingHeaderContent: NSView? = nil,
-        contentFillsAvailableHeight: Bool = false
+        trailingHeaderContent: NSView? = nil
     ) -> NSView {
         let titleLabel = localizedLabel(titleKey)
         titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
@@ -1105,11 +1103,7 @@ final class DashboardViewController: NSViewController {
             headerView.widthAnchor.constraint(equalTo: stack.widthAnchor),
             content.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ]
-        constraints.append(
-            contentFillsAvailableHeight
-                ? stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -18)
-                : stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18)
-        )
+        constraints.append(stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18))
         NSLayoutConstraint.activate(constraints)
         return panel
     }
@@ -1660,7 +1654,6 @@ final class DashboardViewController: NSViewController {
         }) else { return }
         selectedRange = range
         selectedNavigationItem = .overview
-        installOverviewContent()
         updateNavigationSelection()
         render()
     }
