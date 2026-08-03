@@ -1,5 +1,11 @@
 import AppKit
 
+/// 保持 macOS 15/Xcode 16.4 可编译时，通过 KVC 设置 macOS 26 玻璃样式的枚举值。
+private enum NativeGlassEffectStyle {
+    static let regular = 0
+    static let clear = 1
+}
+
 enum DashboardPalette {
     static let appBackground = dynamicColor(light: 0xF4F6FA, dark: 0x0B0F14)
     static let translucentAppBackground = dynamicColor(
@@ -223,7 +229,7 @@ final class DashboardGlassBackgroundView: NSView {
     private func installGlassEffect() {
         if #available(macOS 26.0, *), let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
             let glassView = glassClass.init(frame: .zero)
-            glassView.setValue(0, forKey: "style")
+            glassView.setValue(NativeGlassEffectStyle.clear, forKey: "style")
             glassView.setValue(CGFloat(0), forKey: "cornerRadius")
             glassView.translatesAutoresizingMaskIntoConstraints = false
             glassView.setValue(contentContainer, forKey: "contentView")
@@ -341,7 +347,10 @@ class DashboardGlassCardView: NSView {
     private func updateNativeGlassStyle() {
         guard #available(macOS 26.0, *), let nativeGlassView = nativeGlassView else { return }
         let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        nativeGlassView.setValue(isDark ? 1 : 0, forKey: "style")
+        nativeGlassView.setValue(
+            isDark ? NativeGlassEffectStyle.regular : NativeGlassEffectStyle.clear,
+            forKey: "style"
+        )
         usesClearGlassStyle = !isDark
     }
 }
