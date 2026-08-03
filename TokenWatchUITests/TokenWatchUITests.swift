@@ -145,7 +145,7 @@ final class TokenWatchUITests: XCTestCase {
 
         let claudeButton = app.buttons["ProviderDirectoryAction.claude"]
         let buttonReady = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND enabled == true"),
+            predicate: NSPredicate(format: "exists == true AND enabled == true AND isHittable == true"),
             object: claudeButton
         )
         XCTAssertEqual(
@@ -162,7 +162,7 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(panelWindow.waitForNonExistence(timeout: 2))
 
         let buttonReadyAfterCancellation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND enabled == true"),
+            predicate: NSPredicate(format: "exists == true AND enabled == true AND isHittable == true"),
             object: claudeButton
         )
         XCTAssertEqual(

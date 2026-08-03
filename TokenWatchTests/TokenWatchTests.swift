@@ -352,6 +352,37 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardSettingsRemainInteractiveDuringInitialLoad() throws {
+        let initialLoadCompletion = InitialLoadCompletionState()
+        var state = TokenStatsViewModel.ProviderState(
+            stats: nil,
+            isLoading: false,
+            errorMessage: nil,
+            needsAuthorization: false
+        )
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { [.claude: state] },
+            initialLoadCompletionProvider: { initialLoadCompletion.hasCompleted },
+            refreshAction: {},
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        let loadingOverlay = try #require(
+            viewController.view.firstDescendant(identifier: "DashboardInitialLoadingOverlay")
+        )
+        #expect(!loadingOverlay.isHidden)
+
+        viewController.showSettings()
+        #expect(loadingOverlay.isHidden)
+
+        state.isLoading = true
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.claude)
+        #expect(loadingOverlay.isHidden)
+    }
+
+    @MainActor
     @Test func dashboardHeaderMatchesPencilOverview() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
