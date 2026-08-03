@@ -113,6 +113,17 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonImageAccessibilityDescription == "Refreshing")
     }
 
+    @Test("印地语摘要、今日说明和刷新提示使用已审定文案")
+    func hindiLanguageLocalizesSummaryDescriptionAndRefreshTooltip() {
+        let controller = makeController(language: .hiIN)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.debugSummaryCards.map(\.title) == ["महीना", "सप्ताह", "आज", "दैनिक औसत"])
+        #expect(controller.debugTodayDescriptionText == "आज कोई टोकन उपयोग नहीं")
+        #expect(controller.debugRefreshButtonToolTip == "अभी रीफ़्रेश करें")
+    }
+
     @Test("语言切换时重新渲染弹窗可见文案")
     func languageChangeRerendersVisibleText() throws {
         let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
@@ -120,7 +131,7 @@ struct StatusPopoverViewControllerTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans"] })
-        languageSettings.selectedPreference = .zhHans
+        languageSettings.selectedPreference = .language(.zhHans)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },
@@ -132,41 +143,60 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugSummaryCards.map(\.title) == ["本月", "本周", "今日", "日均"])
         #expect(controller.debugTodayDescriptionText == "本日还没有消耗 token 哦～")
 
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         #expect(controller.debugSummaryCards.map(\.title) == ["Month", "Week", "Today", "Daily Avg"])
         #expect(controller.debugTodayDescriptionText == "No token usage today")
         #expect(controller.debugRefreshButtonToolTip == "Refresh Now")
     }
 
-    @Test("根视图使用状态栏弹窗背景视图")
-    func rootViewUsesPopoverBackgroundView() {
+    @Test("根视图复用主界面液态玻璃背景视图")
+    func rootViewUsesDashboardGlassBackgroundView() {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
 
-        #expect(controller.view is StatusPopoverRootView)
+        #expect(controller.view is DashboardGlassBackgroundView)
     }
 
-    @Test("弹窗根背景使用系统 popover 背景以匹配顶部三角形")
-    func rootBackgroundMatchesPopoverArrowBackgroundInLightAndDark() throws {
+    @Test("弹窗根背景在 macOS 26 使用主界面同款原生液态玻璃")
+    func rootBackgroundUsesNativeLiquidGlass() throws {
         let controller = makeController()
-        let aquaAppearance = try #require(NSAppearance(named: .aqua))
-        let darkAppearance = try #require(NSAppearance(named: .darkAqua))
 
         controller.loadViewIfNeeded()
 
-        controller.view.appearance = aquaAppearance
-        refreshEffectiveAppearance(in: controller.view)
-        let aquaBackground = rgbHex(try #require(controller.view.layer?.backgroundColor))
-        let expectedAquaBackground = try rgbHex(NSColor.windowBackgroundColor, appearance: .aqua)
-        #expect(aquaBackground == expectedAquaBackground)
+        let rootView = try #require(controller.view as? DashboardGlassBackgroundView)
+        if #available(macOS 26.0, *) {
+            #expect(rootView.debugUsesNativeLiquidGlass)
+        }
+    }
 
-        controller.view.appearance = darkAppearance
-        refreshEffectiveAppearance(in: controller.view)
-        let darkBackground = rgbHex(try #require(controller.view.layer?.backgroundColor))
-        let expectedDarkBackground = try rgbHex(NSColor.windowBackgroundColor, appearance: .darkAqua)
-        #expect(darkBackground == expectedDarkBackground)
+    @Test("阿拉伯语弹窗根视图仍固定左到右")
+    func arabicPopoverRootStaysLeftToRight() {
+        let controller = makeController(language: .ar)
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.view.userInterfaceLayoutDirection == .leftToRight)
+    }
+
+    @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")
+    func loadingOverlayCoversPopoverWithStatusBarAnimation() {
+        let controller = makeController()
+
+        controller.loadViewIfNeeded()
+        #expect(!controller.debugLoadingOverlayIsVisible)
+
+        controller.debugSetLoadingOverlayVisible(true)
+
+        #expect(controller.debugLoadingOverlayIsVisible)
+        #expect(controller.debugLoadingOverlayUsesGlassMaterial)
+        #expect(controller.debugLoadingOverlayCoversRootView)
+        #expect(controller.debugLoadingOverlayMessage == "正在更新中，首次加载耗时较久，请耐心等待～")
+        #expect(controller.debugLoadingOverlaySymbolName == StatusBarLoadingAnimation.symbolNames.first)
+
+        controller.debugSetLoadingOverlayVisible(false)
+        #expect(!controller.debugLoadingOverlayIsVisible)
     }
 
     @Test("浅色外观保留主界面 Pencil 文本和卡片调色板")
@@ -316,9 +346,9 @@ struct StatusPopoverViewControllerTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         let languageSettings = AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: {
-            language == .zhHans ? ["zh-Hans"] : ["en-US"]
+            [language.rawValue]
         })
-        languageSettings.selectedPreference = language == .zhHans ? .zhHans : .en
+        languageSettings.selectedPreference = .language(language)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
             nowProvider: { fixedDate() },

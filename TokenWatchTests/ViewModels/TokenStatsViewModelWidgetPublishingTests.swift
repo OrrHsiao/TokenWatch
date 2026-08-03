@@ -85,7 +85,7 @@ struct TokenStatsViewModelWidgetPublishingTests {
 
         // refresh 先排入 MainActor，语言 observer 随后排入 drain；真正执行 drain 时必须重查 gate。
         let refresh = Task { await viewModel.loadAllStats() }
-        fixture.settings.selectedPreference = .en
+        fixture.settings.selectedPreference = .language(.en)
         try await waitUntil { codex.isWaiting }
 
         let callCountWhileRefreshIsBlocked = await publisher.callCount()
@@ -149,7 +149,7 @@ struct TokenStatsViewModelWidgetPublishingTests {
         let claudeScans = claude.scanCount
         let codexScans = codex.scanCount
 
-        fixture.settings.selectedPreference = .en
+        fixture.settings.selectedPreference = .language(.en)
         try await waitUntil { await publisher.callCount() == 2 }
 
         let calls = await publisher.recordedCalls()
@@ -175,13 +175,13 @@ struct TokenStatsViewModelWidgetPublishingTests {
 
         let refresh = Task { await viewModel.loadAllStats() }
         try await waitUntil { codex.isWaiting }
-        fixture.settings.selectedPreference = .en
+        fixture.settings.selectedPreference = .language(.en)
         let countBeforeBlockedProviderFinishes = await publisher.callCount()
         #expect(countBeforeBlockedProviderFinishes == 0)
 
         codex.resume()
         try await waitUntil { await publisher.isPublishSuspended() }
-        fixture.settings.selectedPreference = .ja
+        fixture.settings.selectedPreference = .language(.ja)
         await publisher.resumeSuspendedPublish()
         await refresh.value
 
@@ -208,10 +208,10 @@ struct TokenStatsViewModelWidgetPublishingTests {
         )
         let scansBeforeLanguageChanges = claude.scanCount
 
-        fixture.settings.selectedPreference = .en
+        fixture.settings.selectedPreference = .language(.en)
         try await waitUntil { await publisher.isPublishSuspended() }
-        fixture.settings.selectedPreference = .ja
-        fixture.settings.selectedPreference = .ko
+        fixture.settings.selectedPreference = .language(.ja)
+        fixture.settings.selectedPreference = .language(.ko)
         await waitForPreviouslyScheduledMainActorTasks()
 
         let callCountWhileFirstPublishIsSuspended = await publisher.callCount()
@@ -243,7 +243,7 @@ struct TokenStatsViewModelWidgetPublishingTests {
             publisher: publisher
         )
 
-        fixture.settings.selectedPreference = .en
+        fixture.settings.selectedPreference = .language(.en)
         try await waitUntil { await publisher.suspendedPublishCount() == 1 }
 
         await publisher.suspendNextPublish()
@@ -262,7 +262,7 @@ struct TokenStatsViewModelWidgetPublishingTests {
         let callCountBeforeRefreshPublishResumes = await publisher.callCount()
         #expect(callCountBeforeRefreshPublishResumes == 2)
         #expect(await publisher.suspendedPublishCount() == 1)
-        #expect(fixture.settings.selectedPreference == .en)
+        #expect(fixture.settings.selectedPreference == .language(.en))
 
         await publisher.resumeSuspendedPublish()
         await refresh.value
@@ -404,9 +404,16 @@ private final class MutableTestUsageProvider: UsageProvider, @unchecked Sendable
     let id: ProviderID
     let displayName: String
     let bookmarkKey: String
-    let openPanelMessage = "Select a folder"
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
+
+    var openPanelMessageKey: AppStringKey {
+        switch id {
+        case .claude: .claudeDataDirectoryOpenPanelMessage
+        case .codex: .codexDataDirectoryOpenPanelMessage
+        case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        }
+    }
 
     private let lock = NSLock()
     private var storedTotalTokens: Int
@@ -459,9 +466,16 @@ private final class BlockingTestUsageProvider: UsageProvider, @unchecked Sendabl
     let id: ProviderID
     let displayName: String
     let bookmarkKey: String
-    let openPanelMessage = "Select a folder"
     let hasCacheWriteDimension = true
     let hasReasoningDimension = false
+
+    var openPanelMessageKey: AppStringKey {
+        switch id {
+        case .claude: .claudeDataDirectoryOpenPanelMessage
+        case .codex: .codexDataDirectoryOpenPanelMessage
+        case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        }
+    }
 
     private let condition = NSCondition()
     private let totalTokens: Int
@@ -522,8 +536,8 @@ private final class AlwaysAuthorizedBookmarkManager: BookmarkAccessManaging {
 
     func promptUserToSelectDirectory(
         forProvider provider: any UsageProvider
-    ) async -> URL? {
-        rootURL
+    ) async -> DirectoryAuthorizationResult {
+        .authorized(rootURL)
     }
 
     func restoreBookmarkAndAccess(forKey key: String) -> URL? {

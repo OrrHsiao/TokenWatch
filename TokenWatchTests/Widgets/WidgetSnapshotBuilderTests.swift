@@ -156,7 +156,7 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.localizedText.notReadyMessage == "Open TokenWatch to refresh data")
     }
 
-    @Test("all supported languages define all four widget strings")
+    @Test("all supported languages resolve all four widget strings")
     func everyLanguageHasExactWidgetStrings() throws {
         let expected: [AppLanguage: [AppStringKey: String]] = [
             .zhHans: [
@@ -239,13 +239,23 @@ struct WidgetSnapshotBuilderTests {
             .widgetNotReadyMessage,
         ]
 
-        #expect(expected.count == AppLanguage.allCases.count)
-        for language in AppLanguage.allCases {
-            let table = try #require(expected[language])
+        #expect(expected.count == 12)
+        for (language, table) in expected {
             #expect(table.count == keys.count)
             for key in keys {
                 let expectedValue = try #require(table[key])
                 #expect(AppStrings.text(key, language: language) == expectedValue)
+            }
+        }
+
+        let english = try #require(expected[.en])
+        for language in AppLanguage.allCases where expected[language] == nil {
+            for key in keys {
+                let expectedValue = try #require(english[key])
+                #expect(
+                    AppStrings.text(key, language: language) == expectedValue,
+                    "Expected English fallback for \(language.rawValue)/\(key.rawValue)"
+                )
             }
         }
     }

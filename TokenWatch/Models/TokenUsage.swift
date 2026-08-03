@@ -11,7 +11,7 @@ extension Int {
 
 /// Claude Code JSONL 中 assistant 记录的 usage 对象完整字段映射
 /// 参考 ccusage 的数据模型设计
-struct TokenUsage: Decodable, Sendable {
+struct TokenUsage: Codable, Sendable {
     let inputTokens: Int
     let cacheCreationInputTokens: Int
     let cacheReadInputTokens: Int
@@ -59,6 +59,21 @@ struct TokenUsage: Decodable, Sendable {
         speed = try container.decodeIfPresent(String.self, forKey: .speed) ?? ""
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(inputTokens, forKey: .inputTokens)
+        try container.encode(cacheCreationInputTokens, forKey: .cacheCreationInputTokens)
+        try container.encode(cacheReadInputTokens, forKey: .cacheReadInputTokens)
+        try container.encode(outputTokens, forKey: .outputTokens)
+        try container.encode(reasoningTokens, forKey: .reasoningTokens)
+        try container.encode(serverToolUse, forKey: .serverToolUse)
+        try container.encode(serviceTier, forKey: .serviceTier)
+        try container.encodeIfPresent(cacheCreation, forKey: .cacheCreation)
+        try container.encode(inferenceGeo, forKey: .inferenceGeo)
+        try container.encode(iterations, forKey: .iterations)
+        try container.encode(speed, forKey: .speed)
+    }
+
     /// 便捷初始化（用于测试）
     init(
         inputTokens: Int,
@@ -88,7 +103,7 @@ struct TokenUsage: Decodable, Sendable {
 }
 
 /// server_tool_use 子结构
-struct ServerToolUse: Decodable, Sendable {
+struct ServerToolUse: Codable, Sendable {
     let webSearchRequests: Int
     let webFetchRequests: Int
 
@@ -108,11 +123,17 @@ struct ServerToolUse: Decodable, Sendable {
         webSearchRequests = try container.decodeIfPresent(Int.self, forKey: .webSearchRequests) ?? 0
         webFetchRequests = try container.decodeIfPresent(Int.self, forKey: .webFetchRequests) ?? 0
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(webSearchRequests, forKey: .webSearchRequests)
+        try container.encode(webFetchRequests, forKey: .webFetchRequests)
+    }
 }
 
 /// cache_creation 子结构
 /// 包含 ephemeral 缓存分解，ccusage 中 5m 和 1h 使用不同价格计算
-struct CacheCreation: Decodable, Sendable {
+struct CacheCreation: Codable, Sendable {
     let ephemeral1hInputTokens: Int
     let ephemeral5mInputTokens: Int
 
@@ -131,6 +152,12 @@ struct CacheCreation: Decodable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         ephemeral1hInputTokens = try container.decodeIfPresent(Int.self, forKey: .ephemeral1hInputTokens) ?? 0
         ephemeral5mInputTokens = try container.decodeIfPresent(Int.self, forKey: .ephemeral5mInputTokens) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(ephemeral1hInputTokens, forKey: .ephemeral1hInputTokens)
+        try container.encode(ephemeral5mInputTokens, forKey: .ephemeral5mInputTokens)
     }
 }
 

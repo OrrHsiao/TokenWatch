@@ -23,6 +23,7 @@ struct AppMainMenuBuilderTests {
             "Open AI Token Watch",
             "Settings...",
             "Refresh Now",
+            "Support",
             "Hide AI Token Watch",
             "Hide Others",
             "Show All",
@@ -33,6 +34,7 @@ struct AppMainMenuBuilderTests {
             "openMainWindow:",
             "showSettings:",
             "refreshNow:",
+            "openSupport:",
             "hide:",
             "hideOtherApplications:",
             "unhideAllApplications:",
@@ -41,6 +43,48 @@ struct AppMainMenuBuilderTests {
         #expect(items[1].target === actionTarget)
         #expect(items[2].target === actionTarget)
         #expect(items[3].target === actionTarget)
+        #expect(items[4].target === actionTarget)
+    }
+
+    @Test("Support 位于 Refresh 与原分隔符之间")
+    func supportItemIsAdjacentToRefreshAndSeparator() throws {
+        let actionTarget = AppDelegate()
+        let menu = AppMainMenuBuilder.build(actionTarget: actionTarget)
+        let appMenu = try #require(menu.items.first?.submenu)
+        let supportIndex = try #require(
+            appMenu.items.firstIndex {
+                $0.action == #selector(AppDelegate.openSupport(_:))
+            }
+        )
+
+        try #require(supportIndex > 0)
+        try #require(appMenu.items.indices.contains(supportIndex + 1))
+        #expect(
+            appMenu.items[supportIndex - 1].action
+                == #selector(AppDelegate.refreshNow(_:))
+        )
+        #expect(appMenu.items[supportIndex + 1].isSeparatorItem)
+    }
+
+    @Test("Support 命令打开固定 HTTPS 页面")
+    func supportCommandOpensFixedHTTPSURL() {
+        var openedURLs: [URL] = []
+        let actionTarget = AppDelegate(
+            languageSettings: .shared,
+            externalURLOpener: { url in
+                openedURLs.append(url)
+                return true
+            }
+        )
+
+        actionTarget.openSupport(nil)
+
+        #expect(openedURLs == [AppDelegate.supportURL])
+        #expect(
+            AppDelegate.supportURL.absoluteString
+                == "https://orrhsiao.github.io/TokenWatch/support/"
+        )
+        #expect(AppDelegate.supportURL.scheme == "https")
     }
 
     @Test func mainMenuUsesChineseTitlesWhenLanguageIsChinese() throws {
@@ -55,6 +99,7 @@ struct AppMainMenuBuilderTests {
             "打开 AI Token Watch",
             "设置...",
             "立即刷新",
+            "支持",
             "隐藏 AI Token Watch",
             "隐藏其他",
             "全部显示",
@@ -67,6 +112,42 @@ struct AppMainMenuBuilderTests {
         ])
     }
 
+    @Test func mainMenuUsesThaiWindowAndApplicationCommandTitles() throws {
+        let actionTarget = AppDelegate()
+        let menu = AppMainMenuBuilder.build(actionTarget: actionTarget, language: .thTH)
+        let appMenu = try #require(menu.items.first?.submenu)
+
+        #expect(menu.items.map(\.title) == ["AI Token Watch", "หน้าต่าง"])
+        #expect(appMenu.items.first?.title == "เกี่ยวกับ AI Token Watch")
+    }
+
+    @Test func mainMenuAndSubmenusStayLeftToRight() {
+        let menu = AppMainMenuBuilder.build(actionTarget: AppDelegate(), language: .ar)
+        let menus = [menu] + menu.items.compactMap(\.submenu)
+
+        #expect(menus.allSatisfy { $0.userInterfaceLayoutDirection == .leftToRight })
+    }
+
+    @Test func settingsPopupMenusStayLeftToRight() throws {
+        let suiteName = "AppMainMenuBuilderTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(defaults: defaults)
+        languageSettings.selectedPreference = .language(.ar)
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+
+        let popups = allDescendants(in: controller.view, ofType: NSPopUpButton.self)
+        #expect(popups.count == 2)
+        #expect(popups.allSatisfy { $0.userInterfaceLayoutDirection == .leftToRight })
+        #expect(popups.allSatisfy { $0.menu?.userInterfaceLayoutDirection == .leftToRight })
+    }
+
     @Test func installedMainMenuFollowsLanguageChanges() throws {
         let suiteName = "AppMainMenuBuilderTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -76,6 +157,7 @@ struct AppMainMenuBuilderTests {
             defaults: defaults,
             preferredLanguagesProvider: { ["zh-Hans"] }
         )
+        _ = NSApplication.shared
         let previousMainMenu = NSApp.mainMenu
         let previousWindowsMenu = NSApp.windowsMenu
         let controller = AppMainMenuController(
@@ -91,7 +173,7 @@ struct AppMainMenuBuilderTests {
 
         #expect(NSApp.mainMenu?.items.map(\.title) == ["AI Token Watch", "窗口"])
 
-        languageSettings.selectedPreference = .en
+        languageSettings.selectedPreference = .language(.en)
 
         #expect(NSApp.mainMenu?.items.map(\.title) == ["AI Token Watch", "Window"])
     }
@@ -112,5 +194,10 @@ struct AppMainMenuBuilderTests {
             "performZoom:",
             "arrangeInFront:",
         ])
+    }
+
+    private func allDescendants<T: NSView>(in view: NSView, ofType type: T.Type) -> [T] {
+        let current = (view as? T).map { [$0] } ?? []
+        return current + view.subviews.flatMap { allDescendants(in: $0, ofType: type) }
     }
 }

@@ -42,15 +42,6 @@ struct LocalHourBucketDescriptor: Sendable, Equatable, Identifiable {
 
     /// 返回当前 App 语言下的小时标签。
     func label(language: AppLanguage) -> String {
-        switch language {
-        case .zhHans, .zhHant:
-            return "\(hour)时"
-        case .ja:
-            return "\(hour)時"
-        case .ko:
-            return "\(hour)시"
-        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-            return "\(hour)"
-        }
+        "\(hour)\(language.hourSuffix ?? "")"
     }
 }

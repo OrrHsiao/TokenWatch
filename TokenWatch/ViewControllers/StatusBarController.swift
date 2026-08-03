@@ -36,7 +36,6 @@ final class StatusBarController {
     )
     private var loadingAnimationTimer: Timer?
     private var loadingAnimationFrameIndex = 0
-    private static let loadingAnimationInterval: TimeInterval = 0.18
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -82,6 +81,7 @@ final class StatusBarController {
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.statusMenu.userInterfaceLayoutDirection = .leftToRight
 
         configureButton()
         configurePopover()
@@ -147,6 +147,7 @@ final class StatusBarController {
 
     private func configureButton() {
         guard let button = statusItem.button else { return }
+        button.userInterfaceLayoutDirection = .leftToRight
         // 用 NSStatusBarButton 原生 image + attributedTitle 渲染图标与双行文字。
         // 自定义 NSStackView 子视图会进入 macOS 26 的 NSStatusItemScene 布局管线,
         // 与状态栏自适应宽度互相 invalidation,空闲时也可能持续重绘。
@@ -335,7 +336,7 @@ final class StatusBarController {
         loadingAnimationFrameIndex = 0
         renderLoadingAnimationFrame()
 
-        let timer = Timer(timeInterval: Self.loadingAnimationInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: StatusBarLoadingAnimation.frameInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.advanceLoadingAnimationFrame()
             }

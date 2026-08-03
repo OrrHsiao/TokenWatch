@@ -1,6 +1,6 @@
 import AppKit
 
-private final class DashboardSessionTableDocumentView: DashboardRoundedView {
+private final class DashboardSessionTableDocumentView: DashboardGlassCardView {
     /// AppKit 在 document 小于 overlay clip 时默认底部对齐；翻转坐标确保动态 gutter 留在底部而不裁表头。
     override var isFlipped: Bool { true }
 }
@@ -17,6 +17,9 @@ final class DashboardViewController: NSViewController {
     private static let sessionTableMinimumWidth: CGFloat = 880
     private static let sessionTableColumnSpacing: CGFloat = 4
     private static let sessionTableHorizontalPadding: CGFloat = 10
+    private static let sourceSharePanelMinimumHeight: CGFloat = 230
+    private static let analysisRowsViewportHeight: CGFloat = 164
+    private static let analysisRowsPanelMinimumHeight: CGFloat = 232
     private static let sessionPageSize = 10
     private static let sessionTableHeaderHeight: CGFloat = 44
     private static let sessionTableRowHeight: CGFloat = 48
@@ -36,27 +39,32 @@ final class DashboardViewController: NSViewController {
 
     private let settingsViewController: SettingsViewController
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
+    private let initialLoadCompletionProvider: @MainActor () -> Bool
     private let refreshAction: @MainActor () async -> Void
     private let languageSettings: AppLanguageSettings
     private let nowProvider: () -> Date
     private let calendar: Calendar
 
-    private let sidebarView = DashboardBackgroundView(backgroundColor: DashboardPalette.sidebarBackground)
-    private let mainContentContainer = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+    private let sidebarView = DashboardGlassBackgroundView()
+    private let mainContentContainer = DashboardGlassBackgroundView()
     private let overviewScrollView = NSScrollView()
-    private let overviewContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+    private let overviewContentView = NSView()
     private let overviewStack = NSStackView()
     private let sessionScrollView = NSScrollView()
     private let sessionTableScrollView = NSScrollView()
-    private let sessionContentView = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+    private let sessionContentView = NSView()
     private let sessionStack = NSStackView()
     private let navButtonsStack = NSStackView()
     private let dataSourceRowsStack = NSStackView()
+    private let scanLoadingIndicator = NSProgressIndicator()
     private let scanStatusBodyLabel = NSTextField(labelWithString: "")
+    private let initialLoadingOverlay = LoadingOverlayView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let refreshButton = DashboardRangeButton(title: "", target: nil, action: nil)
     private let totalTokenValueLabel = NSTextField(labelWithString: "0")
+    private let cacheHitRateTitleLabel = NSTextField(labelWithString: "")
+    private let cacheHitRateValueLabel = NSTextField(labelWithString: "0%")
     private let totalTokenDetailLabel = NSTextField(labelWithString: "")
     private let totalCostValueLabel = NSTextField(labelWithString: "$0.00")
     private let totalCostDetailLabel = NSTextField(labelWithString: "")
@@ -64,14 +72,22 @@ final class DashboardViewController: NSViewController {
     private let sessionDetailLabel = NSTextField(labelWithString: "")
     private let trendView = DashboardTrendView()
     private let modelRowsStack = NSStackView()
+    private let modelRowsScrollView = NSScrollView()
     private let emptyModelLabel = NSTextField(labelWithString: "")
     private let sourceDonutView = DashboardDonutView()
     private let sourceLegendStack = NSStackView()
     private let projectRowsStack = NSStackView()
+    private let projectRowsScrollView = NSScrollView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let sessionTitleLabel = NSTextField(labelWithString: "")
     private let sessionSubtitleLabel = NSTextField(labelWithString: "")
-    private let sessionDateLabel = NSTextField(labelWithString: "")
+    private let sessionDatePicker = NSDatePicker()
+    private let sessionTodayButton = DashboardSessionButton(
+        title: "",
+        target: nil,
+        action: nil,
+        contentAlignment: .center
+    )
     private let sessionCountValueLabel = NSTextField(labelWithString: "0")
     private let sessionTokenValueLabel = NSTextField(labelWithString: "0")
     private let sessionCostValueLabel = NSTextField(labelWithString: "$0.00")
@@ -86,6 +102,7 @@ final class DashboardViewController: NSViewController {
     private var privacyPolicyButton: DashboardNavigationButton?
     private var selectedRange: DashboardRange = .sevenDays
     private var selectedNavigationItem: DashboardNavigationItem = .overview
+    private var selectedSessionDate: Date
     private var currentSessionPage = 1
     private var currentSettingsController: NSViewController?
     private var overviewConstraints: [NSLayoutConstraint] = []
@@ -98,6 +115,9 @@ final class DashboardViewController: NSViewController {
         stateProvider: @escaping @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState] = {
             (NSApp.delegate as? AppDelegate)?.viewModel.states ?? [:]
         },
+        initialLoadCompletionProvider: @escaping @MainActor () -> Bool = {
+            (NSApp.delegate as? AppDelegate)?.viewModel.hasCompletedInitialLoad ?? true
+        },
         refreshAction: @escaping @MainActor () async -> Void = {
             if let viewModel = (NSApp.delegate as? AppDelegate)?.viewModel {
                 await viewModel.loadAllStats()
@@ -109,10 +129,12 @@ final class DashboardViewController: NSViewController {
     ) {
         self.settingsViewController = settingsViewController
         self.stateProvider = stateProvider
+        self.initialLoadCompletionProvider = initialLoadCompletionProvider
         self.refreshAction = refreshAction
         self.nowProvider = nowProvider
         self.calendar = calendar
         self.languageSettings = languageSettings
+        selectedSessionDate = calendar.startOfDay(for: nowProvider())
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -164,10 +186,7 @@ final class DashboardViewController: NSViewController {
     }
 
     override func loadView() {
-        view = DashboardBackgroundView(
-            frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize),
-            backgroundColor: DashboardPalette.appBackground
-        )
+        view = NSView(frame: NSRect(origin: .zero, size: MainWindowFactory.contentSize))
         view.userInterfaceLayoutDirection = .leftToRight
     }
 
@@ -192,6 +211,7 @@ final class DashboardViewController: NSViewController {
         selectedNavigationItem = .settings
         updateNavigationSelection()
         installSettingsContent()
+        setInitialLoadingVisible(!initialLoadCompletionProvider())
     }
 
     private func setupLayout() {
@@ -213,6 +233,7 @@ final class DashboardViewController: NSViewController {
             mainContentContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         installOverviewContent()
+        configureInitialLoadingOverlay()
     }
 
     private func setupSidebar() {
@@ -243,8 +264,8 @@ final class DashboardViewController: NSViewController {
         let privacyPolicyButton = makePrivacyPolicyButton()
         self.privacyPolicyButton = privacyPolicyButton
 
-        sidebarView.addSubview(rootStack)
-        sidebarView.addSubview(privacyPolicyButton)
+        sidebarView.addContentSubview(rootStack)
+        sidebarView.addContentSubview(privacyPolicyButton)
         NSLayoutConstraint.activate([
             rootStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: 20),
             rootStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -20),
@@ -353,6 +374,9 @@ final class DashboardViewController: NSViewController {
         logoView.translatesAutoresizingMaskIntoConstraints = false
         logoView.image = AppLogoImage.make()
         logoView.imageScaling = .scaleProportionallyUpOrDown
+        logoView.wantsLayer = true
+        logoView.layer?.cornerRadius = 8
+        logoView.layer?.masksToBounds = true
         logoView.identifier = NSUserInterfaceItemIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
         logoView.setAccessibilityIdentifier("DashboardBrandIcon.\(AppLogoImage.identifier)")
         logoView.setAccessibilityLabel("AI Token Watch")
@@ -431,18 +455,30 @@ final class DashboardViewController: NSViewController {
         title.font = .systemFont(ofSize: 12, weight: .semibold)
         title.textColor = DashboardPalette.primaryText
 
+        scanLoadingIndicator.style = .spinning
+        scanLoadingIndicator.controlSize = .small
+        scanLoadingIndicator.isIndeterminate = true
+        scanLoadingIndicator.isHidden = true
+        scanLoadingIndicator.identifier = NSUserInterfaceItemIdentifier("DashboardScanLoadingIndicator")
+        scanLoadingIndicator.setAccessibilityIdentifier("DashboardScanLoadingIndicator")
+
         scanStatusBodyLabel.font = .systemFont(ofSize: 12)
         scanStatusBodyLabel.textColor = DashboardPalette.secondaryText
         scanStatusBodyLabel.maximumNumberOfLines = 0
         scanStatusBodyLabel.lineBreakMode = .byWordWrapping
 
-        let stack = NSStackView(views: [title, scanStatusBodyLabel])
+        let statusRow = NSStackView(views: [scanLoadingIndicator, scanStatusBodyLabel])
+        statusRow.orientation = .horizontal
+        statusRow.alignment = .centerY
+        statusRow.spacing = 6
+
+        let stack = NSStackView(views: [title, statusRow])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
 
-        let card = DashboardRoundedView(backgroundColor: DashboardPalette.scanCardBackground, cornerRadius: 8)
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
@@ -450,9 +486,23 @@ final class DashboardViewController: NSViewController {
             stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
             stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
             title.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            scanStatusBodyLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            statusRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         return card
+    }
+
+    private func configureInitialLoadingOverlay() {
+        initialLoadingOverlay.identifier = NSUserInterfaceItemIdentifier("DashboardInitialLoadingOverlay")
+        initialLoadingOverlay.setAccessibilityIdentifier("DashboardInitialLoadingOverlay")
+        view.addSubview(initialLoadingOverlay)
+
+        NSLayoutConstraint.activate([
+            initialLoadingOverlay.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
+            initialLoadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            initialLoadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            initialLoadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        initialLoadingOverlay.setLoading(!initialLoadCompletionProvider())
     }
 
     private func makeHeaderView() -> NSView {
@@ -541,24 +591,29 @@ final class DashboardViewController: NSViewController {
         iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
-        sessionDateLabel.font = .systemFont(ofSize: 12, weight: .semibold)
-        sessionDateLabel.textColor = DashboardPalette.primaryText
-        sessionDateLabel.lineBreakMode = .byTruncatingTail
+        sessionDatePicker.dateValue = selectedSessionDate
+        sessionDatePicker.datePickerElements = [.yearMonthDay]
+        sessionDatePicker.datePickerStyle = .textFieldAndStepper
+        sessionDatePicker.maxDate = calendar.startOfDay(for: nowProvider())
+        sessionDatePicker.font = .systemFont(ofSize: 12, weight: .semibold)
+        sessionDatePicker.textColor = DashboardPalette.primaryText
+        sessionDatePicker.target = self
+        sessionDatePicker.action = #selector(sessionDateChanged(_:))
+        sessionDatePicker.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsDatePicker")
+        sessionDatePicker.setAccessibilityIdentifier("DashboardSessionsDatePicker")
+        sessionDatePicker.setAccessibilityLabel(localized(.recentDetailsTime))
 
-        let stack = NSStackView(views: [iconView, sessionDateLabel])
+        configureSessionTodayButton()
+
+        let stack = NSStackView(views: [iconView, sessionDatePicker, sessionTodayButton])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
 
-        let badge = DashboardRoundedView(
-            backgroundColor: DashboardPalette.sessionDateBackground,
-            cornerRadius: 7,
-            borderColor: DashboardPalette.sessionDateBorder,
-            borderWidth: 1
-        )
+        let badge = DashboardGlassCardView(cornerRadius: 7)
         badge.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsDateBadge")
         badge.setAccessibilityIdentifier("DashboardSessionsDateBadge")
-        badge.addSubview(stack)
+        badge.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             badge.heightAnchor.constraint(equalToConstant: 35),
@@ -570,6 +625,28 @@ final class DashboardViewController: NSViewController {
             stack.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
         ])
         return badge
+    }
+
+    private func configureSessionTodayButton() {
+        let title = localized(.sidebarToday)
+        sessionTodayButton.setDashboardTitle(title)
+        sessionTodayButton.target = self
+        sessionTodayButton.action = #selector(sessionTodayButtonClicked(_:))
+        sessionTodayButton.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsTodayButton")
+        sessionTodayButton.setAccessibilityIdentifier("DashboardSessionsTodayButton")
+        sessionTodayButton.setAccessibilityLabel(title)
+        sessionTodayButton.setDashboardStyle(
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder,
+            borderWidth: 1,
+            cornerRadius: 5,
+            titleColor: DashboardPalette.primaryText,
+            font: .systemFont(ofSize: 12, weight: .semibold)
+        )
+        NSLayoutConstraint.activate([
+            sessionTodayButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
+            sessionTodayButton.heightAnchor.constraint(equalToConstant: 26),
+        ])
     }
 
     private func makeSessionMetricRow() -> NSView {
@@ -603,13 +680,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 8
 
-        let card = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
@@ -659,8 +731,8 @@ final class DashboardViewController: NSViewController {
         refreshButton.layer?.cornerRadius = 8
         refreshButton.layer?.borderWidth = 1
         refreshButton.setDashboardLayerColors(
-            backgroundColor: DashboardPalette.panelBackground,
-            borderColor: DashboardPalette.border
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder
         )
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
         refreshButton.setContentHuggingPriority(.required, for: .horizontal)
@@ -672,11 +744,7 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeMetricRow() -> NSView {
-        let tokenCard = makeMetricCard(
-            titleKey: .dashboardMetricTotalTokens,
-            valueLabel: totalTokenValueLabel,
-            detailLabel: totalTokenDetailLabel
-        )
+        let tokenCard = makeTotalTokenMetricCard()
         let costCard = makeMetricCard(
             titleKey: .dashboardMetricTotalCost,
             valueLabel: totalCostValueLabel,
@@ -698,6 +766,57 @@ final class DashboardViewController: NSViewController {
         return row
     }
 
+    private func makeTotalTokenMetricCard() -> NSView {
+        let titleLabel = localizedLabel(.dashboardMetricTotalTokens)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = DashboardPalette.secondaryText
+
+        totalTokenValueLabel.identifier = NSUserInterfaceItemIdentifier("DashboardTotalTokenValue")
+        totalTokenValueLabel.setAccessibilityIdentifier("DashboardTotalTokenValue")
+        totalTokenValueLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .semibold)
+        totalTokenValueLabel.textColor = DashboardPalette.primaryText
+        totalTokenValueLabel.lineBreakMode = .byTruncatingTail
+
+        setLocalizedKey(.dashboardCacheHitRate, for: cacheHitRateTitleLabel)
+        cacheHitRateTitleLabel.font = .systemFont(ofSize: 11)
+        cacheHitRateTitleLabel.textColor = DashboardPalette.secondaryText
+        cacheHitRateValueLabel.identifier = NSUserInterfaceItemIdentifier("DashboardCacheHitRateValue")
+        cacheHitRateValueLabel.setAccessibilityIdentifier("DashboardCacheHitRateValue")
+        cacheHitRateValueLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        cacheHitRateValueLabel.textColor = DashboardPalette.primaryText
+
+        totalTokenDetailLabel.font = .systemFont(ofSize: 12)
+        totalTokenDetailLabel.textColor = DashboardPalette.secondaryText
+        totalTokenDetailLabel.maximumNumberOfLines = 2
+        totalTokenDetailLabel.lineBreakMode = .byTruncatingTail
+
+        let cacheHitRateStack = NSStackView(views: [cacheHitRateTitleLabel, cacheHitRateValueLabel])
+        cacheHitRateStack.orientation = .vertical
+        cacheHitRateStack.alignment = .leading
+        cacheHitRateStack.spacing = 2
+
+        let valueRow = NSStackView(views: [totalTokenValueLabel, cacheHitRateStack])
+        valueRow.orientation = .horizontal
+        valueRow.alignment = .centerY
+        valueRow.spacing = 12
+
+        let stack = NSStackView(views: [titleLabel, valueRow, totalTokenDetailLabel])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -16),
+        ])
+        return card
+    }
+
     private func makeMetricCard(titleKey: AppStringKey, valueLabel: NSTextField, detailLabel: NSTextField) -> NSView {
         let titleLabel = localizedLabel(titleKey)
         titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
@@ -717,13 +836,8 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 10
 
-        let card = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        card.addSubview(stack)
+        let card = DashboardGlassCardView(cornerRadius: 8)
+        card.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
@@ -739,15 +853,20 @@ final class DashboardViewController: NSViewController {
         leftColumn.orientation = .vertical
         leftColumn.alignment = .leading
         leftColumn.spacing = Self.rowGap
-        addFullWidthArrangedSubview(makeTrendPanel(), to: leftColumn)
-        addFullWidthArrangedSubview(makeModelRankPanel(), to: leftColumn)
+        let trendPanel = makeTrendPanel()
+        let modelRankPanel = makeModelRankPanel()
+        addFullWidthArrangedSubview(trendPanel, to: leftColumn)
+        addFullWidthArrangedSubview(modelRankPanel, to: leftColumn)
 
         let rightColumn = NSStackView()
         rightColumn.orientation = .vertical
         rightColumn.alignment = .leading
+        rightColumn.distribution = .fill
         rightColumn.spacing = Self.rowGap
-        addFullWidthArrangedSubview(makeSourcePanel(), to: rightColumn)
-        addFullWidthArrangedSubview(makeProjectPanel(), to: rightColumn)
+        let sourcePanel = makeSourcePanel()
+        let projectPanel = makeProjectPanel()
+        addFullWidthArrangedSubview(sourcePanel, to: rightColumn)
+        addFullWidthArrangedSubview(projectPanel, to: rightColumn)
 
         let section = NSView()
         section.addSubview(leftColumn)
@@ -764,6 +883,9 @@ final class DashboardViewController: NSViewController {
             rightColumn.topAnchor.constraint(equalTo: section.topAnchor),
             rightColumn.bottomAnchor.constraint(equalTo: section.bottomAnchor),
             rightColumn.widthAnchor.constraint(equalToConstant: 330),
+            // 两列按行配对，避免统计范围改变后项目数量决定右下卡片的高度。
+            sourcePanel.heightAnchor.constraint(equalTo: trendPanel.heightAnchor),
+            projectPanel.heightAnchor.constraint(equalTo: modelRankPanel.heightAnchor),
         ])
         return section
     }
@@ -827,16 +949,24 @@ final class DashboardViewController: NSViewController {
         emptyModelLabel.font = .systemFont(ofSize: 12)
         emptyModelLabel.textColor = DashboardPalette.secondaryText
 
-        let stack = NSStackView(views: [modelRowsStack, emptyModelLabel])
+        let rowsScrollView = makeScrollableRowsView(
+            rowsStack: modelRowsStack,
+            scrollView: modelRowsScrollView,
+            identifier: "DashboardModelRowsScrollView",
+            viewportHeight: Self.analysisRowsViewportHeight
+        )
+        let stack = NSStackView(views: [rowsScrollView, emptyModelLabel])
         stack.orientation = .vertical
         stack.alignment = .width
         stack.spacing = 8
-        return makePanel(
+        let panel = makePanel(
             titleKey: .dashboardModelRankTitle,
             subtitleKey: nil,
             content: stack,
-            minimumHeight: 232
+            minimumHeight: Self.analysisRowsPanelMinimumHeight
         )
+        panel.heightAnchor.constraint(equalToConstant: Self.analysisRowsPanelMinimumHeight).isActive = true
+        return panel
     }
 
     private func makeSourcePanel() -> NSView {
@@ -853,14 +983,62 @@ final class DashboardViewController: NSViewController {
             sourceDonutView.widthAnchor.constraint(equalToConstant: 132),
             sourceDonutView.heightAnchor.constraint(equalToConstant: 132),
         ])
-        return makePanel(titleKey: .dashboardSourceShareTitle, subtitleKey: nil, content: body, minimumHeight: 230)
+        let panel = makePanel(
+            titleKey: .dashboardSourceShareTitle,
+            subtitleKey: nil,
+            content: body,
+            minimumHeight: Self.sourceSharePanelMinimumHeight
+        )
+        return panel
     }
 
     private func makeProjectPanel() -> NSView {
         projectRowsStack.orientation = .vertical
         projectRowsStack.alignment = .width
         projectRowsStack.spacing = 10
-        return makePanel(titleKey: .dashboardProjectUsageTitle, subtitleKey: nil, content: projectRowsStack, minimumHeight: 232)
+        let rowsScrollView = makeScrollableRowsView(
+            rowsStack: projectRowsStack,
+            scrollView: projectRowsScrollView,
+            identifier: "DashboardProjectRowsScrollView",
+            // 固定可视区高度，避免切换统计范围后随项目行数改变列表顶缘。
+            viewportHeight: Self.analysisRowsViewportHeight
+        )
+        let panel = makePanel(
+            titleKey: .dashboardProjectUsageTitle,
+            subtitleKey: nil,
+            content: rowsScrollView,
+            minimumHeight: Self.analysisRowsPanelMinimumHeight
+        )
+        return panel
+    }
+
+    /// 创建固定可视高度的条目滚动区，超出可视区的条目仍可通过滚动查看。
+    private func makeScrollableRowsView(
+        rowsStack: NSStackView,
+        scrollView: NSScrollView,
+        identifier: String,
+        viewportHeight: CGFloat
+    ) -> NSScrollView {
+        let clipView = scrollView.contentView
+        scrollView.identifier = NSUserInterfaceItemIdentifier(identifier)
+        scrollView.setAccessibilityIdentifier(identifier)
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasHorizontalScroller = false
+        scrollView.hasVerticalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.documentView = rowsStack
+
+        rowsStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            rowsStack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
+            rowsStack.topAnchor.constraint(equalTo: clipView.topAnchor),
+            rowsStack.widthAnchor.constraint(equalTo: clipView.widthAnchor),
+            rowsStack.heightAnchor.constraint(greaterThanOrEqualTo: clipView.heightAnchor),
+            scrollView.heightAnchor.constraint(equalToConstant: viewportHeight),
+        ])
+        return scrollView
     }
 
     private func makePanel(
@@ -915,23 +1093,19 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 12
 
-        let panel = DashboardRoundedView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
-        panel.addSubview(stack)
+        let panel = DashboardGlassCardView(cornerRadius: 8)
+        panel.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
+        var constraints = [
             panel.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumHeight),
             stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18),
             stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18),
             stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18),
             headerView.widthAnchor.constraint(equalTo: stack.widthAnchor),
             content.widthAnchor.constraint(equalTo: stack.widthAnchor),
-        ])
+        ]
+        constraints.append(stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -18))
+        NSLayoutConstraint.activate(constraints)
         return panel
     }
 
@@ -979,15 +1153,10 @@ final class DashboardViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 0
 
-        let table = DashboardSessionTableDocumentView(
-            backgroundColor: DashboardPalette.panelBackground,
-            cornerRadius: 8,
-            borderColor: DashboardPalette.border,
-            borderWidth: 1
-        )
+        let table = DashboardSessionTableDocumentView(cornerRadius: 8)
         table.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsTable")
         table.setAccessibilityIdentifier("DashboardSessionsTable")
-        table.addSubview(stack)
+        table.addContentSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             table.heightAnchor.constraint(equalToConstant: Self.sessionTableContentHeight),
@@ -1016,7 +1185,7 @@ final class DashboardViewController: NSViewController {
         sessionPaginationControlsStack.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPaginationControls")
         sessionPaginationControlsStack.setAccessibilityIdentifier("DashboardSessionsPaginationControls")
 
-        let view = DashboardBackgroundView(backgroundColor: DashboardPalette.appBackground)
+        let view = NSView()
         view.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsPagination")
         view.setAccessibilityIdentifier("DashboardSessionsPagination")
         view.addSubview(sessionPaginationRangeLabel)
@@ -1108,8 +1277,8 @@ final class DashboardViewController: NSViewController {
         isSelected: Bool,
         isEnabled: Bool
     ) {
-        let backgroundColor = isSelected ? DashboardPalette.accent : DashboardPalette.sessionDateBackground
-        let borderColor = isSelected ? DashboardPalette.accent : DashboardPalette.sessionDateBorder
+        let backgroundColor = isSelected ? DashboardPalette.rangeSelectedBackground : .clear
+        let borderColor = isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.glassControlBorder
         let textColor: NSColor
         if isSelected {
             textColor = DashboardPalette.rangeSelectedText
@@ -1378,7 +1547,7 @@ final class DashboardViewController: NSViewController {
 
     private func sessionTableRowBackground(at index: Int) -> NSColor {
         index.isMultiple(of: 2)
-            ? DashboardPalette.panelBackground
+            ? .clear
             : DashboardPalette.sessionTableAlternateRowBackground
     }
 
@@ -1395,7 +1564,7 @@ final class DashboardViewController: NSViewController {
         NSLayoutConstraint.deactivate(settingsConstraints)
         sessionScrollView.removeFromSuperview()
         if overviewScrollView.superview == nil {
-            mainContentContainer.addSubview(overviewScrollView)
+            mainContentContainer.addContentSubview(overviewScrollView)
         }
         overviewConstraints = [
             overviewScrollView.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
@@ -1416,7 +1585,7 @@ final class DashboardViewController: NSViewController {
         NSLayoutConstraint.deactivate(settingsConstraints)
         overviewScrollView.removeFromSuperview()
         if sessionScrollView.superview == nil {
-            mainContentContainer.addSubview(sessionScrollView)
+            mainContentContainer.addContentSubview(sessionScrollView)
         }
         sessionConstraints = [
             sessionScrollView.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
@@ -1438,8 +1607,7 @@ final class DashboardViewController: NSViewController {
         addChild(settingsViewController)
         settingsViewController.view.translatesAutoresizingMaskIntoConstraints = false
         settingsViewController.view.userInterfaceLayoutDirection = .leftToRight
-        mainContentContainer.addSubview(settingsViewController.view)
-        DashboardLayerColor.applyBackground(DashboardPalette.appBackground, to: settingsViewController.view)
+        mainContentContainer.addContentSubview(settingsViewController.view)
         settingsConstraints = [
             settingsViewController.view.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
             settingsViewController.view.trailingAnchor.constraint(equalTo: mainContentContainer.trailingAnchor),
@@ -1487,7 +1655,6 @@ final class DashboardViewController: NSViewController {
         }) else { return }
         selectedRange = range
         selectedNavigationItem = .overview
-        installOverviewContent()
         updateNavigationSelection()
         render()
     }
@@ -1516,6 +1683,23 @@ final class DashboardViewController: NSViewController {
         render()
     }
 
+    /// 根据右上角选择的本地日期筛选会话；未来日期会限制为今天，并回到结果的第一页。
+    @objc private func sessionDateChanged(_ sender: NSDatePicker) {
+        selectedSessionDate = min(
+            calendar.startOfDay(for: sender.dateValue),
+            calendar.startOfDay(for: nowProvider())
+        )
+        sender.dateValue = selectedSessionDate
+        currentSessionPage = 1
+        render()
+    }
+
+    /// 将会话筛选日期重置为当天。
+    @objc private func sessionTodayButtonClicked(_ sender: NSButton) {
+        sessionDatePicker.dateValue = calendar.startOfDay(for: nowProvider())
+        sessionDateChanged(sessionDatePicker)
+    }
+
     @objc private func copySessionIDButtonClicked(_ sender: NSButton) {
         guard let sessionID = sender.toolTip, !sessionID.isEmpty else { return }
         let pasteboard = NSPasteboard.general
@@ -1539,6 +1723,7 @@ final class DashboardViewController: NSViewController {
         let summary = rangeSnapshot.summary
 
         totalTokenValueLabel.stringValue = CompactNumberFormatter.formatMillions(summary.totalTokens)
+        cacheHitRateValueLabel.stringValue = formatCacheHitRate(summary)
         totalTokenDetailLabel.stringValue = formatTokenBreakdown(summary)
         totalCostValueLabel.stringValue = formatCurrency(summary.cost)
         totalCostDetailLabel.stringValue = formatCostBreakdown(summary)
@@ -1552,7 +1737,7 @@ final class DashboardViewController: NSViewController {
 
         updateRangeButtons()
         updateNavigationSelection()
-        setRefreshButtonLoading(states.values.contains { $0.isLoading })
+        updateLoadingFeedback(states: states)
         rebuildDataSourceRows(states: states)
         trendView.configure(
             buckets: rangeSnapshot.trendBuckets,
@@ -1579,6 +1764,7 @@ final class DashboardViewController: NSViewController {
         updateNavigationTitles()
         updatePrivacyPolicyTitle()
         updateRangeButtonTitles()
+        updateSessionTodayButtonTitle()
     }
 
     private func updateNavigationTitles() {
@@ -1606,15 +1792,21 @@ final class DashboardViewController: NSViewController {
         button.updateTitle(title)
     }
 
+    private func updateSessionTodayButtonTitle() {
+        let title = localized(.sidebarToday)
+        sessionTodayButton.setDashboardTitle(title)
+        sessionTodayButton.setAccessibilityLabel(title)
+    }
+
     private func renderSessionPage(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
-        let selectedDate = nowProvider()
+        sessionDatePicker.maxDate = calendar.startOfDay(for: nowProvider())
         let snapshot = RecentSessionDetailsBuilder.build(
             states: states,
             period: .today,
-            now: selectedDate,
+            now: selectedSessionDate,
             calendar: calendar
         )
-        sessionDateLabel.stringValue = formatSessionDate(selectedDate)
+        sessionDatePicker.dateValue = selectedSessionDate
         sessionCountValueLabel.stringValue = formatInt(snapshot.totalSessionCount)
         sessionTokenValueLabel.stringValue = CompactNumberFormatter.format(snapshot.totalTokens)
         sessionCostValueLabel.stringValue = formatCurrency(snapshot.totalCost)
@@ -1624,22 +1816,26 @@ final class DashboardViewController: NSViewController {
             snapshot: snapshot,
             totalProviderCount: states.count
         )
-        // 加载反馈已由侧边栏提供；避免额外状态行撑高默认视口并级联压窄表格。
+        // 空表格行已包含“没有会话”提示；不再重复显示状态行，避免撑高视口后出现纵向滚动条并压窄表格。
         let hasLoadingProvider = snapshot.loadingProviderCount > 0
-        sessionStatusLabel.isHidden = hasLoadingProvider || sessionStatusLabel.stringValue.isEmpty
+        let hasEmptySessionState = snapshot.rows.isEmpty
+            && sessionStatusLabel.stringValue == localized(.dashboardSessionsEmptyToday)
+        sessionStatusLabel.isHidden = hasLoadingProvider
+            || hasEmptySessionState
+            || sessionStatusLabel.stringValue.isEmpty
     }
 
     private func updateNavigationSelection() {
         for item in DashboardNavigationItem.allCases {
             guard let button = navButtons[item] else { continue }
             let isSelected = item == selectedNavigationItem
-            let backgroundColor = isSelected ? DashboardPalette.navigationSelectedBackground : DashboardPalette.sidebarBackground
+            let backgroundColor = isSelected ? DashboardPalette.navigationSelectedBackground : .clear
             (button as? DashboardNavigationButton)?.setDashboardBackgroundColor(backgroundColor)
             let tintColor = isSelected ? DashboardPalette.navigationSelectedText : DashboardPalette.secondaryText
             button.contentTintColor = tintColor
             (button as? DashboardNavigationButton)?.setVisualTint(tintColor)
         }
-        privacyPolicyButton?.setDashboardBackgroundColor(DashboardPalette.sidebarBackground)
+        privacyPolicyButton?.setDashboardBackgroundColor(.clear)
         privacyPolicyButton?.contentTintColor = DashboardPalette.secondaryText
         privacyPolicyButton?.setVisualTint(DashboardPalette.secondaryText)
     }
@@ -1649,8 +1845,8 @@ final class DashboardViewController: NSViewController {
             guard let button = rangeButtons[range] else { continue }
             let isSelected = range == selectedRange
             (button as? DashboardRangeButton)?.setDashboardLayerColors(
-                backgroundColor: isSelected ? DashboardPalette.rangeSelectedBackground : DashboardPalette.panelBackground,
-                borderColor: isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.border
+                backgroundColor: isSelected ? DashboardPalette.rangeSelectedBackground : .clear,
+                borderColor: isSelected ? DashboardPalette.rangeSelectedBorder : DashboardPalette.glassControlBorder
             )
             button.contentTintColor = isSelected ? DashboardPalette.rangeSelectedText : DashboardPalette.primaryText
         }
@@ -1666,6 +1862,30 @@ final class DashboardViewController: NSViewController {
         refreshButton.image?.isTemplate = true
         refreshButton.imageHugsTitle = true
         refreshButton.contentTintColor = DashboardPalette.primaryText
+    }
+
+    /// 首次扫描期间用主内容区遮罩阻止交互，直到 ViewModel 确认所有 provider 都结束加载。
+    /// 设置页需要保留目录授权操作，后续刷新只显示侧边栏的非阻塞指示器。
+    private func updateLoadingFeedback(
+        states: [ProviderID: TokenStatsViewModel.ProviderState]
+    ) {
+        let isLoading = states.values.contains { $0.isLoading }
+        setRefreshButtonLoading(isLoading)
+        setScanLoadingIndicatorVisible(isLoading)
+        setInitialLoadingVisible(!initialLoadCompletionProvider())
+    }
+
+    private func setScanLoadingIndicatorVisible(_ isVisible: Bool) {
+        scanLoadingIndicator.isHidden = !isVisible
+        if isVisible {
+            scanLoadingIndicator.startAnimation(nil)
+        } else {
+            scanLoadingIndicator.stopAnimation(nil)
+        }
+    }
+
+    private func setInitialLoadingVisible(_ isVisible: Bool) {
+        initialLoadingOverlay.setLoading(isVisible && selectedNavigationItem != .settings)
     }
 
     private func scanStatusText(states: [ProviderID: TokenStatsViewModel.ProviderState]) -> String {
@@ -1731,9 +1951,8 @@ final class DashboardViewController: NSViewController {
     private func rebuildModelRows(_ rows: [TotalStatsModelRow]) {
         clearStack(modelRowsStack)
         emptyModelLabel.isHidden = !rows.isEmpty
-        let visibleRows = Array(rows.prefix(5))
-        let maxTokens = visibleRows.map(\.totalTokens).max() ?? 0
-        for (index, row) in visibleRows.enumerated() {
+        let maxTokens = rows.map(\.totalTokens).max() ?? 0
+        for (index, row) in rows.enumerated() {
             addFullWidthArrangedSubview(DashboardBarRowView(
                 title: row.modelName,
                 value: formatInt(row.totalTokens),
@@ -1773,7 +1992,7 @@ final class DashboardViewController: NSViewController {
             return
         }
         let maxTokens = rows.map(\.tokens).max() ?? 0
-        for (index, row) in rows.prefix(4).enumerated() {
+        for (index, row) in rows.enumerated() {
             addFullWidthArrangedSubview(DashboardBarRowView(
                 title: row.name,
                 value: formatInt(row.tokens),
@@ -1851,18 +2070,21 @@ final class DashboardViewController: NSViewController {
             textField.alignment = .left
         }
         if let button = root as? NSButton {
-            button.alignment = isHeaderControlButton(button) ? .center : .left
+            button.alignment = usesCenteredButtonTitle(button) ? .center : .left
         }
         for subview in root.subviews {
             enforceLeftAlignedContent(in: subview)
         }
     }
 
-    private func isHeaderControlButton(_ button: NSButton) -> Bool {
+    private func usesCenteredButtonTitle(_ button: NSButton) -> Bool {
         let identifier = button.identifier?.rawValue ?? button.accessibilityIdentifier()
         return identifier.hasPrefix("DashboardRange.")
             || identifier.hasPrefix("DashboardSessionsPagination.")
+            || identifier == "DashboardSessionsTodayButton"
             || identifier == "DashboardRefreshButton"
+            || identifier == "RefreshAllDataButton"
+            || identifier.hasPrefix("ProviderDirectoryAction.")
     }
 
     private func fraction(_ value: Int, max maxValue: Int) -> CGFloat {
@@ -1877,21 +2099,11 @@ final class DashboardViewController: NSViewController {
         ]
         let cacheTokens = summary.cacheReadTokens.addingSaturated(summary.cacheCreationTokens)
         let cacheText = CompactNumberFormatter.formatMillions(cacheTokens)
-        let cacheHitRateText = localizedParenthetical(formatCacheHitRate(summary))
-        parts.append("\(localized(.dashboardCache)) \(cacheText)\(cacheHitRateText)")
+        parts.append("\(localized(.dashboardCache)) \(cacheText)")
         if summary.reasoningTokens > 0 {
             parts.append("\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
         }
         return parts.joined(separator: " / ")
-    }
-
-    private func localizedParenthetical(_ value: String) -> String {
-        switch language {
-        case .zhHans, .zhHant:
-            return "（\(value)）"
-        default:
-            return " (\(value))"
-        }
     }
 
     private func formatCacheHitRate(_ summary: DashboardUsageSummary) -> String {
@@ -1937,12 +2149,6 @@ final class DashboardViewController: NSViewController {
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
-    private func formatSessionDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
-    }
-
     private func sessionStatusText(
         snapshot: RecentSessionDetailsSnapshot,
         totalProviderCount: Int
@@ -1953,7 +2159,10 @@ final class DashboardViewController: NSViewController {
             return AppStrings.text(.statusLoadingUsage, language: languageSettings.resolvedLanguage)
         }
         if snapshot.loadedProviderCount == 0 && snapshot.unauthorizedProviderCount > 0 {
-            return AppStrings.text(.statusNeedsHomeAuthorization, language: languageSettings.resolvedLanguage)
+            return AppStrings.text(
+                .statusNeedsDataDirectorySelection,
+                language: languageSettings.resolvedLanguage
+            )
         }
         if let errorMessage = snapshot.errorMessages.first {
             return errorMessage
@@ -1978,16 +2187,16 @@ final class DashboardViewController: NSViewController {
             return AppStrings.text(.statusLoadingUsage, language: languageSettings.resolvedLanguage)
         }
         if totalSnapshot.loadedProviderCount == 0 && totalSnapshot.unauthorizedProviderCount > 0 {
-            return AppStrings.text(.statusNeedsHomeAuthorization, language: languageSettings.resolvedLanguage)
+            return AppStrings.text(
+                .statusNeedsDataDirectorySelection,
+                language: languageSettings.resolvedLanguage
+            )
         }
         if let errorMessage = totalSnapshot.errorMessages.first ?? rangeSnapshot.errorMessages.first {
             return errorMessage
         }
         if rangeSnapshot.totalTokens == 0 {
             return AppStrings.text(.statusTotalNoTokenData, language: languageSettings.resolvedLanguage)
-        }
-        if totalSnapshot.loadingProviderCount > 0 {
-            return AppStrings.text(.statusPartialLoading, language: languageSettings.resolvedLanguage)
         }
         return ""
     }

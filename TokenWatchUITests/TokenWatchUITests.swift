@@ -22,7 +22,7 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["AI Token Watch"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["本地 AI 用量监控"].exists)
         XCTAssertTrue(app.staticTexts["用量总览"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["总 Token"].exists)
+        XCTAssertTrue(app.staticTexts["总 Tokens"].exists)
         XCTAssertTrue(app.staticTexts["总费用"].exists)
         XCTAssertTrue(app.staticTexts["会话数"].exists)
         XCTAssertTrue(app.staticTexts["模型消耗排行"].exists)
@@ -55,7 +55,7 @@ final class TokenWatchUITests: XCTestCase {
         let sessionsButton = app.buttons["DashboardNav.sessions"]
         XCTAssertTrue(sessionsButton.waitForExistence(timeout: 5))
         sessionsButton.click()
-        XCTAssertTrue(app.staticTexts["按最近时间倒序查看会话聚合、成本与使用记录"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.scrollViews["DashboardSessionsTableScrollView"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["DashboardNav.settings"].exists)
     }
 
@@ -75,37 +75,89 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
         let initialMinX = nextButton.frame.minX
 
+        // 优先按一个方向滚动；若已在该方向的边界则反向滚动，必须观察到内容位置改变。
         tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
         var shiftedMinX = nextButton.frame.minX
-
         if shiftedMinX >= initialMinX - 1 {
             tableScrollView.scroll(byDeltaX: 400, deltaY: 0)
             shiftedMinX = nextButton.frame.minX
         }
-
         XCTAssertLessThan(shiftedMinX, initialMinX - 1)
     }
 
     @MainActor
-    func testSettingsPageExposesActionControls() throws {
+    func testForcedInitialAuthorizationGuideNavigatesToSettings() throws {
         let app = XCUIApplication()
-        app.launchForUITesting()
+        app.launchForUITesting(
+            languagePreference: "en",
+            skipInitialDirectoryAuthorizationGuide: false
+        )
+
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["Set Up Data Folders"].waitForExistence(timeout: 5)
+        )
+
+        let authorizationGuide = app.dialogs.element(boundBy: 0)
+        XCTAssertTrue(authorizationGuide.waitForExistence(timeout: 5))
+
+        let openSettingsButton = authorizationGuide.buttons["Go to Settings"]
+        XCTAssertTrue(openSettingsButton.waitForExistence(timeout: 5))
+        openSettingsButton.click()
+
+        let claudeDirectoryButton = app.buttons["ProviderDirectoryAction.claude"]
+        let claudeButtonReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true"),
+            object: claudeDirectoryButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [claudeButtonReady], timeout: 5),
+            .completed
+        )
+        XCTAssertTrue(app.staticTexts["Settings"].exists)
+    }
+
+    @MainActor
+    func testSettingsExposeThreeProviderDirectoryControls() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting(languagePreference: "en")
 
         let settingsButton = app.buttons["DashboardNav.settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         settingsButton.click()
 
-        XCTAssertTrue(app.staticTexts["通用访问权限"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["AuthorizationActionButton"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["RefreshAllDataButton"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["AutoRefreshIntervalPopUpButton"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["LaunchAtLoginSwitch"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["LanguagePreferencePopUpButton"].exists)
+        for id in ["claude", "codex", "opencode"] {
+            XCTAssertTrue(
+                app.buttons["ProviderDirectoryAction.\(id)"]
+                    .waitForExistence(timeout: 5)
+            )
+        }
+    }
+
+    @MainActor
+    func testArabicLaunchUsesLocalizedCopyAndKeepsLTRLayout() throws {
+        let app = XCUIApplication()
+        app.launchForUITesting(languagePreference: "ar", systemLanguage: "ar")
+
+        let overviewButton = app.buttons["DashboardNav.overview"]
+        let dashboardTitle = app.staticTexts["نظرة عامة على الاستخدام"]
+        XCTAssertTrue(overviewButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(dashboardTitle.waitForExistence(timeout: 5))
+        XCTAssertLessThan(overviewButton.frame.minX, dashboardTitle.frame.minX)
+
+        let settingsButton = app.buttons["DashboardNav.settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.click()
+        XCTAssertTrue(app.staticTexts["الإعدادات"].waitForExistence(timeout: 5))
     }
 }
 
 extension XCUIApplication {
-    func launchForUITesting(languagePreference: String = "zh-Hans") {
+    func launchForUITesting(
+        languagePreference: String = "zh-CN",
+        skipInitialDirectoryAuthorizationGuide: Bool = true,
+        systemLanguage: String? = nil
+    ) {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
             existingApp.terminate()
@@ -116,10 +168,27 @@ extension XCUIApplication {
             _ = wait(for: .notRunning, timeout: 5)
         }
         launchArguments += [
-            "-TokenWatch.didPromptInitialHomeAuthorization", "YES",
+            "-ClaudeDataDirectoryBookmark", "absent",
+            "-CodexDataDirectoryBookmark", "absent",
+            "-OpenCodeDataDirectoryBookmark", "absent",
             "-TokenWatch.languagePreference", languagePreference,
             "-TokenWatch.openMainWindowOnLaunch", "YES",
         ]
+        if skipInitialDirectoryAuthorizationGuide {
+            launchArguments += [
+                "-TokenWatch.didPresentInitialDirectoryAuthorizationGuide", "YES",
+            ]
+        } else {
+            launchArguments += [
+                "--force-initial-directory-authorization-guide",
+            ]
+        }
+        if let systemLanguage {
+            launchArguments += [
+                "-AppleLanguages", "(\(systemLanguage))",
+                "-AppleLocale", systemLanguage,
+            ]
+        }
         launch()
     }
 }

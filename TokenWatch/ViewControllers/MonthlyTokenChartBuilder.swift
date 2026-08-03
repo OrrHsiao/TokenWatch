@@ -29,20 +29,27 @@ enum UsageStatsPeriod: Sendable, Equatable {
     }
 
     func emptyDataText(language: AppLanguage) -> String {
-        switch language {
-        case .zhHans, .zhHant, .ja, .ko:
-            return "\(title(language: language))\(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
-        case .en, .es, .de, .fr, .ptBR, .it, .nl, .pl:
-            return "\(title(language: language)) \(AppStrings.text(.periodNoTokenDataSuffix, language: language))"
-        }
+        String(
+            format: AppStrings.text(.periodNoTokenDataFormat, language: language),
+            locale: Locale(identifier: language.localeIdentifier),
+            arguments: [title(language: language)]
+        )
     }
 
     func tokenChartAccessibilityLabel(language: AppLanguage) -> String {
-        "\(title(language: language)) \(AppStrings.text(.chartTokenAccessibilitySuffix, language: language))"
+        String(
+            format: AppStrings.text(.chartTokenAccessibilityFormat, language: language),
+            locale: Locale(identifier: language.localeIdentifier),
+            arguments: [title(language: language)]
+        )
     }
 
     func costChartAccessibilityLabel(language: AppLanguage) -> String {
-        "\(title(language: language)) \(AppStrings.text(.chartCostAccessibilitySuffix, language: language))"
+        String(
+            format: AppStrings.text(.chartCostAccessibilityFormat, language: language),
+            locale: Locale(identifier: language.localeIdentifier),
+            arguments: [title(language: language)]
+        )
     }
 
     fileprivate var bucketCount: Int {
@@ -181,6 +188,7 @@ enum UsageStatsPeriod: Sendable, Equatable {
         guard (1...12).contains(month) else { return "\(month)" }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: language.localeIdentifier)
+        formatter.calendar = Calendar(identifier: .gregorian)
         let names = formatter.shortMonthSymbols ?? []
         guard names.indices.contains(month - 1) else { return "\(month)" }
         return names[month - 1]

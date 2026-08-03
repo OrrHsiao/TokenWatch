@@ -43,6 +43,7 @@ final class StatusPopoverViewController: NSViewController {
     private let hoverLabel = NSTextField(labelWithString: "")
     private let collectionView = NSCollectionView()
     private let hourlyLineChartView = TodayHourlyTokenLineChartView()
+    private let loadingOverlay = LoadingOverlayView()
 
     struct DebugSummaryCard: Equatable {
         let title: String
@@ -194,6 +195,41 @@ final class StatusPopoverViewController: NSViewController {
         return frameInRoot.minY >= Self.outerMargin
             && frameInRoot.maxY <= view.bounds.maxY - Self.outerMargin
     }
+    var debugLoadingOverlayIsVisible: Bool { !loadingOverlay.isHidden }
+    var debugLoadingOverlayMessage: String { loadingOverlay.debugMessage }
+    var debugLoadingOverlaySymbolName: String? { loadingOverlay.debugSymbolName }
+    var debugLoadingOverlayUsesGlassMaterial: Bool {
+        loadingOverlay.material == .hudWindow
+            && loadingOverlay.blendingMode == .withinWindow
+            && loadingOverlay.state == .active
+    }
+    var debugLoadingOverlayCoversRootView: Bool {
+        hasConstraint(
+            firstItem: loadingOverlay,
+            firstAttribute: .leading,
+            secondItem: view,
+            secondAttribute: .leading,
+            constant: 0
+        ) && hasConstraint(
+            firstItem: loadingOverlay,
+            firstAttribute: .trailing,
+            secondItem: view,
+            secondAttribute: .trailing,
+            constant: 0
+        ) && hasConstraint(
+            firstItem: loadingOverlay,
+            firstAttribute: .top,
+            secondItem: view,
+            secondAttribute: .top,
+            constant: 0
+        ) && hasConstraint(
+            firstItem: loadingOverlay,
+            firstAttribute: .bottom,
+            secondItem: view,
+            secondAttribute: .bottom,
+            constant: 0
+        )
+    }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
     func debugUpdateHoverText(_ text: String?) { updateHoverText(text) }
     func debugSimulateHourlyLineChartHover(monthKey: String?) {
@@ -204,6 +240,9 @@ final class StatusPopoverViewController: NSViewController {
     }
     func debugSetRefreshButtonLoading(_ isLoading: Bool) {
         setRefreshButtonLoading(isLoading)
+    }
+    func debugSetLoadingOverlayVisible(_ isVisible: Bool) {
+        loadingOverlay.setLoading(isVisible)
     }
 
     private func isConstraintItem(_ item: Any?, identicalTo target: NSView) -> Bool {
@@ -256,7 +295,12 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     override func loadView() {
-        view = StatusPopoverRootView(frame: NSRect(origin: .zero, size: Self.contentSize))
+        let root = DashboardGlassBackgroundView(
+            frame: NSRect(origin: .zero, size: Self.contentSize),
+            acceptsFirstResponder: true
+        )
+        root.userInterfaceLayoutDirection = .leftToRight
+        view = root
         setupSubviews()
     }
 
@@ -328,11 +372,12 @@ final class StatusPopoverViewController: NSViewController {
 
         todayDescriptionRow.addSubview(todayDescriptionLabel)
         todayDescriptionRow.addSubview(todayRefreshButton)
-        view.addSubview(todayDescriptionRow)
-        view.addSubview(summaryStack)
-        view.addSubview(hoverLabel)
-        view.addSubview(collectionView)
-        view.addSubview(hourlyLineChartView)
+        addToRootGlass(todayDescriptionRow)
+        addToRootGlass(summaryStack)
+        addToRootGlass(hoverLabel)
+        addToRootGlass(collectionView)
+        addToRootGlass(hourlyLineChartView)
+        addToRootGlass(loadingOverlay)
 
         NSLayoutConstraint.activate([
             todayDescriptionRow.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
@@ -382,7 +427,21 @@ final class StatusPopoverViewController: NSViewController {
                 lessThanOrEqualTo: view.bottomAnchor,
                 constant: -Self.outerMargin
             ),
+
+            loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+    }
+
+    /// 将弹窗内容添加到与主界面一致的玻璃 contentView，避免内容覆盖原生玻璃效果。
+    private func addToRootGlass(_ subview: NSView) {
+        if let rootView = view as? DashboardGlassBackgroundView {
+            rootView.addContentSubview(subview)
+        } else {
+            view.addSubview(subview)
+        }
     }
 
     private func setupSummaryCards() {
@@ -482,6 +541,7 @@ final class StatusPopoverViewController: NSViewController {
         applyTodayDescription(todayTokens: snapshot.summary.todayTokens, language: language)
         applyHoverText()
         applyRefreshButtonLoadingState()
+        loadingOverlay.setLoading(viewModel.states.values.contains { $0.isLoading })
         collectionView.reloadData()
     }
 
@@ -651,28 +711,117 @@ private final class SummaryMetricCardView: NSView {
     }
 }
 
-/// 跟随系统外观刷新 popover 背景色。
-final class StatusPopoverRootView: NSView {
+/// 覆盖状态栏弹窗和主界面内容区的加载层。
+///
+/// 使用系统 `NSVisualEffectView` 材质形成液态玻璃效果，并复用状态栏的 SF Symbol
+/// 动画帧，使首次扫描期间的反馈与菜单栏图标保持一致。
+@MainActor
+final class LoadingOverlayView: NSVisualEffectView {
+    private static let loadingMessage = "正在更新中，首次加载耗时较久，请耐心等待～"
+
+    private let imageView = NSImageView()
+    private let messageLabel = NSTextField(labelWithString: loadingMessage)
+    private var animationTimer: Timer?
+    private var animationFrameIndex = 0
+    private var isLoading = false
+    private(set) var debugSymbolName: String?
+    var debugMessage: String { messageLabel.stringValue }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true
-        updateBackgroundColor()
+
+        material = .hudWindow
+        blendingMode = .withinWindow
+        state = .active
+        isEmphasized = true
+        isHidden = true
+        translatesAutoresizingMaskIntoConstraints = false
+        setAccessibilityLabel(Self.loadingMessage)
+
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+
+        messageLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        messageLabel.textColor = .labelColor
+        messageLabel.alignment = .center
+        messageLabel.lineBreakMode = .byTruncatingTail
+        messageLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let contentStack = NSStackView(views: [imageView, messageLabel])
+        contentStack.orientation = .vertical
+        contentStack.alignment = .centerX
+        contentStack.spacing = 12
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            imageView.widthAnchor.constraint(equalToConstant: 48),
+            imageView.heightAnchor.constraint(equalToConstant: 48),
+            contentStack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            contentStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            messageLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 20),
+            messageLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20),
+        ])
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("StatusPopoverRootView 不支持 storyboard 初始化")
+        fatalError("LoadingOverlayView 不支持 storyboard 初始化")
     }
 
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        updateBackgroundColor()
-    }
-
-    private func updateBackgroundColor() {
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    deinit {
+        MainActor.assumeIsolated {
+            animationTimer?.invalidate()
         }
+    }
+
+    /// 切换遮罩可见状态，并同步启停图标动画以避免在隐藏时持续重绘。
+    func setLoading(_ isLoading: Bool) {
+        guard self.isLoading != isLoading else { return }
+
+        self.isLoading = isLoading
+        isHidden = !isLoading
+        if isLoading {
+            startAnimation()
+        } else {
+            stopAnimation()
+        }
+    }
+
+    private func startAnimation() {
+        guard animationTimer == nil else { return }
+
+        animationFrameIndex = 0
+        renderAnimationFrame()
+        let timer = Timer(timeInterval: StatusBarLoadingAnimation.frameInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.advanceAnimationFrame()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
+    }
+
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+        animationFrameIndex = 0
+    }
+
+    private func advanceAnimationFrame() {
+        animationFrameIndex = StatusBarLoadingAnimation.nextFrameIndex(after: animationFrameIndex)
+        renderAnimationFrame()
+    }
+
+    private func renderAnimationFrame() {
+        let symbolName = StatusBarLoadingAnimation.symbolNames[animationFrameIndex]
+        let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: Self.loadingMessage
+        )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 42, weight: .regular))
+        image?.isTemplate = true
+        imageView.image = image
+        debugSymbolName = image == nil ? nil : symbolName
     }
 }
 

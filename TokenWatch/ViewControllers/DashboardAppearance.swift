@@ -1,7 +1,19 @@
 import AppKit
 
+/// 保持 macOS 15/Xcode 16.4 可编译时，通过 KVC 设置 macOS 26 玻璃样式的枚举值。
+private enum NativeGlassEffectStyle {
+    static let regular = 0
+    static let clear = 1
+}
+
 enum DashboardPalette {
     static let appBackground = dynamicColor(light: 0xF4F6FA, dark: 0x0B0F14)
+    static let translucentAppBackground = dynamicColor(
+        light: 0xF4F6FA,
+        dark: 0x0B0F14,
+        lightAlpha: 0.1,
+        darkAlpha: 0.1
+    )
     static let sidebarBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
     static let panelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x151B23)
     static let deepPanelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
@@ -17,13 +29,50 @@ enum DashboardPalette {
     static let statusInactive = dynamicColor(light: 0xDC2626, dark: 0x4B5563)
     static let yellow = dynamicColor(light: 0xF59E0B, dark: 0xF5C451)
     static let purple = dynamicColor(light: 0x8B5CF6, dark: 0xA78BFA)
-    static let navigationSelectedBackground = dynamicColor(light: 0xEAF2FF, dark: 0x182235)
-    static let navigationSelectedText = dynamicColor(light: 0x2563EB, dark: 0xFFFFFF)
-    static let rangeSelectedBackground = dynamicColor(light: 0x2563EB, dark: 0xF5F7FA)
-    static let rangeSelectedText = dynamicColor(light: 0xFFFFFF, dark: 0x0B0F14)
-    static let rangeSelectedBorder = dynamicColor(light: 0x2563EB, dark: 0x2B3440)
-    static let sessionTableHeaderBackground = dynamicColor(light: 0xF1F5F9, dark: 0x202936)
-    static let sessionTableAlternateRowBackground = dynamicColor(light: 0xF8FAFC, dark: 0x111820)
+    static let glassControlBorder = dynamicColor(
+        light: 0x64748B,
+        dark: 0xFFFFFF,
+        lightAlpha: 0.32,
+        darkAlpha: 0.28
+    )
+    static let glassDivider = dynamicColor(
+        light: 0x94A3B8,
+        dark: 0xFFFFFF,
+        lightAlpha: 0.28,
+        darkAlpha: 0.16
+    )
+    static let navigationSelectedBackground = dynamicColor(
+        light: 0x2563EB,
+        dark: 0x5AA2FF,
+        lightAlpha: 0.16,
+        darkAlpha: 0.24
+    )
+    static let navigationSelectedText = dynamicColor(light: 0x2563EB, dark: 0xF5F7FA)
+    static let rangeSelectedBackground = dynamicColor(
+        light: 0x2563EB,
+        dark: 0x5AA2FF,
+        lightAlpha: 0.58,
+        darkAlpha: 0.32
+    )
+    static let rangeSelectedText = dynamicColor(light: 0x1E3A8A, dark: 0xF5F7FA)
+    static let rangeSelectedBorder = dynamicColor(
+        light: 0x2563EB,
+        dark: 0x5AA2FF,
+        lightAlpha: 0.62,
+        darkAlpha: 0.5
+    )
+    static let sessionTableHeaderBackground = dynamicColor(
+        light: 0x2563EB,
+        dark: 0xFFFFFF,
+        lightAlpha: 0.10,
+        darkAlpha: 0.14
+    )
+    static let sessionTableAlternateRowBackground = dynamicColor(
+        light: 0xFFFFFF,
+        dark: 0xFFFFFF,
+        lightAlpha: 0.28,
+        darkAlpha: 0.08
+    )
     static let sessionDateBackground = dynamicColor(light: 0xFFFFFF, dark: 0x111827)
     static let sessionDateBorder = dynamicColor(light: 0xD8DEE8, dark: 0x263244)
     static let sessionDateIcon = dynamicColor(light: 0x64748B, dark: 0x9CA3AF)
@@ -38,6 +87,18 @@ enum DashboardPalette {
         NSColor(name: nil) { appearance in
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             return NSColor(hex: isDark ? dark : light)
+        }
+    }
+
+    private static func dynamicColor(
+        light: Int,
+        dark: Int,
+        lightAlpha: CGFloat,
+        darkAlpha: CGFloat
+    ) -> NSColor {
+        NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return NSColor(hex: isDark ? dark : light).withAlphaComponent(isDark ? darkAlpha : lightAlpha)
         }
     }
 }
@@ -132,6 +193,165 @@ final class DashboardBackgroundView: NSView, DashboardAppearanceRefreshable {
 
     private func updateLayerColors() {
         layer?.backgroundColor = DashboardLayerColor.cgColor(backgroundColor, for: self)
+    }
+}
+
+/// 主窗口的大面积背景，在 macOS 26 使用原生 Liquid Glass，并为旧系统保留系统材质回退。
+final class DashboardGlassBackgroundView: NSView {
+    private let allowsFirstResponder: Bool
+    private let contentContainer = NSView()
+    private var usesNativeLiquidGlass = false
+
+    var debugUsesNativeLiquidGlass: Bool { usesNativeLiquidGlass }
+
+    init(
+        frame frameRect: NSRect = .zero,
+        acceptsFirstResponder: Bool = false
+    ) {
+        self.allowsFirstResponder = acceptsFirstResponder
+        super.init(frame: frameRect)
+        installGlassEffect()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardGlassBackgroundView 必须用 init(frame:material:) 构造")
+    }
+
+    override var acceptsFirstResponder: Bool {
+        allowsFirstResponder
+    }
+
+    /// 将界面内容放入玻璃容器，确保 AppKit 按原生玻璃层级绘制。
+    func addContentSubview(_ view: NSView) {
+        contentContainer.addSubview(view)
+    }
+
+    private func installGlassEffect() {
+        if #available(macOS 26.0, *), let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
+            let glassView = glassClass.init(frame: .zero)
+            glassView.setValue(NativeGlassEffectStyle.clear, forKey: "style")
+            glassView.setValue(CGFloat(0), forKey: "cornerRadius")
+            glassView.translatesAutoresizingMaskIntoConstraints = false
+            glassView.setValue(contentContainer, forKey: "contentView")
+            addSubview(glassView)
+            NSLayoutConstraint.activate([
+                glassView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                glassView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                glassView.topAnchor.constraint(equalTo: topAnchor),
+                glassView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            ])
+            usesNativeLiquidGlass = true
+            return
+        }
+
+        let fallbackView = NSVisualEffectView()
+        fallbackView.material = .underWindowBackground
+        fallbackView.blendingMode = .behindWindow
+        fallbackView.state = .active
+        fallbackView.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(fallbackView)
+        fallbackView.addSubview(contentContainer)
+        NSLayoutConstraint.activate([
+            fallbackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            fallbackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            fallbackView.topAnchor.constraint(equalTo: topAnchor),
+            fallbackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            contentContainer.leadingAnchor.constraint(equalTo: fallbackView.leadingAnchor),
+            contentContainer.trailingAnchor.constraint(equalTo: fallbackView.trailingAnchor),
+            contentContainer.topAnchor.constraint(equalTo: fallbackView.topAnchor),
+            contentContainer.bottomAnchor.constraint(equalTo: fallbackView.bottomAnchor),
+        ])
+    }
+}
+
+/// 主要信息卡在 macOS 26 使用常规 Liquid Glass，既保留背景透视也维持文字可读性。
+class DashboardGlassCardView: NSView {
+    private let contentContainer = NSView()
+    private var nativeGlassView: NSView?
+    private var usesNativeLiquidGlass = false
+    private var usesClearGlassStyle = false
+
+    var debugUsesNativeLiquidGlass: Bool { usesNativeLiquidGlass }
+    var debugUsesClearGlassStyle: Bool { usesClearGlassStyle }
+
+    init(cornerRadius: CGFloat) {
+        super.init(frame: .zero)
+        installGlassEffect(cornerRadius: cornerRadius)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardGlassCardView 必须用 init(cornerRadius:) 构造")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateNativeGlassStyle()
+    }
+
+    /// 将内容放入系统玻璃的 contentView，避免覆盖原生折射与边缘高光。
+    func addContentSubview(_ view: NSView) {
+        contentContainer.addSubview(view)
+    }
+
+    private func installGlassEffect(cornerRadius: CGFloat) {
+        if #available(macOS 26.0, *), let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
+            let glassView = glassClass.init(frame: .zero)
+            glassView.setValue(cornerRadius, forKey: "cornerRadius")
+            glassView.translatesAutoresizingMaskIntoConstraints = false
+            glassView.setValue(contentContainer, forKey: "contentView")
+            contentContainer.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(glassView)
+            NSLayoutConstraint.activate([
+                glassView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                glassView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                glassView.topAnchor.constraint(equalTo: topAnchor),
+                glassView.bottomAnchor.constraint(equalTo: bottomAnchor),
+                contentContainer.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
+                contentContainer.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
+                contentContainer.topAnchor.constraint(equalTo: glassView.topAnchor),
+                contentContainer.bottomAnchor.constraint(equalTo: glassView.bottomAnchor),
+            ])
+            nativeGlassView = glassView
+            updateNativeGlassStyle()
+            usesNativeLiquidGlass = true
+            return
+        }
+
+        let fallbackView = NSVisualEffectView()
+        fallbackView.material = .contentBackground
+        fallbackView.blendingMode = .withinWindow
+        fallbackView.state = .active
+        fallbackView.wantsLayer = true
+        fallbackView.layer?.cornerRadius = cornerRadius
+        fallbackView.layer?.masksToBounds = true
+        fallbackView.layer?.borderWidth = 1
+        fallbackView.layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.glassControlBorder, for: self)
+        fallbackView.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(fallbackView)
+        fallbackView.addSubview(contentContainer)
+        NSLayoutConstraint.activate([
+            fallbackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            fallbackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            fallbackView.topAnchor.constraint(equalTo: topAnchor),
+            fallbackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            contentContainer.leadingAnchor.constraint(equalTo: fallbackView.leadingAnchor),
+            contentContainer.trailingAnchor.constraint(equalTo: fallbackView.trailingAnchor),
+            contentContainer.topAnchor.constraint(equalTo: fallbackView.topAnchor),
+            contentContainer.bottomAnchor.constraint(equalTo: fallbackView.bottomAnchor),
+        ])
+    }
+
+    /// 浅色环境让内容卡使用透明玻璃，避免系统常规材质叠加成厚重白卡；暗色继续使用常规玻璃维持对比度。
+    private func updateNativeGlassStyle() {
+        guard #available(macOS 26.0, *), let nativeGlassView = nativeGlassView else { return }
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        nativeGlassView.setValue(
+            isDark ? NativeGlassEffectStyle.regular : NativeGlassEffectStyle.clear,
+            forKey: "style"
+        )
+        usesClearGlassStyle = !isDark
     }
 }
 
