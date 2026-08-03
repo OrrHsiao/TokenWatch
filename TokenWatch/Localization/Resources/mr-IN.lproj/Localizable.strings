@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "आजचा टोकन वापर खूप वेगात आहे";
 "popoverExtremeTodayTokens" = "आजचा टोकन वापर मोजमापाच्या पलीकडे आहे";
 "heatmapRecent22Weeks" = "मागील 22 आठवडे";
+"widgetHeatmapTitle" = "उष्णता नकाशा";
+"widgetTodayUsageTitle" = "आजचा वापर";
+"widgetDatedUsageTitleFormat" = "%@ चा वापर";
+"widgetUpdatedThroughTitleFormat" = "%@ पर्यंत अद्ययावत";
+"widgetNotReadyMessage" = "डेटा रीफ्रेश करण्यासाठी TokenWatch उघडा";
 "chartTokenAccessibility" = "मागील 12 महिन्यांचा टोकन बार आलेख";
 "chartCostAccessibility" = "मागील 12 महिन्यांचा खर्च बार आलेख";
 "chartTokenAccessibilityFormat" = "%@ चा टोकन बार आलेख";

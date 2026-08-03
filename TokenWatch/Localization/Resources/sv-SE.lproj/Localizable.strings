@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Dagens tokenanvändning är mycket hög";
 "popoverExtremeTodayTokens" = "Dagens tokenanvändning spränger skalan";
 "heatmapRecent22Weeks" = "Senaste 22 veckorna";
+"widgetHeatmapTitle" = "Värmekarta";
+"widgetTodayUsageTitle" = "Dagens användning";
+"widgetDatedUsageTitleFormat" = "Användning den %@";
+"widgetUpdatedThroughTitleFormat" = "Uppdaterad till och med %@";
+"widgetNotReadyMessage" = "Öppna TokenWatch för att uppdatera data";
 "chartTokenAccessibility" = "Stapeldiagram över tokenanvändning de senaste 12 månaderna";
 "chartCostAccessibility" = "Stapeldiagram över kostnader de senaste 12 månaderna";
 "chartTokenAccessibilityFormat" = "Stapeldiagram över tokenanvändning — %@";

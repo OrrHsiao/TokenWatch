@@ -136,6 +136,7 @@
 "popoverVeryHighTodayTokens" = "Het tokengebruik van vandaag is erg hoog";
 "popoverExtremeTodayTokens" = "Het tokengebruik van vandaag is extreem hoog";
 "heatmapRecent22Weeks" = "Afgelopen 22 weken";
+"widgetHeatmapTitle" = "Warmtekaart";
 "widgetTodayUsageTitle" = "Gebruik vandaag";
 "widgetDatedUsageTitleFormat" = "Gebruik op %@";
 "widgetUpdatedThroughTitleFormat" = "Bijgewerkt tot %@";

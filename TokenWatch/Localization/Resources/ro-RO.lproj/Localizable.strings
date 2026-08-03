@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Utilizarea tokenurilor de astăzi este foarte ridicată";
 "popoverExtremeTodayTokens" = "Utilizarea tokenurilor de astăzi depășește orice limită";
 "heatmapRecent22Weeks" = "Ultimele 22 de săptămâni";
+"widgetHeatmapTitle" = "Hartă termică";
+"widgetTodayUsageTitle" = "Utilizarea de astăzi";
+"widgetDatedUsageTitleFormat" = "Utilizarea din %@";
+"widgetUpdatedThroughTitleFormat" = "Actualizat până la %@";
+"widgetNotReadyMessage" = "Deschideți TokenWatch pentru a actualiza datele";
 "chartTokenAccessibility" = "Grafic cu bare pentru tokenurile din ultimele 12 luni";
 "chartCostAccessibility" = "Grafic cu bare pentru costurile din ultimele 12 luni";
 "chartTokenAccessibilityFormat" = "%@ — grafic cu bare pentru tokenuri";

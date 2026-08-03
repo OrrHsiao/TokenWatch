@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "L'ús de tokens d'avui és molt alt";
 "popoverExtremeTodayTokens" = "L'ús de tokens d'avui està fora d'escala";
 "heatmapRecent22Weeks" = "Darreres 22 setmanes";
+"widgetHeatmapTitle" = "Mapa de calor";
+"widgetTodayUsageTitle" = "Ús d'avui";
+"widgetDatedUsageTitleFormat" = "Ús de %@";
+"widgetUpdatedThroughTitleFormat" = "Actualitzat fins a %@";
+"widgetNotReadyMessage" = "Obriu TokenWatch per actualitzar les dades";
 "chartTokenAccessibility" = "Gràfic de barres de tokens dels darrers 12 mesos";
 "chartCostAccessibility" = "Gràfic de barres de costos dels darrers 12 mesos";
 "chartTokenAccessibilityFormat" = "Gràfic de barres de tokens — %@";

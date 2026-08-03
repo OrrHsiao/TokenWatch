@@ -136,6 +136,7 @@
 "popoverVeryHighTodayTokens" = "今日の token 使用量はかなり高めです";
 "popoverExtremeTodayTokens" = "今日の token 使用量は上限級です";
 "heatmapRecent22Weeks" = "過去22週間";
+"widgetHeatmapTitle" = "ヒートマップ";
 "widgetTodayUsageTitle" = "今日の使用量";
 "widgetDatedUsageTitleFormat" = "%@の使用量";
 "widgetUpdatedThroughTitleFormat" = "%@ まで更新";

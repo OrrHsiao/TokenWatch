@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "ഇന്നത്തെ ടോക്കൺ ഉപയോഗം വളരെ വേഗത്തിലാണ്";
 "popoverExtremeTodayTokens" = "ഇന്നത്തെ ടോക്കൺ ഉപയോഗം പരിധി കടന്നു";
 "heatmapRecent22Weeks" = "കഴിഞ്ഞ 22 ആഴ്ച";
+"widgetHeatmapTitle" = "ഹീറ്റ് മാപ്പ്";
+"widgetTodayUsageTitle" = "ഇന്നത്തെ ഉപയോഗം";
+"widgetDatedUsageTitleFormat" = "%@ ഉപയോഗം";
+"widgetUpdatedThroughTitleFormat" = "%@ വരെ അപ്ഡേറ്റ് ചെയ്തു";
+"widgetNotReadyMessage" = "ഡാറ്റ പുതുക്കാൻ TokenWatch തുറക്കുക";
 "chartTokenAccessibility" = "കഴിഞ്ഞ 12 മാസത്തെ ടോക്കൺ ബാർ ചാർട്ട്";
 "chartCostAccessibility" = "കഴിഞ്ഞ 12 മാസത്തെ ചെലവ് ബാർ ചാർട്ട്";
 "chartTokenAccessibilityFormat" = "%@ ടോക്കൺ ബാർ ചാർട്ട്";

@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "A mai tokenhasználat nagyon magas";
 "popoverExtremeTodayTokens" = "A mai tokenhasználat kiugróan magas";
 "heatmapRecent22Weeks" = "Elmúlt 22 hét";
+"widgetHeatmapTitle" = "Hőtérkép";
+"widgetTodayUsageTitle" = "Mai használat";
+"widgetDatedUsageTitleFormat" = "%@ használata";
+"widgetUpdatedThroughTitleFormat" = "Frissítve eddig: %@";
+"widgetNotReadyMessage" = "Nyissa meg a TokenWatchot az adatok frissítéséhez";
 "chartTokenAccessibility" = "Az elmúlt 12 hónap tokenoszlop-diagramja";
 "chartCostAccessibility" = "Az elmúlt 12 hónap költségoszlop-diagramja";
 "chartTokenAccessibilityFormat" = "Tokenoszlop-diagram — %@";

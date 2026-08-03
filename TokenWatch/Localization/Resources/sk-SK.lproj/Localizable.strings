@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Dnešné používanie tokenov je veľmi vysoké";
 "popoverExtremeTodayTokens" = "Dnešné používanie tokenov je extrémne vysoké";
 "heatmapRecent22Weeks" = "Posledných 22 týždňov";
+"widgetHeatmapTitle" = "Tepelná mapa";
+"widgetTodayUsageTitle" = "Dnešné používanie";
+"widgetDatedUsageTitleFormat" = "Používanie za %@";
+"widgetUpdatedThroughTitleFormat" = "Aktualizované k %@";
+"widgetNotReadyMessage" = "Otvorte TokenWatch a obnovte údaje";
 "chartTokenAccessibility" = "Stĺpcový graf tokenov za posledných 12 mesiacov";
 "chartCostAccessibility" = "Stĺpcový graf nákladov za posledných 12 mesiacov";
 "chartTokenAccessibilityFormat" = "Stĺpcový graf tokenov — %@";

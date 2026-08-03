@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Penggunaan token hari ini sangat tinggi";
 "popoverExtremeTodayTokens" = "Penggunaan token hari ini melampaui grafik";
 "heatmapRecent22Weeks" = "22 Minggu Terakhir";
+"widgetHeatmapTitle" = "Peta panas";
+"widgetTodayUsageTitle" = "Penggunaan hari ini";
+"widgetDatedUsageTitleFormat" = "Penggunaan %@";
+"widgetUpdatedThroughTitleFormat" = "Diperbarui hingga %@";
+"widgetNotReadyMessage" = "Buka TokenWatch untuk menyegarkan data";
 "chartTokenAccessibility" = "Grafik batang token 12 bulan terakhir";
 "chartCostAccessibility" = "Grafik batang biaya 12 bulan terakhir";
 "chartTokenAccessibilityFormat" = "Grafik batang token %@";

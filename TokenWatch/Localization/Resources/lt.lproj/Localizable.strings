@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Šiandien tokenų naudojimas labai didelis";
 "popoverExtremeTodayTokens" = "Šiandien tokenų naudojimas viršija visas ribas";
 "heatmapRecent22Weeks" = "Pastarosios 22 savaitės";
+"widgetHeatmapTitle" = "Šilumos žemėlapis";
+"widgetTodayUsageTitle" = "Šiandienos naudojimas";
+"widgetDatedUsageTitleFormat" = "%@ naudojimas";
+"widgetUpdatedThroughTitleFormat" = "Atnaujinta iki %@";
+"widgetNotReadyMessage" = "Atidarykite „TokenWatch“, kad atnaujintumėte duomenis";
 "chartTokenAccessibility" = "Pastarųjų 12 mėnesių tokenų naudojimo stulpelinė diagrama";
 "chartCostAccessibility" = "Pastarųjų 12 mėnesių išlaidų stulpelinė diagrama";
 "chartTokenAccessibilityFormat" = "Tokenų naudojimo stulpelinė diagrama — %@";

@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Notkun tokena í dag er mjög mikil";
 "popoverExtremeTodayTokens" = "Notkun tokena í dag er út fyrir skalann";
 "heatmapRecent22Weeks" = "Síðustu 22 vikur";
+"widgetHeatmapTitle" = "Hitakort";
+"widgetTodayUsageTitle" = "Notkun í dag";
+"widgetDatedUsageTitleFormat" = "Notkun %@";
+"widgetUpdatedThroughTitleFormat" = "Uppfært til %@";
+"widgetNotReadyMessage" = "Opnaðu TokenWatch til að uppfæra gögn";
 "chartTokenAccessibility" = "Súlurit token-notkunar síðustu 12 mánaða";
 "chartCostAccessibility" = "Kostnaðarsúlurit síðustu 12 mánaða";
 "chartTokenAccessibilityFormat" = "Súlurit token-notkunar — %@";

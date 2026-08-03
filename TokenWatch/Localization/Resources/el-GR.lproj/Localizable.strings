@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Η σημερινή χρήση token είναι πολύ υψηλή";
 "popoverExtremeTodayTokens" = "Η σημερινή χρήση token είναι εξαιρετικά υψηλή";
 "heatmapRecent22Weeks" = "Τελευταίες 22 εβδομάδες";
+"widgetHeatmapTitle" = "Χάρτης θερμότητας";
+"widgetTodayUsageTitle" = "Σημερινή χρήση";
+"widgetDatedUsageTitleFormat" = "Χρήση στις %@";
+"widgetUpdatedThroughTitleFormat" = "Ενημερώθηκε έως %@";
+"widgetNotReadyMessage" = "Ανοίξτε το TokenWatch για ανανέωση των δεδομένων";
 "chartTokenAccessibility" = "Ραβδόγραμμα χρήσης token για τους τελευταίους 12 μήνες";
 "chartCostAccessibility" = "Ραβδόγραμμα κόστους για τους τελευταίους 12 μήνες";
 "chartTokenAccessibilityFormat" = "%@ — ραβδόγραμμα χρήσης token";

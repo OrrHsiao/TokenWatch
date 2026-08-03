@@ -136,6 +136,7 @@
 "popoverVeryHighTodayTokens" = "Dzisiejsze użycie tokenów jest bardzo wysokie";
 "popoverExtremeTodayTokens" = "Dzisiejsze użycie tokenów jest ekstremalne";
 "heatmapRecent22Weeks" = "Ostatnie 22 tygodnie";
+"widgetHeatmapTitle" = "Mapa cieplna";
 "widgetTodayUsageTitle" = "Dzisiejsze użycie";
 "widgetDatedUsageTitleFormat" = "Użycie: %@";
 "widgetUpdatedThroughTitleFormat" = "Zaktualizowano do %@";

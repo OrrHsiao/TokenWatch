@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Bugünkü token kullanımı çok yüksek";
 "popoverExtremeTodayTokens" = "Bugünkü token kullanımı olağanüstü yüksek";
 "heatmapRecent22Weeks" = "Son 22 Hafta";
+"widgetHeatmapTitle" = "Isı haritası";
+"widgetTodayUsageTitle" = "Bugünün kullanımı";
+"widgetDatedUsageTitleFormat" = "%@ kullanımı";
+"widgetUpdatedThroughTitleFormat" = "%@ tarihine kadar güncellendi";
+"widgetNotReadyMessage" = "Verileri yenilemek için TokenWatch uygulamasını açın";
 "chartTokenAccessibility" = "Son 12 ayın token sütun grafiği";
 "chartCostAccessibility" = "Son 12 ayın maliyet sütun grafiği";
 "chartTokenAccessibilityFormat" = "Token sütun grafiği — %@";

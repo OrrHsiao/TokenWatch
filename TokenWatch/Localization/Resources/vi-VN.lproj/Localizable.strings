@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Mức sử dụng token hôm nay rất cao";
 "popoverExtremeTodayTokens" = "Mức sử dụng token hôm nay vượt biểu đồ";
 "heatmapRecent22Weeks" = "22 tuần qua";
+"widgetHeatmapTitle" = "Bản đồ nhiệt";
+"widgetTodayUsageTitle" = "Mức sử dụng hôm nay";
+"widgetDatedUsageTitleFormat" = "Mức sử dụng ngày %@";
+"widgetUpdatedThroughTitleFormat" = "Cập nhật đến %@";
+"widgetNotReadyMessage" = "Mở TokenWatch để làm mới dữ liệu";
 "chartTokenAccessibility" = "Biểu đồ cột token trong 12 tháng qua";
 "chartCostAccessibility" = "Biểu đồ cột chi phí trong 12 tháng qua";
 "chartTokenAccessibilityFormat" = "Biểu đồ cột token %@";

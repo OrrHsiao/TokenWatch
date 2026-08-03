@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Penggunaan token hari ini sangat tinggi";
 "popoverExtremeTodayTokens" = "Penggunaan token hari ini di luar carta";
 "heatmapRecent22Weeks" = "22 Minggu Terkini";
+"widgetHeatmapTitle" = "Peta haba";
+"widgetTodayUsageTitle" = "Penggunaan hari ini";
+"widgetDatedUsageTitleFormat" = "Penggunaan %@";
+"widgetUpdatedThroughTitleFormat" = "Dikemas kini sehingga %@";
+"widgetNotReadyMessage" = "Buka TokenWatch untuk memuat semula data";
 "chartTokenAccessibility" = "Carta bar token 12 bulan terkini";
 "chartCostAccessibility" = "Carta bar kos 12 bulan terkini";
 "chartTokenAccessibilityFormat" = "Carta bar token %@";

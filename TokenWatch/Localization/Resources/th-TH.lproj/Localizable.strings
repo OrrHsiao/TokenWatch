@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "การใช้ token วันนี้สูงมาก";
 "popoverExtremeTodayTokens" = "การใช้ token วันนี้สูงเกินกราฟ";
 "heatmapRecent22Weeks" = "22 สัปดาห์ที่ผ่านมา";
+"widgetHeatmapTitle" = "ฮีตแมป";
+"widgetTodayUsageTitle" = "การใช้งานวันนี้";
+"widgetDatedUsageTitleFormat" = "การใช้งานวันที่ %@";
+"widgetUpdatedThroughTitleFormat" = "อัปเดตถึง %@";
+"widgetNotReadyMessage" = "เปิด TokenWatch เพื่อรีเฟรชข้อมูล";
 "chartTokenAccessibility" = "แผนภูมิแท่ง token ในช่วง 12 เดือนที่ผ่านมา";
 "chartCostAccessibility" = "แผนภูมิแท่งค่าใช้จ่ายในช่วง 12 เดือนที่ผ่านมา";
 "chartTokenAccessibilityFormat" = "แผนภูมิแท่ง token ของ %@";

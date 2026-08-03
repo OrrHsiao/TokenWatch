@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Napakataas ng paggamit ng token ngayon";
 "popoverExtremeTodayTokens" = "Lampas sa tsart ang paggamit ng token ngayon";
 "heatmapRecent22Weeks" = "Nakaraang 22 Linggo";
+"widgetHeatmapTitle" = "Mapa ng init";
+"widgetTodayUsageTitle" = "Paggamit ngayon";
+"widgetDatedUsageTitleFormat" = "Paggamit noong %@";
+"widgetUpdatedThroughTitleFormat" = "Na-update hanggang %@";
+"widgetNotReadyMessage" = "Buksan ang TokenWatch upang i-refresh ang data";
 "chartTokenAccessibility" = "Tsart na bar ng token sa nakaraang 12 buwan";
 "chartCostAccessibility" = "Tsart na bar ng gastos sa nakaraang 12 buwan";
 "chartTokenAccessibilityFormat" = "Tsart na bar ng token para sa %@";

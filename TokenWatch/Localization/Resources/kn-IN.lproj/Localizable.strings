@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "ಇಂದಿನ ಟೋಕನ್ ಬಳಕೆ ತುಂಬಾ ವೇಗವಾಗಿದೆ";
 "popoverExtremeTodayTokens" = "ಇಂದಿನ ಟೋಕನ್ ಬಳಕೆ ಮಿತಿಯನ್ನು ಮೀರಿದೆ";
 "heatmapRecent22Weeks" = "ಕಳೆದ 22 ವಾರಗಳು";
+"widgetHeatmapTitle" = "ಶಾಖ ನಕ್ಷೆ";
+"widgetTodayUsageTitle" = "ಇಂದಿನ ಬಳಕೆ";
+"widgetDatedUsageTitleFormat" = "%@ ಬಳಕೆ";
+"widgetUpdatedThroughTitleFormat" = "%@ ವರೆಗೆ ನವೀಕರಿಸಲಾಗಿದೆ";
+"widgetNotReadyMessage" = "ಡೇಟಾವನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲು TokenWatch ತೆರೆಯಿರಿ";
 "chartTokenAccessibility" = "ಕಳೆದ 12 ತಿಂಗಳ ಟೋಕನ್ ಬಾರ್ ಚಾರ್ಟ್";
 "chartCostAccessibility" = "ಕಳೆದ 12 ತಿಂಗಳ ವೆಚ್ಚದ ಬಾರ್ ಚಾರ್ಟ್";
 "chartTokenAccessibilityFormat" = "%@ ಟೋಕನ್ ಬಾರ್ ಚಾರ್ಟ್";

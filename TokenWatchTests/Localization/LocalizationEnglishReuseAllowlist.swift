@@ -144,6 +144,7 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "de-DE", key: .codexDataDirectoryOpenPanelMessage, reason: "Die Ordnerbeschreibung enthält feste Befehle, Umgebungsvariablen und Dateinamen。"),
     .init(localeIdentifier: "de-DE", key: .openCodeDataDirectoryOpenPanelMessage, reason: "Die Ordnerbeschreibung enthält feste Befehle, Umgebungsvariablen und Dateinamen。"),
     .init(localeIdentifier: "de-DE", key: .support, reason: "Support 是德语中通用的支持入口术语。"),
+    .init(localeIdentifier: "de-DE", key: .widgetHeatmapTitle, reason: "Heatmap 是德语数据可视化界面沿用的通用术语。"),
     .init(localeIdentifier: "fr-FR", key: .claudeDataDirectoryOpenPanelMessage, reason: "La description conserve les commandes, variables d’environnement et noms de fichiers fixes。"),
     .init(localeIdentifier: "fr-FR", key: .codexDataDirectoryOpenPanelMessage, reason: "La description conserve les commandes, variables d’environnement et noms de fichiers fixes。"),
     .init(localeIdentifier: "fr-FR", key: .openCodeDataDirectoryOpenPanelMessage, reason: "La description conserve les commandes, variables d’environnement et noms de fichiers fixes。"),

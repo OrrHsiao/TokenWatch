@@ -136,6 +136,7 @@
 "popoverVeryHighTodayTokens" = "本日 token 消耗火力全开～";
 "popoverExtremeTodayTokens" = "本日 token 消耗爆表～";
 "heatmapRecent22Weeks" = "最近 22 周";
+"widgetHeatmapTitle" = "热力图";
 "widgetTodayUsageTitle" = "今日用量";
 "widgetDatedUsageTitleFormat" = "%@ 用量";
 "widgetUpdatedThroughTitleFormat" = "更新至 %@";

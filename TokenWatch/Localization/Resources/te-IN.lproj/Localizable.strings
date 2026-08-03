@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "నేటి టోకెన్ వినియోగం చాలా వేగంగా ఉంది";
 "popoverExtremeTodayTokens" = "నేటి టోకెన్ వినియోగం హద్దు దాటింది";
 "heatmapRecent22Weeks" = "గత 22 వారాలు";
+"widgetHeatmapTitle" = "హీట్‌మ్యాప్";
+"widgetTodayUsageTitle" = "నేటి వినియోగం";
+"widgetDatedUsageTitleFormat" = "%@ వినియోగం";
+"widgetUpdatedThroughTitleFormat" = "%@ వరకు నవీకరించబడింది";
+"widgetNotReadyMessage" = "డేటాను రిఫ్రెష్ చేయడానికి TokenWatch తెరవండి";
 "chartTokenAccessibility" = "గత 12 నెలల టోకెన్ బార్ చార్ట్";
 "chartCostAccessibility" = "గత 12 నెలల ఖర్చు బార్ చార్ట్";
 "chartTokenAccessibilityFormat" = "%@ టోకెన్ బార్ చార్ట్";

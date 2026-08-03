@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Сьогодні використання токенів дуже високе";
 "popoverExtremeTodayTokens" = "Сьогодні використання токенів перевищує шкалу";
 "heatmapRecent22Weeks" = "Останні 22 тижні";
+"widgetHeatmapTitle" = "Теплова карта";
+"widgetTodayUsageTitle" = "Сьогоднішнє використання";
+"widgetDatedUsageTitleFormat" = "Використання за %@";
+"widgetUpdatedThroughTitleFormat" = "Оновлено станом на %@";
+"widgetNotReadyMessage" = "Відкрийте TokenWatch, щоб оновити дані";
 "chartTokenAccessibility" = "Стовпчаста діаграма токенів за останні 12 місяців";
 "chartCostAccessibility" = "Стовпчаста діаграма витрат за останні 12 місяців";
 "chartTokenAccessibilityFormat" = "%@ — стовпчаста діаграма токенів";

@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Бүгін токендерді пайдалану деңгейі өте жоғары";
 "popoverExtremeTodayTokens" = "Бүгін токендерді пайдалану шектен шықты";
 "heatmapRecent22Weeks" = "Соңғы 22 апта";
+"widgetHeatmapTitle" = "Жылу картасы";
+"widgetTodayUsageTitle" = "Бүгінгі пайдалану";
+"widgetDatedUsageTitleFormat" = "%@ пайдалану";
+"widgetUpdatedThroughTitleFormat" = "%@ дейін жаңартылды";
+"widgetNotReadyMessage" = "Деректерді жаңарту үшін TokenWatch қолданбасын ашыңыз";
 "chartTokenAccessibility" = "Соңғы 12 айдағы токендердің бағандық диаграммасы";
 "chartCostAccessibility" = "Соңғы 12 айдағы шығындардың бағандық диаграммасы";
 "chartTokenAccessibilityFormat" = "%@ — токендердің бағандық диаграммасы";

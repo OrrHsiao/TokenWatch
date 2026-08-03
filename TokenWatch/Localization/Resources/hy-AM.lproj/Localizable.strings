@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Այսօրվա թոքենների օգտագործումը շատ բարձր է";
 "popoverExtremeTodayTokens" = "Այսօրվա թոքենների օգտագործումը չափազանց բարձր է";
 "heatmapRecent22Weeks" = "Վերջին 22 շաբաթը";
+"widgetHeatmapTitle" = "Ջերմային քարտեզ";
+"widgetTodayUsageTitle" = "Այսօրվա օգտագործումը";
+"widgetDatedUsageTitleFormat" = "%@ օգտագործումը";
+"widgetUpdatedThroughTitleFormat" = "Թարմացվել է մինչև %@";
+"widgetNotReadyMessage" = "Բացեք TokenWatch-ը՝ տվյալները թարմացնելու համար";
 "chartTokenAccessibility" = "Վերջին 12 ամիսների թոքենների սյունակային գծապատկեր";
 "chartCostAccessibility" = "Վերջին 12 ամիսների ծախսի սյունակային գծապատկեր";
 "chartTokenAccessibilityFormat" = "%@ — թոքենների սյունակային գծապատկեր";
