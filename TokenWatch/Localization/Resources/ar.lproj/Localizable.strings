@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "استخدام الرموز اليوم مرتفع جدًا";
 "popoverExtremeTodayTokens" = "استخدام الرموز اليوم خارج النطاق المعتاد";
 "heatmapRecent22Weeks" = "آخر 22 أسبوعًا";
+"widgetHeatmapTitle" = "خريطة حرارية";
+"widgetTodayUsageTitle" = "استخدام اليوم";
+"widgetDatedUsageTitleFormat" = "استخدام %@";
+"widgetUpdatedThroughTitleFormat" = "تم التحديث حتى %@";
+"widgetNotReadyMessage" = "افتح TokenWatch لتحديث البيانات";
 "chartTokenAccessibility" = "مخطط أعمدة لاستخدام الرموز خلال آخر 12 شهرًا";
 "chartCostAccessibility" = "مخطط أعمدة للتكلفة خلال آخر 12 شهرًا";
 "chartTokenAccessibilityFormat" = "مخطط أعمدة للرموز للفترة %@";

@@ -118,42 +118,42 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 158 个 key")
+    @Test("迁移的十二份资源均直接定义全部 159 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 158)
+        #expect(AppStringKey.allCases.count == 159)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
-    @Test("西欧、北欧与地区变体的十份资源均直接定义 130 个核心 key")
+    @Test("西欧、北欧与地区变体的十份资源均直接定义 135 个核心 key")
     func westernAndRegionalResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 130)
+        #expect(directResourceKeys.count == 135)
         try assertCompleteResources([
             "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
             "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
         ])
     }
 
-    @Test("中东欧拉丁文字的十一份资源均直接定义 130 个核心 key")
+    @Test("中东欧拉丁文字的十一份资源均直接定义 135 个核心 key")
     func centralEuropeanLatinResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 130)
+        #expect(directResourceKeys.count == 135)
         try assertCompleteResources(centralEuropeanLatinLocaleIdentifiers)
     }
 
-    @Test("东欧、高加索与中亚文字的十份资源均直接定义 130 个核心 key")
+    @Test("东欧、高加索与中亚文字的十份资源均直接定义 135 个核心 key")
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 130)
+        #expect(directResourceKeys.count == 135)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
     }
 
-    @Test("中东与南亚文字的十二份资源均直接定义 130 个核心 key")
+    @Test("中东与南亚文字的十二份资源均直接定义 135 个核心 key")
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 130)
+        #expect(directResourceKeys.count == 135)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
-    @Test("非洲、东南亚与香港中文的十份资源均直接定义 130 个核心 key")
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义 135 个核心 key")
     func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 130)
+        #expect(directResourceKeys.count == 135)
         try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
     }
 
@@ -188,6 +188,49 @@ struct AppLocalizationResourcesTests {
         #expect(metadata.developmentRegion == "en-US")
         #expect(metadata.knownRegions == expectedKnownRegions)
         #expect(Set(metadata.knownRegions) == Set(expectedKnownRegions))
+    }
+
+    @Test("Widget Extension 文案覆盖所有支持语言")
+    func widgetExtensionStringsCoverAllSupportedLanguages() throws {
+        let catalog = try widgetExtensionLocalizationCatalog()
+        let expectedLocales = Set(AppLanguage.allCases.map(widgetExtensionLocaleIdentifier))
+        let expectedKeys = [
+            "widget.dated.format",
+            "widget.heatmap.description",
+            "widget.heatmap.name",
+            "widget.heatmap.title",
+            "widget.hourly.description",
+            "widget.hourly.name",
+            "widget.notReady",
+            "widget.today.title",
+            "widget.updated.format",
+        ]
+        let formattedKeys = Set([
+            "widget.dated.format",
+            "widget.updated.format",
+        ])
+        let expectedFormatSignature = [FormatArgument(position: 1, type: "@")]
+
+        for key in expectedKeys {
+            let localizations = try #require(catalog[key])
+            #expect(
+                Set(localizations.keys) == expectedLocales,
+                "Unexpected locale coverage for \(key)"
+            )
+            for (locale, value) in localizations {
+                #expect(
+                    !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    "Empty value in Widget Extension for \(locale)/\(key)"
+                )
+                if formattedKeys.contains(key) {
+                    let signature = try formatSignature(
+                        value,
+                        context: "Widget Extension \(locale)/\(key)"
+                    )
+                    #expect(signature == expectedFormatSignature)
+                }
+            }
+        }
     }
 
     @Test("所有格式参数签名与英文基准一致")
@@ -398,6 +441,7 @@ private enum LocalizationResourceTestError: Error, CustomStringConvertible {
     case valueMissing(String, String)
     case malformedFormat(String)
     case invalidProjectLocalizationMetadata
+    case invalidWidgetLocalizationCatalog
 
     var description: String {
         switch self {
@@ -415,6 +459,8 @@ private enum LocalizationResourceTestError: Error, CustomStringConvertible {
             return message
         case .invalidProjectLocalizationMetadata:
             return "Could not parse localization metadata from project.pbxproj"
+        case .invalidWidgetLocalizationCatalog:
+            return "Could not parse Widget Extension localization catalog"
         }
     }
 }
@@ -521,6 +567,63 @@ private func repositoryRootURL() throws -> URL {
 
 private func localizationResourcesURL() throws -> URL {
     try repositoryRootURL().appendingPathComponent("TokenWatch/Localization/Resources", isDirectory: true)
+}
+
+private func widgetExtensionLocalizationCatalog() throws -> [String: [String: String]] {
+    let catalogURL = try repositoryRootURL().appendingPathComponent(
+        "TokenWatchWidgets/Localizable.xcstrings"
+    )
+    let data = try Data(contentsOf: catalogURL)
+    guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let strings = root["strings"] as? [String: Any] else {
+        throw LocalizationResourceTestError.invalidWidgetLocalizationCatalog
+    }
+
+    return try strings.reduce(into: [String: [String: String]]()) { result, entry in
+        guard entry.key.hasPrefix("widget.") else { return }
+        guard let value = entry.value as? [String: Any],
+              let localizations = value["localizations"] as? [String: Any] else {
+            throw LocalizationResourceTestError.invalidWidgetLocalizationCatalog
+        }
+        let values = try localizations.reduce(into: [String: String]()) { localizedValues, localization in
+            guard let localizationValue = localization.value as? [String: Any],
+                  let stringUnit = localizationValue["stringUnit"] as? [String: Any],
+                  let value = stringUnit["value"] as? String else {
+                throw LocalizationResourceTestError.invalidWidgetLocalizationCatalog
+            }
+            localizedValues[localization.key] = value
+        }
+        result[entry.key] = values
+    }
+}
+
+private func widgetExtensionLocaleIdentifier(for language: AppLanguage) -> String {
+    switch language {
+    case .en:
+        return "en"
+    case .de:
+        return "de"
+    case .es:
+        return "es"
+    case .fr:
+        return "fr"
+    case .it:
+        return "it"
+    case .ja:
+        return "ja"
+    case .ko:
+        return "ko"
+    case .nl:
+        return "nl"
+    case .pl:
+        return "pl"
+    case .zhHans:
+        return "zh-Hans"
+    case .zhHant:
+        return "zh-Hant"
+    default:
+        return language.rawValue
+    }
 }
 
 private func projectLocalizationMetadata() throws -> ProjectLocalizationMetadata {

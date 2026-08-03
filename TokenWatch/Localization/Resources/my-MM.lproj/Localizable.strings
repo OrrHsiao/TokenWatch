@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "ယနေ့ token အသုံးပြုမှု အလွန်မြင့်ပါသည်";
 "popoverExtremeTodayTokens" = "ယနေ့ token အသုံးပြုမှု ဇယားထက်ကျော်လွန်နေသည်";
 "heatmapRecent22Weeks" = "ပြီးခဲ့သည့် ၂၂ အပတ်";
+"widgetHeatmapTitle" = "အပူမြေပုံ";
+"widgetTodayUsageTitle" = "ယနေ့ အသုံးပြုမှု";
+"widgetDatedUsageTitleFormat" = "%@ အသုံးပြုမှု";
+"widgetUpdatedThroughTitleFormat" = "%@ အထိ အပ်ဒိတ်လုပ်ပြီးပါပြီ";
+"widgetNotReadyMessage" = "ဒေတာကို အပ်ဒိတ်လုပ်ရန် TokenWatch ကို ဖွင့်ပါ";
 "chartTokenAccessibility" = "ပြီးခဲ့သည့် ၁၂ လ၏ token တိုင်ပုံဇယား";
 "chartCostAccessibility" = "ပြီးခဲ့သည့် ၁၂ လ၏ ကုန်ကျစရိတ်တိုင်ပုံဇယား";
 "chartTokenAccessibilityFormat" = "%@ အတွက် token တိုင်ပုံဇယား";

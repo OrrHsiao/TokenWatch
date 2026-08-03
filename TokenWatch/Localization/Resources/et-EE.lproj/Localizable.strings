@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Tänane tokenikasutus on väga suur";
 "popoverExtremeTodayTokens" = "Tänane tokenikasutus ületab kõik piirid";
 "heatmapRecent22Weeks" = "Viimased 22 nädalat";
+"widgetHeatmapTitle" = "Soojuskaart";
+"widgetTodayUsageTitle" = "Tänane kasutus";
+"widgetDatedUsageTitleFormat" = "Kasutus kuupäeval %@";
+"widgetUpdatedThroughTitleFormat" = "Uuendatud kuni %@";
+"widgetNotReadyMessage" = "Andmete värskendamiseks avage TokenWatch";
 "chartTokenAccessibility" = "Viimase 12 kuu tokenikasutuse tulpdiagramm";
 "chartCostAccessibility" = "Viimase 12 kuu kulu tulpdiagramm";
 "chartTokenAccessibilityFormat" = "Tokenikasutuse tulpdiagramm — %@";

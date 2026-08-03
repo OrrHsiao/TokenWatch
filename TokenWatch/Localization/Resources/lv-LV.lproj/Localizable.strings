@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Šodien tokenu lietojums ir ļoti liels";
 "popoverExtremeTodayTokens" = "Šodien tokenu lietojums pārsniedz visas robežas";
 "heatmapRecent22Weeks" = "Pēdējās 22 nedēļas";
+"widgetHeatmapTitle" = "Siltumkarte";
+"widgetTodayUsageTitle" = "Šodienas lietojums";
+"widgetDatedUsageTitleFormat" = "%@ lietojums";
+"widgetUpdatedThroughTitleFormat" = "Atjaunināts līdz %@";
+"widgetNotReadyMessage" = "Atveriet TokenWatch, lai atsvaidzinātu datus";
 "chartTokenAccessibility" = "Pēdējo 12 mēnešu tokenu lietojuma stabiņu diagramma";
 "chartCostAccessibility" = "Pēdējo 12 mēnešu izmaksu stabiņu diagramma";
 "chartTokenAccessibilityFormat" = "Tokenu lietojuma stabiņu diagramma — %@";

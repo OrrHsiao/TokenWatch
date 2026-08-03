@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Isticmaalka token ee maanta aad buu u sarreeyaa";
 "popoverExtremeTodayTokens" = "Isticmaalka token ee maanta xadkii ayuu dhaafay";
 "heatmapRecent22Weeks" = "22-kii Toddobaad ee u Dambeeyey";
+"widgetHeatmapTitle" = "Khariidadda kulaylka";
+"widgetTodayUsageTitle" = "Isticmaalka maanta";
+"widgetDatedUsageTitleFormat" = "Isticmaalka %@";
+"widgetUpdatedThroughTitleFormat" = "La cusboonaysiiyay ilaa %@";
+"widgetNotReadyMessage" = "Fur TokenWatch si aad xogta u cusboonaysiiso";
 "chartTokenAccessibility" = "Shaxda tiirarka token ee 12-kii bilood ee u dambeeyey";
 "chartCostAccessibility" = "Shaxda tiirarka kharashka ee 12-kii bilood ee u dambeeyey";
 "chartTokenAccessibilityFormat" = "Shaxda tiirarka token ee %@";

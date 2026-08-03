@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Dagens tokenforbrug er meget højt";
 "popoverExtremeTodayTokens" = "Dagens tokenforbrug sprænger skalaen";
 "heatmapRecent22Weeks" = "Seneste 22 uger";
+"widgetHeatmapTitle" = "Varmekort";
+"widgetTodayUsageTitle" = "Dagens forbrug";
+"widgetDatedUsageTitleFormat" = "Forbrug for %@";
+"widgetUpdatedThroughTitleFormat" = "Opdateret til og med %@";
+"widgetNotReadyMessage" = "Åbn TokenWatch for at opdatere data";
 "chartTokenAccessibility" = "Søjlediagram over tokenforbrug for de seneste 12 måneder";
 "chartCostAccessibility" = "Søjlediagram over omkostninger for de seneste 12 måneder";
 "chartTokenAccessibilityFormat" = "Søjlediagram over tokenforbrug — %@";

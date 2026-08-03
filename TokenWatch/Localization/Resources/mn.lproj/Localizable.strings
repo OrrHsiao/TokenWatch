@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Өнөөдрийн токен ашиглалт маш өндөр";
 "popoverExtremeTodayTokens" = "Өнөөдрийн токен ашиглалт хэмжээнээс хэтэрсэн";
 "heatmapRecent22Weeks" = "Сүүлийн 22 долоо хоног";
+"widgetHeatmapTitle" = "Дулааны зураг";
+"widgetTodayUsageTitle" = "Өнөөдрийн хэрэглээ";
+"widgetDatedUsageTitleFormat" = "%@-ийн хэрэглээ";
+"widgetUpdatedThroughTitleFormat" = "%@ хүртэл шинэчилсэн";
+"widgetNotReadyMessage" = "Өгөгдлийг шинэчлэхийн тулд TokenWatch-ийг нээнэ үү";
 "chartTokenAccessibility" = "Сүүлийн 12 сарын токены баганан график";
 "chartCostAccessibility" = "Сүүлийн 12 сарын зардлын баганан график";
 "chartTokenAccessibilityFormat" = "%@ — токены баганан график";

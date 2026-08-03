@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Днешното използване на токени е много високо";
 "popoverExtremeTodayTokens" = "Днешното използване на токени е извън скалата";
 "heatmapRecent22Weeks" = "Последните 22 седмици";
+"widgetHeatmapTitle" = "Топлинна карта";
+"widgetTodayUsageTitle" = "Днешна употреба";
+"widgetDatedUsageTitleFormat" = "Употреба за %@";
+"widgetUpdatedThroughTitleFormat" = "Обновено до %@";
+"widgetNotReadyMessage" = "Отворете TokenWatch, за да обновите данните";
 "chartTokenAccessibility" = "Стълбовидна диаграма на токените за последните 12 месеца";
 "chartCostAccessibility" = "Стълбовидна диаграма на разходите за последните 12 месеца";
 "chartTokenAccessibilityFormat" = "%@ — стълбовидна диаграма на токените";

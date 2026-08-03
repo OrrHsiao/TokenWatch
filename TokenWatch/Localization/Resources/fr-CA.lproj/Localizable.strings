@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "L'utilisation des jetons d'aujourd'hui est très élevée";
 "popoverExtremeTodayTokens" = "L'utilisation des jetons d'aujourd'hui est hors norme";
 "heatmapRecent22Weeks" = "22 dernières semaines";
+"widgetHeatmapTitle" = "Carte thermique";
+"widgetTodayUsageTitle" = "Utilisation d'aujourd'hui";
+"widgetDatedUsageTitleFormat" = "Utilisation du %@";
+"widgetUpdatedThroughTitleFormat" = "Mis à jour jusqu'au %@";
+"widgetNotReadyMessage" = "Ouvrez TokenWatch pour actualiser les données";
 "chartTokenAccessibility" = "Graphique à barres des jetons des 12 derniers mois";
 "chartCostAccessibility" = "Graphique à barres des coûts des 12 derniers mois";
 "chartTokenAccessibilityFormat" = "Graphique à barres des jetons — %@";

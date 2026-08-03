@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Današnje korištenje tokena je vrlo veliko";
 "popoverExtremeTodayTokens" = "Današnje korištenje tokena premašuje sve granice";
 "heatmapRecent22Weeks" = "Posljednja 22 tjedna";
+"widgetHeatmapTitle" = "Toplinska karta";
+"widgetTodayUsageTitle" = "Današnje korištenje";
+"widgetDatedUsageTitleFormat" = "Korištenje za %@";
+"widgetUpdatedThroughTitleFormat" = "Ažurirano do %@";
+"widgetNotReadyMessage" = "Otvorite TokenWatch za osvježavanje podataka";
 "chartTokenAccessibility" = "Stupčasti grafikon tokena za posljednjih 12 mjeseci";
 "chartCostAccessibility" = "Stupčasti grafikon troškova za posljednjih 12 mjeseci";
 "chartTokenAccessibilityFormat" = "%@ – stupčasti grafikon tokena";

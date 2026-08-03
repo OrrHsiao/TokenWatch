@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Tämän päivän tokenien käyttö on erittäin runsasta";
 "popoverExtremeTodayTokens" = "Tämän päivän tokenien käyttö ylittää asteikon";
 "heatmapRecent22Weeks" = "Viimeiset 22 viikkoa";
+"widgetHeatmapTitle" = "Lämpökartta";
+"widgetTodayUsageTitle" = "Tämän päivän käyttö";
+"widgetDatedUsageTitleFormat" = "Käyttö: %@";
+"widgetUpdatedThroughTitleFormat" = "Päivitetty %@ asti";
+"widgetNotReadyMessage" = "Avaa TokenWatch päivittääksesi tiedot";
 "chartTokenAccessibility" = "Viimeisten 12 kuukauden tokenien käytön pylväskaavio";
 "chartCostAccessibility" = "Viimeisten 12 kuukauden kustannusten pylväskaavio";
 "chartTokenAccessibilityFormat" = "Tokenien käytön pylväskaavio — %@";

@@ -150,82 +150,95 @@ struct WidgetSnapshotBuilderTests {
             language: .en
         ))
 
+        #expect(snapshot.localizedText.heatmapTitle == "Heatmap")
         #expect(snapshot.localizedText.todayUsageTitle == "Today's Usage")
         #expect(snapshot.localizedText.datedUsageTitle == "7/15 Usage")
         #expect(snapshot.localizedText.updatedThroughTitle == "Updated through 7/15")
         #expect(snapshot.localizedText.notReadyMessage == "Open TokenWatch to refresh data")
     }
 
-    @Test("all supported languages resolve all four widget strings")
+    @Test("all supported languages resolve all five widget strings")
     func everyLanguageHasExactWidgetStrings() throws {
         let expected: [AppLanguage: [AppStringKey: String]] = [
             .zhHans: [
+                .widgetHeatmapTitle: "热力图",
                 .widgetTodayUsageTitle: "今日用量",
                 .widgetDatedUsageTitleFormat: "%@ 用量",
                 .widgetUpdatedThroughTitleFormat: "更新至 %@",
                 .widgetNotReadyMessage: "打开 TokenWatch 刷新数据",
             ],
             .zhHant: [
+                .widgetHeatmapTitle: "熱力圖",
                 .widgetTodayUsageTitle: "今日用量",
                 .widgetDatedUsageTitleFormat: "%@ 用量",
                 .widgetUpdatedThroughTitleFormat: "更新至 %@",
                 .widgetNotReadyMessage: "開啟 TokenWatch 重新整理資料",
             ],
             .ja: [
+                .widgetHeatmapTitle: "ヒートマップ",
                 .widgetTodayUsageTitle: "今日の使用量",
                 .widgetDatedUsageTitleFormat: "%@の使用量",
                 .widgetUpdatedThroughTitleFormat: "%@ まで更新",
                 .widgetNotReadyMessage: "TokenWatchを開いてデータを更新",
             ],
             .ko: [
+                .widgetHeatmapTitle: "히트맵",
                 .widgetTodayUsageTitle: "오늘 사용량",
                 .widgetDatedUsageTitleFormat: "%@ 사용량",
                 .widgetUpdatedThroughTitleFormat: "%@까지 업데이트",
                 .widgetNotReadyMessage: "TokenWatch를 열어 데이터를 새로고침",
             ],
             .es: [
+                .widgetHeatmapTitle: "Mapa de calor",
                 .widgetTodayUsageTitle: "Uso de hoy",
                 .widgetDatedUsageTitleFormat: "Uso del %@",
                 .widgetUpdatedThroughTitleFormat: "Actualizado hasta %@",
                 .widgetNotReadyMessage: "Abre TokenWatch para actualizar los datos",
             ],
             .de: [
+                .widgetHeatmapTitle: "Heatmap",
                 .widgetTodayUsageTitle: "Heutige Nutzung",
                 .widgetDatedUsageTitleFormat: "Nutzung am %@",
                 .widgetUpdatedThroughTitleFormat: "Aktualisiert bis %@",
                 .widgetNotReadyMessage: "TokenWatch öffnen, um Daten zu aktualisieren",
             ],
             .fr: [
+                .widgetHeatmapTitle: "Carte thermique",
                 .widgetTodayUsageTitle: "Utilisation aujourd’hui",
                 .widgetDatedUsageTitleFormat: "Utilisation du %@",
                 .widgetUpdatedThroughTitleFormat: "Mis à jour jusqu’au %@",
                 .widgetNotReadyMessage: "Ouvrez TokenWatch pour actualiser les données",
             ],
             .ptBR: [
+                .widgetHeatmapTitle: "Mapa de calor",
                 .widgetTodayUsageTitle: "Uso de hoje",
                 .widgetDatedUsageTitleFormat: "Uso em %@",
                 .widgetUpdatedThroughTitleFormat: "Atualizado até %@",
                 .widgetNotReadyMessage: "Abra o TokenWatch para atualizar os dados",
             ],
             .it: [
+                .widgetHeatmapTitle: "Mappa di calore",
                 .widgetTodayUsageTitle: "Utilizzo di oggi",
                 .widgetDatedUsageTitleFormat: "Utilizzo del %@",
                 .widgetUpdatedThroughTitleFormat: "Aggiornato al %@",
                 .widgetNotReadyMessage: "Apri TokenWatch per aggiornare i dati",
             ],
             .nl: [
+                .widgetHeatmapTitle: "Warmtekaart",
                 .widgetTodayUsageTitle: "Gebruik vandaag",
                 .widgetDatedUsageTitleFormat: "Gebruik op %@",
                 .widgetUpdatedThroughTitleFormat: "Bijgewerkt tot %@",
                 .widgetNotReadyMessage: "Open TokenWatch om gegevens te verversen",
             ],
             .pl: [
+                .widgetHeatmapTitle: "Mapa cieplna",
                 .widgetTodayUsageTitle: "Dzisiejsze użycie",
                 .widgetDatedUsageTitleFormat: "Użycie: %@",
                 .widgetUpdatedThroughTitleFormat: "Zaktualizowano do %@",
                 .widgetNotReadyMessage: "Otwórz TokenWatch, aby odświeżyć dane",
             ],
             .en: [
+                .widgetHeatmapTitle: "Heatmap",
                 .widgetTodayUsageTitle: "Today's Usage",
                 .widgetDatedUsageTitleFormat: "%@ Usage",
                 .widgetUpdatedThroughTitleFormat: "Updated through %@",
@@ -233,6 +246,7 @@ struct WidgetSnapshotBuilderTests {
             ],
         ]
         let keys: [AppStringKey] = [
+            .widgetHeatmapTitle,
             .widgetTodayUsageTitle,
             .widgetDatedUsageTitleFormat,
             .widgetUpdatedThroughTitleFormat,
@@ -248,13 +262,11 @@ struct WidgetSnapshotBuilderTests {
             }
         }
 
-        let english = try #require(expected[.en])
-        for language in AppLanguage.allCases where expected[language] == nil {
+        for language in AppLanguage.allCases {
             for key in keys {
-                let expectedValue = try #require(english[key])
                 #expect(
-                    AppStrings.text(key, language: language) == expectedValue,
-                    "Expected English fallback for \(language.rawValue)/\(key.rawValue)"
+                    AppStrings.text(key, language: language) != key.rawValue,
+                    "Expected direct widget translation for \(language.rawValue)/\(key.rawValue)"
                 )
             }
         }

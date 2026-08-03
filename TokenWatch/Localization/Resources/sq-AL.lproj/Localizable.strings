@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Përdorimi i sotëm i tokenëve është shumë i lartë";
 "popoverExtremeTodayTokens" = "Përdorimi i sotëm i tokenëve ka kaluar çdo kufi";
 "heatmapRecent22Weeks" = "22 javët e fundit";
+"widgetHeatmapTitle" = "Harta termike";
+"widgetTodayUsageTitle" = "Përdorimi i sotëm";
+"widgetDatedUsageTitleFormat" = "Përdorimi më %@";
+"widgetUpdatedThroughTitleFormat" = "Përditësuar deri më %@";
+"widgetNotReadyMessage" = "Hap TokenWatch për të rifreskuar të dhënat";
 "chartTokenAccessibility" = "Grafiku me shtylla i tokenëve për 12 muajt e fundit";
 "chartCostAccessibility" = "Grafiku me shtylla i kostos për 12 muajt e fundit";
 "chartTokenAccessibilityFormat" = "Grafiku me shtylla i tokenëve — %@";

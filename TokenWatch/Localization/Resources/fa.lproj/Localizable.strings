@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "استفاده امروز از توکن بسیار زیاد است";
 "popoverExtremeTodayTokens" = "استفاده امروز از توکن از حد معمول فراتر رفته است";
 "heatmapRecent22Weeks" = "۲۲ هفته گذشته";
+"widgetHeatmapTitle" = "نقشه حرارتی";
+"widgetTodayUsageTitle" = "استفاده امروز";
+"widgetDatedUsageTitleFormat" = "استفاده در %@";
+"widgetUpdatedThroughTitleFormat" = "به‌روزرسانی‌شده تا %@";
+"widgetNotReadyMessage" = "برای به‌روزرسانی داده‌ها TokenWatch را باز کنید";
 "chartTokenAccessibility" = "نمودار میله‌ای استفاده از توکن در ۱۲ ماه گذشته";
 "chartCostAccessibility" = "نمودار میله‌ای هزینه در ۱۲ ماه گذشته";
 "chartTokenAccessibilityFormat" = "نمودار میله‌ای استفاده از توکن برای %@";

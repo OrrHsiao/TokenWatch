@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "El uso de tokens de hoy es muy alto";
 "popoverExtremeTodayTokens" = "El uso de tokens de hoy supera la escala";
 "heatmapRecent22Weeks" = "Últimas 22 semanas";
+"widgetHeatmapTitle" = "Mapa de calor";
+"widgetTodayUsageTitle" = "Uso de hoy";
+"widgetDatedUsageTitleFormat" = "Uso de %@";
+"widgetUpdatedThroughTitleFormat" = "Actualizado hasta %@";
+"widgetNotReadyMessage" = "Abre TokenWatch para actualizar los datos";
 "chartTokenAccessibility" = "Gráfica de barras de tokens de los últimos 12 meses";
 "chartCostAccessibility" = "Gráfica de barras de costos de los últimos 12 meses";
 "chartTokenAccessibilityFormat" = "Gráfica de barras de tokens: %@";

@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Dnešní využití tokenů je velmi vysoké";
 "popoverExtremeTodayTokens" = "Dnešní využití tokenů je extrémní";
 "heatmapRecent22Weeks" = "Posledních 22 týdnů";
+"widgetHeatmapTitle" = "Teplotní mapa";
+"widgetTodayUsageTitle" = "Dnešní využití";
+"widgetDatedUsageTitleFormat" = "Využití za %@";
+"widgetUpdatedThroughTitleFormat" = "Aktualizováno k %@";
+"widgetNotReadyMessage" = "Otevřete TokenWatch a obnovte data";
 "chartTokenAccessibility" = "Sloupcový graf tokenů za posledních 12 měsíců";
 "chartCostAccessibility" = "Sloupcový graf nákladů za posledních 12 měsíců";
 "chartTokenAccessibilityFormat" = "Sloupcový graf tokenů — %@";

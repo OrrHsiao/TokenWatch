@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "今日 token 用量非常高";
 "popoverExtremeTodayTokens" = "今日 token 用量超出圖表";
 "heatmapRecent22Weeks" = "過去 22 週";
+"widgetHeatmapTitle" = "熱力圖";
+"widgetTodayUsageTitle" = "今日用量";
+"widgetDatedUsageTitleFormat" = "%@ 用量";
+"widgetUpdatedThroughTitleFormat" = "更新至 %@";
+"widgetNotReadyMessage" = "開啟 TokenWatch 重新整理資料";
 "chartTokenAccessibility" = "過去 12 個月的 token 棒形圖";
 "chartCostAccessibility" = "過去 12 個月的費用棒形圖";
 "chartTokenAccessibilityFormat" = "%@ token 棒形圖";

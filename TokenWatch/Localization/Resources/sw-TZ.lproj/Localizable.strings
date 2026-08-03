@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "Matumizi ya token ya leo ni makubwa sana";
 "popoverExtremeTodayTokens" = "Matumizi ya token ya leo yamevuka kiwango";
 "heatmapRecent22Weeks" = "Wiki 22 Zilizopita";
+"widgetHeatmapTitle" = "Ramani ya joto";
+"widgetTodayUsageTitle" = "Matumizi ya leo";
+"widgetDatedUsageTitleFormat" = "Matumizi ya tarehe %@";
+"widgetUpdatedThroughTitleFormat" = "Imesasishwa hadi %@";
+"widgetNotReadyMessage" = "Fungua TokenWatch ili kuonyesha upya data";
 "chartTokenAccessibility" = "Chati ya nguzo za token ya miezi 12 iliyopita";
 "chartCostAccessibility" = "Chati ya nguzo za gharama ya miezi 12 iliyopita";
 "chartTokenAccessibilityFormat" = "Chati ya nguzo za token ya %@";

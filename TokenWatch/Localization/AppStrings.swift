@@ -145,6 +145,7 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case popoverVeryHighTodayTokens
     case popoverExtremeTodayTokens
     case heatmapRecent22Weeks
+    case widgetHeatmapTitle
     case widgetTodayUsageTitle
     case widgetDatedUsageTitleFormat
     case widgetUpdatedThroughTitleFormat
@@ -201,10 +202,6 @@ enum AppStrings {
         .settingsReselectDirectory,
         .statusNeedsDataDirectorySelection,
         .support,
-        .widgetDatedUsageTitleFormat,
-        .widgetNotReadyMessage,
-        .widgetTodayUsageTitle,
-        .widgetUpdatedThroughTitleFormat,
     ]
 
     /// Returns localized text for a stable app string key.

@@ -118,6 +118,11 @@
 "popoverVeryHighTodayTokens" = "আজ টোকেনের ব্যবহার খুব বেশি";
 "popoverExtremeTodayTokens" = "আজ টোকেনের ব্যবহার স্বাভাবিক সীমার বাইরে";
 "heatmapRecent22Weeks" = "গত ২২ সপ্তাহ";
+"widgetHeatmapTitle" = "হিটম্যাপ";
+"widgetTodayUsageTitle" = "আজকের ব্যবহার";
+"widgetDatedUsageTitleFormat" = "%@ এর ব্যবহার";
+"widgetUpdatedThroughTitleFormat" = "%@ পর্যন্ত আপডেট করা হয়েছে";
+"widgetNotReadyMessage" = "ডেটা রিফ্রেশ করতে TokenWatch খুলুন";
 "chartTokenAccessibility" = "গত ১২ মাসের টোকেন ব্যবহারের বার চার্ট";
 "chartCostAccessibility" = "গত ১২ মাসের খরচের বার চার্ট";
 "chartTokenAccessibilityFormat" = "%@ সময়কালের টোকেন ব্যবহারের বার চার্ট";
