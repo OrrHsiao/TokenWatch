@@ -118,9 +118,9 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 159 个 key")
+    @Test("迁移的十二份资源均直接定义全部 162 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 159)
+        #expect(AppStringKey.allCases.count == 162)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 

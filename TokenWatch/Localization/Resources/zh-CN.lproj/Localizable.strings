@@ -9,9 +9,12 @@
 "sidebarToday" = "本日";
 "sidebarSettings" = "设置";
 "dashboardOverviewNavigation" = "总览";
+"dashboardWidgetsNavigation" = "小组件";
 "dashboardSessionsNavigation" = "会话";
 "dashboardOverviewTitle" = "用量总览";
 "dashboardOverviewSubtitle" = "汇总 Claude Code、Codex rollout 与 opencode SQLite 的本地记录";
+"dashboardWidgetsTitle" = "小组件";
+"dashboardWidgetsSubtitle" = "查看 TokenWatch 当前支持的小组件示例样式。";
 "dashboardSessionsTitle" = "会话";
 "dashboardSessionsSubtitle" = "按最近时间倒序查看会话聚合、成本与使用记录";
 "dashboardDataSources" = "数据源";

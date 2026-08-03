@@ -38,6 +38,7 @@ final class DashboardViewController: NSViewController {
     private static let privacyPolicyURL = URL(string: "https://orrhsiao.github.io/TokenWatch/privacy/")!
 
     private let settingsViewController: SettingsViewController
+    private let widgetGalleryViewController = WidgetGalleryViewController()
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let initialLoadCompletionProvider: @MainActor () -> Bool
     private let refreshAction: @MainActor () async -> Void
@@ -107,6 +108,7 @@ final class DashboardViewController: NSViewController {
     private var currentSettingsController: NSViewController?
     private var overviewConstraints: [NSLayoutConstraint] = []
     private var sessionConstraints: [NSLayoutConstraint] = []
+    private var widgetsConstraints: [NSLayoutConstraint] = []
     private var settingsConstraints: [NSLayoutConstraint] = []
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
 
@@ -1559,8 +1561,10 @@ final class DashboardViewController: NSViewController {
         currentSettingsController?.view.removeFromSuperview()
         currentSettingsController?.removeFromParent()
         currentSettingsController = nil
+        removeWidgetGalleryContent()
         NSLayoutConstraint.deactivate(overviewConstraints)
         NSLayoutConstraint.deactivate(sessionConstraints)
+        NSLayoutConstraint.deactivate(widgetsConstraints)
         NSLayoutConstraint.deactivate(settingsConstraints)
         sessionScrollView.removeFromSuperview()
         if overviewScrollView.superview == nil {
@@ -1580,8 +1584,10 @@ final class DashboardViewController: NSViewController {
         currentSettingsController?.view.removeFromSuperview()
         currentSettingsController?.removeFromParent()
         currentSettingsController = nil
+        removeWidgetGalleryContent()
         NSLayoutConstraint.deactivate(overviewConstraints)
         NSLayoutConstraint.deactivate(sessionConstraints)
+        NSLayoutConstraint.deactivate(widgetsConstraints)
         NSLayoutConstraint.deactivate(settingsConstraints)
         overviewScrollView.removeFromSuperview()
         if sessionScrollView.superview == nil {
@@ -1600,8 +1606,10 @@ final class DashboardViewController: NSViewController {
     private func installSettingsContent() {
         NSLayoutConstraint.deactivate(overviewConstraints)
         NSLayoutConstraint.deactivate(sessionConstraints)
+        NSLayoutConstraint.deactivate(widgetsConstraints)
         overviewScrollView.removeFromSuperview()
         sessionScrollView.removeFromSuperview()
+        removeWidgetGalleryContent()
         guard currentSettingsController !== settingsViewController else { return }
 
         addChild(settingsViewController)
@@ -1618,6 +1626,39 @@ final class DashboardViewController: NSViewController {
         currentSettingsController = settingsViewController
         enforceLeftAlignedContent(in: settingsViewController.view)
         DashboardAppearanceRefresh.refresh(in: settingsViewController.view)
+    }
+
+    private func installWidgetsContent() {
+        guard widgetGalleryViewController.parent !== self else { return }
+
+        currentSettingsController?.view.removeFromSuperview()
+        currentSettingsController?.removeFromParent()
+        currentSettingsController = nil
+        NSLayoutConstraint.deactivate(overviewConstraints)
+        NSLayoutConstraint.deactivate(sessionConstraints)
+        NSLayoutConstraint.deactivate(widgetsConstraints)
+        NSLayoutConstraint.deactivate(settingsConstraints)
+        overviewScrollView.removeFromSuperview()
+        sessionScrollView.removeFromSuperview()
+
+        addChild(widgetGalleryViewController)
+        widgetGalleryViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        widgetGalleryViewController.view.userInterfaceLayoutDirection = .leftToRight
+        mainContentContainer.addContentSubview(widgetGalleryViewController.view)
+        widgetsConstraints = [
+            widgetGalleryViewController.view.leadingAnchor.constraint(equalTo: mainContentContainer.leadingAnchor),
+            widgetGalleryViewController.view.trailingAnchor.constraint(equalTo: mainContentContainer.trailingAnchor),
+            widgetGalleryViewController.view.topAnchor.constraint(equalTo: mainContentContainer.topAnchor),
+            widgetGalleryViewController.view.bottomAnchor.constraint(equalTo: mainContentContainer.bottomAnchor),
+        ]
+        NSLayoutConstraint.activate(widgetsConstraints)
+        DashboardAppearanceRefresh.refresh(in: widgetGalleryViewController.view)
+    }
+
+    private func removeWidgetGalleryContent() {
+        guard widgetGalleryViewController.parent != nil else { return }
+        widgetGalleryViewController.view.removeFromSuperview()
+        widgetGalleryViewController.removeFromParent()
     }
 
     private func subscribe() {
@@ -1668,6 +1709,8 @@ final class DashboardViewController: NSViewController {
         switch item {
         case .overview:
             installOverviewContent()
+        case .widgets:
+            installWidgetsContent()
         case .sessions:
             installSessionContent()
         case .settings:
@@ -1755,6 +1798,13 @@ final class DashboardViewController: NSViewController {
         statusLabel.isHidden = statusLabel.stringValue.isEmpty
         if selectedNavigationItem == .sessions {
             renderSessionPage(states: states)
+        }
+        if selectedNavigationItem == .widgets {
+            widgetGalleryViewController.render(
+                now: nowProvider(),
+                calendar: calendar,
+                language: language
+            )
         }
         enforceLeftAlignedContent(in: view)
     }

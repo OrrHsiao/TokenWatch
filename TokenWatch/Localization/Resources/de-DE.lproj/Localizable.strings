@@ -9,9 +9,12 @@
 "sidebarToday" = "Heute";
 "sidebarSettings" = "Einstellungen";
 "dashboardOverviewNavigation" = "Übersicht";
+"dashboardWidgetsNavigation" = "Mini-Apps";
 "dashboardSessionsNavigation" = "Sitzungen";
 "dashboardOverviewTitle" = "Nutzungsübersicht";
 "dashboardOverviewSubtitle" = "Fasst lokale Einträge aus Claude Code, Codex rollout und opencode SQLite zusammen";
+"dashboardWidgetsTitle" = "Mini-Apps";
+"dashboardWidgetsSubtitle" = "Sieh dir Beispiele der in TokenWatch verfügbaren Mini-Apps an.";
 "dashboardSessionsTitle" = "Sitzungen";
 "dashboardSessionsSubtitle" = "Sitzungsaggregate, Kosten und Nutzungsdaten nach letzter Aktivität anzeigen";
 "dashboardDataSources" = "Datenquellen";
