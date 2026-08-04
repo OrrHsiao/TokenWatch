@@ -23,8 +23,12 @@ final class StatusBarController {
     private var autoRefreshSettingsObserverToken: AutoRefreshSettings.ObservationToken?
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var popoverCloseObserver: NSObjectProtocol?
+    private var applicationResignActiveObserver: NSObjectProtocol?
     private var popoverLocalEventMonitor: Any?
+    private var popoverKeyEventMonitor: Any?
     private var popoverGlobalEventMonitor: Any?
+    private var popoverLifecycle = StatusPopoverLifecycle()
+    private var isStatusMenuPresented = false
     private var refreshTimer: Timer?
     private var lastRenderedDayKey: String?
     /// 上次渲染的图标 symbol 名,用于在档位未变时跳过 image 赋值,避免触发状态栏重布局
@@ -106,6 +110,9 @@ final class StatusBarController {
             if let token = popoverCloseObserver {
                 NotificationCenter.default.removeObserver(token)
             }
+            if let token = applicationResignActiveObserver {
+                NotificationCenter.default.removeObserver(token)
+            }
             if let token = autoRefreshSettingsObserverToken {
                 autoRefreshSettings.removeObserver(token)
             }
@@ -138,8 +145,14 @@ final class StatusBarController {
             NotificationCenter.default.removeObserver(token)
             popoverCloseObserver = nil
         }
+        if let token = applicationResignActiveObserver {
+            NotificationCenter.default.removeObserver(token)
+            applicationResignActiveObserver = nil
+        }
+        popoverLifecycle.reset()
+        isStatusMenuPresented = false
         removePopoverDismissMonitors()
-        popover.performClose(nil)
+        popover.close()
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 
@@ -171,7 +184,9 @@ final class StatusBarController {
         )
         contentViewController.preferredContentSize = StatusBarPopoverLayout.contentSize
 
-        popover.behavior = .transient
+        // 外部点击由带 presentation generation 的 monitor 统一处理。
+        // 若同时使用 transient，AppKit 可能在 mouseDown 先关闭，随后 mouseUp action 又重新打开。
+        popover.behavior = StatusBarPopoverPolicy.behavior
         popover.contentSize = StatusBarPopoverLayout.contentSize
         popover.contentViewController = contentViewController
         popoverCloseObserver = NotificationCenter.default.addObserver(
@@ -179,9 +194,17 @@ final class StatusBarController {
             object: popover,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.removePopoverDismissMonitors()
-                self?.setStatusButtonHighlighted(popoverIsShown: false)
+            MainActor.assumeIsolated {
+                self?.handlePopoverDidClose()
+            }
+        }
+        applicationResignActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: NSApp,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.dismissCurrentPopover()
             }
         }
     }
@@ -417,39 +440,105 @@ final class StatusBarController {
     }
 
     private func togglePopover() {
-        guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
-            removePopoverDismissMonitors()
-            setStatusButtonHighlighted(popoverIsShown: false)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            installPopoverDismissMonitors()
-            activatePopoverAfterShowing()
-            setStatusButtonHighlighted(popoverIsShown: true)
-        }
+        performPopoverLifecycleAction(popoverLifecycle.toggle())
     }
 
     private func showStatusMenu() {
-        popover.performClose(nil)
-        removePopoverDismissMonitors()
+        // NSMenu 会进入嵌套 tracking run loop，popover 的 didClose 可能在 presenter
+        // 返回前到达。单独记录菜单展示期，避免迟到的 popover 回调清掉菜单高亮。
+        isStatusMenuPresented = true
+        defer {
+            isStatusMenuPresented = false
+            setStatusButtonHighlighted(popoverIsShown: false)
+        }
+
+        performPopoverLifecycleAction(popoverLifecycle.dismiss())
         setStatusButtonHighlighted(popoverIsShown: false)
         switch StatusBarMenuPresentation.presenter() {
         case .statusItemMenu(let selectorName):
             // 左键需要自定义 popover,所以不能常驻设置 statusItem.menu;
             // 右键这里直接走 NSStatusItem 的菜单 presenter,由 AppKit 负责状态栏定位。
-            _ = statusItem.perform(NSSelectorFromString(selectorName), with: statusMenu)
+            let selector = NSSelectorFromString(selectorName)
+            guard statusItem.responds(to: selector) else {
+                logger.error("状态栏菜单 presenter 不可用: \(selectorName, privacy: .public)")
+                return
+            }
+            _ = statusItem.perform(selector, with: statusMenu)
         }
     }
 
-    private func setStatusButtonHighlighted(popoverIsShown: Bool) {
+    private func performPopoverLifecycleAction(_ action: StatusPopoverLifecycle.Action) {
+        switch action {
+        case .none:
+            break
+        case .show(let generation):
+            showPopover(generation: generation)
+        case .close(let generation):
+            closePopover(generation: generation)
+        }
+    }
+
+    private func showPopover(generation: StatusPopoverLifecycle.Generation) {
+        guard popoverLifecycle.ownsShownPresentation(generation) else { return }
+        guard let button = statusItem.button else {
+            popoverLifecycle.showFailed(generation: generation)
+            return
+        }
+
+        // 每一轮 presentation 都重新绑定 monitor；上一轮已排队的异步回调会被
+        // generation guard 拒绝，不能关闭或改亮新弹窗。
+        removePopoverDismissMonitors()
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        guard popover.isShown else {
+            popoverLifecycle.showFailed(generation: generation)
+            setStatusButtonHighlighted(popoverIsShown: false)
+            return
+        }
+
+        installPopoverDismissMonitors(generation: generation)
+        activatePopoverAfterShowing(generation: generation)
+        setStatusButtonHighlighted(popoverIsShown: true, generation: generation)
+    }
+
+    private func closePopover(generation: StatusPopoverLifecycle.Generation) {
+        guard popoverLifecycle.phase == .closing(generation) else { return }
+        setStatusButtonHighlighted(popoverIsShown: false)
+        // close() 强制结束本轮 presentation；didClose 是唯一完成 closing 状态并
+        // 执行待定 reopen 的位置，避免关闭动画中复用同一个 NSPopover。
+        // monitor 保留到 didClose，使关闭期间的背景点击 / Escape 仍能取消待定 reopen。
+        popover.close()
+    }
+
+    private func dismissCurrentPopover() {
+        performPopoverLifecycleAction(popoverLifecycle.dismiss())
+    }
+
+    private func handlePopoverDidClose() {
+        // 极端情况下旧 didClose 可能排到新一轮 show 之后；物理弹窗仍显示时忽略它。
+        guard !popover.isShown else { return }
+
+        removePopoverDismissMonitors()
+        let nextAction = popoverLifecycle.didClose()
+        if !isStatusMenuPresented {
+            setStatusButtonHighlighted(popoverIsShown: false)
+        }
+        performPopoverLifecycleAction(nextAction)
+    }
+
+    private func setStatusButtonHighlighted(
+        popoverIsShown: Bool,
+        generation: StatusPopoverLifecycle.Generation? = nil
+    ) {
         let isHighlighted = StatusBarButtonHighlight.isHighlighted(popoverIsShown: popoverIsShown)
         switch StatusBarButtonHighlight.applicationTiming(popoverIsShown: popoverIsShown) {
         case .immediate:
             applyStatusButtonHighlight(isHighlighted)
         case .afterCurrentEvent:
             Task { @MainActor [weak self] in
-                guard let self, self.popover.isShown == popoverIsShown else { return }
+                guard let self,
+                      let generation,
+                      self.popoverLifecycle.ownsShownPresentation(generation),
+                      self.popover.isShown else { return }
                 self.applyStatusButtonHighlight(isHighlighted)
             }
         }
@@ -461,9 +550,11 @@ final class StatusBarController {
         button.needsDisplay = true
     }
 
-    private func activatePopoverAfterShowing() {
+    private func activatePopoverAfterShowing(generation: StatusPopoverLifecycle.Generation) {
         Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self,
+                  self.popoverLifecycle.ownsShownPresentation(generation),
+                  self.popover.isShown else { return }
             let contentView = self.popover.contentViewController?.view
             let popoverWindow = contentView?.window
 
@@ -481,19 +572,42 @@ final class StatusBarController {
         }
     }
 
-    private func installPopoverDismissMonitors() {
-        guard popoverLocalEventMonitor == nil, popoverGlobalEventMonitor == nil else { return }
-
+    private func installPopoverDismissMonitors(generation: StatusPopoverLifecycle.Generation) {
         let mouseDownEvents: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        popoverLocalEventMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseDownEvents) { [weak self] event in
-            MainActor.assumeIsolated {
-                self?.handleLocalPopoverMouseDown(event)
+        if popoverLocalEventMonitor == nil {
+            popoverLocalEventMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseDownEvents) { [weak self] event in
+                MainActor.assumeIsolated {
+                    self?.handleLocalPopoverMouseDown(event, generation: generation)
+                }
+                return event
             }
-            return event
+            if popoverLocalEventMonitor == nil {
+                logger.error("无法安装 popover 本地鼠标监听器")
+            }
         }
-        popoverGlobalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseDownEvents) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.dismissPopoverForBackgroundClick()
+
+        if popoverKeyEventMonitor == nil {
+            popoverKeyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                let didHandle = MainActor.assumeIsolated {
+                    self?.handleLocalPopoverKeyDown(event, generation: generation) ?? false
+                }
+                return didHandle ? nil : event
+            }
+            if popoverKeyEventMonitor == nil {
+                logger.error("无法安装 popover 键盘监听器")
+            }
+        }
+
+        if popoverGlobalEventMonitor == nil {
+            popoverGlobalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseDownEvents) { [weak self] _ in
+                // AppKit 在主线程调用 event monitor；这里同步更新 desiredVisible，
+                // 避免额外 hop 排到 didClose/reopen 之后才执行。
+                MainActor.assumeIsolated {
+                    self?.dismissPopoverPresentation(generation: generation)
+                }
+            }
+            if popoverGlobalEventMonitor == nil {
+                logger.error("无法安装 popover 全局鼠标监听器")
             }
         }
     }
@@ -503,30 +617,45 @@ final class StatusBarController {
             NSEvent.removeMonitor(monitor)
             popoverLocalEventMonitor = nil
         }
+        if let monitor = popoverKeyEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverKeyEventMonitor = nil
+        }
         if let monitor = popoverGlobalEventMonitor {
             NSEvent.removeMonitor(monitor)
             popoverGlobalEventMonitor = nil
         }
     }
 
-    private func handleLocalPopoverMouseDown(_ event: NSEvent) {
+    private func handleLocalPopoverMouseDown(
+        _ event: NSEvent,
+        generation: StatusPopoverLifecycle.Generation
+    ) {
+        guard popoverLifecycle.ownsPresentation(generation) else { return }
         let eventTarget = popoverEventTarget(for: event)
-        switch StatusPopoverOutsideClick.resolve(isPopoverShown: popover.isShown, eventTarget: eventTarget) {
+        switch StatusPopoverOutsideClick.resolve(
+            isPopoverShown: popoverLifecycle.ownsPresentation(generation),
+            eventTarget: eventTarget
+        ) {
         case .closePopover:
-            dismissPopoverForBackgroundClick()
+            dismissPopoverPresentation(generation: generation)
         case .keepPopover:
             break
         }
     }
 
-    private func dismissPopoverForBackgroundClick() {
-        guard popover.isShown else {
-            removePopoverDismissMonitors()
-            return
-        }
-        popover.performClose(nil)
-        removePopoverDismissMonitors()
-        setStatusButtonHighlighted(popoverIsShown: false)
+    private func handleLocalPopoverKeyDown(
+        _ event: NSEvent,
+        generation: StatusPopoverLifecycle.Generation
+    ) -> Bool {
+        guard event.keyCode == StatusPopoverKeyboard.escapeKeyCode,
+              popoverLifecycle.ownsPresentation(generation) else { return false }
+        dismissPopoverPresentation(generation: generation)
+        return true
+    }
+
+    private func dismissPopoverPresentation(generation: StatusPopoverLifecycle.Generation) {
+        performPopoverLifecycleAction(popoverLifecycle.dismiss(generation: generation))
     }
 
     private func popoverEventTarget(for event: NSEvent) -> StatusPopoverOutsideClick.EventTarget {
@@ -540,11 +669,21 @@ final class StatusBarController {
     }
 
     private func eventHitsView(_ event: NSEvent, view: NSView) -> Bool {
-        guard let eventWindow = event.window, let viewWindow = view.window, eventWindow === viewWindow else {
-            return false
+        guard let viewWindow = view.window else { return false }
+
+        // NSEvent.window 的对象身份在状态栏内部窗口切换时并不稳定；windowNumber
+        // 才是同一原生窗口的可靠标识。
+        if event.windowNumber == viewWindow.windowNumber {
+            let pointInView = view.convert(event.locationInWindow, from: nil)
+            return view.bounds.contains(pointInView)
         }
-        let pointInView = view.convert(event.locationInWindow, from: nil)
-        return view.bounds.contains(pointInView)
+
+        let screenPoint = event.window.map {
+            $0.convertPoint(toScreen: event.locationInWindow)
+        } ?? NSEvent.mouseLocation
+        let viewRectInWindow = view.convert(view.bounds, to: nil)
+        let viewRectOnScreen = viewWindow.convertToScreen(viewRectInWindow)
+        return viewRectOnScreen.contains(screenPoint)
     }
 
     @objc private func openMainWindow() {
@@ -672,6 +811,114 @@ final class AutoRefreshSettings {
 /// 状态栏 popover 固定布局参数。
 enum StatusBarPopoverLayout {
     static var contentSize: NSSize { StatusPopoverViewController.contentSize }
+}
+
+/// Popover 关闭策略。
+///
+/// `.transient` 会让 AppKit 在 mouseDown 自动关闭；而状态栏按钮的 action 在
+/// mouseUp 才执行，两条路径叠加会把一次“关闭”误判成下一次“打开”。
+enum StatusBarPopoverPolicy {
+    static let behavior: NSPopover.Behavior = .applicationDefined
+}
+
+/// 状态栏 popover 的逻辑生命周期。
+///
+/// `NSPopover.isShown` 在关闭动画和 didClose 之间不能表达用户的最终意图，因此
+/// 这里同时维护物理阶段和 desiredVisible。每轮展示分配 generation，让已经排队的
+/// monitor / Task 只能操作创建它们的那一轮 presentation。
+struct StatusPopoverLifecycle {
+    typealias Generation = UInt64
+
+    enum Phase: Equatable {
+        case hidden
+        case shown(Generation)
+        case closing(Generation)
+    }
+
+    enum Action: Equatable {
+        case none
+        case show(Generation)
+        case close(Generation)
+    }
+
+    private(set) var phase: Phase = .hidden
+    private(set) var desiredVisible = false
+    private var nextGeneration: Generation = 0
+
+    mutating func toggle() -> Action {
+        switch phase {
+        case .hidden:
+            desiredVisible = true
+            return beginShowing()
+        case .shown(let generation):
+            desiredVisible = false
+            phase = .closing(generation)
+            return .close(generation)
+        case .closing:
+            // 关闭动画不可安全取消；只记录动画结束后是否需要重新打开。
+            desiredVisible.toggle()
+            return .none
+        }
+    }
+
+    mutating func dismiss() -> Action {
+        desiredVisible = false
+        guard case .shown(let generation) = phase else { return .none }
+        phase = .closing(generation)
+        return .close(generation)
+    }
+
+    mutating func dismiss(generation: Generation) -> Action {
+        guard ownsPresentation(generation) else { return .none }
+        return dismiss()
+    }
+
+    mutating func didClose() -> Action {
+        switch phase {
+        case .hidden:
+            desiredVisible = false
+            return .none
+        case .shown:
+            // applicationDefined 之外仍可能因窗口销毁等原因被 AppKit 关闭。
+            phase = .hidden
+            desiredVisible = false
+            return .none
+        case .closing:
+            phase = .hidden
+            guard desiredVisible else { return .none }
+            return beginShowing()
+        }
+    }
+
+    mutating func showFailed(generation: Generation) {
+        guard phase == .shown(generation) else { return }
+        phase = .hidden
+        desiredVisible = false
+    }
+
+    mutating func reset() {
+        phase = .hidden
+        desiredVisible = false
+    }
+
+    func ownsShownPresentation(_ generation: Generation) -> Bool {
+        phase == .shown(generation)
+    }
+
+    func ownsPresentation(_ generation: Generation) -> Bool {
+        phase == .shown(generation) || phase == .closing(generation)
+    }
+
+    private mutating func beginShowing() -> Action {
+        nextGeneration &+= 1
+        phase = .shown(nextGeneration)
+        return .show(nextGeneration)
+    }
+}
+
+/// `.applicationDefined` popover 不会替我们处理 Escape，统一在本地 key monitor 关闭。
+enum StatusPopoverKeyboard {
+    static let escapeKeyCode: UInt16 = 53
 }
 
 /// 状态栏 popover 展开后的激活动作。
