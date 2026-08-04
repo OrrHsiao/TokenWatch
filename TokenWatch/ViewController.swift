@@ -107,6 +107,37 @@ class ViewController: NSViewController {
     }
 }
 
+private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        centeredTextRect(forBounds: rect)
+    }
+
+    private func centeredTextRect(forBounds rect: NSRect) -> NSRect {
+        let contentRect = super.drawingRect(forBounds: rect)
+        guard let font else { return contentRect }
+
+        // AppKit keeps the native text baseline when a regular field is stretched
+        // to the shared 32pt settings-control height, so center its single line explicitly.
+        let lineHeight = min(
+            ceil(font.ascender - font.descender + font.leading),
+            contentRect.height
+        )
+        return NSRect(
+            x: contentRect.minX,
+            y: floor(contentRect.midY - lineHeight / 2),
+            width: contentRect.width,
+            height: lineHeight
+        )
+    }
+}
+
+private final class VerticallyCenteredTextField: NSTextField {
+    override class var cellClass: AnyClass? {
+        get { VerticallyCenteredTextFieldCell.self }
+        set {}
+    }
+}
+
 private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefreshable {
     init() {
         super.init(frame: .zero, pullsDown: false)
@@ -295,7 +326,7 @@ final class SettingsViewController: NSViewController {
     private let languageLabel = NSTextField(labelWithString: "")
     private let languagePopUpButton = SettingsPopUpButton()
     private let monthlyBudgetLabel = NSTextField(labelWithString: "")
-    private let monthlyBudgetTextField = NSTextField(string: "")
+    private let monthlyBudgetTextField = VerticallyCenteredTextField(string: "")
 
     private let providers: [any UsageProvider]
     private let providerState:
