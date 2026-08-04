@@ -5,15 +5,15 @@ import Testing
 @Suite("JSONLDiskCacheStore")
 struct JSONLDiskCacheStoreTests {
 
-    struct TestCandidate: Codable, Sendable, Equatable {
-        let id: String
-        let value: Int
+    struct TestState: Codable, Sendable, Equatable {
+        let committedOffset: UInt64
+        let candidates: [String]
     }
 
     @Test("写入并重新读取磁盘缓存")
     func savesAndLoadsDiskCache() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("JSONLDiskCacheTest-\(UUID().uuidString)")
-        let store = SystemJSONLDiskCacheStore<TestCandidate>(fileURL: tempDir.appendingPathComponent("test.json"))
+        let store = SystemJSONLDiskCacheStore<TestState>(fileURL: tempDir.appendingPathComponent("test.json"))
 
         let metadata = JSONLFileMetadata(
             identity: JSONLFileIdentity(deviceID: 1, fileID: 100),
@@ -24,17 +24,23 @@ struct JSONLDiskCacheStoreTests {
             key: "/path/to/file.jsonl",
             scopeIdentifier: "standard",
             metadata: metadata,
-            candidates: [TestCandidate(id: "item1", value: 42)]
+            state: TestState(
+                committedOffset: 384,
+                candidates: ["item1"]
+            )
         )
 
         store.saveAll(["/path/to/file.jsonl": entry])
 
         // 重新构建 store 模拟冷启动读取
-        let reloadedStore = SystemJSONLDiskCacheStore<TestCandidate>(fileURL: tempDir.appendingPathComponent("test.json"))
+        let reloadedStore = SystemJSONLDiskCacheStore<TestState>(fileURL: tempDir.appendingPathComponent("test.json"))
         let loaded = reloadedStore.loadAll()
 
         #expect(loaded.count == 1)
-        #expect(loaded["/path/to/file.jsonl"]?.candidates == [TestCandidate(id: "item1", value: 42)])
+        #expect(loaded["/path/to/file.jsonl"]?.state == TestState(
+            committedOffset: 384,
+            candidates: ["item1"]
+        ))
         #expect(loaded["/path/to/file.jsonl"]?.metadata.size == 512)
 
         try? FileManager.default.removeItem(at: tempDir)
@@ -47,7 +53,7 @@ struct JSONLDiskCacheStoreTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         try Data("invalid json content".utf8).write(to: fileURL)
 
-        let store = SystemJSONLDiskCacheStore<TestCandidate>(fileURL: fileURL)
+        let store = SystemJSONLDiskCacheStore<TestState>(fileURL: fileURL)
         let loaded = store.loadAll()
 
         #expect(loaded.isEmpty)

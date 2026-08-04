@@ -4,14 +4,14 @@ import os.log
 /// 流式解析 Claude direct / AgentProgress billing 行，并在批量入口统一执行 daily 去重。
 final class ClaudeJSONLParser: @unchecked Sendable {
 
-    private typealias ClaudeFileState = IncrementalJSONLFileState<
+    typealias ClaudeFileState = IncrementalJSONLFileState<
         ParsedUsageEntry,
         StatelessJSONLCheckpoint
     >
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "ClaudeJSONLParser")
     private let fileReader: any JSONLFileReading
-    private let diskStore: (any JSONLDiskCacheStoring<ParsedUsageEntry>)?
+    private let diskStore: (any JSONLDiskCacheStoring<ClaudeFileState>)?
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
         ClaudeFileState,
         JSONLUnscopedCacheScope
@@ -19,7 +19,7 @@ final class ClaudeJSONLParser: @unchecked Sendable {
 
     init(
         fileReader: any JSONLFileReading = SystemJSONLFileReader(),
-        diskStore: (any JSONLDiskCacheStoring<ParsedUsageEntry>)? = nil
+        diskStore: (any JSONLDiskCacheStoring<ClaudeFileState>)? = nil
     ) {
         self.fileReader = fileReader
         self.diskStore = diskStore
@@ -78,10 +78,25 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         _ files: [ClaudeJSONLFileInfo],
         claudeDataRoot: URL
     ) throws -> [ParsedUsageEntry] {
-        let allCandidates: [ParsedUsageEntry] = cacheCoordinator.loadListedFiles(
+        try parseAllFilesWithCacheStatus(
+            files,
+            claudeDataRoot: claudeDataRoot,
+            materializeEntriesWhenUnchanged: true
+        ).candidates ?? []
+    }
+
+    /// 批量解析并返回缓存变化状态；全量 unchanged 时可不物化候选与去重结果。
+    func parseAllFilesWithCacheStatus(
+        _ files: [ClaudeJSONLFileInfo],
+        claudeDataRoot: URL,
+        materializeEntriesWhenUnchanged: Bool
+    ) throws -> JSONLLastGoodCacheLoadResult<ParsedUsageEntry> {
+        let loadResult: JSONLLastGoodCacheLoadResult<ParsedUsageEntry> =
+            cacheCoordinator.loadListedFilesWithChangeStatus(
             files,
             scope: .shared,
             diskStore: diskStore,
+            materializeCandidatesWhenUnchanged: materializeEntriesWhenUnchanged,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
             build: { [self] fileInfo, snapshot, previous in
@@ -92,6 +107,7 @@ final class ClaudeJSONLParser: @unchecked Sendable {
                 )
             },
             project: \.returnedCandidates,
+            sourceRevisionComponent: { Self.sourceRevisionComponent(for: $0) },
             onFailure: { [self] fileInfo, error, reusedLastGood in
                 if reusedLastGood {
                     logger.warning(
@@ -105,13 +121,41 @@ final class ClaudeJSONLParser: @unchecked Sendable {
             }
         )
 
+        guard let allCandidates = loadResult.candidates else {
+            return JSONLLastGoodCacheLoadResult(
+                candidates: nil,
+                didChange: loadResult.didChange,
+                sourceRevision: loadResult.sourceRevision
+            )
+        }
         logger.info("解析完成：\(allCandidates.count) 条记录（去重前）")
         let uniqueEntries = ClaudeUsageDeduplicator.deduplicate(allCandidates)
         let duplicateCount = allCandidates.count - uniqueEntries.count
         if duplicateCount > 0 {
             logger.info("去重完成：移除 \(duplicateCount) 条重复记录，剩余 \(uniqueEntries.count) 条")
         }
-        return uniqueEntries
+        return JSONLLastGoodCacheLoadResult(
+            candidates: uniqueEntries,
+            didChange: loadResult.didChange,
+            sourceRevision: loadResult.sourceRevision
+        )
+    }
+
+    private static func sourceRevisionComponent(
+        for state: ClaudeFileState
+    ) -> Data {
+        var component = Data()
+        for value in [
+            state.committedOffset,
+            state.continuityAnchor.offset,
+        ] {
+            var bigEndian = value.bigEndian
+            withUnsafeBytes(of: &bigEndian) {
+                component.append(contentsOf: $0)
+            }
+        }
+        component.append(state.continuityAnchor.bytes)
+        return component
     }
 
     /// 从已打开 stream 的起点分块解析完整文件，并保留每行绝对 byte offset。
@@ -199,10 +243,10 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         case .reuse:
             return previous
         case .append(let startOffset):
-            let anchorCoversCommittedPrefix = previous.continuityAnchor.offset == 0
-                && UInt64(previous.continuityAnchor.bytes.count)
-                    == previous.committedOffset
-            guard anchorCoversCommittedPrefix,
+            let anchorEndsAtCommittedOffset = previous.continuityAnchor.offset
+                + UInt64(previous.continuityAnchor.bytes.count)
+                == previous.committedOffset
+            guard anchorEndsAtCommittedOffset,
                   try previous.continuityAnchor.matches(in: snapshot.stream) else {
                 return try rebuild()
             }

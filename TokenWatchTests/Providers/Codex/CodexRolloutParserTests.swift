@@ -614,9 +614,13 @@ struct CodexRolloutParserTests {
         }
     }
 
-    @Test("Codex 大 committed prefix 追加时从 0 重建")
-    func largeCommittedPrefixAppendRebuildsFromZero() throws {
+    @Test("Codex 大 committed prefix 追加时只校验尾部 anchor 并读取后缀")
+    func largeCommittedPrefixAppendReadsOnlyAnchorAndSuffix() throws {
+        let padding = "{\"padding\":\""
+            + String(repeating: "x", count: 20 * 1_024)
+            + "\"}"
         let fixture = try makeRolloutFixture(lines: [
+            padding,
             sessionMeta,
             turnContextGpt5,
             normalEvent,
@@ -626,7 +630,11 @@ struct CodexRolloutParserTests {
         let parser = CodexRolloutParser(fileReader: reader)
         _ = try parser.parseAllFiles([fixture.file], pricingSpeed: .standard)
         let committedOffset = try #require(reader.latestMetadata?.size)
+        let anchor = try #require(
+            parser.debugContinuityAnchor(for: fixture.file.url)
+        )
         #expect(committedOffset > UInt64(JSONLContinuityAnchor.maximumByteCount))
+        #expect(anchor.offset > 0)
 
         let next = #"{"timestamp":"2026-05-04T08:36:30Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":200,"cached_input_tokens":50,"output_tokens":30,"reasoning_output_tokens":10,"total_tokens":230}}}}"#
         try appendUTF8(next + "\n", to: fixture.file.url)
@@ -640,11 +648,59 @@ struct CodexRolloutParserTests {
             pricingSpeed: .standard
         )
 
-        #expect(reader.seekOffsets.contains(0))
-        #expect(reader.seekOffsets.contains(committedOffset) == false)
+        #expect(reader.seekOffsets == [anchor.offset, committedOffset])
+        #expect(
+            reader.totalBytesRead
+                == anchor.bytes.count + (next + "\n").utf8.count
+        )
         #expect(
             ParsedUsageEntryDeepSnapshot.sorted(incremental)
                 == ParsedUsageEntryDeepSnapshot.sorted(fresh)
+        )
+    }
+
+    @Test("Codex 大文件冷启动追加从磁盘 checkpoint 恢复")
+    func coldStartLargeAppendRestoresPersistedCheckpoint() throws {
+        let padding = "{\"padding\":\""
+            + String(repeating: "x", count: 20 * 1_024)
+            + "\"}"
+        let fixture = try makeRolloutFixture(lines: [
+            padding,
+            sessionMeta,
+            turnContextGpt5,
+            normalEvent,
+        ])
+        defer { fixture.cleanup() }
+        let cacheURL = fixture.file.url.deletingLastPathComponent()
+            .appendingPathComponent("codex-cache.json")
+        let firstParser = CodexRolloutParser(
+            fileReader: RecordingJSONLFileReader(),
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        _ = try firstParser.parseAllFiles([fixture.file])
+        let anchor = try #require(
+            firstParser.debugContinuityAnchor(for: fixture.file.url)
+        )
+        let committedOffset = anchor.offset + UInt64(anchor.bytes.count)
+
+        let next = #"{"timestamp":"2026-05-04T08:36:30Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1200,"cached_input_tokens":350,"output_tokens":230,"reasoning_output_tokens":60,"total_tokens":1430}}}}"#
+        try appendUTF8(next + "\n", to: fixture.file.url)
+
+        let coldReader = RecordingJSONLFileReader()
+        let coldParser = CodexRolloutParser(
+            fileReader: coldReader,
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        let appended = try coldParser.parseAllFiles([fixture.file])
+
+        #expect(appended.count == 2)
+        #expect(appended.last?.usage.inputTokens == 150)
+        #expect(appended.last?.usage.cacheReadInputTokens == 50)
+        #expect(appended.last?.usage.outputTokens == 30)
+        #expect(coldReader.seekOffsets == [anchor.offset, committedOffset])
+        #expect(
+            coldReader.totalBytesRead
+                == anchor.bytes.count + (next + "\n").utf8.count
         )
     }
 
@@ -880,6 +936,36 @@ struct CodexRolloutParserTests {
         let changedEntries = try parser.parseAllFiles([file])
         #expect(changedEntries.count == 2)
         #expect(parser.debugCacheHitCount == hitCountBeforeChangedParse)
+    }
+
+    @Test("Codex 冷启动未变化时从磁盘完整 state 零读取恢复")
+    func coldStartUnchangedRestoresPersistedStateWithoutReading() throws {
+        let fixture = try makeRolloutFixture(lines: [
+            sessionMeta,
+            turnContextGpt5,
+            normalEvent,
+        ])
+        defer { fixture.cleanup() }
+        let cacheURL = fixture.file.url.deletingLastPathComponent()
+            .appendingPathComponent("codex-cache.json")
+        let firstParser = CodexRolloutParser(
+            fileReader: RecordingJSONLFileReader(),
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        #expect(try firstParser.parseAllFiles([fixture.file]).count == 1)
+
+        let coldReader = RecordingJSONLFileReader()
+        let coldParser = CodexRolloutParser(
+            fileReader: coldReader,
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        let restored = try coldParser.parseAllFiles([fixture.file])
+
+        #expect(restored.count == 1)
+        #expect(restored.first?.usage.inputTokens == 700)
+        #expect(coldReader.totalBytesRead == 0)
+        #expect(coldReader.seekOffsets.isEmpty)
+        #expect(coldParser.debugContinuityAnchor(for: fixture.file.url) != nil)
     }
 
     @Test("已成功 rollout 随后 seek 失败时复用 last-good 并按 scanner prune")

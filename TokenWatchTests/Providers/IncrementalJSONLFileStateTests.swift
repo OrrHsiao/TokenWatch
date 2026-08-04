@@ -49,27 +49,29 @@ struct IncrementalJSONLFileStateTests {
     }
 
     @Test func continuityAnchorKeepsOnlyTheCommittedSuffix() {
-        let first = Data(repeating: 0x41, count: 200)
-        let second = Data(repeating: 0x42, count: 200)
+        let first = Data(repeating: 0x41, count: 800)
+        let second = Data(repeating: 0x42, count: 800)
         let firstAnchor = JSONLContinuityAnchor.make(
             previous: .empty,
             newlyCommittedBytes: first,
-            committedOffset: 200
+            committedOffset: 800
         )
         let secondAnchor = JSONLContinuityAnchor.make(
             previous: firstAnchor,
             newlyCommittedBytes: second,
-            committedOffset: 400
+            committedOffset: 1_600
         )
 
-        #expect(secondAnchor.bytes == Data((first + second).suffix(256)))
-        #expect(secondAnchor.offset == 144)
+        #expect(secondAnchor.bytes == Data(
+            (first + second).suffix(JSONLContinuityAnchor.maximumByteCount)
+        ))
+        #expect(secondAnchor.offset == 576)
     }
 
     @Test func continuityAnchorHandlesCommittedOffsetBoundaries() {
         let cases: [(committedOffset: UInt64, sourceByteCount: Int)] = [
-            (255, 255),
-            (256, 300),
+            (1_023, 1_023),
+            (1_024, 1_200),
             (0, 1),
         ]
 
@@ -122,5 +124,40 @@ struct IncrementalJSONLFileStateTests {
 
         #expect(try matching.matches(in: snapshot.stream))
         #expect(try mismatching.matches(in: snapshot.stream) == false)
+    }
+
+    @Test("完整增量状态可编码并恢复")
+    func stateRoundTripsThroughCodable() throws {
+        let metadata = JSONLFileMetadata(
+            identity: identity,
+            size: 640,
+            modificationDate: Date(timeIntervalSince1970: 42)
+        )
+        let state = IncrementalJSONLFileState<String, String>(
+            metadata: metadata,
+            committedOffset: 600,
+            stableCandidates: ["stable"],
+            provisionalTail: Data("partial".utf8),
+            provisionalCandidates: ["provisional"],
+            continuityAnchor: JSONLContinuityAnchor(
+                offset: 344,
+                bytes: Data(repeating: 0x41, count: 256)
+            ),
+            checkpointAtCommittedOffset: "checkpoint"
+        )
+
+        let data = try JSONEncoder().encode(state)
+        let restored = try JSONDecoder().decode(
+            IncrementalJSONLFileState<String, String>.self,
+            from: data
+        )
+
+        #expect(restored.metadata == state.metadata)
+        #expect(restored.committedOffset == state.committedOffset)
+        #expect(restored.stableCandidates == state.stableCandidates)
+        #expect(restored.provisionalTail == state.provisionalTail)
+        #expect(restored.provisionalCandidates == state.provisionalCandidates)
+        #expect(restored.continuityAnchor == state.continuityAnchor)
+        #expect(restored.checkpointAtCommittedOffset == state.checkpointAtCommittedOffset)
     }
 }

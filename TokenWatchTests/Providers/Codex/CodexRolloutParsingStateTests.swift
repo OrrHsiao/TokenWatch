@@ -47,6 +47,39 @@ struct CodexRolloutParsingStateTests {
         #expect(entry.recordUUID == "meta-session:2026-05-04T08:36:00.000Z:3")
     }
 
+    @Test("checkpoint 可跨进程编码并恢复")
+    func checkpointRoundTripsThroughCodable() throws {
+        let decoder = JSONDecoder()
+        var checkpoint = CodexParserCheckpoint.initial(
+            sessionID: "file-session",
+            replaySecond: "2026-05-04T08:35:46"
+        )
+        let lines = [
+            #"{"timestamp":"2026-05-04T08:35:44Z","type":"session_meta","payload":{"id":"meta-session","cwd":"/tmp/project"}}"#,
+            #"{"timestamp":"2026-05-04T08:35:45Z","type":"turn_context","payload":{"model":"gpt-5.4"}}"#,
+            #"{"timestamp":"2026-05-04T08:35:46Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":20,"output_tokens":10,"total_tokens":110}}}}"#,
+            #"{"timestamp":"2026-05-04T08:35:47Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":150,"cached_input_tokens":30,"output_tokens":20,"total_tokens":170}}}}"#,
+        ]
+        for (index, line) in lines.enumerated() {
+            let record = try decoder.decode(CodexRecord.self, from: Data(line.utf8))
+            _ = checkpoint.consume(
+                record,
+                sourceOffset: UInt64(index),
+                pricingSpeed: .standard
+            )
+        }
+
+        let data = try JSONEncoder().encode(checkpoint)
+        let restored = try decoder.decode(CodexParserCheckpoint.self, from: data)
+
+        #expect(restored.currentModel == checkpoint.currentModel)
+        #expect(restored.sessionID == checkpoint.sessionID)
+        #expect(restored.cwd == checkpoint.cwd)
+        #expect(restored.previousTotals == checkpoint.previousTotals)
+        #expect(restored.replaySecond == checkpoint.replaySecond)
+        #expect(restored.isSkippingReplay == checkpoint.isSkippingReplay)
+    }
+
     @Test("checkpoint 保留 last-first、cached clamp 与 zero-model 顺序")
     func reducerMatchesPinnedOrdering() throws {
         let decoder = JSONDecoder()

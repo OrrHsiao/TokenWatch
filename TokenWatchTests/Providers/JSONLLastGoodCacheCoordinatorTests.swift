@@ -13,7 +13,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
         case fast
     }
 
-    private struct IncrementalCoordinatorState: Sendable, Equatable {
+    private struct IncrementalCoordinatorState: Codable, Sendable, Equatable {
         let revision: Int
         let lines: [String]
     }
@@ -228,7 +228,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let listed = ListedFile(url: logURL)
-        let store1 = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let store1 = SystemJSONLDiskCacheStore<[String]>(fileURL: cacheFileURL)
         let reader1 = RecordingJSONLFileReader()
         let coordinator1 = JSONLLastGoodCacheCoordinator<[String], Scope>(fileReader: reader1)
 
@@ -245,7 +245,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
         #expect(result1 == ["line1", "line2"])
 
         // 模拟全新的冷启动进程：创建全新的 Reader、DiskStore 与 Coordinator
-        let store2 = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let store2 = SystemJSONLDiskCacheStore<[String]>(fileURL: cacheFileURL)
         let reader2 = RecordingJSONLFileReader()
         let coordinator2 = JSONLLastGoodCacheCoordinator<[String], Scope>(fileReader: reader2)
 
@@ -268,6 +268,200 @@ struct JSONLLastGoodCacheCoordinatorTests {
         #expect(reader2.totalBytesRead == 0)
     }
 
+    @Test("冷启动文件变化时把磁盘完整 state 作为 previous")
+    func changedFileRestoresPreviousStateAcrossCoordinatorInstances() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLDiskPrevious-\(UUID().uuidString)")
+        let cacheFileURL = tempDir.appendingPathComponent("diskCache.json")
+        let logURL = tempDir.appendingPathComponent("test.jsonl")
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+        try Data("first\n".utf8).write(to: logURL)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let listed = ListedFile(url: logURL)
+        let firstCoordinator = JSONLLastGoodCacheCoordinator<
+            IncrementalCoordinatorState,
+            Scope
+        >(fileReader: RecordingJSONLFileReader())
+        let firstStore = SystemJSONLDiskCacheStore<IncrementalCoordinatorState>(
+            fileURL: cacheFileURL
+        )
+        _ = firstCoordinator.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: firstStore,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in
+                IncrementalCoordinatorState(
+                    revision: 1,
+                    lines: try readLines(from: snapshot.stream)
+                )
+            },
+            project: \.lines,
+            onFailure: { _, _, _ in }
+        )
+
+        let handle = try FileHandle(forWritingTo: logURL)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("second\n".utf8))
+        try handle.close()
+
+        let secondCoordinator = JSONLLastGoodCacheCoordinator<
+            IncrementalCoordinatorState,
+            Scope
+        >(fileReader: RecordingJSONLFileReader())
+        let secondStore = SystemJSONLDiskCacheStore<IncrementalCoordinatorState>(
+            fileURL: cacheFileURL
+        )
+        var restoredRevision: Int?
+        let result = secondCoordinator.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: secondStore,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, previous in
+                restoredRevision = previous?.revision
+                return IncrementalCoordinatorState(
+                    revision: (previous?.revision ?? 0) + 1,
+                    lines: try readLines(from: snapshot.stream)
+                )
+            },
+            project: \.lines,
+            onFailure: { _, _, _ in }
+        )
+
+        #expect(restoredRevision == 1)
+        #expect(result == ["first", "second"])
+    }
+
+    @Test("状态入口在全量 unchanged 时可跳过候选投影")
+    func unchangedStatusCanSkipCandidateMaterialization() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLStatus-\(UUID().uuidString)")
+        let cacheFileURL = tempDir.appendingPathComponent("diskCache.json")
+        let logURL = tempDir.appendingPathComponent("test.jsonl")
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+        try Data("first\n".utf8).write(to: logURL)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let listed = ListedFile(url: logURL)
+        let firstStore = SystemJSONLDiskCacheStore<[String]>(
+            fileURL: cacheFileURL
+        )
+        let firstCoordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
+            fileReader: RecordingJSONLFileReader()
+        )
+        _ = firstCoordinator.loadListedFiles(
+            [listed],
+            scope: .standard,
+            diskStore: firstStore,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, snapshot, _ in try readLines(from: snapshot.stream) },
+            project: { $0 },
+            onFailure: { _, _, _ in }
+        )
+
+        let secondStore = SystemJSONLDiskCacheStore<[String]>(
+            fileURL: cacheFileURL
+        )
+        let secondCoordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
+            fileReader: RecordingJSONLFileReader()
+        )
+        var projectCount = 0
+        let result = secondCoordinator.loadListedFilesWithChangeStatus(
+            [listed],
+            scope: .standard,
+            diskStore: secondStore,
+            materializeCandidatesWhenUnchanged: false,
+            cacheKey: { $0.url.standardizedFileURL.path },
+            urlForFile: \.url,
+            build: { _, _, _ in
+                Issue.record("unchanged 文件不应 build")
+                return []
+            },
+            project: { state in
+                projectCount += 1
+                return state
+            },
+            onFailure: { _, _, _ in }
+        )
+
+        #expect(result.didChange == false)
+        #expect(result.candidates == nil)
+        #expect(projectCount == 0)
+    }
+
+    @Test("source revision 跨冷启动稳定且随文件变化")
+    func sourceRevisionIsStableAndChangesWithMetadata() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLRevision-\(UUID().uuidString)")
+        let cacheFileURL = tempDir.appendingPathComponent("diskCache.json")
+        let logURL = tempDir.appendingPathComponent("test.jsonl")
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+        try Data("first\n".utf8).write(to: logURL)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let listed = ListedFile(url: logURL)
+        func load(
+            coordinator: JSONLLastGoodCacheCoordinator<[String], Scope>,
+            store: SystemJSONLDiskCacheStore<[String]>
+        ) -> JSONLLastGoodCacheLoadResult<String> {
+            coordinator.loadListedFilesWithChangeStatus(
+                [listed],
+                scope: .standard,
+                diskStore: store,
+                materializeCandidatesWhenUnchanged: false,
+                cacheKey: { $0.url.standardizedFileURL.path },
+                urlForFile: \.url,
+                build: { _, snapshot, _ in try readLines(from: snapshot.stream) },
+                project: { $0 },
+                onFailure: { _, _, _ in }
+            )
+        }
+
+        let first = load(
+            coordinator: JSONLLastGoodCacheCoordinator(
+                fileReader: RecordingJSONLFileReader()
+            ),
+            store: SystemJSONLDiskCacheStore(fileURL: cacheFileURL)
+        )
+        let coldCoordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
+            fileReader: RecordingJSONLFileReader()
+        )
+        let unchanged = load(
+            coordinator: coldCoordinator,
+            store: SystemJSONLDiskCacheStore(fileURL: cacheFileURL)
+        )
+
+        #expect(first.didChange)
+        #expect(unchanged.didChange == false)
+        #expect(first.sourceRevision == unchanged.sourceRevision)
+
+        let handle = try FileHandle(forWritingTo: logURL)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("second\n".utf8))
+        try handle.close()
+        let changed = load(
+            coordinator: coldCoordinator,
+            store: SystemJSONLDiskCacheStore(fileURL: cacheFileURL)
+        )
+
+        #expect(changed.didChange)
+        #expect(changed.sourceRevision != unchanged.sourceRevision)
+    }
+
     @Test("空扫描会清除已持久化的缓存")
     func emptyScanClearsPersistedDiskCache() throws {
         let tempDir = FileManager.default.temporaryDirectory
@@ -279,7 +473,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let listed = ListedFile(url: logURL)
-        let store = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let store = SystemJSONLDiskCacheStore<[String]>(fileURL: cacheFileURL)
         let coordinator = JSONLLastGoodCacheCoordinator<[String], Scope>(
             fileReader: RecordingJSONLFileReader()
         )
@@ -310,7 +504,7 @@ struct JSONLLastGoodCacheCoordinatorTests {
         )
 
         #expect(cleared.isEmpty)
-        let reloadedStore = SystemJSONLDiskCacheStore<String>(fileURL: cacheFileURL)
+        let reloadedStore = SystemJSONLDiskCacheStore<[String]>(fileURL: cacheFileURL)
         #expect(reloadedStore.loadAll().isEmpty)
     }
 

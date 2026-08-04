@@ -206,7 +206,7 @@ private func codexPreferredModel(
 }
 
 /// 单次 token 计数四元组(+ total)
-struct CodexTokenCounts: Decodable, Sendable, Equatable {
+struct CodexTokenCounts: Codable, Sendable, Equatable {
     let inputTokens: Int           // 注意:Codex 的 input 已包含 cached_input,计费时需扣减
     let cachedInputTokens: Int
     let outputTokens: Int          // 注意:已包含 reasoning_output_tokens,reasoning 不另行计费
@@ -257,6 +257,16 @@ struct CodexTokenCounts: Decodable, Sendable, Equatable {
         } else {
             totalTokens = fallbackTotal
         }
+    }
+
+    /// 持久化 checkpoint 时只写规范字段；读取仍兼容上游的多种别名。
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(inputTokens, forKey: .inputTokens)
+        try container.encode(cachedInputTokens, forKey: .cachedInputTokens)
+        try container.encode(outputTokens, forKey: .outputTokens)
+        try container.encode(reasoningOutputTokens, forKey: .reasoningOutputTokens)
+        try container.encode(totalTokens, forKey: .totalTokens)
     }
 
     init(inputTokens: Int, cachedInputTokens: Int, outputTokens: Int,

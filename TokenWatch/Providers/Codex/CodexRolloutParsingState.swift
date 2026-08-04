@@ -1,7 +1,7 @@
 import Foundation
 
 /// 可跨 JSONL 批次保存并恢复的 Codex 行级解析状态。
-struct CodexParserCheckpoint: Sendable {
+struct CodexParserCheckpoint: Codable, Sendable {
     var currentModel: CodexModelState?
     var sessionID: String
     var cwd: String?

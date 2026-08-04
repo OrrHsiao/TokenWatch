@@ -19,7 +19,7 @@ struct CodexUsageCandidate: Sendable, Codable {
 }
 
 /// replay 预检结果；`.pending` 为后续增量解析保留未决状态。
-enum CodexReplayClassification: Sendable, Equatable {
+enum CodexReplayClassification: Codable, Sendable, Equatable {
     case notReplay
     case pending
     case replay(second: String)
@@ -44,12 +44,12 @@ private struct CodexReplayDecision: Sendable {
 /// - cached input 夹到 raw input 后拆为 pure/cache-read，跨文件按 raw key first-wins。
 final class CodexRolloutParser: @unchecked Sendable {
 
-    private typealias CodexFileState = IncrementalJSONLFileState<
+    typealias CodexFileState = IncrementalJSONLFileState<
         CodexUsageCandidate,
         CodexParserCheckpoint
     >
 
-    private struct CodexIncrementalState: Sendable {
+    struct CodexIncrementalState: Codable, Sendable {
         let replayClassification: CodexReplayClassification
         let replayClassificationIsStableUnderAppend: Bool
         let fileState: CodexFileState
@@ -64,7 +64,7 @@ final class CodexRolloutParser: @unchecked Sendable {
         category: "CodexRolloutParser"
     )
     private let fileReader: any JSONLFileReading
-    private let diskStore: (any JSONLDiskCacheStoring<CodexUsageCandidate>)?
+    private let diskStore: (any JSONLDiskCacheStoring<CodexIncrementalState>)?
     private let cacheCoordinator: JSONLLastGoodCacheCoordinator<
         CodexIncrementalState,
         CodexPricingSpeed
@@ -72,7 +72,7 @@ final class CodexRolloutParser: @unchecked Sendable {
 
     init(
         fileReader: any JSONLFileReading = SystemJSONLFileReader(),
-        diskStore: (any JSONLDiskCacheStoring<CodexUsageCandidate>)? = nil
+        diskStore: (any JSONLDiskCacheStoring<CodexIncrementalState>)? = nil
     ) {
         self.fileReader = fileReader
         self.diskStore = diskStore
@@ -128,10 +128,25 @@ final class CodexRolloutParser: @unchecked Sendable {
         _ files: [CodexRolloutFileInfo],
         pricingSpeed: CodexPricingSpeed = .standard
     ) throws -> [ParsedUsageEntry] {
-        let allCandidates: [CodexUsageCandidate] = cacheCoordinator.loadListedFiles(
+        try parseAllFilesWithCacheStatus(
+            files,
+            pricingSpeed: pricingSpeed,
+            materializeEntriesWhenUnchanged: true
+        ).candidates ?? []
+    }
+
+    /// 批量解析并返回缓存变化状态；全量 unchanged 时可跳过去重候选物化。
+    func parseAllFilesWithCacheStatus(
+        _ files: [CodexRolloutFileInfo],
+        pricingSpeed: CodexPricingSpeed = .standard,
+        materializeEntriesWhenUnchanged: Bool
+    ) throws -> JSONLLastGoodCacheLoadResult<ParsedUsageEntry> {
+        let loadResult: JSONLLastGoodCacheLoadResult<CodexUsageCandidate> =
+            cacheCoordinator.loadListedFilesWithChangeStatus(
             files,
             scope: pricingSpeed,
             diskStore: diskStore,
+            materializeCandidatesWhenUnchanged: materializeEntriesWhenUnchanged,
             cacheKey: { Self.cacheKey(for: $0.url) },
             urlForFile: { $0.url },
             build: { [self] fileInfo, snapshot, previous in
@@ -143,6 +158,7 @@ final class CodexRolloutParser: @unchecked Sendable {
                 )
             },
             project: \.returnedCandidates,
+            sourceRevisionComponent: { Self.sourceRevisionComponent(for: $0) },
             onFailure: { [self] fileInfo, error, reusedLastGood in
                 if reusedLastGood {
                     logger.warning(
@@ -156,6 +172,13 @@ final class CodexRolloutParser: @unchecked Sendable {
             }
         )
 
+        guard let allCandidates = loadResult.candidates else {
+            return JSONLLastGoodCacheLoadResult(
+                candidates: nil,
+                didChange: loadResult.didChange,
+                sourceRevision: loadResult.sourceRevision
+            )
+        }
         var seen: Set<CodexEventDedupKey> = []
         seen.reserveCapacity(allCandidates.count)
         var entries: [ParsedUsageEntry] = []
@@ -164,7 +187,29 @@ final class CodexRolloutParser: @unchecked Sendable {
         where seen.insert(candidate.dedupKey).inserted {
             entries.append(candidate.entry)
         }
-        return entries
+        return JSONLLastGoodCacheLoadResult(
+            candidates: entries,
+            didChange: loadResult.didChange,
+            sourceRevision: loadResult.sourceRevision
+        )
+    }
+
+    private static func sourceRevisionComponent(
+        for state: CodexIncrementalState
+    ) -> Data {
+        let fileState = state.fileState
+        var component = Data()
+        for value in [
+            fileState.committedOffset,
+            fileState.continuityAnchor.offset,
+        ] {
+            var bigEndian = value.bigEndian
+            withUnsafeBytes(of: &bigEndian) {
+                component.append(contentsOf: $0)
+            }
+        }
+        component.append(fileState.continuityAnchor.bytes)
+        return component
     }
 
     /// 根据 descriptor snapshot、replay 分类与同 scope previous 构建下一版状态。
@@ -185,10 +230,10 @@ final class CodexRolloutParser: @unchecked Sendable {
         let anchorMatches: Bool
         if case .append = contentTransition, let previousFileState {
             let anchor = previousFileState.continuityAnchor
-            let anchorCoversCommittedPrefix = anchor.offset == 0
-                && UInt64(anchor.bytes.count)
-                    == previousFileState.committedOffset
-            if anchorCoversCommittedPrefix {
+            let anchorEndsAtCommittedOffset = anchor.offset
+                + UInt64(anchor.bytes.count)
+                == previousFileState.committedOffset
+            if anchorEndsAtCommittedOffset {
                 anchorMatches = try anchor.matches(in: snapshot.stream)
             } else {
                 anchorMatches = false
