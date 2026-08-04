@@ -17,8 +17,28 @@ struct ClaudeProvider: UsageProvider {
     /// - Parameter dataRootURL: 已授权的 Claude 数据根
     /// - Returns: 去重后的 ParsedUsageEntry 列表
     func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
+        try loadEntriesWithCacheStatus(
+            from: dataRootURL,
+            materializeEntriesWhenUnchanged: true
+        ).entries ?? []
+    }
+
+    /// 扫描文件元数据并返回可与统计快照绑定的源版本。
+    func loadEntriesWithCacheStatus(
+        from dataRootURL: URL,
+        materializeEntriesWhenUnchanged: Bool
+    ) throws -> UsageProviderLoadResult {
         let files = try scanner.scanAllJSONLFiles(in: dataRootURL)
-        return try parser.parseAllFiles(files, claudeDataRoot: dataRootURL)
+        let result = try parser.parseAllFilesWithCacheStatus(
+            files,
+            claudeDataRoot: dataRootURL,
+            materializeEntriesWhenUnchanged: materializeEntriesWhenUnchanged
+        )
+        return UsageProviderLoadResult(
+            entries: result.candidates,
+            didChange: result.didChange,
+            sourceRevision: result.sourceRevision
+        )
     }
 
     /// 仅接受包含 `projects/` 的 Claude Code 数据根，避免将 Home 等上级目录误当作数据目录。

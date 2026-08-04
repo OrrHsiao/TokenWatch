@@ -1,6 +1,9 @@
 import Foundation
 
-struct IncrementalJSONLFileState<Candidate: Sendable, Checkpoint: Sendable>: Sendable {
+struct IncrementalJSONLFileState<
+    Candidate: Codable & Sendable,
+    Checkpoint: Codable & Sendable
+>: Codable, Sendable {
     let metadata: JSONLFileMetadata
     let committedOffset: UInt64
     let stableCandidates: [Candidate]
@@ -14,15 +17,17 @@ struct IncrementalJSONLFileState<Candidate: Sendable, Checkpoint: Sendable>: Sen
     }
 }
 
-struct JSONLContinuityAnchor: Sendable, Equatable {
-    static let maximumByteCount = 256
+struct JSONLContinuityAnchor: Codable, Sendable, Equatable {
+    // 1 KiB 仍保持追加校验为常量级读取，同时覆盖常见单行日志的可变字段，
+    // 降低 truncate-and-grow 恰好复用短尾部而被误判为 append 的概率。
+    static let maximumByteCount = 1_024
 
     let offset: UInt64
     let bytes: Data
 
     static let empty = JSONLContinuityAnchor(offset: 0, bytes: Data())
 
-    /// 将新提交字节并入前一个锚点，并只保留 committed offset 前最多 256 字节。
+    /// 将新提交字节并入前一个锚点，并只保留 committed offset 前的固定长度尾部。
     static func make(
         previous: JSONLContinuityAnchor,
         newlyCommittedBytes: Data,
@@ -54,7 +59,7 @@ struct JSONLContinuityAnchor: Sendable, Equatable {
     }
 }
 
-struct StatelessJSONLCheckpoint: Sendable, Equatable {}
+struct StatelessJSONLCheckpoint: Codable, Sendable, Equatable {}
 
 enum IncrementalJSONLReadError: Error, Equatable {
     case unexpectedEOF
@@ -69,7 +74,8 @@ enum IncrementalJSONLTransition: Sendable, Equatable {
     static func decide<Candidate, Checkpoint>(
         previous: IncrementalJSONLFileState<Candidate, Checkpoint>,
         newMetadata: JSONLFileMetadata
-    ) -> IncrementalJSONLTransition where Candidate: Sendable, Checkpoint: Sendable {
+    ) -> IncrementalJSONLTransition
+    where Candidate: Codable & Sendable, Checkpoint: Codable & Sendable {
         guard let oldIdentity = previous.metadata.identity,
               let newIdentity = newMetadata.identity,
               oldIdentity == newIdentity

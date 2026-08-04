@@ -2,7 +2,7 @@ import Foundation
 
 /// 单次用量聚合结果
 /// 参考 ccusage 的 UsageSummary 设计，支持按模型和项目细分
-struct UsageSummary: Sendable {
+struct UsageSummary: Codable, Equatable, Sendable {
     let inputTokens: Int
     let outputTokens: Int
     let cacheReadTokens: Int
@@ -53,7 +53,7 @@ struct UsageSummary: Sendable {
 
 /// 按多维度聚合的完整统计结果
 /// 参考 ccusage 的 daily/weekly/monthly/session 报告结构
-struct AggregatedStats: Sendable {
+struct AggregatedStats: Codable, Equatable, Sendable {
     let overall: UsageSummary
     let byHour: [String: UsageSummary]      // key: "2026-06-13T14"
     let byDay: [String: UsageSummary]       // key: "2026-06-13"

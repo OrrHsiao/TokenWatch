@@ -1,11 +1,11 @@
 import Foundation
 
-enum CodexModelSource: Sendable, Equatable {
+enum CodexModelSource: Codable, Sendable, Equatable {
     case explicit
     case fallback
 }
 
-struct CodexModelState: Sendable, Equatable {
+struct CodexModelState: Codable, Sendable, Equatable {
     let rawModel: String
     let source: CodexModelSource
 }

@@ -1000,6 +1000,147 @@ struct ClaudeJSONLParserTests {
         )
     }
 
+    @Test("Claude 冷启动未变化时从磁盘完整 state 零读取恢复")
+    func coldStartUnchangedRestoresPersistedStateWithoutReading() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let cacheURL = fixture.root.appendingPathComponent("claude-cache.json")
+        let line = Self.minimalAssistantLine(
+            messageId: "cold-hit",
+            inputTokens: 10
+        )
+        try (line + "\n").write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+
+        let firstParser = ClaudeJSONLParser(
+            fileReader: RecordingJSONLFileReader(),
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        #expect(try firstParser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        ).map(\.messageId) == ["cold-hit"])
+
+        let coldReader = RecordingJSONLFileReader()
+        let coldParser = ClaudeJSONLParser(
+            fileReader: coldReader,
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        let restored = try coldParser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        #expect(restored.map(\.messageId) == ["cold-hit"])
+        #expect(coldReader.totalBytesRead == 0)
+        #expect(coldReader.seekOffsets.isEmpty)
+        #expect(coldParser.debugCommittedOffset(for: fixture.file.url) != nil)
+    }
+
+    @Test("Claude 大文件冷启动追加仅校验尾部 anchor 并读取后缀")
+    func coldStartLargeAppendReadsOnlyAnchorAndSuffix() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let cacheURL = fixture.root.appendingPathComponent("claude-cache.json")
+        let base = Self.minimalAssistantLine(messageId: "large-1", inputTokens: 10)
+        let firstLine = String(base.dropLast())
+            + ",\"padding\":\""
+            + String(repeating: "x", count: 2_048)
+            + "\"}"
+        try (firstLine + "\n").write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+
+        let firstParser = ClaudeJSONLParser(
+            fileReader: RecordingJSONLFileReader(),
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        _ = try firstParser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        let committedOffset = UInt64((firstLine + "\n").utf8.count)
+        let anchor = try #require(
+            firstParser.debugContinuityAnchor(for: fixture.file.url)
+        )
+        #expect(committedOffset > UInt64(JSONLContinuityAnchor.maximumByteCount))
+        #expect(anchor.offset > 0)
+
+        let secondLine = Self.minimalAssistantLine(
+            messageId: "large-2",
+            inputTokens: 20
+        )
+        try appendUTF8(secondLine + "\n", to: fixture.file.url)
+
+        let coldReader = RecordingJSONLFileReader()
+        let coldParser = ClaudeJSONLParser(
+            fileReader: coldReader,
+            diskStore: SystemJSONLDiskCacheStore(fileURL: cacheURL)
+        )
+        let appended = try coldParser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        #expect(appended.map(\.messageId).sorted() == ["large-1", "large-2"])
+        #expect(coldReader.seekOffsets == [anchor.offset, committedOffset])
+        #expect(
+            coldReader.totalBytesRead
+                == anchor.bytes.count + (secondLine + "\n").utf8.count
+        )
+    }
+
+    @Test("Claude 大文件追加 anchor 不连续时从头重建")
+    func largeAppendWithMismatchedAnchorRebuilds() throws {
+        let fixture = try makeClaudeFixture()
+        defer { fixture.cleanup() }
+        let base = Self.minimalAssistantLine(messageId: "anchor-1", inputTokens: 10)
+        let firstLine = String(base.dropLast())
+            + ",\"padding\":\""
+            + String(repeating: "x", count: 2_048)
+            + "\"}"
+        try (firstLine + "\n").write(
+            to: fixture.file.url,
+            atomically: false,
+            encoding: .utf8
+        )
+        let reader = RecordingJSONLFileReader()
+        let parser = ClaudeJSONLParser(fileReader: reader)
+        _ = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+        let anchor = try #require(
+            parser.debugContinuityAnchor(for: fixture.file.url)
+        )
+
+        let handle = try FileHandle(forUpdating: fixture.file.url)
+        try handle.seek(toOffset: anchor.offset + 8)
+        try handle.write(contentsOf: Data("y".utf8))
+        try handle.seekToEnd()
+        let secondLine = Self.minimalAssistantLine(
+            messageId: "anchor-2",
+            inputTokens: 20
+        )
+        try handle.write(contentsOf: Data((secondLine + "\n").utf8))
+        try handle.close()
+
+        reader.resetMetrics()
+        let rebuilt = try parser.parseAllFiles(
+            [fixture.file],
+            claudeDataRoot: fixture.root
+        )
+
+        #expect(rebuilt.map(\.messageId).sorted() == ["anchor-1", "anchor-2"])
+        #expect(reader.seekOffsets.first == anchor.offset)
+        #expect(reader.seekOffsets.contains(0))
+    }
+
     @Test("Claude provisional 尾行重读后不重复")
     func provisionalTailIsReplacedWhenNewlineArrives() throws {
         let fixture = try makeClaudeFixture()

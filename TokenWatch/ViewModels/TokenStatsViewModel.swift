@@ -59,6 +59,7 @@ final class TokenStatsViewModel: Sendable {
     private let aggregator: any UsageAggregating
     private let nowProvider: @Sendable () -> Date
     private let widgetSnapshotPublisher: (any WidgetSnapshotPublishing)?
+    private let statsSnapshotStore: any ProviderStatsSnapshotStoring
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "TokenStatsViewModel")
     private var loadGate = ProviderLoadGate()
     private var isInitialLoadInProgress = false
@@ -67,6 +68,7 @@ final class TokenStatsViewModel: Sendable {
     private var isLoadingAllStats = false
     private var needsLanguageRepublish = false
     private var isLanguageRepublishDrainScheduled = false
+    private var statsSourceRevisions: [ProviderID: String] = [:]
 
     init(
         languageSettings: AppLanguageSettings = .shared,
@@ -74,7 +76,8 @@ final class TokenStatsViewModel: Sendable {
         bookmarkManager: any BookmarkAccessManaging = SecurityScopedBookmarkManager.shared,
         aggregator: any UsageAggregating = UsageAggregator(),
         nowProvider: @escaping @Sendable () -> Date = Date.init,
-        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil
+        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil,
+        statsSnapshotStore: any ProviderStatsSnapshotStoring = SystemProviderStatsSnapshotStore()
     ) {
         self.languageSettings = languageSettings
         self.providers = providers
@@ -82,6 +85,7 @@ final class TokenStatsViewModel: Sendable {
         self.aggregator = aggregator
         self.nowProvider = nowProvider
         self.widgetSnapshotPublisher = widgetSnapshotPublisher
+        self.statsSnapshotStore = statsSnapshotStore
         for provider in providers {
             states[provider.id] = ProviderState()
         }
@@ -254,6 +258,7 @@ final class TokenStatsViewModel: Sendable {
         states[id]?.entries = nil
         states[id]?.lastRefreshedAt = nil
         entryFingerprints.removeValue(forKey: id)
+        statsSourceRevisions.removeValue(forKey: id)
         return hadData
     }
 
@@ -431,6 +436,25 @@ final class TokenStatsViewModel: Sendable {
         setDirectoryState(.selected, for: id)
         states[id]?.directoryAuthorizationErrorMessage = nil
 
+        let normalizedRootPath = Self.normalizedDataRootPath(rootURL)
+        let reusableStats: ReusableProviderStats?
+        if let stats = states[id]?.stats {
+            reusableStats = ReusableProviderStats(
+                stats: stats,
+                sourceRevision: statsSourceRevisions[id]
+            )
+        } else if let snapshot = await loadCompatibleStatsSnapshot(
+            for: id,
+            normalizedRootPath: normalizedRootPath
+        ) {
+            reusableStats = ReusableProviderStats(
+                stats: snapshot.stats,
+                sourceRevision: snapshot.sourceRevision
+            )
+        } else {
+            reusableStats = nil
+        }
+
         let aggregator = self.aggregator
         let logger = self.logger
         let providerCopy = provider
@@ -442,9 +466,13 @@ final class TokenStatsViewModel: Sendable {
         let result: Result<ProviderLoadResult, Error> =
             await Task.detached(priority: .utility) {
                 do {
-                    let entries = try providerCopy.loadEntries(
-                        from: rootURL
+                    let loadResult = try providerCopy.loadEntriesWithCacheStatus(
+                        from: rootURL,
+                        materializeEntriesWhenUnchanged: true
                     )
+                    guard let entries = loadResult.entries else {
+                        throw ProviderLoadError.missingMaterializedEntries
+                    }
                     logger.info(
                         "\(providerCopy.displayName) 解析得 \(entries.count) 条记录"
                     )
@@ -452,11 +480,28 @@ final class TokenStatsViewModel: Sendable {
                         UsageEntriesFingerprint.make(
                             from: entries
                         )
+                    if let sourceRevision = loadResult.sourceRevision,
+                       sourceRevision == reusableStats?.sourceRevision,
+                       let cachedStats = reusableStats?.stats {
+                        logger.info(
+                            "\(providerCopy.displayName) 统计快照与当前源版本一致，跳过重新聚合"
+                        )
+                        return .success(
+                            .loaded(
+                                stats: cachedStats,
+                                entries: entries,
+                                fingerprint: fingerprint,
+                                entryCount: entries.count,
+                                sourceRevision: sourceRevision
+                            )
+                        )
+                    }
                     if canReuseExistingStats,
                        previousFingerprint == fingerprint {
                         return .success(
                             .unchanged(
-                                entryCount: entries.count
+                                entryCount: entries.count,
+                                sourceRevision: loadResult.sourceRevision
                             )
                         )
                     }
@@ -467,7 +512,8 @@ final class TokenStatsViewModel: Sendable {
                             stats: stats,
                             entries: entries,
                             fingerprint: fingerprint,
-                            entryCount: entries.count
+                            entryCount: entries.count,
+                            sourceRevision: loadResult.sourceRevision
                         )
                     )
                 } catch {
@@ -481,9 +527,11 @@ final class TokenStatsViewModel: Sendable {
                 let stats,
                 let entries,
                 let fingerprint,
-                _
+                _,
+                let sourceRevision
             )
         ):
+            let refreshedAt = nowProvider()
             entryFingerprints[id] = fingerprint
             states[id]?.stats = stats
             states[id]?.entries = entries
@@ -494,11 +542,23 @@ final class TokenStatsViewModel: Sendable {
             states[id]?.directoryAuthorizationErrorMessage =
                 nil
             states[id]?.errorMessage = nil
-            states[id]?.lastRefreshedAt = nowProvider()
+            states[id]?.lastRefreshedAt = refreshedAt
             states[id]?.isLoading = false
+            setStatsSourceRevision(sourceRevision, for: id)
             notifyStateChange(id)
+            await saveStatsSnapshot(
+                ProviderStatsSnapshot(
+                    providerID: id,
+                    stats: stats,
+                    generatedAt: refreshedAt,
+                    dataRootPath: normalizedRootPath,
+                    timeZoneIdentifier: TimeZone.current.identifier,
+                    sourceRevision: sourceRevision
+                ),
+                providerName: provider.displayName
+            )
 
-        case .success(.unchanged(let entryCount)):
+        case .success(.unchanged(let entryCount, let sourceRevision)):
             let targetDirectoryState:
                 ProviderDirectoryState =
                     entryCount == 0
@@ -520,10 +580,25 @@ final class TokenStatsViewModel: Sendable {
             states[id]?.directoryAuthorizationErrorMessage =
                 nil
             states[id]?.errorMessage = nil
-            states[id]?.lastRefreshedAt = nowProvider()
+            let refreshedAt = nowProvider()
+            states[id]?.lastRefreshedAt = refreshedAt
             states[id]?.isLoading = false
+            setStatsSourceRevision(sourceRevision, for: id)
             if shouldNotify {
                 notifyStateChange(id)
+            }
+            if let stats = states[id]?.stats {
+                await saveStatsSnapshot(
+                    ProviderStatsSnapshot(
+                        providerID: id,
+                        stats: stats,
+                        generatedAt: refreshedAt,
+                        dataRootPath: normalizedRootPath,
+                        timeZoneIdentifier: TimeZone.current.identifier,
+                        sourceRevision: sourceRevision
+                    ),
+                    providerName: provider.displayName
+                )
             }
 
         case .failure(let error):
@@ -633,11 +708,74 @@ final class TokenStatsViewModel: Sendable {
     private func provider(for id: ProviderID) -> (any UsageProvider)? {
         providers.first(where: { $0.id == id })
     }
+
+    /// 读取与当前数据根和聚合时区匹配的统计快照，仅作为本轮刷新计算输入。
+    private func loadCompatibleStatsSnapshot(
+        for id: ProviderID,
+        normalizedRootPath: String
+    ) async -> ProviderStatsSnapshot? {
+        let snapshotStore = statsSnapshotStore
+        let snapshot = await Task.detached(priority: .utility) {
+            snapshotStore.load(for: id)
+        }.value
+        guard let snapshot,
+              snapshot.dataRootPath == normalizedRootPath,
+              snapshot.timeZoneIdentifier == TimeZone.current.identifier else {
+            return nil
+        }
+        return snapshot
+    }
+
+    private func saveStatsSnapshot(
+        _ snapshot: ProviderStatsSnapshot,
+        providerName: String
+    ) async {
+        let snapshotStore = statsSnapshotStore
+        let errorDescription = await Task.detached(priority: .utility) {
+            do {
+                try snapshotStore.save(snapshot)
+                return nil as String?
+            } catch {
+                return error.localizedDescription
+            }
+        }.value
+        if let errorDescription {
+            logger.warning(
+                "统计快照写入失败 (\(providerName)): \(errorDescription)"
+            )
+        }
+    }
+
+    private func setStatsSourceRevision(
+        _ sourceRevision: String?,
+        for id: ProviderID
+    ) {
+        if let sourceRevision {
+            statsSourceRevisions[id] = sourceRevision
+        } else {
+            statsSourceRevisions.removeValue(forKey: id)
+        }
+    }
+
+    private nonisolated static func normalizedDataRootPath(_ url: URL) -> String {
+        url.resolvingSymlinksInPath().standardizedFileURL.path
+    }
 }
 
 private enum ProviderLoadResult: Sendable {
-    case loaded(stats: AggregatedStats, entries: [ParsedUsageEntry], fingerprint: UsageEntriesFingerprint, entryCount: Int)
-    case unchanged(entryCount: Int)
+    case loaded(
+        stats: AggregatedStats,
+        entries: [ParsedUsageEntry],
+        fingerprint: UsageEntriesFingerprint,
+        entryCount: Int,
+        sourceRevision: String?
+    )
+    case unchanged(entryCount: Int, sourceRevision: String?)
+}
+
+private struct ReusableProviderStats: Sendable {
+    let stats: AggregatedStats
+    let sourceRevision: String?
 }
 
 private enum ProviderLoadError: LocalizedError, AppLocalizedError, Sendable {

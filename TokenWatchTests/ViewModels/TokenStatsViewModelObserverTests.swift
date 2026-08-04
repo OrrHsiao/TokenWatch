@@ -652,6 +652,229 @@ struct TokenStatsViewModelObserverTests {
         )
     }
 
+    @Test("匹配的统计快照只在完整 entries 刷新后发布")
+    func matchingStatsSnapshotReusesAggregationAfterEntriesRefresh() async {
+        let rootURL = URL(
+            fileURLWithPath: "/snapshot-claude",
+            isDirectory: true
+        )
+        let entries = [
+            makeEntry(
+                id: .claude,
+                usage: makeUsage(
+                    cacheCreation5m: 0,
+                    cacheCreation1h: 0
+                )
+            ),
+        ]
+        let cachedStats = UsageAggregator().aggregate(entries)
+        let store = InMemoryProviderStatsSnapshotStore(snapshots: [
+            .claude: ProviderStatsSnapshot(
+                providerID: .claude,
+                stats: cachedStats,
+                generatedAt: Date(timeIntervalSince1970: 2_000_000),
+                dataRootPath: normalizedSnapshotRootPath(rootURL),
+                timeZoneIdentifier: TimeZone.current.identifier,
+                sourceRevision: "r1"
+            ),
+        ])
+        let provider = CacheStatusUsageProvider(
+            id: .claude,
+            entries: entries,
+            didChange: false,
+            sourceRevision: "r1"
+        )
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: StubBookmarkManager(rootURL: rootURL),
+            aggregator: aggregator,
+            statsSnapshotStore: store
+        )
+
+        #expect(vm.states[.claude]?.stats == nil)
+        #expect(vm.states[.claude]?.entries == nil)
+        await vm.loadStats(for: .claude)
+
+        #expect(provider.materializationRequests == [true])
+        #expect(aggregator.aggregateCallCount == 0)
+        #expect(vm.states[.claude]?.stats == cachedStats)
+        #expect(vm.states[.claude]?.entries == entries)
+    }
+
+    @Test("数据根不匹配时忽略统计快照并重新聚合")
+    func rootMismatchReaggregatesStats() async {
+        let rootURL = URL(
+            fileURLWithPath: "/current-claude",
+            isDirectory: true
+        )
+        let entries = [
+            makeEntry(
+                id: .claude,
+                usage: makeUsage(cacheCreation5m: 0, cacheCreation1h: 0)
+            ),
+        ]
+        let store = InMemoryProviderStatsSnapshotStore(snapshots: [
+            .claude: ProviderStatsSnapshot(
+                providerID: .claude,
+                stats: .zero,
+                generatedAt: Date(timeIntervalSince1970: 2_000_000),
+                dataRootPath: "/different-claude",
+                timeZoneIdentifier: TimeZone.current.identifier,
+                sourceRevision: "r1"
+            ),
+        ])
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [
+                CacheStatusUsageProvider(
+                    id: .claude,
+                    entries: entries,
+                    didChange: false,
+                    sourceRevision: "r1"
+                ),
+            ],
+            bookmarkManager: StubBookmarkManager(rootURL: rootURL),
+            aggregator: aggregator,
+            statsSnapshotStore: store
+        )
+
+        await vm.loadStats(for: .claude)
+
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(vm.states[.claude]?.stats != .zero)
+        #expect(vm.states[.claude]?.entries == entries)
+    }
+
+    @Test("时区不匹配时忽略统计快照并重新聚合")
+    func timeZoneMismatchReaggregatesStats() async {
+        let rootURL = URL(
+            fileURLWithPath: "/snapshot-claude",
+            isDirectory: true
+        )
+        let entries = [
+            makeEntry(
+                id: .claude,
+                usage: makeUsage(cacheCreation5m: 0, cacheCreation1h: 0)
+            ),
+        ]
+        let mismatchedTimeZoneIdentifier =
+            TimeZone.current.identifier == "UTC"
+                ? "Asia/Shanghai"
+                : "UTC"
+        let store = InMemoryProviderStatsSnapshotStore(snapshots: [
+            .claude: ProviderStatsSnapshot(
+                providerID: .claude,
+                stats: .zero,
+                generatedAt: Date(timeIntervalSince1970: 2_000_000),
+                dataRootPath: normalizedSnapshotRootPath(rootURL),
+                timeZoneIdentifier: mismatchedTimeZoneIdentifier,
+                sourceRevision: "r1"
+            ),
+        ])
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [
+                CacheStatusUsageProvider(
+                    id: .claude,
+                    entries: entries,
+                    didChange: false,
+                    sourceRevision: "r1"
+                ),
+            ],
+            bookmarkManager: StubBookmarkManager(rootURL: rootURL),
+            aggregator: aggregator,
+            statsSnapshotStore: store
+        )
+
+        await vm.loadStats(for: .claude)
+
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(vm.states[.claude]?.stats != .zero)
+        #expect(vm.states[.claude]?.entries == entries)
+    }
+
+    @Test("成功加载后写入统计快照")
+    func successfulLoadSavesStatsSnapshot() async throws {
+        let rootURL = URL(
+            fileURLWithPath: "/snapshot-codex",
+            isDirectory: true
+        )
+        let refreshedAt = Date(timeIntervalSince1970: 3_000_000)
+        let store = InMemoryProviderStatsSnapshotStore()
+        let vm = TokenStatsViewModel(
+            providers: [StubUsageProvider(id: .codex)],
+            bookmarkManager: StubBookmarkManager(rootURL: rootURL),
+            nowProvider: { refreshedAt },
+            statsSnapshotStore: store
+        )
+
+        await vm.loadStats(for: .codex)
+
+        let snapshot = try #require(store.load(for: .codex))
+        #expect(snapshot.providerID == .codex)
+        #expect(snapshot.stats == vm.states[.codex]?.stats)
+        #expect(snapshot.generatedAt == refreshedAt)
+        #expect(
+            snapshot.dataRootPath
+                == normalizedSnapshotRootPath(rootURL)
+        )
+        #expect(
+            snapshot.timeZoneIdentifier
+                == TimeZone.current.identifier
+        )
+    }
+
+    @Test("源版本变化时强制物化、重新聚合并保存新 revision")
+    func changedSourceRevisionReaggregatesAndSavesSnapshot() async throws {
+        let rootURL = URL(
+            fileURLWithPath: "/revision-codex",
+            isDirectory: true
+        )
+        let entries = [
+            makeEntry(
+                id: .codex,
+                usage: makeUsage(
+                    cacheCreation5m: 0,
+                    cacheCreation1h: 0
+                )
+            ),
+        ]
+        let store = InMemoryProviderStatsSnapshotStore(snapshots: [
+            .codex: ProviderStatsSnapshot(
+                providerID: .codex,
+                stats: .zero,
+                generatedAt: Date(timeIntervalSince1970: 2_000_000),
+                dataRootPath: normalizedSnapshotRootPath(rootURL),
+                timeZoneIdentifier: TimeZone.current.identifier,
+                sourceRevision: "r1"
+            ),
+        ])
+        let provider = CacheStatusUsageProvider(
+            id: .codex,
+            entries: entries,
+            didChange: true,
+            sourceRevision: "r2"
+        )
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: StubBookmarkManager(rootURL: rootURL),
+            aggregator: aggregator,
+            statsSnapshotStore: store
+        )
+
+        await vm.loadStats(for: .codex)
+
+        let savedSnapshot = try #require(store.load(for: .codex))
+        #expect(provider.materializationRequests == [true])
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(vm.states[.codex]?.entries == entries)
+        #expect(vm.states[.codex]?.stats != .zero)
+        #expect(savedSnapshot.stats == vm.states[.codex]?.stats)
+        #expect(savedSnapshot.sourceRevision == "r2")
+    }
+
     /// 成功完成本地刷新后记录刷新时间,供主界面展示“xx 分钟/小时前更新”。
     @Test func successfulLocalRefreshRecordsRefreshTime() async throws {
         let now = Date(timeIntervalSince1970: 2_000_000)
@@ -854,6 +1077,7 @@ struct TokenStatsViewModelObserverTests {
         #expect(UsageEntriesFingerprint.make(from: [standard]) !=
             UsageEntriesFingerprint.make(from: [priority]))
     }
+
 }
 
 private struct StubLocalizedError: LocalizedError {
@@ -1005,6 +1229,97 @@ private func makeEntry(
         upstreamProviderID: nil,
         upstreamCost: nil
     )
+}
+
+private func normalizedSnapshotRootPath(_ url: URL) -> String {
+    url.resolvingSymlinksInPath().standardizedFileURL.path
+}
+
+private final class InMemoryProviderStatsSnapshotStore:
+    ProviderStatsSnapshotStoring,
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var snapshots: [ProviderID: ProviderStatsSnapshot]
+
+    init(snapshots: [ProviderID: ProviderStatsSnapshot] = [:]) {
+        self.snapshots = snapshots
+    }
+
+    func load(for providerID: ProviderID) -> ProviderStatsSnapshot? {
+        lock.lock()
+        defer { lock.unlock() }
+        return snapshots[providerID]
+    }
+
+    func save(_ snapshot: ProviderStatsSnapshot) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        snapshots[snapshot.providerID] = snapshot
+    }
+}
+
+private final class CacheStatusUsageProvider:
+    UsageProvider,
+    @unchecked Sendable
+{
+    let id: ProviderID
+    let displayName = "Cache Status Provider"
+    let bookmarkKey = "CacheStatusBookmark"
+    let hasCacheWriteDimension = true
+    let hasReasoningDimension = false
+
+    var openPanelMessageKey: AppStringKey {
+        switch id {
+        case .claude: .claudeDataDirectoryOpenPanelMessage
+        case .codex: .codexDataDirectoryOpenPanelMessage
+        case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        }
+    }
+
+    private let entries: [ParsedUsageEntry]
+    private let didChange: Bool
+    private let sourceRevision: String
+    private let lock = NSLock()
+    private var recordedMaterializationRequests: [Bool] = []
+
+    init(
+        id: ProviderID,
+        entries: [ParsedUsageEntry],
+        didChange: Bool,
+        sourceRevision: String
+    ) {
+        self.id = id
+        self.entries = entries
+        self.didChange = didChange
+        self.sourceRevision = sourceRevision
+    }
+
+    var materializationRequests: [Bool] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedMaterializationRequests
+    }
+
+    func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
+        entries
+    }
+
+    func loadEntriesWithCacheStatus(
+        from dataRootURL: URL,
+        materializeEntriesWhenUnchanged: Bool
+    ) throws -> UsageProviderLoadResult {
+        lock.lock()
+        recordedMaterializationRequests.append(
+            materializeEntriesWhenUnchanged
+        )
+        lock.unlock()
+        return UsageProviderLoadResult(
+            entries: materializeEntriesWhenUnchanged ? entries : nil,
+            didChange: didChange,
+            sourceRevision: sourceRevision
+        )
+    }
 }
 
 @MainActor

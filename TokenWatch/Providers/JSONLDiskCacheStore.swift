@@ -1,32 +1,32 @@
 import Foundation
 import os.log
 
-/// 磁盘持久化记录，保存单个 JSONL 文件的元数据与解析候选结果。
-struct JSONLDiskCacheEntry<Candidate: Codable & Sendable>: Codable, Sendable {
+/// 磁盘持久化记录，保存单个 JSONL 文件的元数据与完整增量解析状态。
+struct JSONLDiskCacheEntry<State: Codable & Sendable>: Codable, Sendable {
     let key: String
     let scopeIdentifier: String
     let metadata: JSONLFileMetadata
-    let candidates: [Candidate]
+    let state: State
 }
 
 /// 磁盘持久化 Payload 包裹体
-struct JSONLDiskCachePayload<Candidate: Codable & Sendable>: Codable, Sendable {
+struct JSONLDiskCachePayload<State: Codable & Sendable>: Codable, Sendable {
     let version: Int
-    var entries: [String: JSONLDiskCacheEntry<Candidate>]
+    var entries: [String: JSONLDiskCacheEntry<State>]
 }
 
 /// 磁盘缓存存储接口
-protocol JSONLDiskCacheStoring<Candidate>: Sendable {
-    associatedtype Candidate: Codable & Sendable
-    func loadAll() -> [String: JSONLDiskCacheEntry<Candidate>]
-    func saveAll(_ entries: [String: JSONLDiskCacheEntry<Candidate>])
+protocol JSONLDiskCacheStoring<State>: Sendable {
+    associatedtype State: Codable & Sendable
+    func loadAll() -> [String: JSONLDiskCacheEntry<State>]
+    func saveAll(_ entries: [String: JSONLDiskCacheEntry<State>])
 }
 
 /// 默认以 JSON 格式存储在沙盒 Cache 目录的磁盘缓存管理对象。
-final class SystemJSONLDiskCacheStore<Candidate: Codable & Sendable>: JSONLDiskCacheStoring, @unchecked Sendable {
+final class SystemJSONLDiskCacheStore<State: Codable & Sendable>: JSONLDiskCacheStoring, @unchecked Sendable {
     private let fileURL: URL
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "JSONLDiskCacheStore")
-    private let currentVersion = 1
+    private let currentVersion = 2
 
     init(namespace: String) {
         let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -49,14 +49,14 @@ final class SystemJSONLDiskCacheStore<Candidate: Codable & Sendable>: JSONLDiskC
         try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     }
 
-    func loadAll() -> [String: JSONLDiskCacheEntry<Candidate>] {
+    func loadAll() -> [String: JSONLDiskCacheEntry<State>] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return [:]
         }
         do {
             let data = try Data(contentsOf: fileURL)
             let decoder = JSONDecoder()
-            let payload = try decoder.decode(JSONLDiskCachePayload<Candidate>.self, from: data)
+            let payload = try decoder.decode(JSONLDiskCachePayload<State>.self, from: data)
             guard payload.version == currentVersion else {
                 logger.info("磁盘缓存版本变更 (\(payload.version) -> \(self.currentVersion))，清除旧缓存")
                 return [:]
@@ -69,7 +69,7 @@ final class SystemJSONLDiskCacheStore<Candidate: Codable & Sendable>: JSONLDiskC
         }
     }
 
-    func saveAll(_ entries: [String: JSONLDiskCacheEntry<Candidate>]) {
+    func saveAll(_ entries: [String: JSONLDiskCacheEntry<State>]) {
         do {
             let payload = JSONLDiskCachePayload(version: currentVersion, entries: entries)
             let encoder = JSONEncoder()

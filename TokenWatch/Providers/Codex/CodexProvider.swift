@@ -30,9 +30,29 @@ struct CodexProvider: UsageProvider {
     /// - Parameter dataRootURL: 已授权的 Codex 数据根
     /// - Returns: 去重后的 ParsedUsageEntry 列表
     func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
+        try loadEntriesWithCacheStatus(
+            from: dataRootURL,
+            materializeEntriesWhenUnchanged: true
+        ).entries ?? []
+    }
+
+    /// 扫描文件元数据并返回可与统计快照绑定的源版本。
+    func loadEntriesWithCacheStatus(
+        from dataRootURL: URL,
+        materializeEntriesWhenUnchanged: Bool
+    ) throws -> UsageProviderLoadResult {
         let files = try scanner.scanAll(in: dataRootURL)
         let speed = serviceTierResolver.pricingSpeed(at: dataRootURL)
-        return try parser.parseAllFiles(files, pricingSpeed: speed)
+        let result = try parser.parseAllFilesWithCacheStatus(
+            files,
+            pricingSpeed: speed,
+            materializeEntriesWhenUnchanged: materializeEntriesWhenUnchanged
+        )
+        return UsageProviderLoadResult(
+            entries: result.candidates,
+            didChange: result.didChange,
+            sourceRevision: result.sourceRevision
+        )
     }
 
     /// 接受包含 `sessions/` 或 `archived_sessions/` 的 Codex 数据根。
