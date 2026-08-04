@@ -2769,6 +2769,48 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func settingsMonthlyBudgetInputVerticallyCentersText() throws {
+        let controller = SettingsViewController(
+            isAuthorized: { false },
+            languageSettings: zhHansLanguageSettings()
+        )
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: 480,
+            height: SettingsViewController.minimumContentHeight
+        )
+        controller.view.layoutSubtreeIfNeeded()
+
+        let field = try #require(
+            controller.view.firstDescendant(
+                identifier: "MonthlyBudgetTextField"
+            ) as? NSTextField
+        )
+        let cell = try #require(field.cell)
+        let font = try #require(field.font)
+        let textRect = cell.drawingRect(forBounds: field.bounds)
+        let lineHeight = ceil(font.ascender - font.descender + font.leading)
+
+        #expect(field.bounds.height == 32)
+        #expect(abs(textRect.midY - field.bounds.midY) < 0.001)
+        #expect(abs(textRect.height - lineHeight) < 0.001)
+
+        let editor = NSTextView()
+        cell.select(
+            withFrame: field.bounds,
+            in: field,
+            editor: editor,
+            delegate: nil,
+            start: 0,
+            length: 0
+        )
+        #expect(abs(editor.frame.midY - field.bounds.midY) < 0.001)
+        #expect(abs(editor.frame.height - lineHeight) < 0.001)
+    }
+
+    @MainActor
     @Test func settingsMonthlyBudgetInputPersistsValidValueAndKeepsPriorValueOnInvalidText() throws {
         try withTemporaryDefaults { defaults in
             let monthlyBudgetSettings = MonthlyBudgetSettings(defaults: defaults)
