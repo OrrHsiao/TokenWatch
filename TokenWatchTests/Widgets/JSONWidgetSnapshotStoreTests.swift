@@ -210,6 +210,33 @@ struct JSONWidgetSnapshotStoreTests {
             ("blank budget title", makeValidSnapshot(
                 monthlyBudget: validMonthlyBudget(title: " ")
             )),
+            ("project focus leaks a path", makeValidSnapshot(
+                projectFocus: validProjectFocus(topProjectName: "/Users/example/TokenWatch")
+            )),
+            ("project focus has an impossible day", makeValidSnapshot(
+                projectFocus: WidgetProjectFocusSnapshot(
+                    windowStartDayKey: "2026-02-31",
+                    windowEndDayKey: "2026-07-15",
+                    windowTotalTokens: 100,
+                    topProjectName: "TokenWatch",
+                    topProjectTokens: 60
+                )
+            )),
+            ("project focus exceeds its window", makeValidSnapshot(
+                projectFocus: validProjectFocus(
+                    windowTotalTokens: 42,
+                    topProjectTokens: 43
+                )
+            )),
+            ("model focus is missing a provider", makeValidSnapshot(
+                modelFocus: validModelFocus(providerName: nil)
+            )),
+            ("model focus exceeds its window", makeValidSnapshot(
+                modelFocus: validModelFocus(
+                    windowTotalTokens: 42,
+                    modelTokens: 43
+                )
+            )),
         ]
     }
 
@@ -235,7 +262,9 @@ struct JSONWidgetSnapshotStoreTests {
         maxHourlyTokens: Int = 42,
         hourlyDayKey: String = "2026-07-15",
         weeklySummaryTitle: String = "最近 7 天",
-        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil,
+        projectFocus: WidgetProjectFocusSnapshot? = nil,
+        modelFocus: WidgetModelFocusSnapshot? = nil
     ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
@@ -260,7 +289,9 @@ struct JSONWidgetSnapshotStoreTests {
                 maxHourlyTokens: maxHourlyTokens,
                 points: hourlyPoints ?? makeHourlyPoints(totalTokens: totalTokens)
             ),
-            monthlyBudget: monthlyBudget
+            monthlyBudget: monthlyBudget,
+            projectFocus: projectFocus,
+            modelFocus: modelFocus
         )
     }
 
@@ -283,6 +314,36 @@ struct JSONWidgetSnapshotStoreTests {
             forecastTitle: forecastTitle,
             unconfiguredMessage: unconfiguredMessage,
             forecastOverBudgetMessage: forecastOverBudgetMessage
+        )
+    }
+
+    private func validProjectFocus(
+        windowTotalTokens: Int = 100,
+        topProjectName: String? = "TokenWatch",
+        topProjectTokens: Int = 60
+    ) -> WidgetProjectFocusSnapshot {
+        WidgetProjectFocusSnapshot(
+            windowStartDayKey: "2026-07-09",
+            windowEndDayKey: "2026-07-15",
+            windowTotalTokens: windowTotalTokens,
+            topProjectName: topProjectName,
+            topProjectTokens: topProjectTokens
+        )
+    }
+
+    private func validModelFocus(
+        windowTotalTokens: Int = 100,
+        providerName: String? = "Codex",
+        modelName: String? = "gpt-5",
+        modelTokens: Int = 60
+    ) -> WidgetModelFocusSnapshot {
+        WidgetModelFocusSnapshot(
+            windowStartDayKey: "2026-07-09",
+            windowEndDayKey: "2026-07-15",
+            windowTotalTokens: windowTotalTokens,
+            providerName: providerName,
+            modelName: modelName,
+            modelTokens: modelTokens
         )
     }
 

@@ -49,6 +49,18 @@ enum WidgetUsageSnapshotValidator {
               !snapshot.localizedText.weeklySummaryTitle
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .isEmpty,
+              !snapshot.localizedText.projectFocusTitle
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
+              !snapshot.localizedText.projectFocusNoDataMessage
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
+              !snapshot.localizedText.modelFocusTitle
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
+              !snapshot.localizedText.modelFocusNoDataMessage
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
               snapshot.heatmap.cells.count
                 == WidgetChartVisualStyle.heatmapColumns * WidgetChartVisualStyle.heatmapRows,
               snapshot.hourlyLine.points.count == 24 else {
@@ -67,9 +79,13 @@ enum WidgetUsageSnapshotValidator {
             && snapshot.hourlyLine.points.filter(\.isCurrentHour).count == 1
             && snapshot.hourlyLine.points.allSatisfy {
                 $0.totalTokens >= 0 && !$0.hourKey.isEmpty && !$0.hourLabel.isEmpty
-            }
+        }
         let monthlyBudgetIsValid = snapshot.monthlyBudget.map(isValidMonthlyBudget) ?? true
-        return cellsAreValid && pointsAreValid && monthlyBudgetIsValid
+        return cellsAreValid
+            && pointsAreValid
+            && monthlyBudgetIsValid
+            && isValidProjectFocus(snapshot.projectFocus)
+            && isValidModelFocus(snapshot.modelFocus)
     }
 
     private static func isValidMonthlyBudget(
@@ -103,6 +119,83 @@ enum WidgetUsageSnapshotValidator {
             return false
         }
         return (1...12).contains(month)
+    }
+
+    private static func isValidProjectFocus(
+        _ snapshot: WidgetProjectFocusSnapshot
+    ) -> Bool {
+        guard isValidWindow(
+            startDayKey: snapshot.windowStartDayKey,
+            endDayKey: snapshot.windowEndDayKey
+        ), snapshot.windowTotalTokens >= 0,
+              snapshot.topProjectTokens >= 0,
+              snapshot.topProjectTokens <= snapshot.windowTotalTokens else {
+            return false
+        }
+
+        let projectName = snapshot.topProjectName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasProject = projectName?.isEmpty == false
+        return hasProject == (snapshot.topProjectTokens > 0)
+            && !(projectName?.contains("/") ?? false)
+    }
+
+    private static func isValidModelFocus(
+        _ snapshot: WidgetModelFocusSnapshot
+    ) -> Bool {
+        guard isValidWindow(
+            startDayKey: snapshot.windowStartDayKey,
+            endDayKey: snapshot.windowEndDayKey
+        ), snapshot.windowTotalTokens >= 0,
+              snapshot.modelTokens >= 0,
+              snapshot.modelTokens <= snapshot.windowTotalTokens else {
+            return false
+        }
+
+        let providerName = snapshot.providerName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelName = snapshot.modelName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasIdentity = providerName?.isEmpty == false && modelName?.isEmpty == false
+        return hasIdentity == (snapshot.modelTokens > 0)
+    }
+
+    private static func isValidWindow(
+        startDayKey: String,
+        endDayKey: String
+    ) -> Bool {
+        isValidDayKey(startDayKey)
+            && isValidDayKey(endDayKey)
+            && startDayKey <= endDayKey
+    }
+
+    private static func isValidDayKey(_ key: String) -> Bool {
+        let components = key.split(separator: "-", omittingEmptySubsequences: false)
+        guard components.count == 3,
+              components[0].count == 4,
+              components[1].count == 2,
+              components[2].count == 2,
+              let year = Int(components[0]),
+              let month = Int(components[1]),
+              let day = Int(components[2]),
+              year >= 1,
+              (1...12).contains(month),
+              (1...31).contains(day) else {
+            return false
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let date = calendar.date(from: DateComponents(
+            year: year,
+            month: month,
+            day: day
+        )) else {
+            return false
+        }
+        let normalized = calendar.dateComponents([.year, .month, .day], from: date)
+        return normalized.year == year
+            && normalized.month == month
+            && normalized.day == day
     }
 }
 

@@ -20,7 +20,11 @@ enum WidgetFallbackLocalization {
                 format: String(localized: "widget.updated.format"),
                 dateText
             ),
-            notReadyMessage: String(localized: "widget.notReady")
+            notReadyMessage: String(localized: "widget.notReady"),
+            projectFocusTitle: String(localized: "widget.projectFocus.name"),
+            projectFocusNoDataMessage: String(localized: "widget.notReady"),
+            modelFocusTitle: String(localized: "widget.modelFocus.name"),
+            modelFocusNoDataMessage: String(localized: "widget.notReady")
         )
     }
 }
@@ -69,6 +73,21 @@ enum WidgetSampleSnapshotFactory {
                 totalTokens: points.reduce(0) { $0 + $1.totalTokens },
                 maxHourlyTokens: points.map(\.totalTokens).max() ?? 0,
                 points: points
+            ),
+            projectFocus: WidgetProjectFocusSnapshot(
+                windowStartDayKey: localDayKey,
+                windowEndDayKey: localDayKey,
+                windowTotalTokens: 1_800_000,
+                topProjectName: "TokenWatch",
+                topProjectTokens: 1_100_000
+            ),
+            modelFocus: WidgetModelFocusSnapshot(
+                windowStartDayKey: localDayKey,
+                windowEndDayKey: localDayKey,
+                windowTotalTokens: 1_800_000,
+                providerName: "Claude",
+                modelName: "claude-sonnet",
+                modelTokens: 1_000_000
             )
         )
     }

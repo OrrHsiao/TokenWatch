@@ -95,6 +95,25 @@ struct WidgetUsageSnapshotTests {
         )
     }
 
+    @Test("semantic comparison includes project and model focus")
+    func semanticComparisonIncludesFocusSnapshots() {
+        let first = makeSnapshot(
+            projectFocus: projectFocus(name: "TokenWatch"),
+            modelFocus: modelFocus(name: "gpt-5")
+        )
+        let projectChanged = makeSnapshot(
+            projectFocus: projectFocus(name: "Other"),
+            modelFocus: modelFocus(name: "gpt-5")
+        )
+        let modelChanged = makeSnapshot(
+            projectFocus: projectFocus(name: "TokenWatch"),
+            modelFocus: modelFocus(name: "gpt-4.1")
+        )
+
+        #expect(!first.hasSameContent(as: projectChanged))
+        #expect(!first.hasSameContent(as: modelChanged))
+    }
+
     private func makeSnapshot(
         generatedAt: Date = Date(timeIntervalSince1970: 100),
         schemaVersion: Int = WidgetSharedConfiguration.schemaVersion,
@@ -102,7 +121,9 @@ struct WidgetUsageSnapshotTests {
         notReadyMessage: String = "打开 TokenWatch 刷新数据",
         heatmapTotalTokens: Int = 42,
         hourlyTotalTokens: Int = 42,
-        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil,
+        projectFocus: WidgetProjectFocusSnapshot? = nil,
+        modelFocus: WidgetModelFocusSnapshot? = nil
     ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
             schemaVersion: schemaVersion,
@@ -141,7 +162,30 @@ struct WidgetUsageSnapshotTests {
                     )
                 ]
             ),
-            monthlyBudget: monthlyBudget
+            monthlyBudget: monthlyBudget,
+            projectFocus: projectFocus,
+            modelFocus: modelFocus
+        )
+    }
+
+    private func projectFocus(name: String) -> WidgetProjectFocusSnapshot {
+        WidgetProjectFocusSnapshot(
+            windowStartDayKey: "2026-07-09",
+            windowEndDayKey: "2026-07-15",
+            windowTotalTokens: 100,
+            topProjectName: name,
+            topProjectTokens: 60
+        )
+    }
+
+    private func modelFocus(name: String) -> WidgetModelFocusSnapshot {
+        WidgetModelFocusSnapshot(
+            windowStartDayKey: "2026-07-09",
+            windowEndDayKey: "2026-07-15",
+            windowTotalTokens: 100,
+            providerName: "Codex",
+            modelName: name,
+            modelTokens: 50
         )
     }
 

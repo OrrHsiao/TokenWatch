@@ -23,11 +23,19 @@ final class WidgetGalleryViewController: NSViewController {
     private let weeklySmallPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let weeklyMediumPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let monthlyBudgetPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let todayAnomalySmallPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let todayAnomalyMediumPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let projectFocusPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let modelFocusPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let heatmapPreviewContainer = NSView()
     private let hourlyLinePreviewContainer = NSView()
     private let weeklySmallPreviewContainer = NSView()
     private let weeklyMediumPreviewContainer = NSView()
     private let monthlyBudgetPreviewContainer = NSView()
+    private let todayAnomalySmallPreviewContainer = NSView()
+    private let todayAnomalyMediumPreviewContainer = NSView()
+    private let projectFocusPreviewContainer = NSView()
+    private let modelFocusPreviewContainer = NSView()
 
     override func loadView() {
         let root = NSView()
@@ -64,11 +72,18 @@ final class WidgetGalleryViewController: NSViewController {
         let hourlyLine = WidgetChartPresentationBuilder.hourlyLine(for: state)
         let weeklySummary = WidgetChartPresentationBuilder.weeklySummary(for: state)
         let monthlyBudget = WidgetChartPresentationBuilder.monthlyBudget(for: state)
+        let todayAnomaly = WidgetChartPresentationBuilder.todayAnomaly(for: state)
+        let projectFocus = WidgetChartPresentationBuilder.projectFocus(for: state)
+        let modelFocus = WidgetChartPresentationBuilder.modelFocus(for: state)
         heatmapPreviewContainer.setAccessibilityLabel(heatmap.title)
         hourlyLinePreviewContainer.setAccessibilityLabel(hourlyLine.title)
         weeklySmallPreviewContainer.setAccessibilityLabel(weeklySummary.title)
         weeklyMediumPreviewContainer.setAccessibilityLabel(weeklySummary.title)
         monthlyBudgetPreviewContainer.setAccessibilityLabel(monthlyBudget.title)
+        todayAnomalySmallPreviewContainer.setAccessibilityLabel(todayAnomaly.title)
+        todayAnomalyMediumPreviewContainer.setAccessibilityLabel(todayAnomaly.title)
+        projectFocusPreviewContainer.setAccessibilityLabel(projectFocus.title)
+        modelFocusPreviewContainer.setAccessibilityLabel(modelFocus.title)
         heatmapPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
                 WidgetGalleryHeatmapPreview(presentation: heatmap)
@@ -92,6 +107,26 @@ final class WidgetGalleryViewController: NSViewController {
         monthlyBudgetPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
                 WidgetGalleryMonthlyBudgetPreview(presentation: monthlyBudget)
+            }
+        )
+        todayAnomalySmallPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryTodayAnomalyPreview(presentation: todayAnomaly, showsChart: false)
+            }
+        )
+        todayAnomalyMediumPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryTodayAnomalyPreview(presentation: todayAnomaly, showsChart: true)
+            }
+        )
+        projectFocusPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryProjectFocusPreview(presentation: projectFocus)
+            }
+        )
+        modelFocusPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryModelFocusPreview(presentation: modelFocus)
             }
         )
     }
@@ -122,7 +157,9 @@ final class WidgetGalleryViewController: NSViewController {
         addFullWidthArrangedSubview(makeHeaderView(), to: contentStack)
         addFullWidthArrangedSubview(makePreviewRow(), to: contentStack)
         addFullWidthArrangedSubview(makeWeeklySummaryPreviewRow(), to: contentStack)
+        addFullWidthArrangedSubview(makeTodayAnomalyPreviewRow(), to: contentStack)
         addFullWidthArrangedSubview(makeMonthlyBudgetPreviewRow(), to: contentStack)
+        addFullWidthArrangedSubview(makeFocusPreviewRow(), to: contentStack)
 
         view.addSubview(scrollView)
         NSLayoutConstraint.activate([
@@ -218,6 +255,36 @@ final class WidgetGalleryViewController: NSViewController {
         return row
     }
 
+    private func makeTodayAnomalyPreviewRow() -> NSView {
+        configurePreviewContainer(
+            todayAnomalySmallPreviewContainer,
+            hostingView: todayAnomalySmallPreviewHost,
+            identifier: "DashboardWidgetPreview.todayAnomaly.small",
+            size: Self.systemSmallPreviewSize
+        )
+        configurePreviewContainer(
+            todayAnomalyMediumPreviewContainer,
+            hostingView: todayAnomalyMediumPreviewHost,
+            identifier: "DashboardWidgetPreview.todayAnomaly.medium"
+        )
+
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(todayAnomalySmallPreviewContainer)
+        row.addSubview(todayAnomalyMediumPreviewContainer)
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
+            todayAnomalySmallPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            todayAnomalySmallPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+            todayAnomalyMediumPreviewContainer.leadingAnchor.constraint(
+                equalTo: todayAnomalySmallPreviewContainer.trailingAnchor,
+                constant: 16
+            ),
+            todayAnomalyMediumPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+        ])
+        return row
+    }
+
     private func makeMonthlyBudgetPreviewRow() -> NSView {
         configurePreviewContainer(
             monthlyBudgetPreviewContainer,
@@ -232,6 +299,35 @@ final class WidgetGalleryViewController: NSViewController {
             row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
             monthlyBudgetPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
             monthlyBudgetPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+        ])
+        return row
+    }
+
+    private func makeFocusPreviewRow() -> NSView {
+        configurePreviewContainer(
+            projectFocusPreviewContainer,
+            hostingView: projectFocusPreviewHost,
+            identifier: "DashboardWidgetPreview.projectFocus"
+        )
+        configurePreviewContainer(
+            modelFocusPreviewContainer,
+            hostingView: modelFocusPreviewHost,
+            identifier: "DashboardWidgetPreview.modelFocus"
+        )
+
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(projectFocusPreviewContainer)
+        row.addSubview(modelFocusPreviewContainer)
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
+            projectFocusPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            projectFocusPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+            modelFocusPreviewContainer.leadingAnchor.constraint(
+                equalTo: projectFocusPreviewContainer.trailingAnchor,
+                constant: 16
+            ),
+            modelFocusPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
         ])
         return row
     }
@@ -270,7 +366,7 @@ final class WidgetGalleryViewController: NSViewController {
     }
 }
 
-/// 预览使用固定的、与用户数据无关的样例，以确保首次打开也能看清两种图表样式。
+/// 预览使用固定的、与用户数据无关的样例，以确保首次打开也能看清全部组件样式。
 enum WidgetGallerySampleSnapshotFactory {
     /// 构建满足 Widget 固定网格和小时形状约束的本地化示例快照。
     static func make(
@@ -301,6 +397,8 @@ enum WidgetGallerySampleSnapshotFactory {
         }
         let dateText = localizedMonthDay(now, calendar: calendar, language: language)
         let localDayKey = dayKey(now, calendar: calendar)
+        let windowStart = calendar.date(byAdding: .day, value: -6, to: now) ?? now
+        let windowStartDayKey = dayKey(windowStart, calendar: calendar)
 
         return WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
@@ -318,7 +416,11 @@ enum WidgetGallerySampleSnapshotFactory {
                     dateText
                 ),
                 notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language),
-                weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language)
+                weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language),
+                projectFocusTitle: AppStrings.text(.dashboardProjectUsageTitle, language: language),
+                projectFocusNoDataMessage: AppStrings.text(.dashboardNoProjectData, language: language),
+                modelFocusTitle: AppStrings.text(.dashboardPrimaryModel, language: language),
+                modelFocusNoDataMessage: AppStrings.text(.totalEmptyModels, language: language)
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: cells.reduce(0) { $0 + $1.totalTokens },
@@ -331,7 +433,22 @@ enum WidgetGallerySampleSnapshotFactory {
                 maxHourlyTokens: points.map(\.totalTokens).max() ?? 0,
                 points: points
             ),
-            monthlyBudget: makeMonthlyBudget(language: language)
+            monthlyBudget: makeMonthlyBudget(language: language),
+            projectFocus: WidgetProjectFocusSnapshot(
+                windowStartDayKey: windowStartDayKey,
+                windowEndDayKey: localDayKey,
+                windowTotalTokens: 4_000_000,
+                topProjectName: "TokenWatch",
+                topProjectTokens: 2_500_000
+            ),
+            modelFocus: WidgetModelFocusSnapshot(
+                windowStartDayKey: windowStartDayKey,
+                windowEndDayKey: localDayKey,
+                windowTotalTokens: 4_000_000,
+                providerName: "Claude",
+                modelName: "claude-sonnet-4",
+                modelTokens: 2_100_000
+            )
         )
     }
 
@@ -698,5 +815,181 @@ private struct WidgetGalleryMonthlyBudgetPreview: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct WidgetGalleryTodayAnomalyPreview: View {
+    let presentation: WidgetTodayAnomalyPresentation
+    let showsChart: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WidgetGalleryPreviewHeader(
+                title: presentation.title,
+                subtitle: presentation.subtitle,
+                total: presentation.totalText
+            )
+            if let message = presentation.message {
+                Spacer(minLength: 0)
+                Text(message)
+                    .font(.caption2)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                Spacer(minLength: 0)
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: statusSymbol)
+                        .foregroundStyle(presentation.isElevated ? .red : .accentColor)
+                    if let multiplier = presentation.multiplierText {
+                        Text(multiplier)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .monospacedDigit()
+                    } else {
+                        Text("—")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 2)
+                    if let baseline = presentation.baselineText {
+                        Text(baseline)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+                if showsChart {
+                    Chart(presentation.points) { point in
+                        BarMark(
+                            x: .value("Day", point.position),
+                            y: .value("Tokens", point.totalTokens)
+                        )
+                        .foregroundStyle(color(for: point))
+                        .clipShape(RoundedRectangle(cornerRadius: 2))
+                    }
+                    .chartLegend(.hidden)
+                    .chartXScale(domain: -0.5...7.5)
+                    .chartYScale(domain: 0...presentation.maximumY)
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                } else {
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private var statusSymbol: String {
+        if presentation.isElevated {
+            return "exclamationmark.triangle.fill"
+        }
+        return presentation.hasComparableBaseline
+            ? "checkmark.circle.fill"
+            : "circle.dashed"
+    }
+
+    private func color(for point: WidgetTodayAnomalyPoint) -> Color {
+        guard point.isToday else { return Color.accentColor.opacity(0.38) }
+        return presentation.isElevated ? .red : .accentColor
+    }
+}
+
+private struct WidgetGalleryProjectFocusPreview: View {
+    let presentation: WidgetProjectFocusPresentation
+
+    var body: some View {
+        WidgetGalleryFocusPreview(
+            title: presentation.title,
+            subtitle: presentation.subtitle,
+            primaryName: presentation.projectName,
+            secondaryName: nil,
+            total: presentation.totalText,
+            share: presentation.shareText,
+            progress: presentation.progress,
+            message: presentation.message,
+            accessibilityLabel: presentation.accessibilityLabel
+        )
+    }
+}
+
+private struct WidgetGalleryModelFocusPreview: View {
+    let presentation: WidgetModelFocusPresentation
+
+    var body: some View {
+        WidgetGalleryFocusPreview(
+            title: presentation.title,
+            subtitle: presentation.subtitle,
+            primaryName: presentation.modelName,
+            secondaryName: presentation.providerName,
+            total: presentation.totalText,
+            share: presentation.shareText,
+            progress: presentation.progress,
+            message: presentation.message,
+            accessibilityLabel: presentation.accessibilityLabel
+        )
+    }
+}
+
+private struct WidgetGalleryFocusPreview: View {
+    let title: String
+    let subtitle: String?
+    let primaryName: String?
+    let secondaryName: String?
+    let total: String
+    let share: String?
+    let progress: Double
+    let message: String?
+    let accessibilityLabel: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WidgetGalleryPreviewHeader(
+                title: title,
+                subtitle: subtitle,
+                total: total
+            )
+            if let primaryName {
+                Text(primaryName)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if let secondaryName {
+                        Text(secondaryName)
+                    }
+                    if secondaryName != nil, share != nil {
+                        Text("·")
+                    }
+                    if let share {
+                        Text(share)
+                            .monospacedDigit()
+                    }
+                    Spacer(minLength: 0)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                GeometryReader { proxy in
+                    let width = proxy.size.width * min(max(progress, 0), 1)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(.secondary.opacity(0.2))
+                        Capsule()
+                            .fill(Color.accentColor)
+                            .frame(width: width)
+                    }
+                }
+                .frame(height: 8)
+            } else if let message {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
     }
 }

@@ -59,6 +59,57 @@ struct WidgetMonthlyBudgetPresentation: Equatable, Sendable {
     let accessibilityLabel: String
 }
 
+/// One day in the compact comparison strip used by the today-usage check.
+struct WidgetTodayAnomalyPoint: Equatable, Sendable, Identifiable {
+    let id: String
+    let position: Int
+    let totalTokens: Int
+    let isToday: Bool
+}
+
+/// Render-ready comparison of today's token usage against the preceding seven local days.
+///
+/// A comparable baseline requires at least three active days and a nonzero seven-day mean.
+/// `isElevated` therefore means a conservative usage spike, not a generalized health score.
+struct WidgetTodayAnomalyPresentation: Equatable, Sendable {
+    let title: String
+    let subtitle: String?
+    let totalText: String
+    let baselineText: String?
+    let multiplierText: String?
+    let points: [WidgetTodayAnomalyPoint]
+    let maximumY: Double
+    let hasComparableBaseline: Bool
+    let isElevated: Bool
+    let message: String?
+    let accessibilityLabel: String
+}
+
+/// Render-ready seven-day project focus card.
+struct WidgetProjectFocusPresentation: Equatable, Sendable {
+    let title: String
+    let subtitle: String?
+    let projectName: String?
+    let totalText: String
+    let shareText: String?
+    let progress: Double
+    let message: String?
+    let accessibilityLabel: String
+}
+
+/// Render-ready seven-day provider/model focus card.
+struct WidgetModelFocusPresentation: Equatable, Sendable {
+    let title: String
+    let subtitle: String?
+    let providerName: String?
+    let modelName: String?
+    let totalText: String
+    let shareText: String?
+    let progress: Double
+    let message: String?
+    let accessibilityLabel: String
+}
+
 /// Derives framework-neutral chart presentations from widget timeline states.
 enum WidgetChartPresentationBuilder {
     /// Builds a fixed 22-by-7 heatmap presentation for the supplied entry state.
@@ -191,6 +242,98 @@ enum WidgetChartPresentationBuilder {
                     "Monthly Budget",
                     text.notReadyMessage,
                     WidgetCostFormatter.usd(0),
+                ])
+            )
+        }
+    }
+
+    /// Builds a conservative usage-spike comparison from the heatmap's fixed chronology.
+    static func todayAnomaly(
+        for state: WidgetUsageEntryState
+    ) -> WidgetTodayAnomalyPresentation {
+        switch state {
+        case .placeholder(let snapshot), .current(let snapshot):
+            return todayAnomaly(snapshot: snapshot, isStale: false)
+        case .stale(let snapshot):
+            return todayAnomaly(snapshot: snapshot, isStale: true)
+        case .notReady(let text):
+            let points = (0..<8).map {
+                WidgetTodayAnomalyPoint(
+                    id: "not-ready-anomaly-\($0)",
+                    position: $0,
+                    totalTokens: 0,
+                    isToday: false
+                )
+            }
+            let totalText = WidgetChartNumberFormatter.compact(0)
+            return WidgetTodayAnomalyPresentation(
+                title: text.todayUsageTitle,
+                subtitle: nil,
+                totalText: totalText,
+                baselineText: nil,
+                multiplierText: nil,
+                points: points,
+                maximumY: 1,
+                hasComparableBaseline: false,
+                isElevated: false,
+                message: text.notReadyMessage,
+                accessibilityLabel: aggregateLabel([
+                    text.todayUsageTitle,
+                    text.notReadyMessage,
+                    totalText,
+                ])
+            )
+        }
+    }
+
+    /// Builds a privacy-preserving seven-day project focus card from a stored display name.
+    static func projectFocus(
+        for state: WidgetUsageEntryState
+    ) -> WidgetProjectFocusPresentation {
+        switch state {
+        case .placeholder(let snapshot), .current(let snapshot):
+            return projectFocus(snapshot: snapshot, isStale: false)
+        case .stale(let snapshot):
+            return projectFocus(snapshot: snapshot, isStale: true)
+        case .notReady(let text):
+            return WidgetProjectFocusPresentation(
+                title: text.projectFocusTitle,
+                subtitle: nil,
+                projectName: nil,
+                totalText: WidgetChartNumberFormatter.compact(0),
+                shareText: nil,
+                progress: 0,
+                message: text.notReadyMessage,
+                accessibilityLabel: aggregateLabel([
+                    text.projectFocusTitle,
+                    text.notReadyMessage,
+                ])
+            )
+        }
+    }
+
+    /// Builds a provider-scoped seven-day model focus card without inferring model quality.
+    static func modelFocus(
+        for state: WidgetUsageEntryState
+    ) -> WidgetModelFocusPresentation {
+        switch state {
+        case .placeholder(let snapshot), .current(let snapshot):
+            return modelFocus(snapshot: snapshot, isStale: false)
+        case .stale(let snapshot):
+            return modelFocus(snapshot: snapshot, isStale: true)
+        case .notReady(let text):
+            return WidgetModelFocusPresentation(
+                title: text.modelFocusTitle,
+                subtitle: nil,
+                providerName: nil,
+                modelName: nil,
+                totalText: WidgetChartNumberFormatter.compact(0),
+                shareText: nil,
+                progress: 0,
+                message: text.notReadyMessage,
+                accessibilityLabel: aggregateLabel([
+                    text.modelFocusTitle,
+                    text.notReadyMessage,
                 ])
             )
         }
@@ -361,6 +504,192 @@ enum WidgetChartPresentationBuilder {
                 forecastText,
                 message,
             ])
+        )
+    }
+
+    private static func todayAnomaly(
+        snapshot: WidgetUsageSnapshot,
+        isStale: Bool
+    ) -> WidgetTodayAnomalyPresentation {
+        let realCells = snapshot.heatmap.cells.compactMap { cell -> (key: String, totalTokens: Int)? in
+            guard !cell.isPlaceholder, let key = cell.dateKey else { return nil }
+            return (key, cell.totalTokens)
+        }
+        let comparisonCells = Array(realCells.suffix(8))
+        let historyCells = Array(comparisonCells.dropLast())
+        let currentCell = comparisonCells.last
+        let historicalTotal = historyCells.reduce(0) {
+            saturatedTokenSum($0, $1.totalTokens)
+        }
+        let baseline = historyCells.count == 7
+            ? historicalTotal / 7
+            : nil
+        let activeDayCount = historyCells.filter { $0.totalTokens > 0 }.count
+        let hasComparableBaseline = baseline.map {
+            activeDayCount >= 3 && $0 > 0
+        } ?? false
+        let totalTokens = currentCell?.totalTokens ?? 0
+        let multiplier = hasComparableBaseline && !isStale
+            ? multiplierText(
+                totalTokens: totalTokens,
+                baselineTokens: baseline ?? 0
+            )
+            : nil
+        let elevated = hasComparableBaseline
+            && !isStale
+            && isAtLeastTwice(totalTokens, baselineTokens: baseline ?? 0)
+        let points = comparisonCells.enumerated().map { index, cell in
+            WidgetTodayAnomalyPoint(
+                id: cell.key,
+                position: index,
+                totalTokens: cell.totalTokens,
+                isToday: !isStale && index == comparisonCells.count - 1
+            )
+        }
+        let title = isStale
+            ? snapshot.localizedText.datedUsageTitle
+            : snapshot.localizedText.todayUsageTitle
+        let subtitle = isStale
+            ? snapshot.localizedText.updatedThroughTitle
+            : snapshot.localizedText.weeklySummaryTitle
+        let totalText = WidgetChartNumberFormatter.compact(totalTokens)
+        let baselineText = baseline.map(WidgetChartNumberFormatter.compact)
+        return WidgetTodayAnomalyPresentation(
+            title: title,
+            subtitle: subtitle,
+            totalText: totalText,
+            baselineText: baselineText,
+            multiplierText: multiplier,
+            points: points,
+            maximumY: max(1, Double(points.map(\.totalTokens).max() ?? 0)),
+            hasComparableBaseline: hasComparableBaseline && !isStale,
+            isElevated: elevated,
+            message: nil,
+            accessibilityLabel: aggregateLabel([
+                title,
+                subtitle,
+                totalText,
+                multiplier,
+                baselineText,
+            ])
+        )
+    }
+
+    private static func projectFocus(
+        snapshot: WidgetUsageSnapshot,
+        isStale: Bool
+    ) -> WidgetProjectFocusPresentation {
+        let focus = snapshot.projectFocus
+        let share = share(
+            selectedTokens: focus.topProjectTokens,
+            totalTokens: focus.windowTotalTokens
+        )
+        let subtitle = isStale
+            ? snapshot.localizedText.updatedThroughTitle
+            : snapshot.localizedText.weeklySummaryTitle
+        let hasProject = focus.topProjectName != nil && focus.topProjectTokens > 0
+        let totalText = WidgetChartNumberFormatter.compact(
+            hasProject ? focus.topProjectTokens : 0
+        )
+        let message = hasProject ? nil : snapshot.localizedText.projectFocusNoDataMessage
+        return WidgetProjectFocusPresentation(
+            title: snapshot.localizedText.projectFocusTitle,
+            subtitle: subtitle,
+            projectName: hasProject ? focus.topProjectName : nil,
+            totalText: totalText,
+            shareText: share.map(percentageText),
+            progress: share ?? 0,
+            message: message,
+            accessibilityLabel: aggregateLabel([
+                snapshot.localizedText.projectFocusTitle,
+                subtitle,
+                focus.topProjectName,
+                totalText,
+                share.map(percentageText),
+                message,
+            ])
+        )
+    }
+
+    private static func modelFocus(
+        snapshot: WidgetUsageSnapshot,
+        isStale: Bool
+    ) -> WidgetModelFocusPresentation {
+        let focus = snapshot.modelFocus
+        let share = share(
+            selectedTokens: focus.modelTokens,
+            totalTokens: focus.windowTotalTokens
+        )
+        let subtitle = isStale
+            ? snapshot.localizedText.updatedThroughTitle
+            : snapshot.localizedText.weeklySummaryTitle
+        let hasModel = focus.providerName != nil
+            && focus.modelName != nil
+            && focus.modelTokens > 0
+        let totalText = WidgetChartNumberFormatter.compact(
+            hasModel ? focus.modelTokens : 0
+        )
+        let message = hasModel ? nil : snapshot.localizedText.modelFocusNoDataMessage
+        return WidgetModelFocusPresentation(
+            title: snapshot.localizedText.modelFocusTitle,
+            subtitle: subtitle,
+            providerName: hasModel ? focus.providerName : nil,
+            modelName: hasModel ? focus.modelName : nil,
+            totalText: totalText,
+            shareText: share.map(percentageText),
+            progress: share ?? 0,
+            message: message,
+            accessibilityLabel: aggregateLabel([
+                snapshot.localizedText.modelFocusTitle,
+                subtitle,
+                focus.providerName,
+                focus.modelName,
+                totalText,
+                share.map(percentageText),
+                message,
+            ])
+        )
+    }
+
+    private static func multiplierText(
+        totalTokens: Int,
+        baselineTokens: Int
+    ) -> String? {
+        guard baselineTokens > 0 else { return nil }
+        let multiplier = Double(totalTokens) / Double(baselineTokens)
+        guard multiplier.isFinite else { return "10×+" }
+        if multiplier >= 10 {
+            return "10×+"
+        }
+        return String(
+            format: "%.1f×",
+            locale: Locale(identifier: "en_US_POSIX"),
+            multiplier
+        )
+    }
+
+    private static func isAtLeastTwice(
+        _ totalTokens: Int,
+        baselineTokens: Int
+    ) -> Bool {
+        guard baselineTokens > 0 else { return false }
+        let threshold = baselineTokens.multipliedReportingOverflow(by: 2)
+        return !threshold.overflow && totalTokens >= threshold.partialValue
+    }
+
+    private static func share(
+        selectedTokens: Int,
+        totalTokens: Int
+    ) -> Double? {
+        guard selectedTokens > 0, totalTokens > 0 else { return nil }
+        return min(1, max(0, Double(selectedTokens) / Double(totalTokens)))
+    }
+
+    private static func percentageText(_ value: Double) -> String {
+        String(
+            format: "%.0f%%",
+            locale: Locale(identifier: "en_US_POSIX"),
+            min(1, max(0, value)) * 100
         )
     }
 
