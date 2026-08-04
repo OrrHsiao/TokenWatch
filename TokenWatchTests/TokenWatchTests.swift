@@ -312,6 +312,10 @@ struct TokenWatchTests {
         NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
         #expect(!loadingOverlay.isHidden)
 
+        states[.codex]?.stats = UsageAggregator().aggregate([])
+        NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
+        #expect(!loadingOverlay.isHidden)
+
         initialLoadCompletion.hasCompleted = true
         NotificationCenter.default.post(name: .providerStateDidChange, object: ProviderID.codex)
         #expect(loadingOverlay.isHidden)
