@@ -33,6 +33,10 @@ struct WidgetGalleryViewControllerTests {
         #expect(snapshot.localizedText.weeklySummaryTitle == "最近 7 天")
         #expect(snapshot.monthlyBudget?.title == "本月预算")
         #expect(snapshot.monthlyBudget?.budgetUSD == 100)
+        #expect(snapshot.projectFocus.topProjectName == "TokenWatch")
+        #expect(snapshot.projectFocus.topProjectTokens == 2_500_000)
+        #expect(snapshot.modelFocus.providerName == "Claude")
+        #expect(snapshot.modelFocus.modelName == "claude-sonnet-4")
         #expect(WidgetUsageSnapshotValidator.isValid(snapshot))
     }
 
@@ -80,6 +84,18 @@ struct WidgetGalleryViewControllerTests {
         let monthlyBudgetPreview = try #require(
             view(identifier: "DashboardWidgetPreview.monthlyBudget", in: controller.view)
         )
+        let todayAnomalySmallPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.todayAnomaly.small", in: controller.view)
+        )
+        let todayAnomalyMediumPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.todayAnomaly.medium", in: controller.view)
+        )
+        let projectFocusPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.projectFocus", in: controller.view)
+        )
+        let modelFocusPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.modelFocus", in: controller.view)
+        )
         let heatmapContent = try #require(
             view(identifier: "DashboardWidgetPreview.heatmap.content", in: controller.view)
         )
@@ -95,17 +111,47 @@ struct WidgetGalleryViewControllerTests {
         let monthlyBudgetContent = try #require(
             view(identifier: "DashboardWidgetPreview.monthlyBudget.content", in: controller.view)
         )
+        let todayAnomalySmallContent = try #require(
+            view(identifier: "DashboardWidgetPreview.todayAnomaly.small.content", in: controller.view)
+        )
+        let todayAnomalyMediumContent = try #require(
+            view(identifier: "DashboardWidgetPreview.todayAnomaly.medium.content", in: controller.view)
+        )
+        let projectFocusContent = try #require(
+            view(identifier: "DashboardWidgetPreview.projectFocus.content", in: controller.view)
+        )
+        let modelFocusContent = try #require(
+            view(identifier: "DashboardWidgetPreview.modelFocus.content", in: controller.view)
+        )
         let mediumSize = WidgetGalleryViewController.systemMediumPreviewSize
         let smallSize = WidgetGalleryViewController.systemSmallPreviewSize
-        for preview in [heatmapPreview, hourlyLinePreview, weeklyMediumPreview, monthlyBudgetPreview] {
+        for preview in [
+            heatmapPreview,
+            hourlyLinePreview,
+            weeklyMediumPreview,
+            monthlyBudgetPreview,
+            todayAnomalyMediumPreview,
+            projectFocusPreview,
+            modelFocusPreview,
+        ] {
             assertSize(preview, equals: mediumSize)
         }
-        for content in [heatmapContent, hourlyLineContent, weeklyMediumContent, monthlyBudgetContent] {
+        for content in [
+            heatmapContent,
+            hourlyLineContent,
+            weeklyMediumContent,
+            monthlyBudgetContent,
+            todayAnomalyMediumContent,
+            projectFocusContent,
+            modelFocusContent,
+        ] {
             assertSize(content, equals: mediumSize)
         }
         assertSize(weeklySmallPreview, equals: smallSize)
         assertSize(weeklySmallContent, equals: smallSize)
-        #expect(controller.view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 5)
+        assertSize(todayAnomalySmallPreview, equals: smallSize)
+        assertSize(todayAnomalySmallContent, equals: smallSize)
+        #expect(controller.view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 9)
 
         let widgetsPage = try #require(view(identifier: "DashboardWidgetsPage", in: controller.view))
         let initialWidth = widgetsPage.frame.width
@@ -117,10 +163,19 @@ struct WidgetGalleryViewControllerTests {
         controller.view.layoutSubtreeIfNeeded()
 
         #expect(widgetsPage.frame.width > initialWidth)
-        for preview in [heatmapPreview, hourlyLinePreview, weeklyMediumPreview, monthlyBudgetPreview] {
+        for preview in [
+            heatmapPreview,
+            hourlyLinePreview,
+            weeklyMediumPreview,
+            monthlyBudgetPreview,
+            todayAnomalyMediumPreview,
+            projectFocusPreview,
+            modelFocusPreview,
+        ] {
             assertSize(preview, equals: mediumSize)
         }
         assertSize(weeklySmallPreview, equals: smallSize)
+        assertSize(todayAnomalySmallPreview, equals: smallSize)
     }
 
     private var calendar: Calendar {

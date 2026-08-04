@@ -156,6 +156,10 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.localizedText.updatedThroughTitle == "Updated through 7/15")
         #expect(snapshot.localizedText.notReadyMessage == "Open TokenWatch to refresh data")
         #expect(snapshot.localizedText.weeklySummaryTitle == "Last 7 Days")
+        #expect(snapshot.localizedText.projectFocusTitle == "Project Usage")
+        #expect(snapshot.localizedText.projectFocusNoDataMessage == "No project data")
+        #expect(snapshot.localizedText.modelFocusTitle == "Primary Model")
+        #expect(snapshot.localizedText.modelFocusNoDataMessage == "No model data")
         #expect(snapshot.monthlyBudget?.title == "Monthly Budget")
     }
 
@@ -195,6 +199,58 @@ struct WidgetSnapshotBuilderTests {
         #expect(configured.localizedText.weeklySummaryTitle == "最近 7 天")
         #expect(unconfigured.monthlyBudget?.budgetUSD == nil)
         #expect(MonthlyBudgetCopy.make(language: .zhHant).title == "本月預算")
+    }
+
+    @Test("seven-day project and model focus preserve provider identity")
+    func sevenDayFocusUsesCleanProjectsAndProviderScopedModels() throws {
+        let claudeDay = makeSummary(
+            total: 130,
+            modelBreakdown: ["gpt": makeSummary(total: 130)],
+            projectBreakdown: [
+                "/Users/example/TokenWatch/.claude/worktrees/feature": makeSummary(total: 130),
+            ]
+        )
+        let codexSameModelDay = makeSummary(
+            total: 120,
+            modelBreakdown: ["gpt": makeSummary(total: 120)],
+            projectBreakdown: ["/Users/example/Other": makeSummary(total: 120)]
+        )
+        let codexProjectDay = makeSummary(
+            total: 100,
+            modelBreakdown: ["codex-large": makeSummary(total: 100)],
+            projectBreakdown: ["/Users/example/TokenWatch": makeSummary(total: 100)]
+        )
+        let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: loadedState(stats: makeStats(byDay: [
+                "2026-07-09": claudeDay,
+            ])),
+            .codex: loadedState(stats: makeStats(byDay: [
+                "2026-07-10": codexSameModelDay,
+                "2026-07-11": codexProjectDay,
+            ])),
+        ]
+
+        let snapshot = try #require(WidgetSnapshotBuilder.build(
+            states: states,
+            now: fixedNow,
+            calendar: shanghaiCalendar,
+            language: .zhHans
+        ))
+
+        #expect(snapshot.projectFocus.windowStartDayKey == "2026-07-09")
+        #expect(snapshot.projectFocus.windowEndDayKey == "2026-07-15")
+        #expect(snapshot.projectFocus.windowTotalTokens == 350)
+        #expect(snapshot.projectFocus.topProjectName == "TokenWatch")
+        #expect(snapshot.projectFocus.topProjectTokens == 230)
+        #expect(snapshot.modelFocus.windowTotalTokens == 350)
+        #expect(snapshot.modelFocus.providerName == "Claude")
+        #expect(snapshot.modelFocus.modelName == "gpt")
+        #expect(snapshot.modelFocus.modelTokens == 130)
+        #expect(snapshot.localizedText.projectFocusTitle == "项目消耗")
+        #expect(snapshot.localizedText.modelFocusTitle == "主模型")
+        let payload = String(data: try JSONEncoder().encode(snapshot), encoding: .utf8) ?? ""
+        #expect(!payload.contains("/Users/example"))
+        #expect(WidgetUsageSnapshotValidator.isValid(snapshot))
     }
 
     @Test("all supported languages resolve all five widget strings")
@@ -367,7 +423,12 @@ struct WidgetSnapshotBuilderTests {
         )
     }
 
-    private func makeSummary(total: Int, cost: Double = 0) -> UsageSummary {
+    private func makeSummary(
+        total: Int,
+        cost: Double = 0,
+        modelBreakdown: [String: UsageSummary] = [:],
+        projectBreakdown: [String: UsageSummary] = [:]
+    ) -> UsageSummary {
         UsageSummary(
             inputTokens: total,
             outputTokens: 0,
@@ -377,7 +438,8 @@ struct WidgetSnapshotBuilderTests {
             totalTokens: total,
             cost: cost,
             entryCount: total == 0 ? 0 : 1,
-            modelBreakdown: [:]
+            modelBreakdown: modelBreakdown,
+            projectBreakdown: projectBreakdown
         )
     }
 

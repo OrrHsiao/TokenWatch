@@ -9,11 +9,14 @@ import Foundation
 /// The App Group, filename, and widget kinds are persisted system identifiers and must
 /// likewise change only as part of a coordinated migration.
 enum WidgetSharedConfiguration {
-    static let schemaVersion = 3
+    static let schemaVersion = 4
     static let appGroupIdentifier = "group.com.xiaoao.tokenwatch"
-    static let snapshotFilename = "widget-usage-v3.json"
+    static let snapshotFilename = "widget-usage-v4.json"
     static let heatmapKind = "TokenHeatmapWidget"
     static let hourlyLineKind = "TokenHourlyLineWidget"
     static let weeklySummaryKind = "TokenWeeklySummaryWidget"
     static let monthlyBudgetKind = "TokenMonthlyBudgetWidget"
+    static let todayAnomalyKind = "TokenTodayAnomalyWidget"
+    static let projectFocusKind = "TokenProjectFocusWidget"
+    static let modelFocusKind = "TokenModelFocusWidget"
 }

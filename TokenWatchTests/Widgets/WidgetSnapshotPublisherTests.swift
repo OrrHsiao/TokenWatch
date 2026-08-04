@@ -20,6 +20,9 @@ struct WidgetSnapshotPublisherTests {
             "reload:\(WidgetSharedConfiguration.hourlyLineKind)",
             "reload:\(WidgetSharedConfiguration.weeklySummaryKind)",
             "reload:\(WidgetSharedConfiguration.monthlyBudgetKind)",
+            "reload:\(WidgetSharedConfiguration.todayAnomalyKind)",
+            "reload:\(WidgetSharedConfiguration.projectFocusKind)",
+            "reload:\(WidgetSharedConfiguration.modelFocusKind)",
         ])
         #expect(store.loadCount == 1)
         #expect(store.saveCount == 1)
@@ -29,6 +32,9 @@ struct WidgetSnapshotPublisherTests {
             WidgetSharedConfiguration.hourlyLineKind,
             WidgetSharedConfiguration.weeklySummaryKind,
             WidgetSharedConfiguration.monthlyBudgetKind,
+            WidgetSharedConfiguration.todayAnomalyKind,
+            WidgetSharedConfiguration.projectFocusKind,
+            WidgetSharedConfiguration.modelFocusKind,
         ])
     }
 
@@ -124,6 +130,9 @@ struct WidgetSnapshotPublisherTests {
             "reload:\(WidgetSharedConfiguration.hourlyLineKind)",
             "reload:\(WidgetSharedConfiguration.weeklySummaryKind)",
             "reload:\(WidgetSharedConfiguration.monthlyBudgetKind)",
+            "reload:\(WidgetSharedConfiguration.todayAnomalyKind)",
+            "reload:\(WidgetSharedConfiguration.projectFocusKind)",
+            "reload:\(WidgetSharedConfiguration.modelFocusKind)",
         ])
         #expect(store.loadCount == 1)
         #expect(store.saveCount == 1)
@@ -160,6 +169,9 @@ struct WidgetSnapshotPublisherTests {
             WidgetSharedConfiguration.hourlyLineKind,
             WidgetSharedConfiguration.weeklySummaryKind,
             WidgetSharedConfiguration.monthlyBudgetKind,
+            WidgetSharedConfiguration.todayAnomalyKind,
+            WidgetSharedConfiguration.projectFocusKind,
+            WidgetSharedConfiguration.modelFocusKind,
         ])
     }
 
@@ -216,7 +228,9 @@ struct WidgetSnapshotPublisherTests {
             localizedText: snapshot.localizedText,
             heatmap: snapshot.heatmap,
             hourlyLine: snapshot.hourlyLine,
-            monthlyBudget: snapshot.monthlyBudget
+            monthlyBudget: snapshot.monthlyBudget,
+            projectFocus: snapshot.projectFocus,
+            modelFocus: snapshot.modelFocus
         )
     }
 }

@@ -107,6 +107,9 @@ actor WidgetSnapshotPublisher: WidgetSnapshotPublishing {
         timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.hourlyLineKind)
         timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.weeklySummaryKind)
         timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.monthlyBudgetKind)
+        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.todayAnomalyKind)
+        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.projectFocusKind)
+        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.modelFocusKind)
         return .published
     }
 }

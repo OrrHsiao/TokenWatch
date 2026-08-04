@@ -64,7 +64,11 @@ enum WidgetSnapshotBuilder {
                     dateText
                 ),
                 notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language),
-                weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language)
+                weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language),
+                projectFocusTitle: AppStrings.text(.dashboardProjectUsageTitle, language: language),
+                projectFocusNoDataMessage: AppStrings.text(.dashboardNoProjectData, language: language),
+                modelFocusTitle: AppStrings.text(.dashboardPrimaryModel, language: language),
+                modelFocusNoDataMessage: AppStrings.text(.totalEmptyModels, language: language)
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: heatmap.monthTotalTokens,
@@ -91,7 +95,103 @@ enum WidgetSnapshotBuilder {
                 calendar: calendar,
                 language: language,
                 monthlyBudgetUSD: monthlyBudgetUSD
+            ),
+            projectFocus: makeProjectFocus(
+                states: states,
+                now: now,
+                calendar: calendar,
+                language: language
+            ),
+            modelFocus: makeModelFocus(
+                states: states,
+                now: now,
+                calendar: calendar
             )
+        )
+    }
+
+    private static func makeProjectFocus(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        now: Date,
+        calendar: Calendar,
+        language: AppLanguage
+    ) -> WidgetProjectFocusSnapshot {
+        let dates = sevenDayDates(now: now, calendar: calendar)
+        let range = DashboardRangeSnapshot.build(
+            states: states,
+            range: .sevenDays,
+            now: now,
+            calendar: calendar,
+            language: language
+        )
+        let leadingProject = range.summary.projects.first
+        let windowTotalTokens = range.summary.totalTokens
+        let leadingTokens = min(
+            leadingProject?.tokens ?? 0,
+            windowTotalTokens
+        )
+
+        return WidgetProjectFocusSnapshot(
+            windowStartDayKey: dayKey(dates.first ?? now, calendar: calendar),
+            windowEndDayKey: dayKey(dates.last ?? now, calendar: calendar),
+            windowTotalTokens: windowTotalTokens,
+            topProjectName: leadingTokens > 0 ? leadingProject?.name : nil,
+            topProjectTokens: leadingTokens
+        )
+    }
+
+    private static func makeModelFocus(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        now: Date,
+        calendar: Calendar
+    ) -> WidgetModelFocusSnapshot {
+        let dates = sevenDayDates(now: now, calendar: calendar)
+        var windowTotalTokens = 0
+        var modelTotals: [ModelFocusKey: Int] = [:]
+
+        for (providerID, state) in states {
+            guard let stats = state.stats else { continue }
+            for date in dates {
+                guard let summary = stats.byDay[dayKey(date, calendar: calendar)] else {
+                    continue
+                }
+                windowTotalTokens = windowTotalTokens.addingSaturated(summary.totalTokens)
+                for (modelName, modelSummary) in summary.modelBreakdown {
+                    let trimmedName = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmedName.isEmpty, modelSummary.totalTokens > 0 else {
+                        continue
+                    }
+                    let key = ModelFocusKey(
+                        providerID: providerID,
+                        modelName: trimmedName
+                    )
+                    modelTotals[key, default: 0] = modelTotals[key, default: 0]
+                        .addingSaturated(modelSummary.totalTokens)
+                }
+            }
+        }
+
+        let leading = modelTotals
+            .filter { $0.value > 0 }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value {
+                    return lhs.value > rhs.value
+                }
+                if lhs.key.providerID.rawValue != rhs.key.providerID.rawValue {
+                    return lhs.key.providerID.rawValue < rhs.key.providerID.rawValue
+                }
+                return lhs.key.modelName < rhs.key.modelName
+            }
+            .first
+        let modelTokens = min(leading?.value ?? 0, windowTotalTokens)
+
+        return WidgetModelFocusSnapshot(
+            windowStartDayKey: dayKey(dates.first ?? now, calendar: calendar),
+            windowEndDayKey: dayKey(dates.last ?? now, calendar: calendar),
+            windowTotalTokens: windowTotalTokens,
+            providerName: modelTokens > 0 ? providerName(for: leading?.key.providerID) : nil,
+            modelName: modelTokens > 0 ? leading?.key.modelName : nil,
+            modelTokens: modelTokens
         )
     }
 
@@ -159,6 +259,15 @@ enum WidgetSnapshotBuilder {
         }
     }
 
+    private static func sevenDayDates(now: Date, calendar: Calendar) -> [Date] {
+        DashboardRange.sevenDays.bucketStarts(now: now, calendar: calendar)
+    }
+
+    private static func providerName(for providerID: ProviderID?) -> String? {
+        guard let providerID else { return nil }
+        return ProviderRegistry.provider(for: providerID)?.displayName ?? providerID.rawValue
+    }
+
     private static func localizedMonthDay(
         _ date: Date,
         calendar: Calendar,
@@ -189,5 +298,10 @@ enum WidgetSnapshotBuilder {
             components.year ?? 0,
             components.month ?? 0
         )
+    }
+
+    private struct ModelFocusKey: Hashable {
+        let providerID: ProviderID
+        let modelName: String
     }
 }

@@ -28,6 +28,9 @@ struct WidgetChartPresentationTests {
         let heatmap = WidgetChartPresentationBuilder.heatmap(for: state)
         let hourly = WidgetChartPresentationBuilder.hourlyLine(for: state)
         let weekly = WidgetChartPresentationBuilder.weeklySummary(for: state)
+        let anomaly = WidgetChartPresentationBuilder.todayAnomaly(for: state)
+        let project = WidgetChartPresentationBuilder.projectFocus(for: state)
+        let model = WidgetChartPresentationBuilder.modelFocus(for: state)
 
         #expect(heatmap.message == fallback.notReadyMessage)
         #expect(heatmap.cells.count == 154)
@@ -44,6 +47,12 @@ struct WidgetChartPresentationTests {
         #expect(weekly.points.count == 7)
         #expect(weekly.points.allSatisfy { $0.totalTokens == 0 && !$0.isCurrentDay })
         #expect(weekly.maximumY == 1)
+        #expect(anomaly.message == fallback.notReadyMessage)
+        #expect(anomaly.points.count == 8)
+        #expect(project.title == fallback.projectFocusTitle)
+        #expect(project.message == fallback.notReadyMessage)
+        #expect(model.title == fallback.modelFocusTitle)
+        #expect(model.message == fallback.notReadyMessage)
     }
 
     @Test("stale data uses dated titles and hides the current-hour marker")
@@ -173,6 +182,84 @@ struct WidgetChartPresentationTests {
         #expect(setup.message == "Set a monthly budget in TokenWatch")
     }
 
+    @Test("today check requires enough history before it reports a usage spike")
+    func todayAnomalyUsesAConservativeSevenDayBaseline() {
+        let elevatedSnapshot = makeSnapshot(
+            totalTokens: 0,
+            heatmapCells: dailyCells([100, 100, 100, 0, 0, 0, 0, 250])
+        )
+        let sparseSnapshot = makeSnapshot(
+            totalTokens: 0,
+            heatmapCells: dailyCells([100, 100, 0, 0, 0, 0, 0, 500])
+        )
+
+        let elevated = WidgetChartPresentationBuilder.todayAnomaly(
+            for: .current(elevatedSnapshot)
+        )
+        let stale = WidgetChartPresentationBuilder.todayAnomaly(
+            for: .stale(elevatedSnapshot)
+        )
+        let sparse = WidgetChartPresentationBuilder.todayAnomaly(
+            for: .current(sparseSnapshot)
+        )
+
+        #expect(elevated.totalText == "250")
+        #expect(elevated.baselineText == "42")
+        #expect(elevated.multiplierText == "6.0×")
+        #expect(elevated.hasComparableBaseline)
+        #expect(elevated.isElevated)
+        #expect(elevated.points.map(\.isToday) == [false, false, false, false, false, false, false, true])
+        #expect(stale.subtitle == elevatedSnapshot.localizedText.updatedThroughTitle)
+        #expect(!stale.hasComparableBaseline)
+        #expect(!stale.isElevated)
+        #expect(stale.multiplierText == nil)
+        #expect(!sparse.hasComparableBaseline)
+        #expect(!sparse.isElevated)
+        #expect(sparse.multiplierText == nil)
+    }
+
+    @Test("focus cards use stored seven-day shares and honest empty states")
+    func focusPresentationsUseStoredWindowData() {
+        let snapshot = makeSnapshot(
+            totalTokens: 0,
+            projectFocus: WidgetProjectFocusSnapshot(
+                windowStartDayKey: "2026-07-09",
+                windowEndDayKey: "2026-07-15",
+                windowTotalTokens: 1_000,
+                topProjectName: "TokenWatch",
+                topProjectTokens: 600
+            ),
+            modelFocus: WidgetModelFocusSnapshot(
+                windowStartDayKey: "2026-07-09",
+                windowEndDayKey: "2026-07-15",
+                windowTotalTokens: 1_000,
+                providerName: "Codex",
+                modelName: "gpt-5",
+                modelTokens: 400
+            )
+        )
+        let empty = makeSnapshot(totalTokens: 0)
+
+        let project = WidgetChartPresentationBuilder.projectFocus(for: .current(snapshot))
+        let model = WidgetChartPresentationBuilder.modelFocus(for: .current(snapshot))
+        let staleProject = WidgetChartPresentationBuilder.projectFocus(for: .stale(snapshot))
+        let emptyModel = WidgetChartPresentationBuilder.modelFocus(for: .current(empty))
+
+        #expect(project.projectName == "TokenWatch")
+        #expect(project.totalText == "600")
+        #expect(project.shareText == "60%")
+        #expect(project.progress == 0.6)
+        #expect(project.message == nil)
+        #expect(staleProject.subtitle == snapshot.localizedText.updatedThroughTitle)
+        #expect(model.providerName == "Codex")
+        #expect(model.modelName == "gpt-5")
+        #expect(model.totalText == "400")
+        #expect(model.shareText == "40%")
+        #expect(model.progress == 0.4)
+        #expect(emptyModel.modelName == nil)
+        #expect(emptyModel.message == empty.localizedText.modelFocusNoDataMessage)
+    }
+
     private var fallback: WidgetLocalizedText {
         WidgetLocalizedText(
             heatmapTitle: "Recent 22 Weeks",
@@ -187,7 +274,9 @@ struct WidgetChartPresentationTests {
     private func makeSnapshot(
         totalTokens: Int,
         heatmapCells: [WidgetHeatmapCell]? = nil,
-        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil,
+        projectFocus: WidgetProjectFocusSnapshot? = nil,
+        modelFocus: WidgetModelFocusSnapshot? = nil
     ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
@@ -221,7 +310,20 @@ struct WidgetChartPresentationTests {
                     )
                 }
             ),
-            monthlyBudget: monthlyBudget
+            monthlyBudget: monthlyBudget,
+            projectFocus: projectFocus,
+            modelFocus: modelFocus
         )
+    }
+
+    private func dailyCells(_ totals: [Int]) -> [WidgetHeatmapCell] {
+        totals.enumerated().map { index, total in
+            WidgetHeatmapCell(
+                dateKey: "daily-\(index)",
+                totalTokens: total,
+                intensity: total > 0 ? 1 : 0,
+                isPlaceholder: false
+            )
+        }
     }
 }

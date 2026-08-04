@@ -8,7 +8,8 @@ import Foundation
 /// `localDayKey` as `hourlyLine.dayKey`. `generatedAt` records freshness only, so it is
 /// deliberately excluded from semantic content comparison. `monthlyBudget` is optional
 /// only so renderers can gracefully handle incomplete sample data; host publications always
-/// include it when valid aggregate data exists.
+/// include it when valid aggregate data exists. Project and model focus always carry their
+/// fixed seven-day window, even when there is no eligible focus item.
 struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
     let schemaVersion: Int
     let generatedAt: Date
@@ -17,6 +18,8 @@ struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
     let heatmap: WidgetHeatmapSnapshot
     let hourlyLine: WidgetHourlyLineSnapshot
     let monthlyBudget: WidgetMonthlyBudgetSnapshot?
+    let projectFocus: WidgetProjectFocusSnapshot
+    let modelFocus: WidgetModelFocusSnapshot
 
     init(
         schemaVersion: Int,
@@ -25,7 +28,9 @@ struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
         localizedText: WidgetLocalizedText,
         heatmap: WidgetHeatmapSnapshot,
         hourlyLine: WidgetHourlyLineSnapshot,
-        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil,
+        projectFocus: WidgetProjectFocusSnapshot? = nil,
+        modelFocus: WidgetModelFocusSnapshot? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.generatedAt = generatedAt
@@ -34,6 +39,8 @@ struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
         self.heatmap = heatmap
         self.hourlyLine = hourlyLine
         self.monthlyBudget = monthlyBudget
+        self.projectFocus = projectFocus ?? .empty(localDayKey: localDayKey)
+        self.modelFocus = modelFocus ?? .empty(localDayKey: localDayKey)
     }
 
     /// Compares every render-relevant value while deliberately ignoring generation time.
@@ -44,6 +51,8 @@ struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
             && heatmap == other.heatmap
             && hourlyLine == other.hourlyLine
             && monthlyBudget == other.monthlyBudget
+            && projectFocus == other.projectFocus
+            && modelFocus == other.modelFocus
     }
 }
 
@@ -59,6 +68,10 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
     let updatedThroughTitle: String
     let notReadyMessage: String
     let weeklySummaryTitle: String
+    let projectFocusTitle: String
+    let projectFocusNoDataMessage: String
+    let modelFocusTitle: String
+    let modelFocusNoDataMessage: String
 
     init(
         heatmapTitle: String,
@@ -66,7 +79,11 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
         datedUsageTitle: String,
         updatedThroughTitle: String,
         notReadyMessage: String,
-        weeklySummaryTitle: String = "Last 7 Days"
+        weeklySummaryTitle: String = "Last 7 Days",
+        projectFocusTitle: String = "Project Usage",
+        projectFocusNoDataMessage: String = "No project data",
+        modelFocusTitle: String = "Primary Model",
+        modelFocusNoDataMessage: String = "No model data"
     ) {
         self.heatmapTitle = heatmapTitle
         self.todayUsageTitle = todayUsageTitle
@@ -74,6 +91,10 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
         self.updatedThroughTitle = updatedThroughTitle
         self.notReadyMessage = notReadyMessage
         self.weeklySummaryTitle = weeklySummaryTitle
+        self.projectFocusTitle = projectFocusTitle
+        self.projectFocusNoDataMessage = projectFocusNoDataMessage
+        self.modelFocusTitle = modelFocusTitle
+        self.modelFocusNoDataMessage = modelFocusNoDataMessage
     }
 }
 
@@ -92,6 +113,52 @@ struct WidgetMonthlyBudgetSnapshot: Codable, Equatable, Sendable {
     let forecastTitle: String
     let unconfiguredMessage: String
     let forecastOverBudgetMessage: String
+}
+
+/// The leading clean project in the snapshot's seven-day local-calendar window.
+///
+/// `topProjectName` is a display-safe name rather than a source path. It is absent when no
+/// project breakdown can be shown, while `windowTotalTokens` still retains all observed usage.
+struct WidgetProjectFocusSnapshot: Codable, Equatable, Sendable {
+    let windowStartDayKey: String
+    let windowEndDayKey: String
+    let windowTotalTokens: Int
+    let topProjectName: String?
+    let topProjectTokens: Int
+
+    static func empty(localDayKey: String) -> WidgetProjectFocusSnapshot {
+        WidgetProjectFocusSnapshot(
+            windowStartDayKey: localDayKey,
+            windowEndDayKey: localDayKey,
+            windowTotalTokens: 0,
+            topProjectName: nil,
+            topProjectTokens: 0
+        )
+    }
+}
+
+/// The most-used provider/model pair in the snapshot's seven-day local-calendar window.
+///
+/// Models remain scoped to their source provider because equal display names can describe
+/// distinct usage records and pricing configurations across providers.
+struct WidgetModelFocusSnapshot: Codable, Equatable, Sendable {
+    let windowStartDayKey: String
+    let windowEndDayKey: String
+    let windowTotalTokens: Int
+    let providerName: String?
+    let modelName: String?
+    let modelTokens: Int
+
+    static func empty(localDayKey: String) -> WidgetModelFocusSnapshot {
+        WidgetModelFocusSnapshot(
+            windowStartDayKey: localDayKey,
+            windowEndDayKey: localDayKey,
+            windowTotalTokens: 0,
+            providerName: nil,
+            modelName: nil,
+            modelTokens: 0
+        )
+    }
 }
 
 /// A fixed 22-column by 7-row heatmap shared in column-major order.

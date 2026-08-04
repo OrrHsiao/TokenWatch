@@ -9,5 +9,8 @@ struct TokenWatchWidgetsBundle: WidgetBundle {
         TokenHourlyLineWidget()
         TokenWeeklySummaryWidget()
         TokenMonthlyBudgetWidget()
+        TokenTodayAnomalyWidget()
+        TokenProjectFocusWidget()
+        TokenModelFocusWidget()
     }
 }
