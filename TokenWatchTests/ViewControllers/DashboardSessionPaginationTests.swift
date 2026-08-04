@@ -445,7 +445,7 @@ struct DashboardSessionPaginationTests {
         #expect(!toolAncestors.contains { $0.contains("DashboardRoundedView") })
         #expect(!toolAncestorViews.contains { ($0.layer?.cornerRadius ?? 0) > 0 })
         #expect(!toolAncestorViews.contains { ($0.layer?.borderWidth ?? 0) > 0 })
-        #expect(rowLabels.contains("unknown"))
+        #expect(rowLabels.contains("未知"))
         #expect(!rowLabels.contains("687dce51-3ca3-4a6a-86db-814dae59f68d"))
 
         NSPasteboard.general.clearContents()
