@@ -55,23 +55,10 @@ final class DashboardBarRowView: NSView {
 }
 
 private enum DashboardTrendRendering {
-    static let tokenSeriesName = "Token"
-    static let costSeriesName = "Cost"
-    static let seriesKeys = [tokenSeriesName, costSeriesName]
-    static var tokenLegendTitle: String {
-        tokenLegendTitle(language: .zhHans)
-    }
-    static var costLegendTitle: String {
-        costLegendTitle(language: .zhHans)
-    }
-    static var trendLegendTitles: [String] {
-        trendLegendTitles(language: .zhHans)
-    }
     static let trendLegendPlacementName = "subtitleHeaderTrailing"
     static let chartLegendVisibilityName = "hidden"
     static let areaStacking: MarkStackingMethod = .unstacked
     static let areaStackingModeName = "unstacked"
-    static let areaLayerOrder = seriesKeys
     static let costLineDashPattern: [CGFloat] = []
     static let costYAxisPositionName = "trailing"
     private static let costScalePaddingMultiplier = 1.20
@@ -86,6 +73,10 @@ private enum DashboardTrendRendering {
 
     static func trendLegendTitles(language: AppLanguage) -> [String] {
         [tokenLegendTitle(language: language), costLegendTitle(language: language)]
+    }
+
+    static func seriesKeys(language: AppLanguage) -> [String] {
+        trendLegendTitles(language: language)
     }
 
     static func costAxisLabel(forScaledValue value: Double, maxTokens: Double, maxCost: Double) -> String {
@@ -172,11 +163,11 @@ final class DashboardTrendView: NSView {
     }
 
     var debugAreaLayerOrder: [String] {
-        DashboardTrendRendering.areaLayerOrder
+        DashboardTrendRendering.seriesKeys(language: language)
     }
 
     var debugTrendSeriesKeys: [String] {
-        DashboardTrendRendering.seriesKeys
+        DashboardTrendRendering.seriesKeys(language: language)
     }
 
     var debugChartLegendVisibilityName: String {
@@ -351,8 +342,8 @@ private struct DashboardTrendChartContent: View {
             ForEach(buckets) { bucket in
                 AreaMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Tokens", Double(bucket.totalTokens)),
-                    series: .value("Series", DashboardTrendRendering.tokenSeriesName),
+                    y: .value(tokenAxisValueName, Double(bucket.totalTokens)),
+                    series: .value(seriesAxisValueName, tokenSeriesName),
                     stacking: DashboardTrendRendering.areaStacking
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
@@ -361,13 +352,13 @@ private struct DashboardTrendChartContent: View {
                 AreaMark(
                     x: .value(axisValueName, bucket.key),
                     y: .value(
-                        "Cost",
+                        costAxisValueName,
                         DashboardTrendRendering.costPlotY(
                             forNormalizedCostHeight: bucket.normalizedCostHeight,
                             maxTokens: maxTokens
                         )
                     ),
-                    series: .value("Series", DashboardTrendRendering.costSeriesName),
+                    series: .value(seriesAxisValueName, costSeriesName),
                     stacking: DashboardTrendRendering.areaStacking
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
@@ -377,32 +368,32 @@ private struct DashboardTrendChartContent: View {
             ForEach(buckets) { bucket in
                 LineMark(
                     x: .value(axisValueName, bucket.key),
-                    y: .value("Tokens", Double(bucket.totalTokens)),
-                    series: .value("Series", DashboardTrendRendering.tokenSeriesName)
+                    y: .value(tokenAxisValueName, Double(bucket.totalTokens)),
+                    series: .value(seriesAxisValueName, tokenSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(by: .value("Legend", DashboardTrendRendering.tokenLegendTitle(language: language)))
+                .foregroundStyle(by: .value(legendAxisValueName, tokenSeriesName))
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
                 LineMark(
                     x: .value(axisValueName, bucket.key),
                     y: .value(
-                        "Cost",
+                        costAxisValueName,
                         DashboardTrendRendering.costPlotY(
                             forNormalizedCostHeight: bucket.normalizedCostHeight,
                             maxTokens: maxTokens
                         )
                     ),
-                    series: .value("Series", DashboardTrendRendering.costSeriesName)
+                    series: .value(seriesAxisValueName, costSeriesName)
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(by: .value("Legend", DashboardTrendRendering.costLegendTitle(language: language)))
+                .foregroundStyle(by: .value(legendAxisValueName, costSeriesName))
                 .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
 
                 if bucket.isCurrent {
                     PointMark(
                         x: .value(axisValueName, bucket.key),
-                        y: .value("Tokens", Double(bucket.totalTokens))
+                        y: .value(tokenAxisValueName, Double(bucket.totalTokens))
                     )
                     .foregroundStyle(Color(nsColor: DashboardPalette.accent))
                     .symbolSize(22)
@@ -410,7 +401,7 @@ private struct DashboardTrendChartContent: View {
                     PointMark(
                         x: .value(axisValueName, bucket.key),
                         y: .value(
-                            "Cost",
+                            costAxisValueName,
                             DashboardTrendRendering.costPlotY(
                                 forNormalizedCostHeight: bucket.normalizedCostHeight,
                                 maxTokens: maxTokens
@@ -473,6 +464,30 @@ private struct DashboardTrendChartContent: View {
 
     private var axisValueName: String {
         AppStrings.text(.periodAxisValueName, language: language)
+    }
+
+    private var tokenAxisValueName: String {
+        AppStrings.text(.recentDetailsTokens, language: language)
+    }
+
+    private var costAxisValueName: String {
+        AppStrings.text(.chartCost, language: language)
+    }
+
+    private var seriesAxisValueName: String {
+        AppStrings.text(.dashboardTrendTitle, language: language)
+    }
+
+    private var legendAxisValueName: String {
+        AppStrings.text(.dashboardTrendTokenLegend, language: language)
+    }
+
+    private var tokenSeriesName: String {
+        DashboardTrendRendering.tokenLegendTitle(language: language)
+    }
+
+    private var costSeriesName: String {
+        DashboardTrendRendering.costLegendTitle(language: language)
     }
 
     private var tokenAreaGradient: LinearGradient {

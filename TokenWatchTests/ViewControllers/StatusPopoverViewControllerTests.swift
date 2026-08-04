@@ -192,11 +192,16 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugLoadingOverlayIsVisible)
         #expect(controller.debugLoadingOverlayUsesGlassMaterial)
         #expect(controller.debugLoadingOverlayCoversRootView)
-        #expect(controller.debugLoadingOverlayMessage == "正在更新中，首次加载耗时较久，请耐心等待～")
+        #expect(controller.debugLoadingOverlayMessage == "正在加载用量数据...")
         #expect(controller.debugLoadingOverlaySymbolName == StatusBarLoadingAnimation.symbolNames.first)
 
         controller.debugSetLoadingOverlayVisible(false)
         #expect(!controller.debugLoadingOverlayIsVisible)
+
+        let englishController = makeController(language: .en)
+        englishController.loadViewIfNeeded()
+        englishController.debugSetLoadingOverlayVisible(true)
+        #expect(englishController.debugLoadingOverlayMessage == "Loading usage data...")
     }
 
     @Test("浅色外观保留主界面 Pencil 文本和卡片调色板")

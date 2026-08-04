@@ -640,6 +640,22 @@ private enum ProviderLoadResult: Sendable {
     case unchanged(entryCount: Int)
 }
 
+private enum ProviderLoadError: LocalizedError, AppLocalizedError, Sendable {
+    case missingMaterializedEntries
+
+    var errorDescription: String? {
+        localizedDescription(language: .en)
+    }
+
+    /// Returns the provider result failure message in the selected app language.
+    func localizedDescription(language: AppLanguage) -> String {
+        switch self {
+        case .missingMaterializedEntries:
+            AppStrings.text(.errorProviderDidNotReturnEntries, language: language)
+        }
+    }
+}
+
 /// 跟踪正在刷新的 provider,避免定时刷新和手动刷新重叠触发重复全量解析。
 struct ProviderLoadGate {
     private var activeProviderIDs: Set<ProviderID> = []

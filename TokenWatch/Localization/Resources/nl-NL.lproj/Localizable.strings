@@ -150,9 +150,9 @@
 "chartCostAccessibilityFormat" = "%@ staafdiagram met kosten";
 "periodAxisValueName" = "Periode";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Claude Code. Deze moet rechtstreeks de map \"projects\" bevatten. Voer in Terminal \"printenv CLAUDE_CONFIG_DIR\" uit om een geconfigureerde locatie te controleren. Als er niets wordt weergegeven, zoek dan naar een map met de naam \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Codex. Deze moet rechtstreeks de map \"sessions\" of \"archived_sessions\" bevatten. Voer in Terminal \"printenv CODEX_HOME\" uit om een geconfigureerde locatie te controleren. Als er niets wordt weergegeven, zoek dan naar een map met de naam \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van opencode. Deze moet rechtstreeks \"opencode.db\" bevatten. Als je deze niet kunt vinden, voer dan \"opencode db path\" uit in Terminal en kies de map die het weergegeven bestand bevat.";
+"claudeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Claude Code. Deze moet rechtstreeks de map \"projects\" bevatten. Voer \"printenv CLAUDE_CONFIG_DIR\" uit in de Terminal om een geconfigureerde locatie te controleren. Als er niets wordt weergegeven, zoek dan naar een map met de naam \".claude\".";
+"codexDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Codex. Deze moet rechtstreeks de map \"sessions\" of \"archived_sessions\" bevatten. Voer \"printenv CODEX_HOME\" uit in de Terminal om een geconfigureerde locatie te controleren. Als er niets wordt weergegeven, zoek dan naar een map met de naam \".codex\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van opencode. Deze moet rechtstreeks \"opencode.db\" bevatten. Als je deze niet kunt vinden, voer dan \"opencode db path\" uit in de Terminal en kies de map die het weergegeven bestand bevat.";
 "chooseDirectoryPrompt" = "Kiezen";
 "errorCannotAccessProviderDirectoryFormat" = "De geselecteerde gegevensmap voor %@ is niet toegankelijk. Kies deze opnieuw";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Toegang tot de gegevensmap van %@ kon niet worden opgeslagen. Probeer het opnieuw";
@@ -160,3 +160,7 @@
 "errorOpenCodeDatabaseNotFoundFormat" = "opencode.db niet gevonden: %@";
 "errorOpenCodeDatabaseOpenFailedFormat" = "Kan opencode.db niet openen (SQLite code=%d): %@";
 "errorOpenCodeDatabaseQueryFailedFormat" = "Query op opencode.db mislukt (SQLite code=%d): %@";
+"commonUnknown" = "Onbekend";
+"errorDirectoryNotDirectoryFormat" = "De geselecteerde locatie is geen map: %@";
+"errorCannotEnumerateDirectoryFormat" = "Kan map niet opsommen: %@";
+"errorProviderDidNotReturnEntries" = "De provider heeft de gevraagde gebruiksitems niet geretourneerd.";

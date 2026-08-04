@@ -611,6 +611,32 @@ struct TokenStatsViewModelObserverTests {
                 language: .en
             ) == "Data load failed: disk read failed"
         )
+
+        let directoryError = JSONLDirectoryListingError.notDirectory(
+            URL(fileURLWithPath: "/tmp/not-a-directory")
+        )
+        #expect(
+            TokenStatsViewModel.loadFailedMessage(
+                error: directoryError,
+                language: .zhHans
+            ) == "数据加载失败: 所选位置不是文件夹：/tmp/not-a-directory"
+        )
+        #expect(
+            TokenStatsViewModel.loadFailedMessage(
+                error: directoryError,
+                language: .en
+            ) == "Data load failed: Selected location is not a directory: /tmp/not-a-directory"
+        )
+
+        let enumerationError = JSONLDirectoryListingError.unableToEnumerate(
+            URL(fileURLWithPath: "/tmp/unreadable")
+        )
+        #expect(
+            TokenStatsViewModel.loadFailedMessage(
+                error: enumerationError,
+                language: .zhHans
+            ) == "数据加载失败: 无法枚举文件夹：/tmp/unreadable"
+        )
     }
 
     @Test func openCodeScannerErrorsUseAppLanguage() {

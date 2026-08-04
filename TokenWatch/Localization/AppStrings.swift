@@ -169,6 +169,10 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case errorOpenCodeDatabaseNotFoundFormat
     case errorOpenCodeDatabaseOpenFailedFormat
     case errorOpenCodeDatabaseQueryFailedFormat
+    case commonUnknown
+    case errorDirectoryNotDirectoryFormat
+    case errorCannotEnumerateDirectoryFormat
+    case errorProviderDidNotReturnEntries
 }
 
 enum AppStrings {
@@ -177,38 +181,6 @@ enum AppStrings {
         category: "AppStrings"
     )
     private static let missingLocalizationSentinel = "__TOKENWATCH_MISSING_LOCALIZATION__"
-
-    /// Provider directory management and newer Dashboard pages were added after the 65-locale resource set.
-    /// New locales intentionally fall back to the reviewed English copy for these keys.
-    static let englishFallbackKeys: Set<AppStringKey> = [
-        .chooseDirectoryPrompt,
-        .claudeDataDirectoryOpenPanelMessage,
-        .codexDataDirectoryOpenPanelMessage,
-        .dashboardCacheHitRate,
-        .dashboardWidgetsNavigation,
-        .dashboardWidgetsSubtitle,
-        .dashboardWidgetsTitle,
-        .errorCannotAccessProviderDirectoryFormat,
-        .errorProviderDirectoryAuthorizationFailedFormat,
-        .initialDirectoryAuthorizationGuideLater,
-        .initialDirectoryAuthorizationGuideMessage,
-        .initialDirectoryAuthorizationGuideOpenSettings,
-        .initialDirectoryAuthorizationGuideTitle,
-        .openCodeDataDirectoryOpenPanelMessage,
-        .settingsAppPreferencesTitle,
-        .settingsChooseAgain,
-        .settingsChooseDirectory,
-        .settingsDataFoldersTitle,
-        .settingsDataRefreshTitle,
-        .settingsDescription,
-        .settingsDirectoryNeedsReselection,
-        .settingsDirectoryNoData,
-        .settingsDirectoryNotSelected,
-        .settingsDirectorySelected,
-        .settingsReselectDirectory,
-        .statusNeedsDataDirectorySelection,
-        .support,
-    ]
 
     /// Returns localized text for a stable app string key.
     static func text(_ key: AppStringKey, language: AppLanguage) -> String {
@@ -252,11 +224,9 @@ enum AppStrings {
             table: "Localizable"
         )
         guard value != missingLocalizationSentinel else {
-            if language == .en || !englishFallbackKeys.contains(key) {
-                logger.error(
-                    "缺少本地化文案：locale=\(language.resourceIdentifier, privacy: .public)，key=\(key.rawValue, privacy: .public)"
-                )
-            }
+            logger.error(
+                "缺少本地化文案：locale=\(language.resourceIdentifier, privacy: .public)，key=\(key.rawValue, privacy: .public)"
+            )
             return nil
         }
         return value

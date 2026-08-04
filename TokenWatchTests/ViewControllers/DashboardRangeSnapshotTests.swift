@@ -4,6 +4,19 @@ import Testing
 
 @Suite("DashboardRangeSnapshot")
 struct DashboardRangeSnapshotTests {
+    @Test("未知的模型和项目名称使用当前语言")
+    func unknownNamesUseSelectedLanguage() {
+        #expect(
+            DashboardRangeSnapshot.localizedUnknownName("unknown", language: .zhHans) == "未知"
+        )
+        #expect(
+            DashboardRangeSnapshot.localizedUnknownName("unknown", language: .en) == "Unknown"
+        )
+        #expect(
+            DashboardRangeSnapshot.displayProjectName("unknown", language: .zhHans) == "未知"
+        )
+    }
+
     @Test("跨 provider 极值在窗口与全量快照中饱和")
     func extremeProviderSummariesSaturateInWindowAndAllSnapshots() throws {
         var calendar = Calendar(identifier: .gregorian)

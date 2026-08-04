@@ -160,3 +160,7 @@
 "errorOpenCodeDatabaseNotFoundFormat" = "opencode.db 不存在: %@";
 "errorOpenCodeDatabaseOpenFailedFormat" = "无法打开 opencode.db (SQLite code=%d): %@";
 "errorOpenCodeDatabaseQueryFailedFormat" = "查询 opencode.db 失败 (SQLite code=%d): %@";
+"commonUnknown" = "未知";
+"errorDirectoryNotDirectoryFormat" = "所选位置不是文件夹：%@";
+"errorCannotEnumerateDirectoryFormat" = "无法枚举文件夹：%@";
+"errorProviderDidNotReturnEntries" = "数据源未返回所请求的用量条目。";

@@ -45,16 +45,27 @@ protocol JSONLDirectoryEnumerating: Sendable {
     ) -> [URL]?
 }
 
-enum JSONLDirectoryListingError: LocalizedError {
+enum JSONLDirectoryListingError: LocalizedError, AppLocalizedError {
     case notDirectory(URL)
     case unableToEnumerate(URL)
 
     var errorDescription: String? {
+        localizedDescription(language: .en)
+    }
+
+    /// Returns a directory listing failure message in the selected app language.
+    func localizedDescription(language: AppLanguage) -> String {
         switch self {
         case .notDirectory(let url):
-            return "目标不是目录: \(url.path)"
+            return String(
+                format: AppStrings.text(.errorDirectoryNotDirectoryFormat, language: language),
+                url.path
+            )
         case .unableToEnumerate(let url):
-            return "无法枚举目录: \(url.path)"
+            return String(
+                format: AppStrings.text(.errorCannotEnumerateDirectoryFormat, language: language),
+                url.path
+            )
         }
     }
 }
