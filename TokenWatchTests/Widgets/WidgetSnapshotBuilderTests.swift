@@ -155,6 +155,11 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.localizedText.datedUsageTitle == "7/15 Usage")
         #expect(snapshot.localizedText.updatedThroughTitle == "Updated through 7/15")
         #expect(snapshot.localizedText.notReadyMessage == "Open TokenWatch to refresh data")
+        #expect(snapshot.localizedText.monthlyBudgetTitle == "Monthly Budget")
+        #expect(
+            snapshot.localizedText.monthlyBudgetUnconfiguredMessage
+                == "Set a monthly budget in TokenWatch"
+        )
         #expect(snapshot.localizedText.weeklySummaryTitle == "Last 7 Days")
         #expect(snapshot.localizedText.projectFocusTitle == "Project Usage")
         #expect(snapshot.localizedText.projectFocusNoDataMessage == "No project data")
@@ -199,6 +204,36 @@ struct WidgetSnapshotBuilderTests {
         #expect(configured.localizedText.weeklySummaryTitle == "最近 7 天")
         #expect(unconfigured.monthlyBudget?.budgetUSD == nil)
         #expect(MonthlyBudgetCopy.make(language: .zhHant).title == "本月預算")
+    }
+
+    @Test("monthly budget copy resolves all fields in every supported language")
+    func monthlyBudgetCopyUsesLocalizedResources() {
+        for language in AppLanguage.allCases {
+            let copy = MonthlyBudgetCopy.make(language: language)
+
+            #expect(
+                copy.title == AppStrings.text(.widgetMonthlyBudgetTitle, language: language)
+            )
+            #expect(
+                copy.settingsTitle
+                    == AppStrings.text(.widgetMonthlyBudgetSettingsTitle, language: language)
+            )
+            #expect(
+                copy.forecastTitle
+                    == AppStrings.text(.widgetMonthlyBudgetForecastTitle, language: language)
+            )
+            #expect(
+                copy.unconfiguredMessage
+                    == AppStrings.text(.widgetMonthlyBudgetUnconfiguredMessage, language: language)
+            )
+            #expect(
+                copy.forecastOverBudgetMessage
+                    == AppStrings.text(
+                        .widgetMonthlyBudgetForecastOverBudgetMessage,
+                        language: language
+                    )
+            )
+        }
     }
 
     @Test("seven-day project and model focus preserve provider identity")

@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Paggamit noong %@";
 "widgetUpdatedThroughTitleFormat" = "Na-update hanggang %@";
 "widgetNotReadyMessage" = "Buksan ang TokenWatch upang i-refresh ang data";
+"widgetMonthlyBudgetTitle" = "Buwanang badyet";
+"widgetMonthlyBudgetSettingsTitle" = "Buwanang badyet (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Pagtataya sa katapusan ng buwan";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Magtakda ng buwanang badyet sa TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Tinatayang lalampas sa badyet";
 "chartTokenAccessibility" = "Tsart na bar ng token sa nakaraang 12 buwan";
 "chartCostAccessibility" = "Tsart na bar ng gastos sa nakaraang 12 buwan";
 "chartTokenAccessibilityFormat" = "Tsart na bar ng token para sa %@";

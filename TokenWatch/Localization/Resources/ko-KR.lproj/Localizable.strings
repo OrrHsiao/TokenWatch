@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ 사용량";
 "widgetUpdatedThroughTitleFormat" = "%@까지 업데이트";
 "widgetNotReadyMessage" = "TokenWatch를 열어 데이터를 새로고침";
+"widgetMonthlyBudgetTitle" = "월간 예산";
+"widgetMonthlyBudgetSettingsTitle" = "월간 예산(USD)";
+"widgetMonthlyBudgetForecastTitle" = "월말 예상 비용";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch에서 월간 예산을 설정하세요";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "예산 초과가 예상됩니다";
 "chartTokenAccessibility" = "최근 12개월 token 막대 차트";
 "chartCostAccessibility" = "최근 12개월 비용 막대 차트";
 "chartTokenAccessibilityFormat" = "%@ token 막대 차트";

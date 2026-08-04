@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Utilização em %@";
 "widgetUpdatedThroughTitleFormat" = "Atualizado até %@";
 "widgetNotReadyMessage" = "Abra o TokenWatch para atualizar os dados";
+"widgetMonthlyBudgetTitle" = "Orçamento mensal";
+"widgetMonthlyBudgetSettingsTitle" = "Orçamento mensal (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Previsão para o fim do mês";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Defina um orçamento mensal no TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Prevê-se que o orçamento seja ultrapassado";
 "chartTokenAccessibility" = "Gráfico de barras de tokens dos últimos 12 meses";
 "chartCostAccessibility" = "Gráfico de barras de custos dos últimos 12 meses";
 "chartTokenAccessibilityFormat" = "Gráfico de barras de tokens — %@";

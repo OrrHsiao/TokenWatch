@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Isticmaalka %@";
 "widgetUpdatedThroughTitleFormat" = "La cusboonaysiiyay ilaa %@";
 "widgetNotReadyMessage" = "Fur TokenWatch si aad xogta u cusboonaysiiso";
+"widgetMonthlyBudgetTitle" = "Miisaaniyadda bisha";
+"widgetMonthlyBudgetSettingsTitle" = "Miisaaniyadda bisha (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Saadaasha dhammaadka bisha";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Deji miisaaniyad bille ah gudaha TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Waxaa la saadaalinayaa in miisaaniyadda la dhaafi doono";
 "chartTokenAccessibility" = "Shaxda tiirarka token ee 12-kii bilood ee u dambeeyey";
 "chartCostAccessibility" = "Shaxda tiirarka kharashka ee 12-kii bilood ee u dambeeyey";
 "chartTokenAccessibilityFormat" = "Shaxda tiirarka token ee %@";

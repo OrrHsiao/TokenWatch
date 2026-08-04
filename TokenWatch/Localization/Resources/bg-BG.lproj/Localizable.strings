@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Употреба за %@";
 "widgetUpdatedThroughTitleFormat" = "Обновено до %@";
 "widgetNotReadyMessage" = "Отворете TokenWatch, за да обновите данните";
+"widgetMonthlyBudgetTitle" = "Месечен бюджет";
+"widgetMonthlyBudgetSettingsTitle" = "Месечен бюджет (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Прогноза за края на месеца";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Задайте месечен бюджет в TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Очаква се превишаване на бюджета";
 "chartTokenAccessibility" = "Стълбовидна диаграма на токените за последните 12 месеца";
 "chartCostAccessibility" = "Стълбовидна диаграма на разходите за последните 12 месеца";
 "chartTokenAccessibilityFormat" = "%@ — стълбовидна диаграма на токените";

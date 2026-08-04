@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ lietojums";
 "widgetUpdatedThroughTitleFormat" = "Atjaunināts līdz %@";
 "widgetNotReadyMessage" = "Atveriet TokenWatch, lai atsvaidzinātu datus";
+"widgetMonthlyBudgetTitle" = "Mēneša budžets";
+"widgetMonthlyBudgetSettingsTitle" = "Mēneša budžets (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Mēneša beigu prognoze";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Iestatiet mēneša budžetu TokenWatch lietotnē";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Paredzams budžeta pārsniegums";
 "chartTokenAccessibility" = "Pēdējo 12 mēnešu tokenu lietojuma stabiņu diagramma";
 "chartCostAccessibility" = "Pēdējo 12 mēnešu izmaksu stabiņu diagramma";
 "chartTokenAccessibilityFormat" = "Tokenu lietojuma stabiņu diagramma — %@";

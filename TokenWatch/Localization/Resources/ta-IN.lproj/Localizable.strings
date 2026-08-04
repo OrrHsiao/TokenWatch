@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ பயன்பாடு";
 "widgetUpdatedThroughTitleFormat" = "%@ வரை புதுப்பிக்கப்பட்டது";
 "widgetNotReadyMessage" = "தரவைப் புதுப்பிக்க TokenWatch-ஐத் திறக்கவும்";
+"widgetMonthlyBudgetTitle" = "மாதாந்திர பட்ஜெட்";
+"widgetMonthlyBudgetSettingsTitle" = "மாதாந்திர பட்ஜெட் (USD)";
+"widgetMonthlyBudgetForecastTitle" = "மாத இறுதி முன்னறிவிப்பு";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch-இல் மாதாந்திர பட்ஜெட்டை அமைக்கவும்";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "பட்ஜெட்டை மீறும் என எதிர்பார்க்கப்படுகிறது";
 "chartTokenAccessibility" = "கடந்த 12 மாதங்களுக்கான டோக்கன் பட்டை விளக்கப்படம்";
 "chartCostAccessibility" = "கடந்த 12 மாதங்களுக்கான செலவுப் பட்டை விளக்கப்படம்";
 "chartTokenAccessibilityFormat" = "%@ டோக்கன் பட்டை விளக்கப்படம்";

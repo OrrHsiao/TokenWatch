@@ -39,7 +39,7 @@ struct TokenModelFocusWidgetView: View {
                         Text(providerName)
                     }
                     if let share = presentation.shareText {
-                        Text("·")
+                        Text(verbatim: "·")
                         Text(share)
                             .monospacedDigit()
                     }

@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Využití za %@";
 "widgetUpdatedThroughTitleFormat" = "Aktualizováno k %@";
 "widgetNotReadyMessage" = "Otevřete TokenWatch a obnovte data";
+"widgetMonthlyBudgetTitle" = "Měsíční rozpočet";
+"widgetMonthlyBudgetSettingsTitle" = "Měsíční rozpočet (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Odhad na konci měsíce";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Nastavte měsíční rozpočet v aplikaci TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Očekává se překročení rozpočtu";
 "chartTokenAccessibility" = "Sloupcový graf tokenů za posledních 12 měsíců";
 "chartCostAccessibility" = "Sloupcový graf nákladů za posledních 12 měsíců";
 "chartTokenAccessibilityFormat" = "Sloupcový graf tokenů — %@";

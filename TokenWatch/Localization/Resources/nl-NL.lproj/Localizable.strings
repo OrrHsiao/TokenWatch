@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Gebruik op %@";
 "widgetUpdatedThroughTitleFormat" = "Bijgewerkt tot %@";
 "widgetNotReadyMessage" = "Open TokenWatch om gegevens te verversen";
+"widgetMonthlyBudgetTitle" = "Maandelijks budget";
+"widgetMonthlyBudgetSettingsTitle" = "Maandelijks budget (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Prognose voor het einde van de maand";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Stel een maandelijks budget in TokenWatch in";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Het budget wordt naar verwachting overschreden";
 "chartTokenAccessibility" = "Staafdiagram met tokens van de afgelopen 12 maanden";
 "chartCostAccessibility" = "Staafdiagram met kosten van de afgelopen 12 maanden";
 "chartTokenAccessibilityFormat" = "%@ staafdiagram met tokens";

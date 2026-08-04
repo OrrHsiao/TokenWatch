@@ -118,7 +118,14 @@ struct WidgetTimelinePlanningTests {
             todayUsageTitle: "Today's Usage",
             datedUsageTitle: "7/15 Usage",
             updatedThroughTitle: "Updated through 7/15",
-            notReadyMessage: "Open TokenWatch to refresh data"
+            notReadyMessage: "Open TokenWatch to refresh data",
+            monthlyBudgetTitle: "Monthly Budget",
+            monthlyBudgetUnconfiguredMessage: "Set a monthly budget in TokenWatch",
+            weeklySummaryTitle: "Last 7 Days",
+            projectFocusTitle: "Project Usage",
+            projectFocusNoDataMessage: "No project data",
+            modelFocusTitle: "Primary Model",
+            modelFocusNoDataMessage: "No model data"
         )
     }
 

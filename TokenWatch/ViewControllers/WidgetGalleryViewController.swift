@@ -18,6 +18,13 @@ final class WidgetGalleryViewController: NSViewController {
     private let contentStack = NSStackView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
+    private let heatmapSectionTitleLabel = NSTextField(labelWithString: "")
+    private let hourlyLineSectionTitleLabel = NSTextField(labelWithString: "")
+    private let weeklySummarySectionTitleLabel = NSTextField(labelWithString: "")
+    private let todayAnomalySectionTitleLabel = NSTextField(labelWithString: "")
+    private let monthlyBudgetSectionTitleLabel = NSTextField(labelWithString: "")
+    private let projectFocusSectionTitleLabel = NSTextField(labelWithString: "")
+    private let modelFocusSectionTitleLabel = NSTextField(labelWithString: "")
     private let heatmapPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let hourlyLinePreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let weeklySmallPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
@@ -75,6 +82,16 @@ final class WidgetGalleryViewController: NSViewController {
         let todayAnomaly = WidgetChartPresentationBuilder.todayAnomaly(for: state)
         let projectFocus = WidgetChartPresentationBuilder.projectFocus(for: state)
         let modelFocus = WidgetChartPresentationBuilder.modelFocus(for: state)
+        heatmapSectionTitleLabel.stringValue = heatmap.title
+        hourlyLineSectionTitleLabel.stringValue = AppStrings.text(
+            .dashboardTrendTitle,
+            language: language
+        )
+        weeklySummarySectionTitleLabel.stringValue = weeklySummary.title
+        todayAnomalySectionTitleLabel.stringValue = todayAnomaly.title
+        monthlyBudgetSectionTitleLabel.stringValue = monthlyBudget.title
+        projectFocusSectionTitleLabel.stringValue = projectFocus.title
+        modelFocusSectionTitleLabel.stringValue = modelFocus.title
         heatmapPreviewContainer.setAccessibilityLabel(heatmap.title)
         hourlyLinePreviewContainer.setAccessibilityLabel(hourlyLine.title)
         weeklySmallPreviewContainer.setAccessibilityLabel(weeklySummary.title)
@@ -96,12 +113,18 @@ final class WidgetGalleryViewController: NSViewController {
         )
         weeklySmallPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
-                WidgetGalleryWeeklySummaryPreview(presentation: weeklySummary)
+                WidgetGalleryWeeklySummaryPreview(
+                    presentation: weeklySummary,
+                    language: language
+                )
             }
         )
         weeklyMediumPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
-                WidgetGalleryWeeklySummaryPreview(presentation: weeklySummary)
+                WidgetGalleryWeeklySummaryPreview(
+                    presentation: weeklySummary,
+                    language: language
+                )
             }
         )
         monthlyBudgetPreviewHost.rootView = AnyView(
@@ -111,12 +134,20 @@ final class WidgetGalleryViewController: NSViewController {
         )
         todayAnomalySmallPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
-                WidgetGalleryTodayAnomalyPreview(presentation: todayAnomaly, showsChart: false)
+                WidgetGalleryTodayAnomalyPreview(
+                    presentation: todayAnomaly,
+                    showsChart: false,
+                    language: language
+                )
             }
         )
         todayAnomalyMediumPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
-                WidgetGalleryTodayAnomalyPreview(presentation: todayAnomaly, showsChart: true)
+                WidgetGalleryTodayAnomalyPreview(
+                    presentation: todayAnomaly,
+                    showsChart: true,
+                    language: language
+                )
             }
         )
         projectFocusPreviewHost.rootView = AnyView(
@@ -155,11 +186,62 @@ final class WidgetGalleryViewController: NSViewController {
         contentView.addSubview(contentStack)
 
         addFullWidthArrangedSubview(makeHeaderView(), to: contentStack)
-        addFullWidthArrangedSubview(makePreviewRow(), to: contentStack)
-        addFullWidthArrangedSubview(makeWeeklySummaryPreviewRow(), to: contentStack)
-        addFullWidthArrangedSubview(makeTodayAnomalyPreviewRow(), to: contentStack)
-        addFullWidthArrangedSubview(makeMonthlyBudgetPreviewRow(), to: contentStack)
-        addFullWidthArrangedSubview(makeFocusPreviewRow(), to: contentStack)
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "heatmap",
+                titleLabel: heatmapSectionTitleLabel,
+                previewRow: makeHeatmapPreviewRow()
+            ),
+            to: contentStack
+        )
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "hourlyLine",
+                titleLabel: hourlyLineSectionTitleLabel,
+                previewRow: makeHourlyLinePreviewRow()
+            ),
+            to: contentStack
+        )
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "weeklySummary",
+                titleLabel: weeklySummarySectionTitleLabel,
+                previewRow: makeWeeklySummaryPreviewRow()
+            ),
+            to: contentStack
+        )
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "todayAnomaly",
+                titleLabel: todayAnomalySectionTitleLabel,
+                previewRow: makeTodayAnomalyPreviewRow()
+            ),
+            to: contentStack
+        )
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "monthlyBudget",
+                titleLabel: monthlyBudgetSectionTitleLabel,
+                previewRow: makeMonthlyBudgetPreviewRow()
+            ),
+            to: contentStack
+        )
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "projectFocus",
+                titleLabel: projectFocusSectionTitleLabel,
+                previewRow: makeProjectFocusPreviewRow()
+            ),
+            to: contentStack
+        )
+        addFullWidthArrangedSubview(
+            makeWidgetSection(
+                identifier: "modelFocus",
+                titleLabel: modelFocusSectionTitleLabel,
+                previewRow: makeModelFocusPreviewRow()
+            ),
+            to: contentStack
+        )
 
         view.addSubview(scrollView)
         NSLayoutConstraint.activate([
@@ -196,31 +278,32 @@ final class WidgetGalleryViewController: NSViewController {
         return stack
     }
 
-    private func makePreviewRow() -> NSView {
+    private func makeHeatmapPreviewRow() -> NSView {
         configurePreviewContainer(
             heatmapPreviewContainer,
             hostingView: heatmapPreviewHost,
             identifier: "DashboardWidgetPreview.heatmap"
         )
+        return makeSinglePreviewRow(heatmapPreviewContainer)
+    }
+
+    private func makeHourlyLinePreviewRow() -> NSView {
         configurePreviewContainer(
             hourlyLinePreviewContainer,
             hostingView: hourlyLinePreviewHost,
             identifier: "DashboardWidgetPreview.hourlyLine"
         )
+        return makeSinglePreviewRow(hourlyLinePreviewContainer)
+    }
 
+    private func makeSinglePreviewRow(_ previewContainer: NSView) -> NSView {
         let row = NSView()
         row.translatesAutoresizingMaskIntoConstraints = false
-        row.addSubview(heatmapPreviewContainer)
-        row.addSubview(hourlyLinePreviewContainer)
+        row.addSubview(previewContainer)
         NSLayoutConstraint.activate([
             row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
-            heatmapPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
-            heatmapPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
-            hourlyLinePreviewContainer.leadingAnchor.constraint(
-                equalTo: heatmapPreviewContainer.trailingAnchor,
-                constant: 16
-            ),
-            hourlyLinePreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+            previewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            previewContainer.topAnchor.constraint(equalTo: row.topAnchor),
         ])
         return row
     }
@@ -303,33 +386,22 @@ final class WidgetGalleryViewController: NSViewController {
         return row
     }
 
-    private func makeFocusPreviewRow() -> NSView {
+    private func makeProjectFocusPreviewRow() -> NSView {
         configurePreviewContainer(
             projectFocusPreviewContainer,
             hostingView: projectFocusPreviewHost,
             identifier: "DashboardWidgetPreview.projectFocus"
         )
+        return makeSinglePreviewRow(projectFocusPreviewContainer)
+    }
+
+    private func makeModelFocusPreviewRow() -> NSView {
         configurePreviewContainer(
             modelFocusPreviewContainer,
             hostingView: modelFocusPreviewHost,
             identifier: "DashboardWidgetPreview.modelFocus"
         )
-
-        let row = NSView()
-        row.translatesAutoresizingMaskIntoConstraints = false
-        row.addSubview(projectFocusPreviewContainer)
-        row.addSubview(modelFocusPreviewContainer)
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
-            projectFocusPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
-            projectFocusPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
-            modelFocusPreviewContainer.leadingAnchor.constraint(
-                equalTo: projectFocusPreviewContainer.trailingAnchor,
-                constant: 16
-            ),
-            modelFocusPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
-        ])
-        return row
+        return makeSinglePreviewRow(modelFocusPreviewContainer)
     }
 
     private func configurePreviewContainer(
@@ -358,6 +430,34 @@ final class WidgetGalleryViewController: NSViewController {
             hostingView.topAnchor.constraint(equalTo: container.topAnchor),
             hostingView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
+    }
+
+    /// 将同一种小组件的标题和预览行封装为独立分区，保持图库的扫描顺序清晰。
+    private func makeWidgetSection(
+        identifier: String,
+        titleLabel: NSTextField,
+        previewRow: NSView
+    ) -> NSStackView {
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = DashboardPalette.primaryText
+        titleLabel.identifier = NSUserInterfaceItemIdentifier(
+            "DashboardWidgetSectionTitle.\(identifier)"
+        )
+        titleLabel.setAccessibilityIdentifier(
+            "DashboardWidgetSectionTitle.\(identifier)"
+        )
+
+        let section = NSStackView(views: [titleLabel, previewRow])
+        section.orientation = .vertical
+        section.alignment = .leading
+        section.spacing = 8
+        section.identifier = NSUserInterfaceItemIdentifier("DashboardWidgetSection.\(identifier)")
+        section.setAccessibilityIdentifier("DashboardWidgetSection.\(identifier)")
+        section.setAccessibilityElement(true)
+        section.setAccessibilityRole(.group)
+        section.translatesAutoresizingMaskIntoConstraints = false
+        previewRow.widthAnchor.constraint(equalTo: section.widthAnchor).isActive = true
+        return section
     }
 
     private func addFullWidthArrangedSubview(_ view: NSView, to stack: NSStackView) {
@@ -399,6 +499,7 @@ enum WidgetGallerySampleSnapshotFactory {
         let localDayKey = dayKey(now, calendar: calendar)
         let windowStart = calendar.date(byAdding: .day, value: -6, to: now) ?? now
         let windowStartDayKey = dayKey(windowStart, calendar: calendar)
+        let monthlyBudgetCopy = MonthlyBudgetCopy.make(language: language)
 
         return WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
@@ -416,6 +517,8 @@ enum WidgetGallerySampleSnapshotFactory {
                     dateText
                 ),
                 notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language),
+                monthlyBudgetTitle: monthlyBudgetCopy.title,
+                monthlyBudgetUnconfiguredMessage: monthlyBudgetCopy.unconfiguredMessage,
                 weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language),
                 projectFocusTitle: AppStrings.text(.dashboardProjectUsageTitle, language: language),
                 projectFocusNoDataMessage: AppStrings.text(.dashboardNoProjectData, language: language),
@@ -433,7 +536,7 @@ enum WidgetGallerySampleSnapshotFactory {
                 maxHourlyTokens: points.map(\.totalTokens).max() ?? 0,
                 points: points
             ),
-            monthlyBudget: makeMonthlyBudget(language: language),
+            monthlyBudget: makeMonthlyBudget(copy: monthlyBudgetCopy),
             projectFocus: WidgetProjectFocusSnapshot(
                 windowStartDayKey: windowStartDayKey,
                 windowEndDayKey: localDayKey,
@@ -453,9 +556,8 @@ enum WidgetGallerySampleSnapshotFactory {
     }
 
     private static func makeMonthlyBudget(
-        language: AppLanguage
+        copy: MonthlyBudgetCopy
     ) -> WidgetMonthlyBudgetSnapshot {
-        let copy = MonthlyBudgetCopy.make(language: language)
         return WidgetMonthlyBudgetSnapshot(
             monthKey: "2026-08",
             spentUSD: 42.75,
@@ -715,6 +817,7 @@ private struct WidgetGalleryHourlyLinePreview: View {
 
 private struct WidgetGalleryWeeklySummaryPreview: View {
     let presentation: WidgetWeeklySummaryPresentation
+    let language: AppLanguage
 
     var body: some View {
         VStack(spacing: 7) {
@@ -725,8 +828,14 @@ private struct WidgetGalleryWeeklySummaryPreview: View {
             )
             Chart(presentation.points) { point in
                 BarMark(
-                    x: .value("Day", point.position),
-                    y: .value("Tokens", point.totalTokens)
+                    x: .value(
+                        AppStrings.text(.dashboardRangeDay, language: language),
+                        point.position
+                    ),
+                    y: .value(
+                        AppStrings.text(.recentDetailsTokens, language: language),
+                        point.totalTokens
+                    )
                 )
                 .foregroundStyle(
                     point.isCurrentDay
@@ -821,6 +930,7 @@ private struct WidgetGalleryMonthlyBudgetPreview: View {
 private struct WidgetGalleryTodayAnomalyPreview: View {
     let presentation: WidgetTodayAnomalyPresentation
     let showsChart: Bool
+    let language: AppLanguage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -846,7 +956,7 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
                             .fontWeight(.semibold)
                             .monospacedDigit()
                     } else {
-                        Text("—")
+                        Text(verbatim: "—")
                             .font(.title3)
                             .foregroundStyle(.secondary)
                     }
@@ -861,8 +971,14 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
                 if showsChart {
                     Chart(presentation.points) { point in
                         BarMark(
-                            x: .value("Day", point.position),
-                            y: .value("Tokens", point.totalTokens)
+                            x: .value(
+                                AppStrings.text(.dashboardRangeDay, language: language),
+                                point.position
+                            ),
+                            y: .value(
+                                AppStrings.text(.recentDetailsTokens, language: language),
+                                point.totalTokens
+                            )
                         )
                         .foregroundStyle(color(for: point))
                         .clipShape(RoundedRectangle(cornerRadius: 2))
@@ -960,7 +1076,7 @@ private struct WidgetGalleryFocusPreview: View {
                         Text(secondaryName)
                     }
                     if secondaryName != nil, share != nil {
-                        Text("·")
+                        Text(verbatim: "·")
                     }
                     if let share {
                         Text(share)

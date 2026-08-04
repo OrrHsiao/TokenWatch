@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ გამოყენება";
 "widgetUpdatedThroughTitleFormat" = "განახლებულია %@-მდე";
 "widgetNotReadyMessage" = "მონაცემების გასაახლებლად გახსენით TokenWatch";
+"widgetMonthlyBudgetTitle" = "ყოველთვიური ბიუჯეტი";
+"widgetMonthlyBudgetSettingsTitle" = "ყოველთვიური ბიუჯეტი (USD)";
+"widgetMonthlyBudgetForecastTitle" = "თვის ბოლოს პროგნოზი";
+"widgetMonthlyBudgetUnconfiguredMessage" = "დააყენეთ ყოველთვიური ბიუჯეტი TokenWatch-ში";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "მოსალოდნელია ბიუჯეტის გადაჭარბება";
 "chartTokenAccessibility" = "ბოლო 12 თვის ტოკენების სვეტოვანი დიაგრამა";
 "chartCostAccessibility" = "ბოლო 12 თვის ხარჯის სვეტოვანი დიაგრამა";
 "chartTokenAccessibilityFormat" = "%@ — ტოკენების სვეტოვანი დიაგრამა";

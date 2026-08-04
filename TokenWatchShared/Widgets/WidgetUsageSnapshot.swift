@@ -67,6 +67,8 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
     let datedUsageTitle: String
     let updatedThroughTitle: String
     let notReadyMessage: String
+    let monthlyBudgetTitle: String
+    let monthlyBudgetUnconfiguredMessage: String
     let weeklySummaryTitle: String
     let projectFocusTitle: String
     let projectFocusNoDataMessage: String
@@ -79,17 +81,21 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
         datedUsageTitle: String,
         updatedThroughTitle: String,
         notReadyMessage: String,
-        weeklySummaryTitle: String = "Last 7 Days",
-        projectFocusTitle: String = "Project Usage",
-        projectFocusNoDataMessage: String = "No project data",
-        modelFocusTitle: String = "Primary Model",
-        modelFocusNoDataMessage: String = "No model data"
+        monthlyBudgetTitle: String,
+        monthlyBudgetUnconfiguredMessage: String,
+        weeklySummaryTitle: String,
+        projectFocusTitle: String,
+        projectFocusNoDataMessage: String,
+        modelFocusTitle: String,
+        modelFocusNoDataMessage: String
     ) {
         self.heatmapTitle = heatmapTitle
         self.todayUsageTitle = todayUsageTitle
         self.datedUsageTitle = datedUsageTitle
         self.updatedThroughTitle = updatedThroughTitle
         self.notReadyMessage = notReadyMessage
+        self.monthlyBudgetTitle = monthlyBudgetTitle
+        self.monthlyBudgetUnconfiguredMessage = monthlyBudgetUnconfiguredMessage
         self.weeklySummaryTitle = weeklySummaryTitle
         self.projectFocusTitle = projectFocusTitle
         self.projectFocusNoDataMessage = projectFocusNoDataMessage

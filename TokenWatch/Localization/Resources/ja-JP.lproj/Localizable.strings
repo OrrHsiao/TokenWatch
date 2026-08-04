@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@の使用量";
 "widgetUpdatedThroughTitleFormat" = "%@ まで更新";
 "widgetNotReadyMessage" = "TokenWatchを開いてデータを更新";
+"widgetMonthlyBudgetTitle" = "月間予算";
+"widgetMonthlyBudgetSettingsTitle" = "月間予算（USD）";
+"widgetMonthlyBudgetForecastTitle" = "月末予測";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatchで月間予算を設定";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "予算を超過する見込みです";
 "chartTokenAccessibility" = "過去12か月の token 棒グラフ";
 "chartCostAccessibility" = "過去12か月のコスト棒グラフ";
 "chartTokenAccessibilityFormat" = "%@ token 棒グラフ";

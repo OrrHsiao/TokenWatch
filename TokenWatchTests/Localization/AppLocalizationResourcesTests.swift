@@ -114,42 +114,42 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 166 个 key")
+    @Test("迁移的十二份资源均直接定义全部 171 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 166)
+        #expect(AppStringKey.allCases.count == 171)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
-    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 166 个 key")
+    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 171 个 key")
     func westernAndRegionalResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 166)
+        #expect(AppStringKey.allCases.count == 171)
         try assertCompleteResources([
             "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
             "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
         ])
     }
 
-    @Test("中东欧拉丁文字的十一份资源均直接定义全部 166 个 key")
+    @Test("中东欧拉丁文字的十一份资源均直接定义全部 171 个 key")
     func centralEuropeanLatinResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 166)
+        #expect(AppStringKey.allCases.count == 171)
         try assertCompleteResources(centralEuropeanLatinLocaleIdentifiers)
     }
 
-    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 166 个 key")
+    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 171 个 key")
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 166)
+        #expect(AppStringKey.allCases.count == 171)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
     }
 
-    @Test("中东与南亚文字的十二份资源均直接定义全部 166 个 key")
+    @Test("中东与南亚文字的十二份资源均直接定义全部 171 个 key")
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 166)
+        #expect(AppStringKey.allCases.count == 171)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
-    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 166 个 key")
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 171 个 key")
     func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 166)
+        #expect(AppStringKey.allCases.count == 171)
         try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
     }
 
@@ -234,6 +234,21 @@ struct AppLocalizationResourcesTests {
                     #expect(signature == expectedFormatSignature)
                 }
             }
+        }
+    }
+
+    @Test("月度预算标题与 Widget 无快照回退文案保持一致")
+    func monthlyBudgetTitleMatchesWidgetFallback() throws {
+        let catalog = try widgetExtensionLocalizationCatalog()
+        let titles = try #require(catalog["widget.monthlyBudget.name"])
+
+        for language in AppLanguage.allCases {
+            let widgetLocale = widgetExtensionLocaleIdentifier(for: language)
+            let fallbackTitle = try #require(titles[widgetLocale])
+            #expect(
+                AppStrings.text(.widgetMonthlyBudgetTitle, language: language) == fallbackTitle,
+                "Monthly budget title differs between host and Widget fallback for \(language.rawValue)"
+            )
         }
     }
 
@@ -587,8 +602,13 @@ private func widgetExtensionLocalizationCatalog() throws -> [String: [String: St
     }
 
     return try strings.reduce(into: [String: [String: String]]()) { result, entry in
-        guard let value = entry.value as? [String: Any],
-              let localizations = value["localizations"] as? [String: Any] else {
+        guard let value = entry.value as? [String: Any] else {
+            throw LocalizationResourceTestError.invalidWidgetLocalizationCatalog
+        }
+        guard let rawLocalizations = value["localizations"] else {
+            return
+        }
+        guard let localizations = rawLocalizations as? [String: Any] else {
             throw LocalizationResourceTestError.invalidWidgetLocalizationCatalog
         }
         let values = try localizations.reduce(into: [String: String]()) { localizedValues, localization in

@@ -68,7 +68,9 @@ struct WidgetGalleryViewControllerTests {
 
         #expect(textValues(in: controller.view).contains("小组件"))
         #expect(textValues(in: controller.view).contains("查看 TokenWatch 当前支持的小组件示例样式。"))
-        #expect(view(identifier: "DashboardWidgetsScrollView", in: controller.view) is NSScrollView)
+        let widgetsScrollView = try #require(
+            view(identifier: "DashboardWidgetsScrollView", in: controller.view) as? NSScrollView
+        )
         let heatmapPreview = try #require(
             view(identifier: "DashboardWidgetPreview.heatmap", in: controller.view)
         )
@@ -122,6 +124,36 @@ struct WidgetGalleryViewControllerTests {
         )
         let modelFocusContent = try #require(
             view(identifier: "DashboardWidgetPreview.modelFocus.content", in: controller.view)
+        )
+        let sectionFixtures: [(identifier: String, title: String, previews: [NSView])] = [
+            ("heatmap", "热力图", [heatmapPreview]),
+            ("hourlyLine", "趋势", [hourlyLinePreview]),
+            ("weeklySummary", "最近 7 天", [weeklySmallPreview, weeklyMediumPreview]),
+            ("todayAnomaly", "今日用量", [todayAnomalySmallPreview, todayAnomalyMediumPreview]),
+            ("monthlyBudget", "本月预算", [monthlyBudgetPreview]),
+            ("projectFocus", "项目消耗", [projectFocusPreview]),
+            ("modelFocus", "主模型", [modelFocusPreview]),
+        ]
+        for fixture in sectionFixtures {
+            let section = try #require(
+                view(identifier: "DashboardWidgetSection.\(fixture.identifier)", in: controller.view)
+            )
+            let title = try #require(
+                view(
+                    identifier: "DashboardWidgetSectionTitle.\(fixture.identifier)",
+                    in: controller.view
+                ) as? NSTextField
+            )
+            #expect(title.stringValue == fixture.title)
+            for preview in fixture.previews {
+                #expect(contains(preview, in: section))
+            }
+        }
+        #expect(heatmapPreview.superview !== hourlyLinePreview.superview)
+        #expect(projectFocusPreview.superview !== modelFocusPreview.superview)
+        #expect(
+            (widgetsScrollView.documentView?.frame.height ?? 0)
+                > widgetsScrollView.contentView.bounds.height
         )
         let mediumSize = WidgetGalleryViewController.systemMediumPreviewSize
         let smallSize = WidgetGalleryViewController.systemSmallPreviewSize
@@ -206,6 +238,10 @@ struct WidgetGalleryViewControllerTests {
     private func textValues(in root: NSView) -> [String] {
         let current = (root as? NSTextField).map { [$0.stringValue] } ?? []
         return current + root.subviews.flatMap(textValues)
+    }
+
+    private func contains(_ view: NSView, in ancestor: NSView) -> Bool {
+        view === ancestor || ancestor.subviews.contains { contains(view, in: $0) }
     }
 
     private func assertSize(_ view: NSView, equals expected: CGSize) {

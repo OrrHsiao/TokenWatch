@@ -1,18 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "—" : {
-
-    },
-    "·" : {
-
-    },
-    "Day" : {
-
-    },
-    "Tokens" : {
-
-    },
     "widget.dated.format" : {
       "localizations" : {
         "am" : {
@@ -3148,19 +3136,19 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "每月预算"
+            "value" : "本月预算"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "每月預算"
+            "value" : "本月預算"
           }
         },
         "zh-HK" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "每月預算"
+            "value" : "本月預算"
           }
         }
       }

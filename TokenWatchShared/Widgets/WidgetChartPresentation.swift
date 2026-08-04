@@ -230,7 +230,7 @@ enum WidgetChartPresentationBuilder {
             return monthlyBudget(snapshot: snapshot, isStale: true)
         case .notReady(let text):
             return WidgetMonthlyBudgetPresentation(
-                title: "Monthly Budget",
+                title: text.monthlyBudgetTitle,
                 subtitle: nil,
                 spentText: WidgetCostFormatter.usd(0),
                 budgetText: nil,
@@ -239,7 +239,7 @@ enum WidgetChartPresentationBuilder {
                 isForecastOverBudget: false,
                 message: text.notReadyMessage,
                 accessibilityLabel: aggregateLabel([
-                    "Monthly Budget",
+                    text.monthlyBudgetTitle,
                     text.notReadyMessage,
                     WidgetCostFormatter.usd(0),
                 ])
@@ -445,18 +445,18 @@ enum WidgetChartPresentationBuilder {
     ) -> WidgetMonthlyBudgetPresentation {
         guard let budgetSnapshot = snapshot.monthlyBudget else {
             return WidgetMonthlyBudgetPresentation(
-                title: "Monthly Budget",
+                title: snapshot.localizedText.monthlyBudgetTitle,
                 subtitle: isStale ? snapshot.localizedText.updatedThroughTitle : nil,
                 spentText: WidgetCostFormatter.usd(0),
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
                 isForecastOverBudget: false,
-                message: "Set a monthly budget in TokenWatch",
+                message: snapshot.localizedText.monthlyBudgetUnconfiguredMessage,
                 accessibilityLabel: aggregateLabel([
-                    "Monthly Budget",
+                    snapshot.localizedText.monthlyBudgetTitle,
                     WidgetCostFormatter.usd(0),
-                    "Set a monthly budget in TokenWatch",
+                    snapshot.localizedText.monthlyBudgetUnconfiguredMessage,
                 ])
             )
         }

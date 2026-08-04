@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "استخدام %@";
 "widgetUpdatedThroughTitleFormat" = "تم التحديث حتى %@";
 "widgetNotReadyMessage" = "افتح TokenWatch لتحديث البيانات";
+"widgetMonthlyBudgetTitle" = "الميزانية الشهرية";
+"widgetMonthlyBudgetSettingsTitle" = "الميزانية الشهرية (USD)";
+"widgetMonthlyBudgetForecastTitle" = "توقعات نهاية الشهر";
+"widgetMonthlyBudgetUnconfiguredMessage" = "حدّد ميزانية شهرية في TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "من المتوقع تجاوز الميزانية";
 "chartTokenAccessibility" = "مخطط أعمدة لاستخدام الرموز خلال آخر 12 شهرًا";
 "chartCostAccessibility" = "مخطط أعمدة للتكلفة خلال آخر 12 شهرًا";
 "chartTokenAccessibilityFormat" = "مخطط أعمدة للرموز للفترة %@";

@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@-ийн хэрэглээ";
 "widgetUpdatedThroughTitleFormat" = "%@ хүртэл шинэчилсэн";
 "widgetNotReadyMessage" = "Өгөгдлийг шинэчлэхийн тулд TokenWatch-ийг нээнэ үү";
+"widgetMonthlyBudgetTitle" = "Сарын төсөв";
+"widgetMonthlyBudgetSettingsTitle" = "Сарын төсөв (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Сарын эцсийн таамаглал";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch-д сарын төсөв тохируулна уу";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Төсөв хэтрэх төлөвтэй";
 "chartTokenAccessibility" = "Сүүлийн 12 сарын токены баганан график";
 "chartCostAccessibility" = "Сүүлийн 12 сарын зардлын баганан график";
 "chartTokenAccessibilityFormat" = "%@ — токены баганан график";

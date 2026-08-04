@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ 用量";
 "widgetUpdatedThroughTitleFormat" = "更新至 %@";
 "widgetNotReadyMessage" = "開啟 TokenWatch 重新整理資料";
+"widgetMonthlyBudgetTitle" = "本月預算";
+"widgetMonthlyBudgetSettingsTitle" = "每月預算（USD）";
+"widgetMonthlyBudgetForecastTitle" = "月底預估";
+"widgetMonthlyBudgetUnconfiguredMessage" = "在 TokenWatch 中設定每月預算";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "預計超出預算";
 "chartTokenAccessibility" = "最近 12 個月 token 長條圖";
 "chartCostAccessibility" = "最近 12 個月費用長條圖";
 "chartTokenAccessibilityFormat" = "%@ token 長條圖";

@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Utilizarea din %@";
 "widgetUpdatedThroughTitleFormat" = "Actualizat până la %@";
 "widgetNotReadyMessage" = "Deschideți TokenWatch pentru a actualiza datele";
+"widgetMonthlyBudgetTitle" = "Buget lunar";
+"widgetMonthlyBudgetSettingsTitle" = "Buget lunar (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Estimare pentru sfârșitul lunii";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Setați un buget lunar în TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Se estimează depășirea bugetului";
 "chartTokenAccessibility" = "Grafic cu bare pentru tokenurile din ultimele 12 luni";
 "chartCostAccessibility" = "Grafic cu bare pentru costurile din ultimele 12 luni";
 "chartTokenAccessibilityFormat" = "%@ — grafic cu bare pentru tokenuri";

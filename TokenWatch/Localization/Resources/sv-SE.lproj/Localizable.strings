@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Användning den %@";
 "widgetUpdatedThroughTitleFormat" = "Uppdaterad till och med %@";
 "widgetNotReadyMessage" = "Öppna TokenWatch för att uppdatera data";
+"widgetMonthlyBudgetTitle" = "Månadsbudget";
+"widgetMonthlyBudgetSettingsTitle" = "Månadsbudget (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Prognos vid månadens slut";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Ange en månadsbudget i TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Budgeten beräknas överskridas";
 "chartTokenAccessibility" = "Stapeldiagram över tokenanvändning de senaste 12 månaderna";
 "chartCostAccessibility" = "Stapeldiagram över kostnader de senaste 12 månaderna";
 "chartTokenAccessibilityFormat" = "Stapeldiagram över tokenanvändning — %@";

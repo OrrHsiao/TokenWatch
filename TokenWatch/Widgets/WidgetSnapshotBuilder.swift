@@ -47,6 +47,7 @@ enum WidgetSnapshotBuilder {
         )
         let dateText = localizedMonthDay(now, calendar: calendar, language: language)
         let localDayKey = dayKey(now, calendar: calendar)
+        let monthlyBudgetCopy = MonthlyBudgetCopy.make(language: language)
 
         return WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
@@ -64,6 +65,8 @@ enum WidgetSnapshotBuilder {
                     dateText
                 ),
                 notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language),
+                monthlyBudgetTitle: monthlyBudgetCopy.title,
+                monthlyBudgetUnconfiguredMessage: monthlyBudgetCopy.unconfiguredMessage,
                 weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language),
                 projectFocusTitle: AppStrings.text(.dashboardProjectUsageTitle, language: language),
                 projectFocusNoDataMessage: AppStrings.text(.dashboardNoProjectData, language: language),
@@ -93,7 +96,7 @@ enum WidgetSnapshotBuilder {
                 states: states,
                 now: now,
                 calendar: calendar,
-                language: language,
+                copy: monthlyBudgetCopy,
                 monthlyBudgetUSD: monthlyBudgetUSD
             ),
             projectFocus: makeProjectFocus(
@@ -199,7 +202,7 @@ enum WidgetSnapshotBuilder {
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         now: Date,
         calendar: Calendar,
-        language: AppLanguage,
+        copy: MonthlyBudgetCopy,
         monthlyBudgetUSD: Double?
     ) -> WidgetMonthlyBudgetSnapshot {
         let monthKey = monthKey(now, calendar: calendar)
@@ -226,8 +229,6 @@ enum WidgetSnapshotBuilder {
         let budgetUSD = monthlyBudgetUSD.flatMap {
             $0.isFinite && $0 > 0 ? $0 : nil
         }
-        let copy = MonthlyBudgetCopy.make(language: language)
-
         return WidgetMonthlyBudgetSnapshot(
             monthKey: monthKey,
             spentUSD: spentUSD,

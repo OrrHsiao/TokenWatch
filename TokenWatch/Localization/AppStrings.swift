@@ -153,6 +153,11 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case widgetDatedUsageTitleFormat
     case widgetUpdatedThroughTitleFormat
     case widgetNotReadyMessage
+    case widgetMonthlyBudgetTitle
+    case widgetMonthlyBudgetSettingsTitle
+    case widgetMonthlyBudgetForecastTitle
+    case widgetMonthlyBudgetUnconfiguredMessage
+    case widgetMonthlyBudgetForecastOverBudgetMessage
     case chartTokenAccessibility
     case chartCostAccessibility
     case chartTokenAccessibilityFormat

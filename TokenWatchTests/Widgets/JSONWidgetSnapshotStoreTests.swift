@@ -195,6 +195,12 @@ struct JSONWidgetSnapshotStoreTests {
             ("mismatched day keys", makeValidSnapshot(
                 hourlyDayKey: "2026-07-14"
             )),
+            ("blank monthly budget title fallback", makeValidSnapshot(
+                monthlyBudgetTitle: " "
+            )),
+            ("blank monthly budget setup fallback", makeValidSnapshot(
+                monthlyBudgetUnconfiguredMessage: " "
+            )),
             ("blank weekly summary title", makeValidSnapshot(
                 weeklySummaryTitle: "  "
             )),
@@ -261,6 +267,8 @@ struct JSONWidgetSnapshotStoreTests {
         hourlyTotalTokens: Int? = nil,
         maxHourlyTokens: Int = 42,
         hourlyDayKey: String = "2026-07-15",
+        monthlyBudgetTitle: String = "本月预算",
+        monthlyBudgetUnconfiguredMessage: String = "在 TokenWatch 中设置月度预算",
         weeklySummaryTitle: String = "最近 7 天",
         monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil,
         projectFocus: WidgetProjectFocusSnapshot? = nil,
@@ -276,7 +284,13 @@ struct JSONWidgetSnapshotStoreTests {
                 datedUsageTitle: "7/15 用量",
                 updatedThroughTitle: "更新至 7/15",
                 notReadyMessage: "打开 TokenWatch 刷新数据",
-                weeklySummaryTitle: weeklySummaryTitle
+                monthlyBudgetTitle: monthlyBudgetTitle,
+                monthlyBudgetUnconfiguredMessage: monthlyBudgetUnconfiguredMessage,
+                weeklySummaryTitle: weeklySummaryTitle,
+                projectFocusTitle: "项目消耗",
+                projectFocusNoDataMessage: "暂无项目数据",
+                modelFocusTitle: "主模型",
+                modelFocusNoDataMessage: "暂无模型数据"
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: heatmapTotalTokens ?? totalTokens,

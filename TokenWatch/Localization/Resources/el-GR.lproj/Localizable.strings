@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Χρήση στις %@";
 "widgetUpdatedThroughTitleFormat" = "Ενημερώθηκε έως %@";
 "widgetNotReadyMessage" = "Ανοίξτε το TokenWatch για ανανέωση των δεδομένων";
+"widgetMonthlyBudgetTitle" = "Μηνιαίος προϋπολογισμός";
+"widgetMonthlyBudgetSettingsTitle" = "Μηνιαίος προϋπολογισμός (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Πρόβλεψη για το τέλος του μήνα";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Ορίστε μηνιαίο προϋπολογισμό στο TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Προβλέπεται υπέρβαση του προϋπολογισμού";
 "chartTokenAccessibility" = "Ραβδόγραμμα χρήσης token για τους τελευταίους 12 μήνες";
 "chartCostAccessibility" = "Ραβδόγραμμα κόστους για τους τελευταίους 12 μήνες";
 "chartTokenAccessibilityFormat" = "%@ — ραβδόγραμμα χρήσης token";
