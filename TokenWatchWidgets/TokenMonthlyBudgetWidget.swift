@@ -31,7 +31,7 @@ struct TokenMonthlyBudgetWidgetView: View {
 
             if let budgetText = presentation.budgetText,
                let progress = presentation.progress {
-                Text("\(presentation.spentText) / \(budgetText)")
+                Text(verbatim: "\(presentation.spentText) / \(budgetText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -87,7 +87,9 @@ struct TokenMonthlyBudgetWidget: Widget {
             TokenMonthlyBudgetWidgetView(entry: entry)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName("Monthly Budget")
+        .configurationDisplayName(
+            String(localized: "widget.monthlyBudget.name")
+        )
         .supportedFamilies([.systemMedium])
     }
 }
