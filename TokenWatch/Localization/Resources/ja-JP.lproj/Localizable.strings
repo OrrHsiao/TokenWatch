@@ -160,3 +160,7 @@
 "errorOpenCodeDatabaseNotFoundFormat" = "opencode.db が見つかりません: %@";
 "errorOpenCodeDatabaseOpenFailedFormat" = "opencode.db を開けません (SQLite code=%d): %@";
 "errorOpenCodeDatabaseQueryFailedFormat" = "opencode.db のクエリに失敗しました (SQLite code=%d): %@";
+"commonUnknown" = "不明";
+"errorDirectoryNotDirectoryFormat" = "選択した場所はフォルダではありません: %@";
+"errorCannotEnumerateDirectoryFormat" = "フォルダを列挙できません: %@";
+"errorProviderDidNotReturnEntries" = "プロバイダが要求された使用量エントリを返しませんでした。";

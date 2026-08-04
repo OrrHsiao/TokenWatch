@@ -233,9 +233,9 @@ struct TokenWatchTests {
         let codexIndicator = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceStatus.codex"))
         let openCodeIndicator = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceStatus.opencode"))
 
-        #expect(claudeIndicator.accessibilityValue() as? String == "authorized")
-        #expect(codexIndicator.accessibilityValue() as? String == "unauthorized")
-        #expect(openCodeIndicator.accessibilityValue() as? String == "unauthorized")
+        #expect(claudeIndicator.accessibilityValue() as? String == "已授权")
+        #expect(codexIndicator.accessibilityValue() as? String == "未授权")
+        #expect(openCodeIndicator.accessibilityValue() as? String == "未授权")
 
         let claudeRow = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceRow.claude"))
         let codexRow = try #require(viewController.view.firstDescendant(identifier: "DashboardDataSourceRow.codex"))
@@ -296,7 +296,7 @@ struct TokenWatchTests {
         #expect(!loadingOverlay.isHidden)
         #expect(loadingOverlay.frame == mainContent.frame)
         #expect(loadingOverlay.material == .hudWindow)
-        #expect(loadingOverlay.debugMessage == "正在更新中，首次加载耗时较久，请耐心等待～")
+        #expect(loadingOverlay.debugMessage == "正在加载用量数据...")
         #expect(loadingOverlay.debugSymbolName == StatusBarLoadingAnimation.symbolNames.first)
 
         states[.claude]?.isLoading = true
@@ -1571,8 +1571,8 @@ struct TokenWatchTests {
         #expect(trendView.debugLineInterpolationMethodName == "catmullRom")
         #expect(trendView.debugAreaGradientScaleModeName == "dailyMaximum")
         #expect(trendView.debugAreaStackingModeName == "unstacked")
-        #expect(trendView.debugAreaLayerOrder == ["Token", "Cost"])
-        #expect(trendView.debugTrendSeriesKeys == ["Token", "Cost"])
+        #expect(trendView.debugAreaLayerOrder == ["Token 消耗", "费用"])
+        #expect(trendView.debugTrendSeriesKeys == ["Token 消耗", "费用"])
         #expect(trendView.debugChartLegendVisibilityName == "hidden")
         #expect(trendView.debugTrendLegendPlacementName == "subtitleHeaderTrailing")
         #expect(trendView.debugTrendLegendTitles == ["Token 消耗", "费用"])

@@ -160,3 +160,7 @@
 "errorOpenCodeDatabaseNotFoundFormat" = "opencode.db introuvable : %@";
 "errorOpenCodeDatabaseOpenFailedFormat" = "Impossible d'ouvrir opencode.db (SQLite code=%d) : %@";
 "errorOpenCodeDatabaseQueryFailedFormat" = "Échec de la requête opencode.db (SQLite code=%d) : %@";
+"commonUnknown" = "Inconnu";
+"errorDirectoryNotDirectoryFormat" = "L’emplacement sélectionné n’est pas un dossier : %@";
+"errorCannotEnumerateDirectoryFormat" = "Impossible d’énumérer le dossier : %@";
+"errorProviderDidNotReturnEntries" = "Le fournisseur n’a pas renvoyé les entrées d’utilisation demandées.";

@@ -520,6 +520,7 @@ final class StatusPopoverViewController: NSViewController {
     private func render() {
         let now = nowProvider()
         let language = languageSettings.resolvedLanguage
+        loadingOverlay.update(language: language)
         let snapshot = CalendarHeatmapBuilder.build(
             states: viewModel.states,
             month: now,
@@ -717,10 +718,8 @@ private final class SummaryMetricCardView: NSView {
 /// 动画帧，使首次扫描期间的反馈与菜单栏图标保持一致。
 @MainActor
 final class LoadingOverlayView: NSVisualEffectView {
-    private static let loadingMessage = "正在更新中，首次加载耗时较久，请耐心等待～"
-
     private let imageView = NSImageView()
-    private let messageLabel = NSTextField(labelWithString: loadingMessage)
+    private let messageLabel = NSTextField(labelWithString: "")
     private var animationTimer: Timer?
     private var animationFrameIndex = 0
     private var isLoading = false
@@ -736,7 +735,7 @@ final class LoadingOverlayView: NSVisualEffectView {
         isEmphasized = true
         isHidden = true
         translatesAutoresizingMaskIntoConstraints = false
-        setAccessibilityLabel(Self.loadingMessage)
+        update(language: .en)
 
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -788,6 +787,16 @@ final class LoadingOverlayView: NSVisualEffectView {
         }
     }
 
+    /// Updates visible and accessibility copy for the selected app language.
+    func update(language: AppLanguage) {
+        let message = AppStrings.text(.statusLoadingUsage, language: language)
+        messageLabel.stringValue = message
+        setAccessibilityLabel(message)
+        if isLoading {
+            renderAnimationFrame()
+        }
+    }
+
     private func startAnimation() {
         guard animationTimer == nil else { return }
 
@@ -817,7 +826,7 @@ final class LoadingOverlayView: NSVisualEffectView {
         let symbolName = StatusBarLoadingAnimation.symbolNames[animationFrameIndex]
         let image = NSImage(
             systemSymbolName: symbolName,
-            accessibilityDescription: Self.loadingMessage
+            accessibilityDescription: messageLabel.stringValue
         )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 42, weight: .regular))
         image?.isTemplate = true
         imageView.image = image

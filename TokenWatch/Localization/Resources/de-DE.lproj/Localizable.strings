@@ -160,3 +160,7 @@
 "errorOpenCodeDatabaseNotFoundFormat" = "opencode.db wurde nicht gefunden: %@";
 "errorOpenCodeDatabaseOpenFailedFormat" = "opencode.db konnte nicht geöffnet werden (SQLite code=%d): %@";
 "errorOpenCodeDatabaseQueryFailedFormat" = "Abfrage von opencode.db fehlgeschlagen (SQLite code=%d): %@";
+"commonUnknown" = "Unbekannt";
+"errorDirectoryNotDirectoryFormat" = "Der ausgewählte Ort ist kein Ordner: %@";
+"errorCannotEnumerateDirectoryFormat" = "Der Ordner kann nicht aufgelistet werden: %@";
+"errorProviderDidNotReturnEntries" = "Der Anbieter hat die angeforderten Nutzungsdaten nicht zurückgegeben.";

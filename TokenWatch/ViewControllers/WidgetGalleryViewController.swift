@@ -64,7 +64,7 @@ final class WidgetGalleryViewController: NSViewController {
         )
         hourlyLinePreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
-                WidgetGalleryHourlyLinePreview(presentation: hourlyLine)
+                WidgetGalleryHourlyLinePreview(presentation: hourlyLine, language: language)
             }
         )
     }
@@ -395,6 +395,7 @@ private struct WidgetGalleryHeatmapPreview: View {
 
 private struct WidgetGalleryHourlyLinePreview: View {
     let presentation: WidgetHourlyLinePresentation
+    let language: AppLanguage
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -407,16 +408,16 @@ private struct WidgetGalleryHourlyLinePreview: View {
             Chart {
                 ForEach(presentation.points) { point in
                     AreaMark(
-                        x: .value("Hour", point.hour),
-                        y: .value("Tokens", point.totalTokens)
+                        x: .value(hourAxisValueName, point.hour),
+                        y: .value(tokenAxisValueName, point.totalTokens)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(areaGradient)
                 }
                 ForEach(presentation.points) { point in
                     LineMark(
-                        x: .value("Hour", point.hour),
-                        y: .value("Tokens", point.totalTokens)
+                        x: .value(hourAxisValueName, point.hour),
+                        y: .value(tokenAxisValueName, point.totalTokens)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(Color.accentColor)
@@ -428,8 +429,8 @@ private struct WidgetGalleryHourlyLinePreview: View {
                 }
                 if let point = presentation.currentPoint {
                     PointMark(
-                        x: .value("Hour", point.hour),
-                        y: .value("Tokens", point.totalTokens)
+                        x: .value(hourAxisValueName, point.hour),
+                        y: .value(tokenAxisValueName, point.totalTokens)
                     )
                     .foregroundStyle(Color.accentColor)
                     .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
@@ -443,7 +444,7 @@ private struct WidgetGalleryHourlyLinePreview: View {
                     AxisTick()
                     AxisValueLabel {
                         if let hour = value.as(Int.self) {
-                            Text("\(hour)").font(.system(size: 8))
+                            Text(verbatim: "\(hour)").font(.system(size: 8))
                         }
                     }
                 }
@@ -487,5 +488,13 @@ private struct WidgetGalleryHourlyLinePreview: View {
             startPoint: .top,
             endPoint: .bottom
         )
+    }
+
+    private var hourAxisValueName: String {
+        AppStrings.text(.recentDetailsTime, language: language)
+    }
+
+    private var tokenAxisValueName: String {
+        AppStrings.text(.recentDetailsTokens, language: language)
     }
 }

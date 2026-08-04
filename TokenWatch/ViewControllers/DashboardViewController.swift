@@ -1354,13 +1354,15 @@ final class DashboardViewController: NSViewController {
                 makeSessionIDCell(row.sessionID, rowIndex: index, width: Self.sessionTableColumnWidths[1]),
                 makeSessionProviderCell(row.provider, width: Self.sessionTableColumnWidths[2]),
                 makeSessionTextCell(
-                    text: row.projectPath.map(DashboardRangeSnapshot.displayProjectName) ?? "unknown",
+                    text: row.projectPath.map {
+                        DashboardRangeSnapshot.displayProjectName($0, language: language)
+                    } ?? localized(.commonUnknown),
                     width: Self.sessionTableColumnWidths[3],
                     font: .systemFont(ofSize: 12),
                     color: DashboardPalette.secondaryText
                 ),
                 makeSessionTextCell(
-                    text: DashboardRangeSnapshot.modelText(for: row),
+                    text: DashboardRangeSnapshot.modelText(for: row, language: language),
                     width: Self.sessionTableColumnWidths[4],
                     font: .systemFont(ofSize: 12, weight: .medium),
                     color: DashboardPalette.secondaryText
@@ -1752,6 +1754,7 @@ final class DashboardViewController: NSViewController {
 
     @MainActor
     private func render() {
+        initialLoadingOverlay.update(language: language)
         applyLocalizedText()
 
         let states = stateProvider()
@@ -1985,7 +1988,7 @@ final class DashboardViewController: NSViewController {
         let dot = DashboardDotView(
             color: isAuthorized ? DashboardPalette.green : DashboardPalette.statusInactive,
             accessibilityIdentifier: "DashboardDataSourceStatus.\(providerID.rawValue)",
-            accessibilityValue: isAuthorized ? "authorized" : "unauthorized"
+            accessibilityValue: statusText
         )
         dot.toolTip = statusText
         let row = NSStackView(views: [label, NSView(), dot])
@@ -2004,7 +2007,10 @@ final class DashboardViewController: NSViewController {
         let maxTokens = rows.map(\.totalTokens).max() ?? 0
         for (index, row) in rows.enumerated() {
             addFullWidthArrangedSubview(DashboardBarRowView(
-                title: row.modelName,
+                title: DashboardRangeSnapshot.localizedUnknownName(
+                    row.modelName,
+                    language: language
+                ),
                 value: formatInt(row.totalTokens),
                 fraction: fraction(row.totalTokens, max: maxTokens),
                 color: DashboardColors.modelColor(at: index)

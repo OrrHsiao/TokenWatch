@@ -370,8 +370,10 @@ struct DashboardRangeSnapshot {
         )
     }
 
-    static func modelText(for row: RecentSessionRow) -> String {
-        let model = row.primaryModel.isEmpty ? "-" : row.primaryModel
+    static func modelText(for row: RecentSessionRow, language: AppLanguage) -> String {
+        let model = row.primaryModel.isEmpty
+            ? "-"
+            : localizedUnknownName(row.primaryModel, language: language)
         guard row.additionalModelCount > 0 else { return model }
         return "\(model) +\(row.additionalModelCount)"
     }
@@ -404,8 +406,13 @@ struct DashboardRangeSnapshot {
             }
     }
 
-    static func displayProjectName(_ path: String) -> String {
+    static func displayProjectName(_ path: String, language: AppLanguage) -> String {
         DashboardProjectRows.displayName(for: path)
+            ?? AppStrings.text(.commonUnknown, language: language)
+    }
+
+    static func localizedUnknownName(_ name: String, language: AppLanguage) -> String {
+        name == "unknown" ? AppStrings.text(.commonUnknown, language: language) : name
     }
 
     private static func providerName(_ id: ProviderID) -> String {
@@ -498,8 +505,8 @@ private enum DashboardProjectRows {
         mergedDisplayTotals(projects.mapValues(\.totalTokens)).count
     }
 
-    static func displayName(for path: String) -> String {
-        displayNameOrNil(for: path) ?? "unknown"
+    static func displayName(for path: String) -> String? {
+        displayNameOrNil(for: path)
     }
 
     private static func displayNameOrNil(for path: String) -> String? {

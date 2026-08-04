@@ -39,12 +39,8 @@ private let validatedLocaleIdentifiers = migratedLocaleIdentifiers
     + middleEasternAndSouthAsianLocaleIdentifiers
     + africanSoutheastAsianAndHongKongLocaleIdentifiers
 
-private let directResourceKeys = AppStringKey.allCases.filter {
-    !AppStrings.englishFallbackKeys.contains($0)
-}
-
 private func resourceKeys(for localeIdentifier: String) -> [AppStringKey] {
-    migratedLocaleIdentifiers.contains(localeIdentifier) ? AppStringKey.allCases : directResourceKeys
+    AppStringKey.allCases
 }
 
 // 独立抄录产品设计冻结清单，避免测试从 AppLanguage 或分批数组继承同一处遗漏。
@@ -118,42 +114,42 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 162 个 key")
+    @Test("迁移的十二份资源均直接定义全部 166 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 162)
+        #expect(AppStringKey.allCases.count == 166)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
-    @Test("西欧、北欧与地区变体的十份资源均直接定义 135 个核心 key")
+    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 166 个 key")
     func westernAndRegionalResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 135)
+        #expect(AppStringKey.allCases.count == 166)
         try assertCompleteResources([
             "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
             "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
         ])
     }
 
-    @Test("中东欧拉丁文字的十一份资源均直接定义 135 个核心 key")
+    @Test("中东欧拉丁文字的十一份资源均直接定义全部 166 个 key")
     func centralEuropeanLatinResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 135)
+        #expect(AppStringKey.allCases.count == 166)
         try assertCompleteResources(centralEuropeanLatinLocaleIdentifiers)
     }
 
-    @Test("东欧、高加索与中亚文字的十份资源均直接定义 135 个核心 key")
+    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 166 个 key")
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 135)
+        #expect(AppStringKey.allCases.count == 166)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
     }
 
-    @Test("中东与南亚文字的十二份资源均直接定义 135 个核心 key")
+    @Test("中东与南亚文字的十二份资源均直接定义全部 166 个 key")
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 135)
+        #expect(AppStringKey.allCases.count == 166)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
-    @Test("非洲、东南亚与香港中文的十份资源均直接定义 135 个核心 key")
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 166 个 key")
     func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
-        #expect(directResourceKeys.count == 135)
+        #expect(AppStringKey.allCases.count == 166)
         try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
     }
 
@@ -210,6 +206,8 @@ struct AppLocalizationResourcesTests {
             "widget.updated.format",
         ])
         let expectedFormatSignature = [FormatArgument(position: 1, type: "@")]
+
+        #expect(Set(catalog.keys) == Set(expectedKeys))
 
         for key in expectedKeys {
             let localizations = try #require(catalog[key])
@@ -312,20 +310,6 @@ struct AppLocalizationResourcesTests {
         }
     }
 
-    @Test("新增 locale 的目录管理文案由英文资源回退")
-    func extensionKeysAreAbsentOnlyFromNewLocaleResources() throws {
-        let resources = try loadResources(validatedLocaleIdentifiers)
-        let english = try requiredResource("en-US", in: resources)
-
-        for localeIdentifier in validatedLocaleIdentifiers where !migratedLocaleIdentifiers.contains(localeIdentifier) {
-            let resource = try requiredResource(localeIdentifier, in: resources)
-            for key in AppStrings.englishFallbackKeys {
-                #expect(resource.values[key.rawValue] == nil)
-                #expect(english.values[key.rawValue] != nil)
-            }
-        }
-    }
-
     @Test("英文复用仅限固定术语或逐 key 人工许可")
     func englishReuseHasExactReviewedAllowlist() throws {
         let resources = try loadResources(validatedLocaleIdentifiers)
@@ -354,9 +338,20 @@ struct AppLocalizationResourcesTests {
             validatedLocaleIdentifiers: validatedLocaleIdentifiers,
             requiredPairs: requiredAllowlistPairs
         )
+        let configuredAllowlistPairs = Set(localizationEnglishReuseAllowlist.map {
+            LocalizationKey(localeIdentifier: $0.localeIdentifier, key: $0.key)
+        })
+        let missingAllowlistEntries = requiredAllowlistPairs
+            .subtracting(configuredAllowlistPairs)
+            .map { "\($0.localeIdentifier)/\($0.key.rawValue)" }
+            .sorted()
+        let staleAllowlistEntries = configuredAllowlistPairs
+            .subtracting(requiredAllowlistPairs)
+            .map { "\($0.localeIdentifier)/\($0.key.rawValue)" }
+            .sorted()
         #expect(
             validationIssues.isEmpty,
-            "English reuse allowlist is invalid: \(validationIssues)"
+            "English reuse allowlist is invalid: \(validationIssues); missing=\(missingAllowlistEntries); stale=\(staleAllowlistEntries)"
         )
     }
 
@@ -484,6 +479,8 @@ private let expectedFormatSignatures: [AppStringKey: [FormatArgument]] = [
     .widgetUpdatedThroughTitleFormat: [.init(position: 1, type: "@")],
     .errorCannotAccessProviderDirectoryFormat: [.init(position: 1, type: "@")],
     .errorProviderDirectoryAuthorizationFailedFormat: [.init(position: 1, type: "@")],
+    .errorDirectoryNotDirectoryFormat: [.init(position: 1, type: "@")],
+    .errorCannotEnumerateDirectoryFormat: [.init(position: 1, type: "@")],
     .errorOpenCodeDatabaseNotFoundFormat: [.init(position: 1, type: "@")],
     .errorOpenCodeDatabaseOpenFailedFormat: [
         .init(position: 1, type: "d"), .init(position: 2, type: "@"),
@@ -495,7 +492,11 @@ private let expectedFormatSignatures: [AppStringKey: [FormatArgument]] = [
 
 private let fixedTerms = [
     "AI Token Watch", "Claude Code", "opencode.db", "Codex", "SQLite", "opencode", "Tokens", "Token",
+    "printenv", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "opencode db path", ".claude", ".codex",
 ]
+
+// 目录中的固定子路径可能因语言而显示为原名或译名；仅在英文短语复用扫描时忽略它们。
+private let englishReuseIgnoredTerms = fixedTerms + ["projects", "sessions", "archived_sessions"]
 
 private func assertCompleteResources(_ localeIdentifiers: [String]) throws {
     let resources = try loadResources(localeIdentifiers)
@@ -580,7 +581,6 @@ private func widgetExtensionLocalizationCatalog() throws -> [String: [String: St
     }
 
     return try strings.reduce(into: [String: [String: String]]()) { result, entry in
-        guard entry.key.hasPrefix("widget.") else { return }
         guard let value = entry.value as? [String: Any],
               let localizations = value["localizations"] as? [String: Any] else {
             throw LocalizationResourceTestError.invalidWidgetLocalizationCatalog
@@ -825,7 +825,7 @@ private func sharesEnglishWordNGram(englishValue: String, localizedValue: String
 
 private func wordBigrams(in value: String) -> Set<String> {
     var stripped = value
-    for term in fixedTerms.sorted(by: { $0.count > $1.count }) {
+    for term in englishReuseIgnoredTerms.sorted(by: { $0.count > $1.count }) {
         stripped = stripped.replacingOccurrences(of: term, with: " ")
     }
     stripped = stripped.replacingOccurrences(

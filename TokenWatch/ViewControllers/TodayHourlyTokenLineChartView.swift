@@ -181,7 +181,7 @@ private struct TodayHourlyTokenLineChartContent: View {
             ForEach(buckets) { bucket in
                 AreaMark(
                     x: .value(axisValueName, bucket.monthKey),
-                    y: .value("Tokens", Double(bucket.totalTokens))
+                    y: .value(tokenAxisValueName, Double(bucket.totalTokens))
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
                 .foregroundStyle(areaGradient)
@@ -190,7 +190,7 @@ private struct TodayHourlyTokenLineChartContent: View {
             ForEach(buckets) { bucket in
                 LineMark(
                     x: .value(axisValueName, bucket.monthKey),
-                    y: .value("Tokens", Double(bucket.totalTokens))
+                    y: .value(tokenAxisValueName, Double(bucket.totalTokens))
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
                 .foregroundStyle(Color(nsColor: .controlAccentColor))
@@ -205,7 +205,7 @@ private struct TodayHourlyTokenLineChartContent: View {
                 if bucket.isCurrentMonth {
                     PointMark(
                         x: .value(axisValueName, bucket.monthKey),
-                        y: .value("Tokens", Double(bucket.totalTokens))
+                        y: .value(tokenAxisValueName, Double(bucket.totalTokens))
                     )
                     .foregroundStyle(Color(nsColor: .controlAccentColor))
                     .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
@@ -245,6 +245,10 @@ private struct TodayHourlyTokenLineChartContent: View {
 
     private var axisValueName: String {
         AppStrings.text(.periodAxisValueName, language: language)
+    }
+
+    private var tokenAxisValueName: String {
+        AppStrings.text(.recentDetailsTokens, language: language)
     }
 
     private var areaGradient: LinearGradient {

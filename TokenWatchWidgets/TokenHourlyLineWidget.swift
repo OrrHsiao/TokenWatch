@@ -38,16 +38,16 @@ struct TokenHourlyLineWidgetView: View {
         Chart {
             ForEach(presentation.points) { point in
                 AreaMark(
-                    x: .value("Hour", point.hour),
-                    y: .value("Tokens", point.totalTokens)
+                    x: .value(hourAxisValueName, point.hour),
+                    y: .value(tokenAxisValueName, point.totalTokens)
                 )
                 .interpolationMethod(lineInterpolationMethod)
                 .foregroundStyle(areaGradient)
             }
             ForEach(presentation.points) { point in
                 LineMark(
-                    x: .value("Hour", point.hour),
-                    y: .value("Tokens", point.totalTokens)
+                    x: .value(hourAxisValueName, point.hour),
+                    y: .value(tokenAxisValueName, point.totalTokens)
                 )
                 .interpolationMethod(lineInterpolationMethod)
                 .foregroundStyle(Color.accentColor)
@@ -59,8 +59,8 @@ struct TokenHourlyLineWidgetView: View {
             }
             if let point = presentation.currentPoint {
                 PointMark(
-                    x: .value("Hour", point.hour),
-                    y: .value("Tokens", point.totalTokens)
+                    x: .value(hourAxisValueName, point.hour),
+                    y: .value(tokenAxisValueName, point.totalTokens)
                 )
                 .foregroundStyle(Color.accentColor)
                 .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
@@ -74,7 +74,7 @@ struct TokenHourlyLineWidgetView: View {
                 AxisTick()
                 AxisValueLabel {
                     if let hour = value.as(Int.self) {
-                        Text("\(hour)").font(.system(size: 8))
+                        Text(verbatim: "\(hour)").font(.system(size: 8))
                     }
                 }
             }
@@ -100,6 +100,14 @@ struct TokenHourlyLineWidgetView: View {
         case .catmullRom:
             return .catmullRom
         }
+    }
+
+    private var hourAxisValueName: String {
+        String(localized: "widget.hourly.name")
+    }
+
+    private var tokenAxisValueName: String {
+        String(localized: "widget.today.title")
     }
 
     private var areaGradient: LinearGradient {
