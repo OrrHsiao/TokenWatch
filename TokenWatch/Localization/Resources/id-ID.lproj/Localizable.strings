@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Penggunaan %@";
 "widgetUpdatedThroughTitleFormat" = "Diperbarui hingga %@";
 "widgetNotReadyMessage" = "Buka TokenWatch untuk menyegarkan data";
+"widgetMonthlyBudgetTitle" = "Anggaran Bulanan";
+"widgetMonthlyBudgetSettingsTitle" = "Anggaran bulanan (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Perkiraan akhir bulan";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Tetapkan anggaran bulanan di TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Diproyeksikan melebihi anggaran";
 "chartTokenAccessibility" = "Grafik batang token 12 bulan terakhir";
 "chartCostAccessibility" = "Grafik batang biaya 12 bulan terakhir";
 "chartTokenAccessibilityFormat" = "Grafik batang token %@";

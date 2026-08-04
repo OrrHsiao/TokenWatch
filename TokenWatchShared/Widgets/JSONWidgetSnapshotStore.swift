@@ -46,6 +46,12 @@ enum WidgetUsageSnapshotValidator {
               snapshot.heatmap.maxDailyTokens >= 0,
               snapshot.hourlyLine.totalTokens >= 0,
               snapshot.hourlyLine.maxHourlyTokens >= 0,
+              !snapshot.localizedText.monthlyBudgetTitle
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
+              !snapshot.localizedText.monthlyBudgetUnconfiguredMessage
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
               !snapshot.localizedText.weeklySummaryTitle
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .isEmpty,

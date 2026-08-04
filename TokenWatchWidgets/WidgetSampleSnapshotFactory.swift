@@ -21,6 +21,9 @@ enum WidgetFallbackLocalization {
                 dateText
             ),
             notReadyMessage: String(localized: "widget.notReady"),
+            monthlyBudgetTitle: String(localized: "widget.monthlyBudget.name"),
+            monthlyBudgetUnconfiguredMessage: String(localized: "widget.notReady"),
+            weeklySummaryTitle: String(localized: "widget.weekly.name"),
             projectFocusTitle: String(localized: "widget.projectFocus.name"),
             projectFocusNoDataMessage: String(localized: "widget.notReady"),
             modelFocusTitle: String(localized: "widget.modelFocus.name"),

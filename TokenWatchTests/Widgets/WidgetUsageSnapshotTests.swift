@@ -134,7 +134,14 @@ struct WidgetUsageSnapshotTests {
                 todayUsageTitle: "今日用量",
                 datedUsageTitle: "7/15 用量",
                 updatedThroughTitle: "更新至 7/15",
-                notReadyMessage: notReadyMessage
+                notReadyMessage: notReadyMessage,
+                monthlyBudgetTitle: "本月预算",
+                monthlyBudgetUnconfiguredMessage: "在 TokenWatch 中设置月度预算",
+                weeklySummaryTitle: "最近 7 天",
+                projectFocusTitle: "项目消耗",
+                projectFocusNoDataMessage: "暂无项目数据",
+                modelFocusTitle: "主模型",
+                modelFocusNoDataMessage: "暂无模型数据"
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: heatmapTotalTokens,

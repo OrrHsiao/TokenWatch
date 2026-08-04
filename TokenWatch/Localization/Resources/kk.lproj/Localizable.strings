@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ пайдалану";
 "widgetUpdatedThroughTitleFormat" = "%@ дейін жаңартылды";
 "widgetNotReadyMessage" = "Деректерді жаңарту үшін TokenWatch қолданбасын ашыңыз";
+"widgetMonthlyBudgetTitle" = "Айлық бюджет";
+"widgetMonthlyBudgetSettingsTitle" = "Айлық бюджет (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Ай соңына болжам";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch қолданбасында айлық бюджетті орнатыңыз";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Бюджеттен асып кету болжанады";
 "chartTokenAccessibility" = "Соңғы 12 айдағы токендердің бағандық диаграммасы";
 "chartCostAccessibility" = "Соңғы 12 айдағы шығындардың бағандық диаграммасы";
 "chartTokenAccessibilityFormat" = "%@ — токендердің бағандық диаграммасы";

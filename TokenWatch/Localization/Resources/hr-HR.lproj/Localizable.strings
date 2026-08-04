@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Korištenje za %@";
 "widgetUpdatedThroughTitleFormat" = "Ažurirano do %@";
 "widgetNotReadyMessage" = "Otvorite TokenWatch za osvježavanje podataka";
+"widgetMonthlyBudgetTitle" = "Mjesečni proračun";
+"widgetMonthlyBudgetSettingsTitle" = "Mjesečni proračun (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Procjena za kraj mjeseca";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Postavite mjesečni proračun u TokenWatchu";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Predviđa se prekoračenje proračuna";
 "chartTokenAccessibility" = "Stupčasti grafikon tokena za posljednjih 12 mjeseci";
 "chartCostAccessibility" = "Stupčasti grafikon troškova za posljednjih 12 mjeseci";
 "chartTokenAccessibilityFormat" = "%@ – stupčasti grafikon tokena";

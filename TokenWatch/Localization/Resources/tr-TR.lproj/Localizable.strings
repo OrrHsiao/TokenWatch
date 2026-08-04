@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ kullanımı";
 "widgetUpdatedThroughTitleFormat" = "%@ tarihine kadar güncellendi";
 "widgetNotReadyMessage" = "Verileri yenilemek için TokenWatch uygulamasını açın";
+"widgetMonthlyBudgetTitle" = "Aylık bütçe";
+"widgetMonthlyBudgetSettingsTitle" = "Aylık bütçe (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Ay sonu tahmini";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch'ta aylık bütçe belirleyin";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Bütçenin aşılması bekleniyor";
 "chartTokenAccessibility" = "Son 12 ayın token sütun grafiği";
 "chartCostAccessibility" = "Son 12 ayın maliyet sütun grafiği";
 "chartTokenAccessibilityFormat" = "Token sütun grafiği — %@";

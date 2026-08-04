@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Përdorimi më %@";
 "widgetUpdatedThroughTitleFormat" = "Përditësuar deri më %@";
 "widgetNotReadyMessage" = "Hap TokenWatch për të rifreskuar të dhënat";
+"widgetMonthlyBudgetTitle" = "Buxheti mujor";
+"widgetMonthlyBudgetSettingsTitle" = "Buxheti mujor (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Parashikim për fundin e muajit";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Caktoni një buxhet mujor në TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Parashikohet tejkalimi i buxhetit";
 "chartTokenAccessibility" = "Grafiku me shtylla i tokenëve për 12 muajt e fundit";
 "chartCostAccessibility" = "Grafiku me shtylla i kostos për 12 muajt e fundit";
 "chartTokenAccessibilityFormat" = "Grafiku me shtylla i tokenëve — %@";

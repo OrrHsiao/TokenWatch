@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ օգտագործումը";
 "widgetUpdatedThroughTitleFormat" = "Թարմացվել է մինչև %@";
 "widgetNotReadyMessage" = "Բացեք TokenWatch-ը՝ տվյալները թարմացնելու համար";
+"widgetMonthlyBudgetTitle" = "Ամսական բյուջե";
+"widgetMonthlyBudgetSettingsTitle" = "Ամսական բյուջե (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Ամսվա վերջի կանխատեսում";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Սահմանեք ամսական բյուջե TokenWatch-ում";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Կանխատեսվում է բյուջեի գերազանցում";
 "chartTokenAccessibility" = "Վերջին 12 ամիսների թոքենների սյունակային գծապատկեր";
 "chartCostAccessibility" = "Վերջին 12 ամիսների ծախսի սյունակային գծապատկեր";
 "chartTokenAccessibilityFormat" = "%@ — թոքենների սյունակային գծապատկեր";

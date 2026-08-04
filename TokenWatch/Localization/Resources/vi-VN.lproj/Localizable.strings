@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Mức sử dụng ngày %@";
 "widgetUpdatedThroughTitleFormat" = "Cập nhật đến %@";
 "widgetNotReadyMessage" = "Mở TokenWatch để làm mới dữ liệu";
+"widgetMonthlyBudgetTitle" = "Ngân sách hằng tháng";
+"widgetMonthlyBudgetSettingsTitle" = "Ngân sách hằng tháng (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Dự báo cuối tháng";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Đặt ngân sách hằng tháng trong TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Dự kiến vượt ngân sách";
 "chartTokenAccessibility" = "Biểu đồ cột token trong 12 tháng qua";
 "chartCostAccessibility" = "Biểu đồ cột chi phí trong 12 tháng qua";
 "chartTokenAccessibilityFormat" = "Biểu đồ cột token %@";

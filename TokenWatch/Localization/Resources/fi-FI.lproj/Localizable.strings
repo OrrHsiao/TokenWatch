@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Käyttö: %@";
 "widgetUpdatedThroughTitleFormat" = "Päivitetty %@ asti";
 "widgetNotReadyMessage" = "Avaa TokenWatch päivittääksesi tiedot";
+"widgetMonthlyBudgetTitle" = "Kuukausibudjetti";
+"widgetMonthlyBudgetSettingsTitle" = "Kuukausibudjetti (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Ennuste kuun loppuun";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Aseta kuukausibudjetti TokenWatchissa";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Budjetti ylittyy ennusteen mukaan";
 "chartTokenAccessibility" = "Viimeisten 12 kuukauden tokenien käytön pylväskaavio";
 "chartCostAccessibility" = "Viimeisten 12 kuukauden kustannusten pylväskaavio";
 "chartTokenAccessibilityFormat" = "Tokenien käytön pylväskaavio — %@";

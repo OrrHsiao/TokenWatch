@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ వినియోగం";
 "widgetUpdatedThroughTitleFormat" = "%@ వరకు నవీకరించబడింది";
 "widgetNotReadyMessage" = "డేటాను రిఫ్రెష్ చేయడానికి TokenWatch తెరవండి";
+"widgetMonthlyBudgetTitle" = "నెలవారీ బడ్జెట్";
+"widgetMonthlyBudgetSettingsTitle" = "నెలవారీ బడ్జెట్ (USD)";
+"widgetMonthlyBudgetForecastTitle" = "నెలాఖరు అంచనా";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatchలో నెలవారీ బడ్జెట్‌ను సెట్ చేయండి";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "బడ్జెట్‌ను మించుతుందని అంచనా";
 "chartTokenAccessibility" = "గత 12 నెలల టోకెన్ బార్ చార్ట్";
 "chartCostAccessibility" = "గత 12 నెలల ఖర్చు బార్ చార్ట్";
 "chartTokenAccessibilityFormat" = "%@ టోకెన్ బార్ చార్ట్";

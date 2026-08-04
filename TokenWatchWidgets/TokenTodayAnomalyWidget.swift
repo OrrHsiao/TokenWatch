@@ -52,7 +52,7 @@ struct TokenTodayAnomalyWidgetView: View {
                     .fontWeight(.semibold)
                     .monospacedDigit()
             } else {
-                Text("—")
+                Text(verbatim: "—")
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }
@@ -72,8 +72,8 @@ struct TokenTodayAnomalyWidgetView: View {
     ) -> some View {
         Chart(presentation.points) { point in
             BarMark(
-                x: .value("Day", point.position),
-                y: .value("Tokens", point.totalTokens)
+                x: .value(String(localized: "widget.weekly.axis.day"), point.position),
+                y: .value(String(localized: "widget.weekly.axis.tokens"), point.totalTokens)
             )
             .foregroundStyle(color(for: point, presentation: presentation))
             .clipShape(RoundedRectangle(cornerRadius: 2))

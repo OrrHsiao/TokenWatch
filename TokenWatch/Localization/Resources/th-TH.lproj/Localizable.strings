@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "การใช้งานวันที่ %@";
 "widgetUpdatedThroughTitleFormat" = "อัปเดตถึง %@";
 "widgetNotReadyMessage" = "เปิด TokenWatch เพื่อรีเฟรชข้อมูล";
+"widgetMonthlyBudgetTitle" = "งบประมาณรายเดือน";
+"widgetMonthlyBudgetSettingsTitle" = "งบประมาณรายเดือน (USD)";
+"widgetMonthlyBudgetForecastTitle" = "ประมาณการสิ้นเดือน";
+"widgetMonthlyBudgetUnconfiguredMessage" = "ตั้งงบประมาณรายเดือนใน TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "คาดว่าจะเกินงบประมาณ";
 "chartTokenAccessibility" = "แผนภูมิแท่ง token ในช่วง 12 เดือนที่ผ่านมา";
 "chartCostAccessibility" = "แผนภูมิแท่งค่าใช้จ่ายในช่วง 12 เดือนที่ผ่านมา";
 "chartTokenAccessibilityFormat" = "แผนภูมิแท่ง token ของ %@";

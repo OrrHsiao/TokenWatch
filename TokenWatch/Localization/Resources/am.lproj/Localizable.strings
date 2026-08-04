@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ አጠቃቀም";
 "widgetUpdatedThroughTitleFormat" = "እስከ %@ ድረስ ተዘምኗል";
 "widgetNotReadyMessage" = "ውሂብን ለማደስ TokenWatchን ይክፈቱ";
+"widgetMonthlyBudgetTitle" = "ወርሃዊ በጀት";
+"widgetMonthlyBudgetSettingsTitle" = "ወርሃዊ በጀት (USD)";
+"widgetMonthlyBudgetForecastTitle" = "የወሩ መጨረሻ ትንበያ";
+"widgetMonthlyBudgetUnconfiguredMessage" = "በ TokenWatch ውስጥ ወርሃዊ በጀት ያዘጋጁ";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "በጀቱን ሊያልፍ ይችላል";
 "chartTokenAccessibility" = "የባለፉት 12 ወራት የtoken አሞሌ ገበታ";
 "chartCostAccessibility" = "የባለፉት 12 ወራት የወጪ አሞሌ ገበታ";
 "chartTokenAccessibilityFormat" = "የ%@ የtoken አሞሌ ገበታ";

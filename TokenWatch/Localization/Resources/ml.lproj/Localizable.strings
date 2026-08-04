@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ ഉപയോഗം";
 "widgetUpdatedThroughTitleFormat" = "%@ വരെ അപ്ഡേറ്റ് ചെയ്തു";
 "widgetNotReadyMessage" = "ഡാറ്റ പുതുക്കാൻ TokenWatch തുറക്കുക";
+"widgetMonthlyBudgetTitle" = "പ്രതിമാസ ബജറ്റ്";
+"widgetMonthlyBudgetSettingsTitle" = "പ്രതിമാസ ബജറ്റ് (USD)";
+"widgetMonthlyBudgetForecastTitle" = "മാസാവസാന പ്രവചനം";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch-ൽ പ്രതിമാസ ബജറ്റ് സജ്ജമാക്കുക";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "ബജറ്റ് കവിയുമെന്ന് പ്രവചിക്കുന്നു";
 "chartTokenAccessibility" = "കഴിഞ്ഞ 12 മാസത്തെ ടോക്കൺ ബാർ ചാർട്ട്";
 "chartCostAccessibility" = "കഴിഞ്ഞ 12 മാസത്തെ ചെലവ് ബാർ ചാർട്ട്";
 "chartTokenAccessibilityFormat" = "%@ ടോക്കൺ ബാർ ചാർട്ട്";

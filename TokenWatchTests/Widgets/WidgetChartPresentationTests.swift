@@ -28,6 +28,7 @@ struct WidgetChartPresentationTests {
         let heatmap = WidgetChartPresentationBuilder.heatmap(for: state)
         let hourly = WidgetChartPresentationBuilder.hourlyLine(for: state)
         let weekly = WidgetChartPresentationBuilder.weeklySummary(for: state)
+        let budget = WidgetChartPresentationBuilder.monthlyBudget(for: state)
         let anomaly = WidgetChartPresentationBuilder.todayAnomaly(for: state)
         let project = WidgetChartPresentationBuilder.projectFocus(for: state)
         let model = WidgetChartPresentationBuilder.modelFocus(for: state)
@@ -47,6 +48,8 @@ struct WidgetChartPresentationTests {
         #expect(weekly.points.count == 7)
         #expect(weekly.points.allSatisfy { $0.totalTokens == 0 && !$0.isCurrentDay })
         #expect(weekly.maximumY == 1)
+        #expect(budget.title == fallback.monthlyBudgetTitle)
+        #expect(budget.message == fallback.notReadyMessage)
         #expect(anomaly.message == fallback.notReadyMessage)
         #expect(anomaly.points.count == 8)
         #expect(project.title == fallback.projectFocusTitle)
@@ -168,6 +171,9 @@ struct WidgetChartPresentationTests {
         let current = WidgetChartPresentationBuilder.monthlyBudget(for: .current(configured))
         let stale = WidgetChartPresentationBuilder.monthlyBudget(for: .stale(configured))
         let setup = WidgetChartPresentationBuilder.monthlyBudget(for: .current(unconfigured))
+        let missing = WidgetChartPresentationBuilder.monthlyBudget(
+            for: .current(makeSnapshot(totalTokens: 0))
+        )
 
         #expect(current.spentText == "$80.00")
         #expect(current.budgetText == "$100.00")
@@ -180,6 +186,8 @@ struct WidgetChartPresentationTests {
         #expect(setup.forecastText == nil)
         #expect(setup.progress == nil)
         #expect(setup.message == "Set a monthly budget in TokenWatch")
+        #expect(missing.title == fallback.monthlyBudgetTitle)
+        #expect(missing.message == fallback.monthlyBudgetUnconfiguredMessage)
     }
 
     @Test("today check requires enough history before it reports a usage spike")
@@ -267,7 +275,13 @@ struct WidgetChartPresentationTests {
             datedUsageTitle: "7/15 Usage",
             updatedThroughTitle: "Updated through 7/15",
             notReadyMessage: "Open TokenWatch to refresh data",
-            weeklySummaryTitle: "Last 7 Days"
+            monthlyBudgetTitle: "Monthly Budget",
+            monthlyBudgetUnconfiguredMessage: "Set a monthly budget in TokenWatch",
+            weeklySummaryTitle: "Last 7 Days",
+            projectFocusTitle: "Project Usage",
+            projectFocusNoDataMessage: "No project data",
+            modelFocusTitle: "Primary Model",
+            modelFocusNoDataMessage: "No model data"
         )
     }
 

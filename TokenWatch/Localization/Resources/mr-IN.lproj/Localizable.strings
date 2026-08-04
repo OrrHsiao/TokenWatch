@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ चा वापर";
 "widgetUpdatedThroughTitleFormat" = "%@ पर्यंत अद्ययावत";
 "widgetNotReadyMessage" = "डेटा रीफ्रेश करण्यासाठी TokenWatch उघडा";
+"widgetMonthlyBudgetTitle" = "मासिक बजेट";
+"widgetMonthlyBudgetSettingsTitle" = "मासिक बजेट (USD)";
+"widgetMonthlyBudgetForecastTitle" = "महिनाअखेरीचा अंदाज";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch मध्ये मासिक बजेट सेट करा";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "बजेट ओलांडण्याचा अंदाज आहे";
 "chartTokenAccessibility" = "मागील 12 महिन्यांचा टोकन बार आलेख";
 "chartCostAccessibility" = "मागील 12 महिन्यांचा खर्च बार आलेख";
 "chartTokenAccessibilityFormat" = "%@ चा टोकन बार आलेख";

@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ naudojimas";
 "widgetUpdatedThroughTitleFormat" = "Atnaujinta iki %@";
 "widgetNotReadyMessage" = "Atidarykite „TokenWatch“, kad atnaujintumėte duomenis";
+"widgetMonthlyBudgetTitle" = "Mėnesio biudžetas";
+"widgetMonthlyBudgetSettingsTitle" = "Mėnesio biudžetas (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Mėnesio pabaigos prognozė";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Nustatykite mėnesio biudžetą programoje TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Prognozuojamas biudžeto viršijimas";
 "chartTokenAccessibility" = "Pastarųjų 12 mėnesių tokenų naudojimo stulpelinė diagrama";
 "chartCostAccessibility" = "Pastarųjų 12 mėnesių išlaidų stulpelinė diagrama";
 "chartTokenAccessibilityFormat" = "Tokenų naudojimo stulpelinė diagrama — %@";

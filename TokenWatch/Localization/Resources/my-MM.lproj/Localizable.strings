@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ အသုံးပြုမှု";
 "widgetUpdatedThroughTitleFormat" = "%@ အထိ အပ်ဒိတ်လုပ်ပြီးပါပြီ";
 "widgetNotReadyMessage" = "ဒေတာကို အပ်ဒိတ်လုပ်ရန် TokenWatch ကို ဖွင့်ပါ";
+"widgetMonthlyBudgetTitle" = "လစဉ် ဘတ်ဂျက်";
+"widgetMonthlyBudgetSettingsTitle" = "လစဉ် ဘတ်ဂျက် (USD)";
+"widgetMonthlyBudgetForecastTitle" = "လကုန်ခန့်မှန်းချက်";
+"widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch တွင် လစဉ် ဘတ်ဂျက် သတ်မှတ်ပါ";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "ဘတ်ဂျက်ကျော်လွန်မည်ဟု ခန့်မှန်းထားသည်";
 "chartTokenAccessibility" = "ပြီးခဲ့သည့် ၁၂ လ၏ token တိုင်ပုံဇယား";
 "chartCostAccessibility" = "ပြီးခဲ့သည့် ၁၂ လ၏ ကုန်ကျစရိတ်တိုင်ပုံဇယား";
 "chartTokenAccessibilityFormat" = "%@ အတွက် token တိုင်ပုံဇယား";

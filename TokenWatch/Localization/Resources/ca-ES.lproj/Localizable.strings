@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Ús de %@";
 "widgetUpdatedThroughTitleFormat" = "Actualitzat fins a %@";
 "widgetNotReadyMessage" = "Obriu TokenWatch per actualitzar les dades";
+"widgetMonthlyBudgetTitle" = "Pressupost mensual";
+"widgetMonthlyBudgetSettingsTitle" = "Pressupost mensual (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Previsió de final de mes";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Establiu un pressupost mensual a TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Es preveu superar el pressupost";
 "chartTokenAccessibility" = "Gràfic de barres de tokens dels darrers 12 mesos";
 "chartCostAccessibility" = "Gràfic de barres de costos dels darrers 12 mesos";
 "chartTokenAccessibilityFormat" = "Gràfic de barres de tokens — %@";

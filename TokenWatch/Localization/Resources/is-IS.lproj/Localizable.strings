@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Notkun %@";
 "widgetUpdatedThroughTitleFormat" = "Uppfært til %@";
 "widgetNotReadyMessage" = "Opnaðu TokenWatch til að uppfæra gögn";
+"widgetMonthlyBudgetTitle" = "Mánaðarleg fjárhagsáætlun";
+"widgetMonthlyBudgetSettingsTitle" = "Mánaðarleg fjárhagsáætlun (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Spá til mánaðarloka";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Stilltu mánaðarlega fjárhagsáætlun í TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Spáð er að farið verði yfir fjárhagsáætlun";
 "chartTokenAccessibility" = "Súlurit token-notkunar síðustu 12 mánaða";
 "chartCostAccessibility" = "Kostnaðarsúlurit síðustu 12 mánaða";
 "chartTokenAccessibilityFormat" = "Súlurit token-notkunar — %@";

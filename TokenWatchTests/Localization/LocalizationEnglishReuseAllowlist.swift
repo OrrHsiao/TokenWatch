@@ -19,6 +19,7 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "de-DE", key: .dashboardWidgetsSubtitle, reason: "保留 TokenWatch 产品名后与英文存在词组重叠。"),
     .init(localeIdentifier: "de-DE", key: .dashboardReasoning, reason: "Reasoning 是模型能力名称，德语界面保留英文。"),
     .init(localeIdentifier: "de-DE", key: .recentDetailsTool, reason: "Tool 是开发工具语境中保留的英文列名。"),
+    .init(localeIdentifier: "de-DE", key: .widgetMonthlyBudgetUnconfiguredMessage, reason: "固定 TokenWatch 产品名使检测器与英文文案出现词组重叠。"),
 
     .init(localeIdentifier: "fr-FR", key: .sidebarTotal, reason: "Total 是法语中拼写相同的汇总标签。"),
     .init(localeIdentifier: "fr-FR", key: .dashboardSessionsNavigation, reason: "Sessions 是法语中拼写相同的复数名词。"),
@@ -40,6 +41,7 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "it-IT", key: .dashboardCache, reason: "Cache 是意大利语技术界面沿用的术语。"),
     .init(localeIdentifier: "it-IT", key: .dashboardWidgetsSubtitle, reason: "保留 TokenWatch 产品名后与英文存在词组重叠。"),
     .init(localeIdentifier: "it-IT", key: .mainMenuZoom, reason: "Zoom 是意大利语 macOS 界面沿用的通用术语。"),
+    .init(localeIdentifier: "it-IT", key: .widgetMonthlyBudgetUnconfiguredMessage, reason: "固定 TokenWatch 产品名使检测器与英文文案出现词组重叠。"),
 
     .init(localeIdentifier: "nl-NL", key: .dashboardMetricRecords, reason: "Records 是荷兰语数据界面采用的英文指标名。"),
     .init(localeIdentifier: "nl-NL", key: .dashboardTrendTitle, reason: "Trend 在荷兰语中使用相同拼写。"),
@@ -51,6 +53,8 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "nl-NL", key: .recentDetailsRecords, reason: "Records 是荷兰语数据界面采用的英文列名。"),
     .init(localeIdentifier: "nl-NL", key: .mainMenuZoom, reason: "Zoom 是荷兰语 macOS 界面沿用的通用术语。"),
     .init(localeIdentifier: "nl-NL", key: .popoverWeek, reason: "Week 在荷兰语中使用相同拼写。"),
+    .init(localeIdentifier: "nl-NL", key: .widgetMonthlyBudgetSettingsTitle, reason: "USD 货币代码使检测器与英文文案出现词组重叠。"),
+    .init(localeIdentifier: "nl-NL", key: .widgetMonthlyBudgetUnconfiguredMessage, reason: "固定 TokenWatch 产品名使检测器与英文文案出现词组重叠。"),
 
     .init(localeIdentifier: "pl-PL", key: .languageSystem, reason: "System 在波兰语中使用相同拼写。"),
     .init(localeIdentifier: "pl-PL", key: .dashboardTrendTitle, reason: "Trend 是波兰语数据界面沿用的术语。"),
@@ -73,6 +77,7 @@ let localizationEnglishReuseAllowlist: [LocalizationEnglishReuseAllowance] = [
     .init(localeIdentifier: "da-DK", key: .recentDetailsModel, reason: "Model 在丹麦语中使用相同拼写。"),
     .init(localeIdentifier: "da-DK", key: .mainMenuZoom, reason: "Zoom 是丹麦语 macOS 界面沿用的通用术语。"),
     .init(localeIdentifier: "da-DK", key: .support, reason: "Support 是丹麦语产品界面中通行的支持入口术语。"),
+    .init(localeIdentifier: "da-DK", key: .widgetMonthlyBudgetSettingsTitle, reason: "USD 货币代码使检测器与英文文案出现词组重叠。"),
 
     .init(localeIdentifier: "es-419", key: .sidebarTotal, reason: "Total 是拉丁美洲西班牙语中拼写相同的常用汇总标签。"),
     .init(localeIdentifier: "es-419", key: .dashboardWidgetsNavigation, reason: "Widgets 是拉丁美洲西班牙语界面中通行的组件名称。"),

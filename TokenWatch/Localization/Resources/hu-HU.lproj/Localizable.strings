@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "%@ használata";
 "widgetUpdatedThroughTitleFormat" = "Frissítve eddig: %@";
 "widgetNotReadyMessage" = "Nyissa meg a TokenWatchot az adatok frissítéséhez";
+"widgetMonthlyBudgetTitle" = "Havi keret";
+"widgetMonthlyBudgetSettingsTitle" = "Havi keret (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Hónap végi előrejelzés";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Állítson be havi keretet a TokenWatchban";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "A költségek várhatóan meghaladják a keretet";
 "chartTokenAccessibility" = "Az elmúlt 12 hónap tokenoszlop-diagramja";
 "chartCostAccessibility" = "Az elmúlt 12 hónap költségoszlop-diagramja";
 "chartTokenAccessibilityFormat" = "Tokenoszlop-diagram — %@";

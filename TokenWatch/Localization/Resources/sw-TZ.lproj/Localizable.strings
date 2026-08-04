@@ -144,6 +144,11 @@
 "widgetDatedUsageTitleFormat" = "Matumizi ya tarehe %@";
 "widgetUpdatedThroughTitleFormat" = "Imesasishwa hadi %@";
 "widgetNotReadyMessage" = "Fungua TokenWatch ili kuonyesha upya data";
+"widgetMonthlyBudgetTitle" = "Bajeti ya mwezi";
+"widgetMonthlyBudgetSettingsTitle" = "Bajeti ya mwezi (USD)";
+"widgetMonthlyBudgetForecastTitle" = "Makadirio ya mwisho wa mwezi";
+"widgetMonthlyBudgetUnconfiguredMessage" = "Weka bajeti ya mwezi katika TokenWatch";
+"widgetMonthlyBudgetForecastOverBudgetMessage" = "Inatarajiwa kuzidi bajeti";
 "chartTokenAccessibility" = "Chati ya nguzo za token ya miezi 12 iliyopita";
 "chartCostAccessibility" = "Chati ya nguzo za gharama ya miezi 12 iliyopita";
 "chartTokenAccessibilityFormat" = "Chati ya nguzo za token ya %@";
