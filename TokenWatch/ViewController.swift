@@ -265,7 +265,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
 
 /// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
-    static let minimumContentHeight: CGFloat = 700
+    static let minimumContentHeight: CGFloat = 750
     private static let directoryActionHorizontalPadding: CGFloat = 24
     private static let valueControlWidth: CGFloat = 132
     private static let valueControlHeight: CGFloat = 32
@@ -294,6 +294,8 @@ final class SettingsViewController: NSViewController {
     private let openLoginItemsSettingsRow = NSStackView()
     private let languageLabel = NSTextField(labelWithString: "")
     private let languagePopUpButton = SettingsPopUpButton()
+    private let monthlyBudgetLabel = NSTextField(labelWithString: "")
+    private let monthlyBudgetTextField = NSTextField(string: "")
 
     private let providers: [any UsageProvider]
     private let providerState:
@@ -303,6 +305,7 @@ final class SettingsViewController: NSViewController {
     private let loginItemSettings: LoginItemSettingsControlling
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
+    private let monthlyBudgetSettings: MonthlyBudgetSettings
 
     private var providerDirectoryRows:
         [ProviderID: ProviderDirectoryRowViews] = [:]
@@ -326,7 +329,8 @@ final class SettingsViewController: NSViewController {
         },
         loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
         autoRefreshSettings: AutoRefreshSettings = .shared,
-        languageSettings: AppLanguageSettings = .shared
+        languageSettings: AppLanguageSettings = .shared,
+        monthlyBudgetSettings: MonthlyBudgetSettings = .shared
     ) {
         self.providers = providers
         self.providerState = providerState
@@ -334,6 +338,7 @@ final class SettingsViewController: NSViewController {
         self.loginItemSettings = loginItemSettings
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
+        self.monthlyBudgetSettings = monthlyBudgetSettings
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -341,7 +346,8 @@ final class SettingsViewController: NSViewController {
         isAuthorized: @escaping @MainActor () -> Bool,
         loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
         autoRefreshSettings: AutoRefreshSettings = .shared,
-        languageSettings: AppLanguageSettings = .shared
+        languageSettings: AppLanguageSettings = .shared,
+        monthlyBudgetSettings: MonthlyBudgetSettings = .shared
     ) {
         self.init(
             providers: ProviderRegistry.allProviders,
@@ -357,7 +363,8 @@ final class SettingsViewController: NSViewController {
             authorizationAction: { _ in false },
             loginItemSettings: loginItemSettings,
             autoRefreshSettings: autoRefreshSettings,
-            languageSettings: languageSettings
+            languageSettings: languageSettings,
+            monthlyBudgetSettings: monthlyBudgetSettings
         )
     }
 
@@ -365,7 +372,8 @@ final class SettingsViewController: NSViewController {
         self.init(
             isAuthorized: isAuthorized,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
-            languageSettings: AppLanguageSettings(defaults: defaults)
+            languageSettings: AppLanguageSettings(defaults: defaults),
+            monthlyBudgetSettings: MonthlyBudgetSettings(defaults: defaults)
         )
     }
 
@@ -469,6 +477,16 @@ final class SettingsViewController: NSViewController {
         languagePopUpButton.target = self
         languagePopUpButton.action = #selector(languagePreferenceChanged)
 
+        monthlyBudgetLabel.font = .systemFont(ofSize: 13)
+        monthlyBudgetLabel.textColor = DashboardPalette.primaryText
+        monthlyBudgetTextField.identifier = NSUserInterfaceItemIdentifier("MonthlyBudgetTextField")
+        monthlyBudgetTextField.setAccessibilityIdentifier("MonthlyBudgetTextField")
+        monthlyBudgetTextField.placeholderString = "USD"
+        monthlyBudgetTextField.alignment = .right
+        monthlyBudgetTextField.font = .systemFont(ofSize: 13)
+        monthlyBudgetTextField.target = self
+        monthlyBudgetTextField.action = #selector(monthlyBudgetChanged)
+
         configureSettingsButton(refreshButton)
         refreshButton.identifier = NSUserInterfaceItemIdentifier("RefreshAllDataButton")
         refreshButton.setAccessibilityIdentifier("RefreshAllDataButton")
@@ -539,6 +557,27 @@ final class SettingsViewController: NSViewController {
             equalToConstant: Self.valueControlHeight
         ).isActive = true
 
+        let monthlyBudgetRowSpacer = makeFlexibleSpacer()
+        let monthlyBudgetRow = NSStackView(views: [
+            monthlyBudgetLabel,
+            monthlyBudgetRowSpacer,
+            monthlyBudgetTextField,
+        ])
+        monthlyBudgetRow.orientation = .horizontal
+        monthlyBudgetRow.alignment = .centerY
+        monthlyBudgetRow.spacing = 12
+        monthlyBudgetLabel.lineBreakMode = .byTruncatingTail
+        monthlyBudgetLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+        monthlyBudgetTextField.widthAnchor.constraint(
+            equalToConstant: Self.valueControlWidth
+        ).isActive = true
+        monthlyBudgetTextField.heightAnchor.constraint(
+            equalToConstant: Self.valueControlHeight
+        ).isActive = true
+
         let launchAtLoginRowSpacer = makeFlexibleSpacer()
         let launchAtLoginControlRow = NSStackView(views: [
             launchAtLoginLabel,
@@ -579,6 +618,7 @@ final class SettingsViewController: NSViewController {
 
         let appPreferencesContent = NSStackView(views: [
             languageRow,
+            monthlyBudgetRow,
             preferencesDivider,
             launchAtLoginSettingsStack,
         ])
@@ -587,6 +627,9 @@ final class SettingsViewController: NSViewController {
         appPreferencesContent.spacing = 14
         NSLayoutConstraint.activate([
             languageRow.widthAnchor.constraint(
+                equalTo: appPreferencesContent.widthAnchor
+            ),
+            monthlyBudgetRow.widthAnchor.constraint(
                 equalTo: appPreferencesContent.widthAnchor
             ),
             preferencesDivider.widthAnchor.constraint(
@@ -1072,6 +1115,29 @@ final class SettingsViewController: NSViewController {
         languageSettings.selectedPreference = AppLanguagePreference.allCases[selectedIndex]
     }
 
+    @objc private func monthlyBudgetChanged() {
+        let text = monthlyBudgetTextField.stringValue
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            monthlyBudgetSettings.monthlyBudgetUSD = nil
+            renderMonthlyBudget()
+            return
+        }
+
+        let formatter = monthlyBudgetNumberFormatter(
+            language: languageSettings.resolvedLanguage
+        )
+        guard let value = formatter.number(from: text)?.doubleValue,
+              value.isFinite,
+              value > 0 else {
+            // Invalid text must not silently erase a previously configured budget.
+            renderMonthlyBudget()
+            return
+        }
+        monthlyBudgetSettings.monthlyBudgetUSD = value
+        renderMonthlyBudget()
+    }
+
     @objc private func launchAtLoginSwitchChanged() {
         guard launchAtLoginSwitch.isEnabled else {
             renderLaunchAtLoginState()
@@ -1167,6 +1233,8 @@ final class SettingsViewController: NSViewController {
         languagePopUpButton.setAccessibilityLabel(
             AppStrings.text(.settingsLanguage, language: language)
         )
+        monthlyBudgetLabel.stringValue = MonthlyBudgetCopy.make(language: language).settingsTitle
+        monthlyBudgetTextField.setAccessibilityLabel(monthlyBudgetLabel.stringValue)
         applySettingsButtonStyle(
             openLoginItemsSettingsButton,
             title: AppStrings.text(.settingsOpenLoginItemsSettings, language: language),
@@ -1176,6 +1244,7 @@ final class SettingsViewController: NSViewController {
         )
         reloadAutoRefreshIntervalPopUp(language: language)
         reloadLanguagePopUp(language: language)
+        renderMonthlyBudget()
         renderAllDirectoryRows()
         renderLaunchAtLoginState()
     }
@@ -1204,6 +1273,25 @@ final class SettingsViewController: NSViewController {
             languagePopUpButton.selectItem(at: selectedIndex)
         }
         languagePopUpButton.applyDashboardLayerColors()
+    }
+
+    private func renderMonthlyBudget() {
+        let formatter = monthlyBudgetNumberFormatter(
+            language: languageSettings.resolvedLanguage
+        )
+        monthlyBudgetTextField.stringValue = monthlyBudgetSettings.monthlyBudgetUSD.flatMap {
+            formatter.string(from: NSNumber(value: $0))
+        } ?? ""
+    }
+
+    private func monthlyBudgetNumberFormatter(language: AppLanguage) -> NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: language.localeIdentifier)
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter
     }
 
     deinit {

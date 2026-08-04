@@ -27,6 +27,38 @@ struct WidgetHourlyLinePresentation: Equatable, Sendable {
     let accessibilityLabel: String
 }
 
+/// One bar in the compact seven-day widget chart.
+struct WidgetWeeklySummaryPoint: Equatable, Sendable, Identifiable {
+    let id: String
+    let position: Int
+    let totalTokens: Int
+    let isCurrentDay: Bool
+}
+
+/// Render-ready content for the seven-day usage summary widget.
+struct WidgetWeeklySummaryPresentation: Equatable, Sendable {
+    let title: String
+    let subtitle: String?
+    let totalText: String
+    let points: [WidgetWeeklySummaryPoint]
+    let maximumY: Double
+    let message: String?
+    let accessibilityLabel: String
+}
+
+/// Render-ready content for the monthly budget pacing widget.
+struct WidgetMonthlyBudgetPresentation: Equatable, Sendable {
+    let title: String
+    let subtitle: String?
+    let spentText: String
+    let budgetText: String?
+    let forecastText: String?
+    let progress: Double?
+    let isForecastOverBudget: Bool
+    let message: String?
+    let accessibilityLabel: String
+}
+
 /// Derives framework-neutral chart presentations from widget timeline states.
 enum WidgetChartPresentationBuilder {
     /// Builds a fixed 22-by-7 heatmap presentation for the supplied entry state.
@@ -101,6 +133,69 @@ enum WidgetChartPresentationBuilder {
         }
     }
 
+    /// Builds a seven-day bar presentation from the latest valid heatmap snapshot.
+    static func weeklySummary(
+        for state: WidgetUsageEntryState
+    ) -> WidgetWeeklySummaryPresentation {
+        switch state {
+        case .placeholder(let snapshot), .current(let snapshot):
+            return weeklySummary(snapshot: snapshot, isStale: false)
+        case .stale(let snapshot):
+            return weeklySummary(snapshot: snapshot, isStale: true)
+        case .notReady(let text):
+            let points = (0..<7).map {
+                WidgetWeeklySummaryPoint(
+                    id: "not-ready-weekly-\($0)",
+                    position: $0,
+                    totalTokens: 0,
+                    isCurrentDay: false
+                )
+            }
+            let totalText = WidgetChartNumberFormatter.compact(0)
+            return WidgetWeeklySummaryPresentation(
+                title: text.weeklySummaryTitle,
+                subtitle: nil,
+                totalText: totalText,
+                points: points,
+                maximumY: 1,
+                message: text.notReadyMessage,
+                accessibilityLabel: aggregateLabel([
+                    text.weeklySummaryTitle,
+                    text.notReadyMessage,
+                    totalText,
+                ])
+            )
+        }
+    }
+
+    /// Builds a monthly cost pacing presentation from the latest published budget snapshot.
+    static func monthlyBudget(
+        for state: WidgetUsageEntryState
+    ) -> WidgetMonthlyBudgetPresentation {
+        switch state {
+        case .placeholder(let snapshot), .current(let snapshot):
+            return monthlyBudget(snapshot: snapshot, isStale: false)
+        case .stale(let snapshot):
+            return monthlyBudget(snapshot: snapshot, isStale: true)
+        case .notReady(let text):
+            return WidgetMonthlyBudgetPresentation(
+                title: "Monthly Budget",
+                subtitle: nil,
+                spentText: WidgetCostFormatter.usd(0),
+                budgetText: nil,
+                forecastText: nil,
+                progress: nil,
+                isForecastOverBudget: false,
+                message: text.notReadyMessage,
+                accessibilityLabel: aggregateLabel([
+                    "Monthly Budget",
+                    text.notReadyMessage,
+                    WidgetCostFormatter.usd(0),
+                ])
+            )
+        }
+    }
+
     private static func heatmap(
         snapshot: WidgetUsageSnapshot,
         isStale: Bool
@@ -162,10 +257,134 @@ enum WidgetChartPresentationBuilder {
         )
     }
 
+    private static func weeklySummary(
+        snapshot: WidgetUsageSnapshot,
+        isStale: Bool
+    ) -> WidgetWeeklySummaryPresentation {
+        let recentCells = snapshot.heatmap.cells
+            .compactMap { cell -> (key: String, totalTokens: Int)? in
+                guard !cell.isPlaceholder, let key = cell.dateKey else { return nil }
+                return (key, cell.totalTokens)
+            }
+            .suffix(7)
+        let points = recentCells.enumerated().map { index, cell in
+            WidgetWeeklySummaryPoint(
+                id: cell.key,
+                position: index,
+                totalTokens: cell.totalTokens,
+                isCurrentDay: !isStale && index == recentCells.count - 1
+            )
+        }
+        let total = points.reduce(0) {
+            saturatedTokenSum($0, $1.totalTokens)
+        }
+        let totalText = WidgetChartNumberFormatter.compact(total)
+        let title = snapshot.localizedText.weeklySummaryTitle
+        let subtitle = isStale ? snapshot.localizedText.updatedThroughTitle : nil
+        return WidgetWeeklySummaryPresentation(
+            title: title,
+            subtitle: subtitle,
+            totalText: totalText,
+            points: points,
+            maximumY: max(1, Double(points.map(\.totalTokens).max() ?? 0)),
+            message: nil,
+            accessibilityLabel: aggregateLabel([
+                title,
+                subtitle,
+                totalText,
+            ])
+        )
+    }
+
+    private static func monthlyBudget(
+        snapshot: WidgetUsageSnapshot,
+        isStale: Bool
+    ) -> WidgetMonthlyBudgetPresentation {
+        guard let budgetSnapshot = snapshot.monthlyBudget else {
+            return WidgetMonthlyBudgetPresentation(
+                title: "Monthly Budget",
+                subtitle: isStale ? snapshot.localizedText.updatedThroughTitle : nil,
+                spentText: WidgetCostFormatter.usd(0),
+                budgetText: nil,
+                forecastText: nil,
+                progress: nil,
+                isForecastOverBudget: false,
+                message: "Set a monthly budget in TokenWatch",
+                accessibilityLabel: aggregateLabel([
+                    "Monthly Budget",
+                    WidgetCostFormatter.usd(0),
+                    "Set a monthly budget in TokenWatch",
+                ])
+            )
+        }
+
+        let spentText = WidgetCostFormatter.usd(budgetSnapshot.spentUSD)
+        let subtitle = isStale ? snapshot.localizedText.updatedThroughTitle : nil
+        guard let budget = budgetSnapshot.budgetUSD else {
+            return WidgetMonthlyBudgetPresentation(
+                title: budgetSnapshot.title,
+                subtitle: subtitle,
+                spentText: spentText,
+                budgetText: nil,
+                forecastText: nil,
+                progress: nil,
+                isForecastOverBudget: false,
+                message: budgetSnapshot.unconfiguredMessage,
+                accessibilityLabel: aggregateLabel([
+                    budgetSnapshot.title,
+                    subtitle,
+                    spentText,
+                    budgetSnapshot.unconfiguredMessage,
+                ])
+            )
+        }
+
+        let forecastOverBudget = budgetSnapshot.forecastUSD > budget
+        let forecastText = "\(budgetSnapshot.forecastTitle) \(WidgetCostFormatter.usd(budgetSnapshot.forecastUSD))"
+        let message = forecastOverBudget
+            ? budgetSnapshot.forecastOverBudgetMessage
+            : nil
+        return WidgetMonthlyBudgetPresentation(
+            title: budgetSnapshot.title,
+            subtitle: subtitle,
+            spentText: spentText,
+            budgetText: WidgetCostFormatter.usd(budget),
+            forecastText: forecastText,
+            progress: min(max(budgetSnapshot.spentUSD / budget, 0), 1),
+            isForecastOverBudget: forecastOverBudget,
+            message: message,
+            accessibilityLabel: aggregateLabel([
+                budgetSnapshot.title,
+                subtitle,
+                spentText,
+                WidgetCostFormatter.usd(budget),
+                forecastText,
+                message,
+            ])
+        )
+    }
+
     private static func aggregateLabel(_ values: [String?]) -> String {
         values
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
+    }
+
+    private static func saturatedTokenSum(_ lhs: Int, _ rhs: Int) -> Int {
+        let result = lhs.addingReportingOverflow(rhs)
+        return result.overflow ? Int.max : result.partialValue
+    }
+}
+
+/// Formats the app's USD cost estimates consistently across widget renderers.
+enum WidgetCostFormatter {
+    static func usd(_ value: Double) -> String {
+        let safeValue = value.isFinite && value >= 0 ? value : 0
+        return String(
+            format: "$%.2f",
+            locale: Locale(identifier: "en_US_POSIX"),
+            safeValue
+        )
     }
 }

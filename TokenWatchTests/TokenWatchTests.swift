@@ -2384,7 +2384,7 @@ struct TokenWatchTests {
     @MainActor
     @Test("设置三行目录控件和既有设置项在最小高度内不裁切")
     func settingsProviderRowsFitMinimumHeight() throws {
-        #expect(SettingsViewController.minimumContentHeight == 700)
+        #expect(SettingsViewController.minimumContentHeight == 750)
 
         func assertFits(_ controller: SettingsViewController) throws {
             controller.loadViewIfNeeded()
@@ -2416,6 +2416,7 @@ struct TokenWatchTests {
                 "AutoRefreshIntervalPopUpButton",
                 "LaunchAtLoginSwitch",
                 "LanguagePreferencePopUpButton",
+                "MonthlyBudgetTextField",
                 "RefreshAllDataButton",
             ] {
                 let control = try #require(
@@ -2765,6 +2766,38 @@ struct TokenWatchTests {
 
         let launchAtLoginSwitch = try #require(settingsViewController.view.switchControl(identifier: "LaunchAtLoginSwitch"))
         #expect(launchAtLoginSwitch.state == .on)
+    }
+
+    @MainActor
+    @Test func settingsMonthlyBudgetInputPersistsValidValueAndKeepsPriorValueOnInvalidText() throws {
+        try withTemporaryDefaults { defaults in
+            let monthlyBudgetSettings = MonthlyBudgetSettings(defaults: defaults)
+            let controller = SettingsViewController(
+                isAuthorized: { false },
+                languageSettings: zhHansLanguageSettings(defaults: defaults),
+                monthlyBudgetSettings: monthlyBudgetSettings
+            )
+            controller.loadViewIfNeeded()
+
+            let field = try #require(
+                controller.view.firstDescendant(identifier: "MonthlyBudgetTextField") as? NSTextField
+            )
+            #expect(field.accessibilityLabel() == "每月预算（USD）")
+
+            field.stringValue = "100"
+            _ = field.sendAction(field.action, to: field.target)
+            #expect(monthlyBudgetSettings.monthlyBudgetUSD == 100)
+            #expect(field.stringValue == "100.00")
+
+            field.stringValue = "not a number"
+            _ = field.sendAction(field.action, to: field.target)
+            #expect(monthlyBudgetSettings.monthlyBudgetUSD == 100)
+            #expect(field.stringValue == "100.00")
+
+            field.stringValue = ""
+            _ = field.sendAction(field.action, to: field.target)
+            #expect(monthlyBudgetSettings.monthlyBudgetUSD == nil)
+        }
     }
 
     @MainActor

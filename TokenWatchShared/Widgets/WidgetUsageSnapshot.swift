@@ -6,7 +6,9 @@ import Foundation
 /// supplied `Calendar` and time zone used to build the charts; it is not a UTC day.
 /// A valid payload uses `WidgetSharedConfiguration.schemaVersion` and has the same
 /// `localDayKey` as `hourlyLine.dayKey`. `generatedAt` records freshness only, so it is
-/// deliberately excluded from semantic content comparison.
+/// deliberately excluded from semantic content comparison. `monthlyBudget` is optional
+/// only so renderers can gracefully handle incomplete sample data; host publications always
+/// include it when valid aggregate data exists.
 struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
     let schemaVersion: Int
     let generatedAt: Date
@@ -14,6 +16,25 @@ struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
     let localizedText: WidgetLocalizedText
     let heatmap: WidgetHeatmapSnapshot
     let hourlyLine: WidgetHourlyLineSnapshot
+    let monthlyBudget: WidgetMonthlyBudgetSnapshot?
+
+    init(
+        schemaVersion: Int,
+        generatedAt: Date,
+        localDayKey: String,
+        localizedText: WidgetLocalizedText,
+        heatmap: WidgetHeatmapSnapshot,
+        hourlyLine: WidgetHourlyLineSnapshot,
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.generatedAt = generatedAt
+        self.localDayKey = localDayKey
+        self.localizedText = localizedText
+        self.heatmap = heatmap
+        self.hourlyLine = hourlyLine
+        self.monthlyBudget = monthlyBudget
+    }
 
     /// Compares every render-relevant value while deliberately ignoring generation time.
     func hasSameContent(as other: WidgetUsageSnapshot) -> Bool {
@@ -22,6 +43,7 @@ struct WidgetUsageSnapshot: Codable, Equatable, Sendable {
             && localizedText == other.localizedText
             && heatmap == other.heatmap
             && hourlyLine == other.hourlyLine
+            && monthlyBudget == other.monthlyBudget
     }
 }
 
@@ -36,6 +58,40 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
     let datedUsageTitle: String
     let updatedThroughTitle: String
     let notReadyMessage: String
+    let weeklySummaryTitle: String
+
+    init(
+        heatmapTitle: String,
+        todayUsageTitle: String,
+        datedUsageTitle: String,
+        updatedThroughTitle: String,
+        notReadyMessage: String,
+        weeklySummaryTitle: String = "Last 7 Days"
+    ) {
+        self.heatmapTitle = heatmapTitle
+        self.todayUsageTitle = todayUsageTitle
+        self.datedUsageTitle = datedUsageTitle
+        self.updatedThroughTitle = updatedThroughTitle
+        self.notReadyMessage = notReadyMessage
+        self.weeklySummaryTitle = weeklySummaryTitle
+    }
+}
+
+/// Render-ready monthly cost pacing information produced by the host app.
+///
+/// `spentUSD` is the natural-calendar-month estimate accumulated across every loaded
+/// provider. `forecastUSD` projects that amount to the end of the same month using elapsed
+/// calendar days. A missing `budgetUSD` intentionally represents an enabled widget whose
+/// user has not yet selected a spending limit.
+struct WidgetMonthlyBudgetSnapshot: Codable, Equatable, Sendable {
+    let monthKey: String
+    let spentUSD: Double
+    let budgetUSD: Double?
+    let forecastUSD: Double
+    let title: String
+    let forecastTitle: String
+    let unconfiguredMessage: String
+    let forecastOverBudgetMessage: String
 }
 
 /// A fixed 22-column by 7-row heatmap shared in column-major order.

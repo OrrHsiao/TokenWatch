@@ -11,6 +11,7 @@ final class WidgetGalleryViewController: NSViewController {
 
     /// WidgetKit 可因展示上下文调整实际尺寸；此值是图库使用的 macOS 中号小组件参考画布。
     static let systemMediumPreviewSize = CGSize(width: 329, height: 155)
+    static let systemSmallPreviewSize = CGSize(width: 155, height: 155)
 
     private let scrollView = NSScrollView()
     private let contentView = NSView()
@@ -19,8 +20,14 @@ final class WidgetGalleryViewController: NSViewController {
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let heatmapPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let hourlyLinePreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let weeklySmallPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let weeklyMediumPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
+    private let monthlyBudgetPreviewHost = NSHostingView(rootView: AnyView(EmptyView()))
     private let heatmapPreviewContainer = NSView()
     private let hourlyLinePreviewContainer = NSView()
+    private let weeklySmallPreviewContainer = NSView()
+    private let weeklyMediumPreviewContainer = NSView()
+    private let monthlyBudgetPreviewContainer = NSView()
 
     override func loadView() {
         let root = NSView()
@@ -35,7 +42,7 @@ final class WidgetGalleryViewController: NSViewController {
         setupLayout()
     }
 
-    /// 用当前语言生成固定示例快照并更新两张小组件预览。
+    /// 用当前语言生成固定示例快照并更新所有小组件预览。
     /// - Parameters:
     ///   - now: 用于突出示例中的当前小时并生成本地日期文案。
     ///   - calendar: 定义示例日期和当前小时的本地日历。
@@ -55,8 +62,13 @@ final class WidgetGalleryViewController: NSViewController {
         )
         let heatmap = WidgetChartPresentationBuilder.heatmap(for: state)
         let hourlyLine = WidgetChartPresentationBuilder.hourlyLine(for: state)
+        let weeklySummary = WidgetChartPresentationBuilder.weeklySummary(for: state)
+        let monthlyBudget = WidgetChartPresentationBuilder.monthlyBudget(for: state)
         heatmapPreviewContainer.setAccessibilityLabel(heatmap.title)
         hourlyLinePreviewContainer.setAccessibilityLabel(hourlyLine.title)
+        weeklySmallPreviewContainer.setAccessibilityLabel(weeklySummary.title)
+        weeklyMediumPreviewContainer.setAccessibilityLabel(weeklySummary.title)
+        monthlyBudgetPreviewContainer.setAccessibilityLabel(monthlyBudget.title)
         heatmapPreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
                 WidgetGalleryHeatmapPreview(presentation: heatmap)
@@ -65,6 +77,21 @@ final class WidgetGalleryViewController: NSViewController {
         hourlyLinePreviewHost.rootView = AnyView(
             WidgetGalleryPreviewSurface {
                 WidgetGalleryHourlyLinePreview(presentation: hourlyLine, language: language)
+            }
+        )
+        weeklySmallPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryWeeklySummaryPreview(presentation: weeklySummary)
+            }
+        )
+        weeklyMediumPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryWeeklySummaryPreview(presentation: weeklySummary)
+            }
+        )
+        monthlyBudgetPreviewHost.rootView = AnyView(
+            WidgetGalleryPreviewSurface {
+                WidgetGalleryMonthlyBudgetPreview(presentation: monthlyBudget)
             }
         )
     }
@@ -94,6 +121,8 @@ final class WidgetGalleryViewController: NSViewController {
 
         addFullWidthArrangedSubview(makeHeaderView(), to: contentStack)
         addFullWidthArrangedSubview(makePreviewRow(), to: contentStack)
+        addFullWidthArrangedSubview(makeWeeklySummaryPreviewRow(), to: contentStack)
+        addFullWidthArrangedSubview(makeMonthlyBudgetPreviewRow(), to: contentStack)
 
         view.addSubview(scrollView)
         NSLayoutConstraint.activate([
@@ -159,11 +188,61 @@ final class WidgetGalleryViewController: NSViewController {
         return row
     }
 
+    private func makeWeeklySummaryPreviewRow() -> NSView {
+        configurePreviewContainer(
+            weeklySmallPreviewContainer,
+            hostingView: weeklySmallPreviewHost,
+            identifier: "DashboardWidgetPreview.weeklySummary.small",
+            size: Self.systemSmallPreviewSize
+        )
+        configurePreviewContainer(
+            weeklyMediumPreviewContainer,
+            hostingView: weeklyMediumPreviewHost,
+            identifier: "DashboardWidgetPreview.weeklySummary.medium"
+        )
+
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(weeklySmallPreviewContainer)
+        row.addSubview(weeklyMediumPreviewContainer)
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
+            weeklySmallPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            weeklySmallPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+            weeklyMediumPreviewContainer.leadingAnchor.constraint(
+                equalTo: weeklySmallPreviewContainer.trailingAnchor,
+                constant: 16
+            ),
+            weeklyMediumPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+        ])
+        return row
+    }
+
+    private func makeMonthlyBudgetPreviewRow() -> NSView {
+        configurePreviewContainer(
+            monthlyBudgetPreviewContainer,
+            hostingView: monthlyBudgetPreviewHost,
+            identifier: "DashboardWidgetPreview.monthlyBudget"
+        )
+
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.addSubview(monthlyBudgetPreviewContainer)
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
+            monthlyBudgetPreviewContainer.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            monthlyBudgetPreviewContainer.topAnchor.constraint(equalTo: row.topAnchor),
+        ])
+        return row
+    }
+
     private func configurePreviewContainer(
         _ container: NSView,
         hostingView: NSHostingView<AnyView>,
-        identifier: String
+        identifier: String,
+        size: CGSize? = nil
     ) {
+        let previewSize = size ?? Self.systemMediumPreviewSize
         container.identifier = NSUserInterfaceItemIdentifier(identifier)
         container.setAccessibilityIdentifier(identifier)
         container.setAccessibilityElement(true)
@@ -176,8 +255,8 @@ final class WidgetGalleryViewController: NSViewController {
         hostingView.setAccessibilityIdentifier("\(identifier).content")
         hostingView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            container.widthAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.width),
-            container.heightAnchor.constraint(equalToConstant: Self.systemMediumPreviewSize.height),
+            container.widthAnchor.constraint(equalToConstant: previewSize.width),
+            container.heightAnchor.constraint(equalToConstant: previewSize.height),
             hostingView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             hostingView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             hostingView.topAnchor.constraint(equalTo: container.topAnchor),
@@ -238,7 +317,8 @@ enum WidgetGallerySampleSnapshotFactory {
                     format: AppStrings.text(.widgetUpdatedThroughTitleFormat, language: language),
                     dateText
                 ),
-                notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language)
+                notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language),
+                weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language)
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: cells.reduce(0) { $0 + $1.totalTokens },
@@ -250,7 +330,24 @@ enum WidgetGallerySampleSnapshotFactory {
                 totalTokens: points.reduce(0) { $0 + $1.totalTokens },
                 maxHourlyTokens: points.map(\.totalTokens).max() ?? 0,
                 points: points
-            )
+            ),
+            monthlyBudget: makeMonthlyBudget(language: language)
+        )
+    }
+
+    private static func makeMonthlyBudget(
+        language: AppLanguage
+    ) -> WidgetMonthlyBudgetSnapshot {
+        let copy = MonthlyBudgetCopy.make(language: language)
+        return WidgetMonthlyBudgetSnapshot(
+            monthKey: "2026-08",
+            spentUSD: 42.75,
+            budgetUSD: 100,
+            forecastUSD: 86.50,
+            title: copy.title,
+            forecastTitle: copy.forecastTitle,
+            unconfiguredMessage: copy.unconfiguredMessage,
+            forecastOverBudgetMessage: copy.forecastOverBudgetMessage
         )
     }
 
@@ -496,5 +593,110 @@ private struct WidgetGalleryHourlyLinePreview: View {
 
     private var tokenAxisValueName: String {
         AppStrings.text(.recentDetailsTokens, language: language)
+    }
+}
+
+private struct WidgetGalleryWeeklySummaryPreview: View {
+    let presentation: WidgetWeeklySummaryPresentation
+
+    var body: some View {
+        VStack(spacing: 7) {
+            WidgetGalleryPreviewHeader(
+                title: presentation.title,
+                subtitle: presentation.subtitle,
+                total: presentation.totalText
+            )
+            Chart(presentation.points) { point in
+                BarMark(
+                    x: .value("Day", point.position),
+                    y: .value("Tokens", point.totalTokens)
+                )
+                .foregroundStyle(
+                    point.isCurrentDay
+                        ? Color.accentColor
+                        : Color.accentColor.opacity(0.45)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 2))
+            }
+            .chartLegend(.hidden)
+            .chartXScale(domain: -0.5...6.5)
+            .chartYScale(domain: 0...presentation.maximumY)
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct WidgetGalleryMonthlyBudgetPreview: View {
+    let presentation: WidgetMonthlyBudgetPresentation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(presentation.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if let subtitle = presentation.subtitle {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 4)
+                Text(presentation.spentText)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+
+            if let budgetText = presentation.budgetText,
+               let progress = presentation.progress {
+                Text("\(presentation.spentText) / \(budgetText)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                GeometryReader { proxy in
+                    let width = proxy.size.width * min(max(progress, 0), 1)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(.secondary.opacity(0.2))
+                        Capsule()
+                            .fill(
+                                presentation.isForecastOverBudget
+                                    ? Color.red
+                                    : Color.accentColor
+                            )
+                            .frame(width: width)
+                    }
+                }
+                .frame(height: 8)
+                if let forecastText = presentation.forecastText {
+                    Text(forecastText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            if let message = presentation.message {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(
+                        presentation.isForecastOverBudget ? .red : .secondary
+                    )
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(presentation.accessibilityLabel)
     }
 }

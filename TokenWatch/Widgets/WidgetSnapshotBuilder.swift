@@ -18,12 +18,14 @@ enum WidgetSnapshotBuilder {
     ///   - now: Generation time and local wall-clock date used by both chart snapshots.
     ///   - calendar: Calendar carrying the caller-selected time zone and weekday ordering.
     ///   - language: Resolved app language used to freeze all widget render copy.
+    ///   - monthlyBudgetUSD: Optional user-selected USD limit for the budget pacing widget.
     /// - Returns: A validated-shape snapshot candidate, or `nil` only if no aggregate exists.
     static func build(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         now: Date,
         calendar: Calendar,
-        language: AppLanguage
+        language: AppLanguage,
+        monthlyBudgetUSD: Double? = nil
     ) -> WidgetUsageSnapshot? {
         guard states.values.contains(where: { $0.stats != nil }) else {
             return nil
@@ -61,7 +63,8 @@ enum WidgetSnapshotBuilder {
                     format: AppStrings.text(.widgetUpdatedThroughTitleFormat, language: language),
                     dateText
                 ),
-                notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language)
+                notReadyMessage: AppStrings.text(.widgetNotReadyMessage, language: language),
+                weeklySummaryTitle: UsageStatsPeriod.recent7Days.title(language: language)
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: heatmap.monthTotalTokens,
@@ -81,7 +84,59 @@ enum WidgetSnapshotBuilder {
                         isCurrentHour: bucket.isCurrentMonth
                     )
                 }
+            ),
+            monthlyBudget: makeMonthlyBudget(
+                states: states,
+                now: now,
+                calendar: calendar,
+                language: language,
+                monthlyBudgetUSD: monthlyBudgetUSD
             )
+        )
+    }
+
+    private static func makeMonthlyBudget(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        now: Date,
+        calendar: Calendar,
+        language: AppLanguage,
+        monthlyBudgetUSD: Double?
+    ) -> WidgetMonthlyBudgetSnapshot {
+        let monthKey = monthKey(now, calendar: calendar)
+        var spentUSD = 0.0
+        for state in states.values {
+            guard let cost = state.stats?.byMonth[monthKey]?.cost,
+                  cost.isFinite,
+                  cost >= 0 else {
+                continue
+            }
+            let next = spentUSD + cost
+            spentUSD = next.isFinite ? next : Double.greatestFiniteMagnitude
+        }
+
+        let elapsedDays = max(1, calendar.component(.day, from: now))
+        let daysInMonth = max(
+            elapsedDays,
+            calendar.range(of: .day, in: .month, for: now)?.count ?? elapsedDays
+        )
+        let rawForecast = spentUSD / Double(elapsedDays) * Double(daysInMonth)
+        let forecastUSD = rawForecast.isFinite
+            ? rawForecast
+            : Double.greatestFiniteMagnitude
+        let budgetUSD = monthlyBudgetUSD.flatMap {
+            $0.isFinite && $0 > 0 ? $0 : nil
+        }
+        let copy = MonthlyBudgetCopy.make(language: language)
+
+        return WidgetMonthlyBudgetSnapshot(
+            monthKey: monthKey,
+            spentUSD: spentUSD,
+            budgetUSD: budgetUSD,
+            forecastUSD: forecastUSD,
+            title: copy.title,
+            forecastTitle: copy.forecastTitle,
+            unconfiguredMessage: copy.unconfiguredMessage,
+            forecastOverBudgetMessage: copy.forecastOverBudgetMessage
         )
     }
 
@@ -124,6 +179,15 @@ enum WidgetSnapshotBuilder {
             components.year ?? 0,
             components.month ?? 0,
             components.day ?? 0
+        )
+    }
+
+    private static func monthKey(_ date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return String(
+            format: "%04d-%02d",
+            components.year ?? 0,
+            components.month ?? 0
         )
     }
 }

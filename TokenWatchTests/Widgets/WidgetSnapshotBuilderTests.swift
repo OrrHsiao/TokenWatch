@@ -155,6 +155,46 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.localizedText.datedUsageTitle == "7/15 Usage")
         #expect(snapshot.localizedText.updatedThroughTitle == "Updated through 7/15")
         #expect(snapshot.localizedText.notReadyMessage == "Open TokenWatch to refresh data")
+        #expect(snapshot.localizedText.weeklySummaryTitle == "Last 7 Days")
+        #expect(snapshot.monthlyBudget?.title == "Monthly Budget")
+    }
+
+    @Test("monthly budget combines current-month costs and projects the calendar month")
+    func monthlyBudgetUsesCurrentMonthCostAndPacing() throws {
+        let states: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: loadedState(stats: makeStats(byMonth: [
+                "2026-06": makeSummary(total: 0, cost: 999),
+                "2026-07": makeSummary(total: 0, cost: 12.5),
+            ])),
+            .codex: loadedState(stats: makeStats(byMonth: [
+                "2026-07": makeSummary(total: 0, cost: 7.5),
+                "2026-08": makeSummary(total: 0, cost: 999),
+            ])),
+        ]
+
+        let configured = try #require(WidgetSnapshotBuilder.build(
+            states: states,
+            now: fixedNow,
+            calendar: shanghaiCalendar,
+            language: .zhHans,
+            monthlyBudgetUSD: 100
+        ))
+        let unconfigured = try #require(WidgetSnapshotBuilder.build(
+            states: states,
+            now: fixedNow,
+            calendar: shanghaiCalendar,
+            language: .zhHans
+        ))
+        let budget = try #require(configured.monthlyBudget)
+
+        #expect(budget.monthKey == "2026-07")
+        #expect(budget.spentUSD == 20)
+        #expect(abs(budget.forecastUSD - (20.0 / 15.0 * 31.0)) < 0.000_001)
+        #expect(budget.budgetUSD == 100)
+        #expect(budget.title == "本月预算")
+        #expect(configured.localizedText.weeklySummaryTitle == "最近 7 天")
+        #expect(unconfigured.monthlyBudget?.budgetUSD == nil)
+        #expect(MonthlyBudgetCopy.make(language: .zhHant).title == "本月預算")
     }
 
     @Test("all supported languages resolve all five widget strings")
@@ -327,7 +367,7 @@ struct WidgetSnapshotBuilderTests {
         )
     }
 
-    private func makeSummary(total: Int) -> UsageSummary {
+    private func makeSummary(total: Int, cost: Double = 0) -> UsageSummary {
         UsageSummary(
             inputTokens: total,
             outputTokens: 0,
@@ -335,7 +375,7 @@ struct WidgetSnapshotBuilderTests {
             cacheCreationTokens: 0,
             reasoningTokens: 0,
             totalTokens: total,
-            cost: 0,
+            cost: cost,
             entryCount: total == 0 ? 0 : 1,
             modelBreakdown: [:]
         )

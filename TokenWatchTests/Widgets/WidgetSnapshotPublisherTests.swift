@@ -4,8 +4,8 @@ import Testing
 
 @Suite("Widget snapshot publisher")
 struct WidgetSnapshotPublisherTests {
-    @Test("changed content saves before reloading both exact kinds")
-    func newContentSavesBeforeReloadingBothKinds() async {
+    @Test("changed content saves before reloading every exact kind")
+    func newContentSavesBeforeReloadingEveryKind() async {
         let events = LockedEventRecorder()
         let store = LockedSnapshotStore(loadResult: .missing, events: events)
         let reloader = RecordingTimelineReloader(events: events)
@@ -18,6 +18,8 @@ struct WidgetSnapshotPublisherTests {
             "save",
             "reload:\(WidgetSharedConfiguration.heatmapKind)",
             "reload:\(WidgetSharedConfiguration.hourlyLineKind)",
+            "reload:\(WidgetSharedConfiguration.weeklySummaryKind)",
+            "reload:\(WidgetSharedConfiguration.monthlyBudgetKind)",
         ])
         #expect(store.loadCount == 1)
         #expect(store.saveCount == 1)
@@ -25,6 +27,8 @@ struct WidgetSnapshotPublisherTests {
         #expect(reloader.kinds == [
             WidgetSharedConfiguration.heatmapKind,
             WidgetSharedConfiguration.hourlyLineKind,
+            WidgetSharedConfiguration.weeklySummaryKind,
+            WidgetSharedConfiguration.monthlyBudgetKind,
         ])
     }
 
@@ -118,10 +122,45 @@ struct WidgetSnapshotPublisherTests {
             "save",
             "reload:\(WidgetSharedConfiguration.heatmapKind)",
             "reload:\(WidgetSharedConfiguration.hourlyLineKind)",
+            "reload:\(WidgetSharedConfiguration.weeklySummaryKind)",
+            "reload:\(WidgetSharedConfiguration.monthlyBudgetKind)",
         ])
         #expect(store.loadCount == 1)
         #expect(store.saveCount == 1)
         #expect(store.savedSnapshots.first?.localizedText.todayUsageTitle == "Today's Usage")
+    }
+
+    @Test("a changed monthly budget republishes the snapshot")
+    func monthlyBudgetChangePublishesNewSnapshot() async throws {
+        let existing = try #require(WidgetSnapshotBuilder.build(
+            states: validStates,
+            now: fixedNow,
+            calendar: fixedCalendar,
+            language: .zhHans,
+            monthlyBudgetUSD: 100
+        ))
+        let events = LockedEventRecorder()
+        let store = LockedSnapshotStore(
+            loadResult: .available(existing),
+            events: events
+        )
+        let reloader = RecordingTimelineReloader(events: events)
+        let publisher = makePublisher(store: store, reloader: reloader)
+
+        let result = await publisher.publish(
+            states: validStates,
+            language: .zhHans,
+            monthlyBudgetUSD: 125
+        )
+
+        #expect(result == .published)
+        #expect(store.savedSnapshots.first?.monthlyBudget?.budgetUSD == 125)
+        #expect(reloader.kinds == [
+            WidgetSharedConfiguration.heatmapKind,
+            WidgetSharedConfiguration.hourlyLineKind,
+            WidgetSharedConfiguration.weeklySummaryKind,
+            WidgetSharedConfiguration.monthlyBudgetKind,
+        ])
     }
 
     private var fixedCalendar: Calendar {
@@ -176,7 +215,8 @@ struct WidgetSnapshotPublisherTests {
             localDayKey: snapshot.localDayKey,
             localizedText: snapshot.localizedText,
             heatmap: snapshot.heatmap,
-            hourlyLine: snapshot.hourlyLine
+            hourlyLine: snapshot.hourlyLine,
+            monthlyBudget: snapshot.monthlyBudget
         )
     }
 }

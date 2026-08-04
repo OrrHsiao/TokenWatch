@@ -158,6 +158,33 @@ struct TokenStatsViewModelWidgetPublishingTests {
         #expect(codex.scanCount == codexScans)
     }
 
+    @Test("monthly budget change republishes memory without rescanning")
+    func monthlyBudgetChangeRepublishesWithoutRescanning() async throws {
+        let fixture = makeLanguageSettings()
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        let budgetSettings = MonthlyBudgetSettings(defaults: fixture.defaults)
+        let claude = MutableTestUsageProvider(id: .claude, totalTokens: 10)
+        let codex = MutableTestUsageProvider(id: .codex, totalTokens: 20)
+        let publisher = RecordingWidgetSnapshotPublisher()
+        let viewModel = makeViewModel(
+            settings: fixture.settings,
+            monthlyBudgetSettings: budgetSettings,
+            providers: [claude, codex],
+            publisher: publisher
+        )
+
+        await viewModel.loadAllStats()
+        let claudeScans = claude.scanCount
+        let codexScans = codex.scanCount
+        budgetSettings.monthlyBudgetUSD = 100
+        try await waitUntil { await publisher.callCount() == 2 }
+
+        let calls = await publisher.recordedCalls()
+        #expect(calls.map(\.monthlyBudgetUSD) == [nil, 100])
+        #expect(claude.scanCount == claudeScans)
+        #expect(codex.scanCount == codexScans)
+    }
+
     @Test("language changes before and during publish use a final republish loop")
     func languageChangeDuringLoadIsDeferred() async throws {
         let fixture = makeLanguageSettings()
@@ -276,11 +303,13 @@ struct TokenStatsViewModelWidgetPublishingTests {
 
     private func makeViewModel(
         settings: AppLanguageSettings,
+        monthlyBudgetSettings: MonthlyBudgetSettings? = nil,
         providers: [any UsageProvider],
         publisher: RecordingWidgetSnapshotPublisher
     ) -> TokenStatsViewModel {
         TokenStatsViewModel(
             languageSettings: settings,
+            monthlyBudgetSettings: monthlyBudgetSettings ?? .shared,
             providers: providers,
             bookmarkManager: AlwaysAuthorizedBookmarkManager(),
             aggregator: UsageAggregator(),
@@ -335,6 +364,7 @@ private actor RecordingWidgetSnapshotPublisher: WidgetSnapshotPublishing {
     struct Call: Sendable {
         let states: [ProviderID: TokenStatsViewModel.ProviderState]
         let language: AppLanguage
+        let monthlyBudgetUSD: Double?
     }
 
     private var calls: [Call] = []
@@ -344,9 +374,16 @@ private actor RecordingWidgetSnapshotPublisher: WidgetSnapshotPublishing {
 
     func publish(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
-        language: AppLanguage
+        language: AppLanguage,
+        monthlyBudgetUSD: Double?
     ) async -> WidgetSnapshotPublishResult {
-        calls.append(Call(states: states, language: language))
+        calls.append(
+            Call(
+                states: states,
+                language: language,
+                monthlyBudgetUSD: monthlyBudgetUSD
+            )
+        )
         if pendingSuspensionCount > 0 {
             pendingSuspensionCount -= 1
             await withCheckedContinuation { continuation in

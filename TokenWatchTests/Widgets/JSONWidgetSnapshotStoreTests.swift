@@ -9,7 +9,10 @@ struct JSONWidgetSnapshotStoreTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let fileURL = directory.appendingPathComponent("snapshot.json", isDirectory: false)
-        let source = makeValidSnapshot(totalTokens: 42)
+        let source = makeValidSnapshot(
+            totalTokens: 42,
+            monthlyBudget: validMonthlyBudget()
+        )
         let store = JSONWidgetSnapshotStore(fileURL: fileURL)
 
         try store.save(source)
@@ -41,9 +44,25 @@ struct JSONWidgetSnapshotStoreTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let fileURL = directory.appendingPathComponent("snapshot.json", isDirectory: false)
-        try Data(#"{"schemaVersion":2}"#.utf8).write(to: fileURL)
+        let unsupportedSchema = WidgetSharedConfiguration.schemaVersion + 1
+        try Data("{\"schemaVersion\":\(unsupportedSchema)}".utf8).write(to: fileURL)
 
-        #expect(JSONWidgetSnapshotStore(fileURL: fileURL).load() == .invalid(.unsupportedSchema(2)))
+        #expect(JSONWidgetSnapshotStore(fileURL: fileURL).load() == .invalid(
+            .unsupportedSchema(unsupportedSchema)
+        ))
+    }
+
+    @Test("previous schema is rejected before payload decoding")
+    func previousSchemaIsRejectedBeforePayloadDecode() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("snapshot.json", isDirectory: false)
+        let previousSchema = WidgetSharedConfiguration.schemaVersion - 1
+        try Data("{\"schemaVersion\":\(previousSchema)}".utf8).write(to: fileURL)
+
+        #expect(JSONWidgetSnapshotStore(fileURL: fileURL).load() == .invalid(
+            .unsupportedSchema(previousSchema)
+        ))
     }
 
     @Test("every invalid render shape is rejected")
@@ -176,6 +195,21 @@ struct JSONWidgetSnapshotStoreTests {
             ("mismatched day keys", makeValidSnapshot(
                 hourlyDayKey: "2026-07-14"
             )),
+            ("blank weekly summary title", makeValidSnapshot(
+                weeklySummaryTitle: "  "
+            )),
+            ("invalid budget month", makeValidSnapshot(
+                monthlyBudget: validMonthlyBudget(monthKey: "2026-13")
+            )),
+            ("negative budget spend", makeValidSnapshot(
+                monthlyBudget: validMonthlyBudget(spentUSD: -1)
+            )),
+            ("zero budget limit", makeValidSnapshot(
+                monthlyBudget: validMonthlyBudget(budgetUSD: 0)
+            )),
+            ("blank budget title", makeValidSnapshot(
+                monthlyBudget: validMonthlyBudget(title: " ")
+            )),
         ]
     }
 
@@ -199,7 +233,9 @@ struct JSONWidgetSnapshotStoreTests {
         maxDailyTokens: Int = 42,
         hourlyTotalTokens: Int? = nil,
         maxHourlyTokens: Int = 42,
-        hourlyDayKey: String = "2026-07-15"
+        hourlyDayKey: String = "2026-07-15",
+        weeklySummaryTitle: String = "最近 7 天",
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
     ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
@@ -210,7 +246,8 @@ struct JSONWidgetSnapshotStoreTests {
                 todayUsageTitle: "今日用量",
                 datedUsageTitle: "7/15 用量",
                 updatedThroughTitle: "更新至 7/15",
-                notReadyMessage: "打开 TokenWatch 刷新数据"
+                notReadyMessage: "打开 TokenWatch 刷新数据",
+                weeklySummaryTitle: weeklySummaryTitle
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: heatmapTotalTokens ?? totalTokens,
@@ -222,7 +259,30 @@ struct JSONWidgetSnapshotStoreTests {
                 totalTokens: hourlyTotalTokens ?? totalTokens,
                 maxHourlyTokens: maxHourlyTokens,
                 points: hourlyPoints ?? makeHourlyPoints(totalTokens: totalTokens)
-            )
+            ),
+            monthlyBudget: monthlyBudget
+        )
+    }
+
+    private func validMonthlyBudget(
+        monthKey: String = "2026-07",
+        spentUSD: Double = 42,
+        budgetUSD: Double? = 100,
+        forecastUSD: Double = 80,
+        title: String = "本月预算",
+        forecastTitle: String = "月底预估",
+        unconfiguredMessage: String = "在 TokenWatch 中设置月度预算",
+        forecastOverBudgetMessage: String = "预计超出预算"
+    ) -> WidgetMonthlyBudgetSnapshot {
+        WidgetMonthlyBudgetSnapshot(
+            monthKey: monthKey,
+            spentUSD: spentUSD,
+            budgetUSD: budgetUSD,
+            forecastUSD: forecastUSD,
+            title: title,
+            forecastTitle: forecastTitle,
+            unconfiguredMessage: unconfiguredMessage,
+            forecastOverBudgetMessage: forecastOverBudgetMessage
         )
     }
 
