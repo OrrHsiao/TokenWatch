@@ -27,6 +27,7 @@ struct WidgetChartPresentationTests {
         let state = WidgetUsageEntryState.notReady(fallback)
         let heatmap = WidgetChartPresentationBuilder.heatmap(for: state)
         let hourly = WidgetChartPresentationBuilder.hourlyLine(for: state)
+        let weekly = WidgetChartPresentationBuilder.weeklySummary(for: state)
 
         #expect(heatmap.message == fallback.notReadyMessage)
         #expect(heatmap.cells.count == 154)
@@ -38,6 +39,11 @@ struct WidgetChartPresentationTests {
         })
         #expect(hourly.maximumY == 1)
         #expect(hourly.currentPoint == nil)
+        #expect(weekly.title == fallback.weeklySummaryTitle)
+        #expect(weekly.message == fallback.notReadyMessage)
+        #expect(weekly.points.count == 7)
+        #expect(weekly.points.allSatisfy { $0.totalTokens == 0 && !$0.isCurrentDay })
+        #expect(weekly.maximumY == 1)
     }
 
     @Test("stale data uses dated titles and hides the current-hour marker")
@@ -98,17 +104,91 @@ struct WidgetChartPresentationTests {
         }
     }
 
+    @Test("weekly summary keeps the heatmap's chronological order")
+    func weeklySummaryUsesTrailingHeatmapCells() {
+        let cells = (0..<10).map { index in
+            WidgetHeatmapCell(
+                dateKey: "source-order-\(index)",
+                totalTokens: index * 10,
+                intensity: 0,
+                isPlaceholder: false
+            )
+        }
+        let snapshot = makeSnapshot(totalTokens: 0, heatmapCells: cells)
+        let current = WidgetChartPresentationBuilder.weeklySummary(for: .current(snapshot))
+        let stale = WidgetChartPresentationBuilder.weeklySummary(for: .stale(snapshot))
+
+        #expect(current.points.map(\.id) == (3..<10).map { "source-order-\($0)" })
+        #expect(current.points.map(\.position) == Array(0..<7))
+        #expect(current.totalText == "420")
+        #expect(current.maximumY == 90)
+        #expect(current.points.filter(\.isCurrentDay).map(\.id) == ["source-order-9"])
+        #expect(stale.subtitle == snapshot.localizedText.updatedThroughTitle)
+        #expect(stale.points.allSatisfy { !$0.isCurrentDay })
+    }
+
+    @Test("monthly budget shows progress, forecast warning, and setup guidance")
+    func monthlyBudgetPresentationHandlesConfiguredAndUnconfiguredStates() {
+        let configured = makeSnapshot(
+            totalTokens: 0,
+            monthlyBudget: WidgetMonthlyBudgetSnapshot(
+                monthKey: "2026-07",
+                spentUSD: 80,
+                budgetUSD: 100,
+                forecastUSD: 120,
+                title: "Monthly Budget",
+                forecastTitle: "Month-end forecast",
+                unconfiguredMessage: "Set a monthly budget in TokenWatch",
+                forecastOverBudgetMessage: "Projected to exceed budget"
+            )
+        )
+        let unconfigured = makeSnapshot(
+            totalTokens: 0,
+            monthlyBudget: WidgetMonthlyBudgetSnapshot(
+                monthKey: "2026-07",
+                spentUSD: 25,
+                budgetUSD: nil,
+                forecastUSD: 50,
+                title: "Monthly Budget",
+                forecastTitle: "Month-end forecast",
+                unconfiguredMessage: "Set a monthly budget in TokenWatch",
+                forecastOverBudgetMessage: "Projected to exceed budget"
+            )
+        )
+
+        let current = WidgetChartPresentationBuilder.monthlyBudget(for: .current(configured))
+        let stale = WidgetChartPresentationBuilder.monthlyBudget(for: .stale(configured))
+        let setup = WidgetChartPresentationBuilder.monthlyBudget(for: .current(unconfigured))
+
+        #expect(current.spentText == "$80.00")
+        #expect(current.budgetText == "$100.00")
+        #expect(current.forecastText == "Month-end forecast $120.00")
+        #expect(current.progress == 0.8)
+        #expect(current.isForecastOverBudget)
+        #expect(current.message == "Projected to exceed budget")
+        #expect(stale.subtitle == configured.localizedText.updatedThroughTitle)
+        #expect(setup.budgetText == nil)
+        #expect(setup.forecastText == nil)
+        #expect(setup.progress == nil)
+        #expect(setup.message == "Set a monthly budget in TokenWatch")
+    }
+
     private var fallback: WidgetLocalizedText {
         WidgetLocalizedText(
             heatmapTitle: "Recent 22 Weeks",
             todayUsageTitle: "Today's Usage",
             datedUsageTitle: "7/15 Usage",
             updatedThroughTitle: "Updated through 7/15",
-            notReadyMessage: "Open TokenWatch to refresh data"
+            notReadyMessage: "Open TokenWatch to refresh data",
+            weeklySummaryTitle: "Last 7 Days"
         )
     }
 
-    private func makeSnapshot(totalTokens: Int) -> WidgetUsageSnapshot {
+    private func makeSnapshot(
+        totalTokens: Int,
+        heatmapCells: [WidgetHeatmapCell]? = nil,
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
+    ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
             schemaVersion: WidgetSharedConfiguration.schemaVersion,
             generatedAt: Date(timeIntervalSince1970: 100),
@@ -117,7 +197,7 @@ struct WidgetChartPresentationTests {
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: totalTokens,
                 maxDailyTokens: totalTokens,
-                cells: (0..<154).map { index in
+                cells: heatmapCells ?? (0..<154).map { index in
                     let isPlaceholder = index >= 152
                     return WidgetHeatmapCell(
                         dateKey: isPlaceholder ? nil : "heatmap-date-\(index)",
@@ -140,7 +220,8 @@ struct WidgetChartPresentationTests {
                         isCurrentHour: hour == 13
                     )
                 }
-            )
+            ),
+            monthlyBudget: monthlyBudget
         )
     }
 }

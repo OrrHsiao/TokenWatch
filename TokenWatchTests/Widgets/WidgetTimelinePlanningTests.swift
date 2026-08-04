@@ -29,7 +29,7 @@ struct WidgetTimelinePlanningTests {
             .missing,
             .invalid(.unreadable),
             .invalid(.corrupt),
-            .invalid(.unsupportedSchema(2)),
+            .invalid(.unsupportedSchema(WidgetSharedConfiguration.schemaVersion + 1)),
         ]
 
         for result in results {

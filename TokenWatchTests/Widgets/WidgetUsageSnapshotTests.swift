@@ -4,9 +4,12 @@ import Testing
 
 @Suite("WidgetUsageSnapshot")
 struct WidgetUsageSnapshotTests {
-    @Test("schema 1 snapshot round-trips through JSON")
-    func schemaOneRoundTrips() throws {
-        let source = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 100))
+    @Test("current schema snapshot round-trips through JSON")
+    func currentSchemaRoundTrips() throws {
+        let source = makeSnapshot(
+            generatedAt: Date(timeIntervalSince1970: 100),
+            monthlyBudget: monthlyBudget()
+        )
         let data = try JSONEncoder().encode(source)
         let decoded = try JSONDecoder().decode(WidgetUsageSnapshot.self, from: data)
         #expect(decoded == source)
@@ -81,13 +84,25 @@ struct WidgetUsageSnapshotTests {
         )
     }
 
+    @Test("semantic comparison includes monthly budget")
+    func semanticComparisonIncludesMonthlyBudget() {
+        let first = makeSnapshot(monthlyBudget: monthlyBudget(budgetUSD: 100))
+        let changed = makeSnapshot(monthlyBudget: monthlyBudget(budgetUSD: 125))
+
+        #expect(
+            !first.hasSameContent(as: changed),
+            "hasSameContent(as:) must compare monthlyBudget"
+        )
+    }
+
     private func makeSnapshot(
         generatedAt: Date = Date(timeIntervalSince1970: 100),
         schemaVersion: Int = WidgetSharedConfiguration.schemaVersion,
         localDayKey: String = "2026-07-15",
         notReadyMessage: String = "打开 TokenWatch 刷新数据",
         heatmapTotalTokens: Int = 42,
-        hourlyTotalTokens: Int = 42
+        hourlyTotalTokens: Int = 42,
+        monthlyBudget: WidgetMonthlyBudgetSnapshot? = nil
     ) -> WidgetUsageSnapshot {
         WidgetUsageSnapshot(
             schemaVersion: schemaVersion,
@@ -125,7 +140,23 @@ struct WidgetUsageSnapshotTests {
                         isCurrentHour: true
                     )
                 ]
-            )
+            ),
+            monthlyBudget: monthlyBudget
+        )
+    }
+
+    private func monthlyBudget(
+        budgetUSD: Double = 100
+    ) -> WidgetMonthlyBudgetSnapshot {
+        WidgetMonthlyBudgetSnapshot(
+            monthKey: "2026-07",
+            spentUSD: 42,
+            budgetUSD: budgetUSD,
+            forecastUSD: 84,
+            title: "本月预算",
+            forecastTitle: "月底预估",
+            unconfiguredMessage: "在 TokenWatch 中设置月度预算",
+            forecastOverBudgetMessage: "预计超出预算"
         )
     }
 }

@@ -7,5 +7,7 @@ struct TokenWatchWidgetsBundle: WidgetBundle {
     var body: some Widget {
         TokenHeatmapWidget()
         TokenHourlyLineWidget()
+        TokenWeeklySummaryWidget()
+        TokenMonthlyBudgetWidget()
     }
 }

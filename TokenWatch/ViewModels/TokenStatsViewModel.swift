@@ -56,6 +56,7 @@ final class TokenStatsViewModel: Sendable {
     private let providers: [any UsageProvider]
     private let bookmarkManager: any BookmarkAccessManaging
     private let languageSettings: AppLanguageSettings
+    private let monthlyBudgetSettings: MonthlyBudgetSettings
     private let aggregator: any UsageAggregating
     private let nowProvider: @Sendable () -> Date
     private let widgetSnapshotPublisher: (any WidgetSnapshotPublishing)?
@@ -65,13 +66,15 @@ final class TokenStatsViewModel: Sendable {
     private var isInitialLoadInProgress = false
     private var entryFingerprints: [ProviderID: UsageEntriesFingerprint] = [:]
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
+    private var monthlyBudgetSettingsObserverToken: MonthlyBudgetSettings.ObservationToken?
     private var isLoadingAllStats = false
-    private var needsLanguageRepublish = false
-    private var isLanguageRepublishDrainScheduled = false
+    private var needsWidgetRepublish = false
+    private var isWidgetRepublishDrainScheduled = false
     private var statsSourceRevisions: [ProviderID: String] = [:]
 
     init(
         languageSettings: AppLanguageSettings = .shared,
+        monthlyBudgetSettings: MonthlyBudgetSettings = .shared,
         providers: [any UsageProvider] = ProviderRegistry.allProviders,
         bookmarkManager: any BookmarkAccessManaging = SecurityScopedBookmarkManager.shared,
         aggregator: any UsageAggregating = UsageAggregator(),
@@ -80,6 +83,7 @@ final class TokenStatsViewModel: Sendable {
         statsSnapshotStore: any ProviderStatsSnapshotStoring = SystemProviderStatsSnapshotStore()
     ) {
         self.languageSettings = languageSettings
+        self.monthlyBudgetSettings = monthlyBudgetSettings
         self.providers = providers
         self.bookmarkManager = bookmarkManager
         self.aggregator = aggregator
@@ -91,7 +95,10 @@ final class TokenStatsViewModel: Sendable {
         }
         if widgetSnapshotPublisher != nil {
             languageSettingsObserverToken = languageSettings.observe { [weak self] in
-                self?.handleLanguageChangeForWidgets()
+                self?.handleWidgetConfigurationChange()
+            }
+            monthlyBudgetSettingsObserverToken = monthlyBudgetSettings.observe { [weak self] in
+                self?.handleWidgetConfigurationChange()
             }
         }
     }
@@ -100,6 +107,9 @@ final class TokenStatsViewModel: Sendable {
         MainActor.assumeIsolated {
             if let languageSettingsObserverToken {
                 languageSettings.removeObserver(languageSettingsObserverToken)
+            }
+            if let monthlyBudgetSettingsObserverToken {
+                monthlyBudgetSettings.removeObserver(monthlyBudgetSettingsObserverToken)
             }
         }
     }
@@ -199,40 +209,41 @@ final class TokenStatsViewModel: Sendable {
         }
 
         repeat {
-            needsLanguageRepublish = false
+            needsWidgetRepublish = false
             await publishCurrentWidgetSnapshot()
-        } while needsLanguageRepublish
+        } while needsWidgetRepublish
     }
 
-    /// 发布完整内存状态；只由全量刷新完成或语言变化路径调用。
+    /// 发布完整内存状态；由全量刷新完成、语言变化或预算变化路径调用。
     private func publishCurrentWidgetSnapshot() async {
         guard let widgetSnapshotPublisher else { return }
         await widgetSnapshotPublisher.publish(
             states: states,
-            language: languageSettings.resolvedLanguage
+            language: languageSettings.resolvedLanguage,
+            monthlyBudgetUSD: monthlyBudgetSettings.monthlyBudgetUSD
         )
     }
 
-    /// 语言变化只重建共享快照，不触发 provider 扫描；同一 dirty bit 合并连续变化。
-    private func handleLanguageChangeForWidgets() {
+    /// 语言或预算变化只重建共享快照，不触发 provider 扫描；同一 dirty bit 合并连续变化。
+    private func handleWidgetConfigurationChange() {
         guard widgetSnapshotPublisher != nil else { return }
-        needsLanguageRepublish = true
-        guard !isLoadingAllStats, !isLanguageRepublishDrainScheduled else { return }
-        isLanguageRepublishDrainScheduled = true
+        needsWidgetRepublish = true
+        guard !isLoadingAllStats, !isWidgetRepublishDrainScheduled else { return }
+        isWidgetRepublishDrainScheduled = true
         Task { @MainActor [weak self] in
-            await self?.drainLanguageRepublish()
+            await self?.drainWidgetRepublish()
         }
     }
 
-    /// 串行消化空闲期语言变化；真正运行及每次发布恢复后都重查全量刷新 gate。
-    private func drainLanguageRepublish() async {
-        defer { isLanguageRepublishDrainScheduled = false }
-        while needsLanguageRepublish {
+    /// 串行消化空闲期的语言和预算变更，并在每次发布恢复后重查全量刷新 gate。
+    private func drainWidgetRepublish() async {
+        defer { isWidgetRepublishDrainScheduled = false }
+        while needsWidgetRepublish {
             guard !isLoadingAllStats else { return }
-            needsLanguageRepublish = false
+            needsWidgetRepublish = false
             await publishCurrentWidgetSnapshot()
-            // await 期间若全量刷新开启，刷新本身必定发布完整 states；只有真实语言变化
-            // 会由 observer 重新置 dirty，并在下一轮 guard 处交给刷新末尾的循环消化。
+            // await 期间若全量刷新开启，刷新本身必定发布完整 states；语言或预算变化
+            // 会重新置 dirty，并在下一轮 guard 处交给刷新末尾的循环消化。
         }
     }
 

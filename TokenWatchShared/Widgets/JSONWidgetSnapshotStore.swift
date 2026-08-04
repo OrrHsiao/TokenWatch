@@ -46,6 +46,9 @@ enum WidgetUsageSnapshotValidator {
               snapshot.heatmap.maxDailyTokens >= 0,
               snapshot.hourlyLine.totalTokens >= 0,
               snapshot.hourlyLine.maxHourlyTokens >= 0,
+              !snapshot.localizedText.weeklySummaryTitle
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
               snapshot.heatmap.cells.count
                 == WidgetChartVisualStyle.heatmapColumns * WidgetChartVisualStyle.heatmapRows,
               snapshot.hourlyLine.points.count == 24 else {
@@ -65,7 +68,41 @@ enum WidgetUsageSnapshotValidator {
             && snapshot.hourlyLine.points.allSatisfy {
                 $0.totalTokens >= 0 && !$0.hourKey.isEmpty && !$0.hourLabel.isEmpty
             }
-        return cellsAreValid && pointsAreValid
+        let monthlyBudgetIsValid = snapshot.monthlyBudget.map(isValidMonthlyBudget) ?? true
+        return cellsAreValid && pointsAreValid && monthlyBudgetIsValid
+    }
+
+    private static func isValidMonthlyBudget(
+        _ snapshot: WidgetMonthlyBudgetSnapshot
+    ) -> Bool {
+        guard isValidMonthKey(snapshot.monthKey),
+              snapshot.spentUSD.isFinite,
+              snapshot.spentUSD >= 0,
+              snapshot.forecastUSD.isFinite,
+              snapshot.forecastUSD >= 0,
+              !snapshot.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !snapshot.forecastTitle
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
+              !snapshot.unconfiguredMessage
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty,
+              !snapshot.forecastOverBudgetMessage
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty else {
+            return false
+        }
+        return snapshot.budgetUSD.map { $0.isFinite && $0 > 0 } ?? true
+    }
+
+    private static func isValidMonthKey(_ key: String) -> Bool {
+        guard key.count == 7,
+              key.dropFirst(4).first == "-",
+              Int(key.prefix(4)) != nil,
+              let month = Int(key.suffix(2)) else {
+            return false
+        }
+        return (1...12).contains(month)
     }
 }
 

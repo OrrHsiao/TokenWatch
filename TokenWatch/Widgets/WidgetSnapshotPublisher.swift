@@ -15,11 +15,13 @@ protocol WidgetSnapshotPublishing: Sendable {
     /// - Parameters:
     ///   - states: Current aggregate states retained by the host app.
     ///   - language: Resolved app language frozen into the rendered snapshot.
+    ///   - monthlyBudgetUSD: Optional user-selected USD limit embedded in the budget widget.
     /// - Returns: The publication outcome, including unchanged and unavailable-data cases.
     @discardableResult
     func publish(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
-        language: AppLanguage
+        language: AppLanguage,
+        monthlyBudgetUSD: Double?
     ) async -> WidgetSnapshotPublishResult
 }
 
@@ -61,19 +63,21 @@ actor WidgetSnapshotPublisher: WidgetSnapshotPublishing {
 
     /// Publishes only semantic changes, preserving old data when no aggregate is available.
     ///
-    /// Persistence completes before either exact widget kind is reloaded. Failure logs are
+    /// Persistence completes before all registered widget kinds are reloaded. Failure logs are
     /// intentionally categorical and omit paths, provider payloads, totals, and localized copy.
     @discardableResult
     func publish(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
-        language: AppLanguage
+        language: AppLanguage,
+        monthlyBudgetUSD: Double? = nil
     ) async -> WidgetSnapshotPublishResult {
         let currentDate = now()
         guard let candidate = WidgetSnapshotBuilder.build(
             states: states,
             now: currentDate,
             calendar: calendar(),
-            language: language
+            language: language,
+            monthlyBudgetUSD: monthlyBudgetUSD
         ) else {
             logger.info("No valid aggregate; preserving the existing widget snapshot")
             return .skippedNoValidStats
@@ -101,6 +105,8 @@ actor WidgetSnapshotPublisher: WidgetSnapshotPublishing {
 
         timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.heatmapKind)
         timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.hourlyLineKind)
+        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.weeklySummaryKind)
+        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.monthlyBudgetKind)
         return .published
     }
 }

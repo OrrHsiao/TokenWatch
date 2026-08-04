@@ -6,7 +6,7 @@ import Testing
 @MainActor
 @Suite("Widget gallery")
 struct WidgetGalleryViewControllerTests {
-    @Test("示例快照保持两种中号小组件的固定图表形状")
+    @Test("示例快照保持所有小组件的固定图表形状")
     func sampleSnapshotUsesFixedWidgetShapes() throws {
         let now = try #require(calendar.date(from: DateComponents(
             year: 2026,
@@ -30,11 +30,14 @@ struct WidgetGalleryViewControllerTests {
         )
         #expect(snapshot.hourlyLine.points[6].totalTokens == 200_000)
         #expect(snapshot.localizedText.heatmapTitle == "热力图")
+        #expect(snapshot.localizedText.weeklySummaryTitle == "最近 7 天")
+        #expect(snapshot.monthlyBudget?.title == "本月预算")
+        #expect(snapshot.monthlyBudget?.budgetUSD == 100)
         #expect(WidgetUsageSnapshotValidator.isValid(snapshot))
     }
 
-    @Test("侧栏小组件入口展示两种预览")
-    func widgetNavigationShowsBothPreviews() throws {
+    @Test("侧栏小组件入口展示全部预览")
+    func widgetNavigationShowsAllPreviews() throws {
         let now = try #require(calendar.date(from: DateComponents(
             year: 2026,
             month: 8,
@@ -68,22 +71,41 @@ struct WidgetGalleryViewControllerTests {
         let hourlyLinePreview = try #require(
             view(identifier: "DashboardWidgetPreview.hourlyLine", in: controller.view)
         )
+        let weeklySmallPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.weeklySummary.small", in: controller.view)
+        )
+        let weeklyMediumPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.weeklySummary.medium", in: controller.view)
+        )
+        let monthlyBudgetPreview = try #require(
+            view(identifier: "DashboardWidgetPreview.monthlyBudget", in: controller.view)
+        )
         let heatmapContent = try #require(
             view(identifier: "DashboardWidgetPreview.heatmap.content", in: controller.view)
         )
         let hourlyLineContent = try #require(
             view(identifier: "DashboardWidgetPreview.hourlyLine.content", in: controller.view)
         )
-        let referenceSize = WidgetGalleryViewController.systemMediumPreviewSize
-        #expect(abs(heatmapPreview.frame.width - referenceSize.width) < 0.5)
-        #expect(abs(heatmapPreview.frame.height - referenceSize.height) < 0.5)
-        #expect(abs(hourlyLinePreview.frame.width - referenceSize.width) < 0.5)
-        #expect(abs(hourlyLinePreview.frame.height - referenceSize.height) < 0.5)
-        #expect(abs(heatmapContent.frame.width - referenceSize.width) < 0.5)
-        #expect(abs(heatmapContent.frame.height - referenceSize.height) < 0.5)
-        #expect(abs(hourlyLineContent.frame.width - referenceSize.width) < 0.5)
-        #expect(abs(hourlyLineContent.frame.height - referenceSize.height) < 0.5)
-        #expect(controller.view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 2)
+        let weeklySmallContent = try #require(
+            view(identifier: "DashboardWidgetPreview.weeklySummary.small.content", in: controller.view)
+        )
+        let weeklyMediumContent = try #require(
+            view(identifier: "DashboardWidgetPreview.weeklySummary.medium.content", in: controller.view)
+        )
+        let monthlyBudgetContent = try #require(
+            view(identifier: "DashboardWidgetPreview.monthlyBudget.content", in: controller.view)
+        )
+        let mediumSize = WidgetGalleryViewController.systemMediumPreviewSize
+        let smallSize = WidgetGalleryViewController.systemSmallPreviewSize
+        for preview in [heatmapPreview, hourlyLinePreview, weeklyMediumPreview, monthlyBudgetPreview] {
+            assertSize(preview, equals: mediumSize)
+        }
+        for content in [heatmapContent, hourlyLineContent, weeklyMediumContent, monthlyBudgetContent] {
+            assertSize(content, equals: mediumSize)
+        }
+        assertSize(weeklySmallPreview, equals: smallSize)
+        assertSize(weeklySmallContent, equals: smallSize)
+        #expect(controller.view.allDescendants(ofType: NSHostingView<AnyView>.self).count == 5)
 
         let widgetsPage = try #require(view(identifier: "DashboardWidgetsPage", in: controller.view))
         let initialWidth = widgetsPage.frame.width
@@ -95,10 +117,10 @@ struct WidgetGalleryViewControllerTests {
         controller.view.layoutSubtreeIfNeeded()
 
         #expect(widgetsPage.frame.width > initialWidth)
-        #expect(abs(heatmapPreview.frame.width - referenceSize.width) < 0.5)
-        #expect(abs(heatmapPreview.frame.height - referenceSize.height) < 0.5)
-        #expect(abs(hourlyLinePreview.frame.width - referenceSize.width) < 0.5)
-        #expect(abs(hourlyLinePreview.frame.height - referenceSize.height) < 0.5)
+        for preview in [heatmapPreview, hourlyLinePreview, weeklyMediumPreview, monthlyBudgetPreview] {
+            assertSize(preview, equals: mediumSize)
+        }
+        assertSize(weeklySmallPreview, equals: smallSize)
     }
 
     private var calendar: Calendar {
@@ -129,6 +151,11 @@ struct WidgetGalleryViewControllerTests {
     private func textValues(in root: NSView) -> [String] {
         let current = (root as? NSTextField).map { [$0.stringValue] } ?? []
         return current + root.subviews.flatMap(textValues)
+    }
+
+    private func assertSize(_ view: NSView, equals expected: CGSize) {
+        #expect(abs(view.frame.width - expected.width) < 0.5)
+        #expect(abs(view.frame.height - expected.height) < 0.5)
     }
 }
 
