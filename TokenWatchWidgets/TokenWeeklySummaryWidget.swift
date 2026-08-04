@@ -36,8 +36,14 @@ struct TokenWeeklySummaryWidgetView: View {
     private func chart(_ presentation: WidgetWeeklySummaryPresentation) -> some View {
         Chart(presentation.points) { point in
             BarMark(
-                x: .value("Day", point.position),
-                y: .value("Tokens", point.totalTokens)
+                x: .value(
+                    String(localized: "widget.weekly.axis.day"),
+                    point.position
+                ),
+                y: .value(
+                    String(localized: "widget.weekly.axis.tokens"),
+                    point.totalTokens
+                )
             )
             .foregroundStyle(
                 point.isCurrentDay
@@ -63,7 +69,9 @@ struct TokenWeeklySummaryWidget: Widget {
             TokenWeeklySummaryWidgetView(entry: entry)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName("Last 7 Days")
+        .configurationDisplayName(
+            String(localized: "widget.weekly.name")
+        )
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

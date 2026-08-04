@@ -197,9 +197,13 @@ struct AppLocalizationResourcesTests {
             "widget.heatmap.title",
             "widget.hourly.description",
             "widget.hourly.name",
+            "widget.monthlyBudget.name",
             "widget.notReady",
             "widget.today.title",
             "widget.updated.format",
+            "widget.weekly.axis.day",
+            "widget.weekly.axis.tokens",
+            "widget.weekly.name",
         ]
         let formattedKeys = Set([
             "widget.dated.format",
@@ -621,6 +625,8 @@ private func widgetExtensionLocaleIdentifier(for language: AppLanguage) -> Strin
         return "zh-Hans"
     case .zhHant:
         return "zh-Hant"
+    case .tl:
+        return "fil"
     default:
         return language.rawValue
     }
