@@ -28,6 +28,92 @@ struct StatusBarControllerTests {
         ) == .showMenu)
     }
 
+    /// Popover 的外部关闭只由控制器负责，避免 AppKit transient 在 mouseDown 抢先关闭后，
+    /// mouseUp 的状态栏 action 又把它重新打开。
+    @Test func popoverDismissalIsApplicationDefined() {
+        #expect(StatusBarPopoverPolicy.behavior == .applicationDefined)
+    }
+
+    /// 普通左键应稳定完成「打开 -> 关闭」，关闭动画期间不复用同一轮 presentation。
+    @Test func popoverLifecycleClosesTheShownPresentation() {
+        var lifecycle = StatusPopoverLifecycle()
+
+        #expect(lifecycle.toggle() == .show(1))
+        #expect(lifecycle.phase == .shown(1))
+        #expect(lifecycle.toggle() == .close(1))
+        #expect(lifecycle.phase == .closing(1))
+        #expect(lifecycle.didClose() == .none)
+        #expect(lifecycle.phase == .hidden)
+    }
+
+    /// 关闭动画期间再次左键只记录重新打开意图；旧弹窗 didClose 后才创建新一代。
+    @Test func popoverLifecycleReopensAfterTheClosingPresentationFinishes() {
+        var lifecycle = StatusPopoverLifecycle()
+
+        #expect(lifecycle.toggle() == .show(1))
+        #expect(lifecycle.toggle() == .close(1))
+        #expect(lifecycle.toggle() == .none)
+        #expect(lifecycle.desiredVisible)
+
+        #expect(lifecycle.didClose() == .show(2))
+        #expect(lifecycle.phase == .shown(2))
+        #expect(!lifecycle.ownsShownPresentation(1))
+        #expect(lifecycle.ownsShownPresentation(2))
+    }
+
+    /// 右键菜单或背景关闭会取消尚未执行的 reopen，迟到回调不能恢复旧意图。
+    @Test func popoverLifecycleDismissCancelsPendingReopen() {
+        var lifecycle = StatusPopoverLifecycle()
+
+        #expect(lifecycle.toggle() == .show(1))
+        #expect(lifecycle.toggle() == .close(1))
+        #expect(lifecycle.toggle() == .none)
+        #expect(lifecycle.dismiss(generation: 1) == .none)
+
+        #expect(lifecycle.didClose() == .none)
+        #expect(lifecycle.phase == .hidden)
+        #expect(!lifecycle.desiredVisible)
+    }
+
+    /// 从已展示状态打开右键菜单时，应关闭当前 presentation 且不安排 reopen。
+    @Test func rightMenuDismissesTheShownPopover() {
+        var lifecycle = StatusPopoverLifecycle()
+
+        #expect(lifecycle.toggle() == .show(1))
+        #expect(lifecycle.dismiss() == .close(1))
+        #expect(lifecycle.phase == .closing(1))
+        #expect(!lifecycle.desiredVisible)
+        #expect(lifecycle.didClose() == .none)
+        #expect(lifecycle.phase == .hidden)
+    }
+
+    /// 关闭期间的快速点击按最终奇偶意图收敛，不应无条件重新打开。
+    @Test func repeatedToggleDuringClosingCanCancelPendingReopen() {
+        var lifecycle = StatusPopoverLifecycle()
+
+        #expect(lifecycle.toggle() == .show(1))
+        #expect(lifecycle.toggle() == .close(1))
+        #expect(lifecycle.toggle() == .none)
+        #expect(lifecycle.toggle() == .none)
+
+        #expect(lifecycle.didClose() == .none)
+        #expect(lifecycle.phase == .hidden)
+    }
+
+    /// 所有异步 monitor / activation / highlight 回调必须绑定 presentation generation。
+    @Test func stalePopoverPresentationCallbacksAreRejected() {
+        var lifecycle = StatusPopoverLifecycle()
+
+        #expect(lifecycle.toggle() == .show(1))
+        #expect(lifecycle.toggle() == .close(1))
+        #expect(lifecycle.toggle() == .none)
+        #expect(lifecycle.didClose() == .show(2))
+
+        #expect(lifecycle.dismiss(generation: 1) == .none)
+        #expect(lifecycle.phase == .shown(2))
+        #expect(lifecycle.ownsShownPresentation(2))
+    }
+
     /// 状态栏菜单应走系统状态栏项 presenter,避免普通 view 坐标弹窗覆盖图标。
     @Test func statusMenuUsesStatusItemPresenter() {
         #expect(StatusBarMenuPresentation.presenter() == .statusItemMenu(selectorName: "popUpStatusItemMenu:"))
