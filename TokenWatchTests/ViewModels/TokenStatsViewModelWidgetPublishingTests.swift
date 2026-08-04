@@ -52,7 +52,9 @@ struct TokenStatsViewModelWidgetPublishingTests {
         )
 
         let firstRefresh = Task { await viewModel.loadAllStats() }
-        try await waitUntil { codex.isWaiting }
+        try await waitUntil {
+            codex.isWaiting && claude.scanCount == 1
+        }
         await viewModel.loadAllStats()
 
         #expect(claude.scanCount == 1)

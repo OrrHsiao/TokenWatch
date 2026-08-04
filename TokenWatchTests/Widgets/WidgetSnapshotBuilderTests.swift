@@ -278,7 +278,7 @@ struct WidgetSnapshotBuilderTests {
         #expect(snapshot.projectFocus.topProjectName == "TokenWatch")
         #expect(snapshot.projectFocus.topProjectTokens == 230)
         #expect(snapshot.modelFocus.windowTotalTokens == 350)
-        #expect(snapshot.modelFocus.providerName == "Claude")
+        #expect(snapshot.modelFocus.providerName == "Claude Code")
         #expect(snapshot.modelFocus.modelName == "gpt")
         #expect(snapshot.modelFocus.modelTokens == 130)
         #expect(snapshot.localizedText.projectFocusTitle == "项目消耗")
