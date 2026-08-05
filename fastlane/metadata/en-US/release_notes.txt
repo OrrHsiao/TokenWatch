@@ -1,0 +1,3 @@
+- Adds seven desktop widgets for usage summaries, budgets, models, projects, trends, and anomalies.
+- Improves widget localization and visual hierarchy.
+- Improves cache performance and stability in the status bar and settings.
