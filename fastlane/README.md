@@ -23,6 +23,22 @@ rbenv exec bundle exec fastlane mac validate_app_store_release app_version:1.0.4
 
 只在本地校验 App Store 版本、元数据和截图
 
+### mac plan_widget_iap
+
+```sh
+rbenv exec bundle exec fastlane mac plan_widget_iap
+```
+
+只读检查桌面小组件永久解锁内购的创建计划
+
+### mac create_widget_iap
+
+```sh
+rbenv exec bundle exec fastlane mac create_widget_iap confirm:true
+```
+
+创建并配置 $2.99 的桌面小组件永久解锁内购
+
 ### mac upload_app_store_metadata
 
 ```sh
@@ -41,7 +57,7 @@ rbenv exec bundle exec fastlane mac submit_xcode_cloud_build app_version:1.0.4 b
 
 ----
 
-This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
+This README is maintained manually so required release and IAP safety parameters remain visible.
 
 More information about _fastlane_ can be found on [fastlane.tools](https://fastlane.tools).
 
