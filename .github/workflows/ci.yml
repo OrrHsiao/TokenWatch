@@ -83,6 +83,7 @@ jobs:
 
       - name: Run UI Tests
         run: |
+          # UI tests use ad-hoc signing; hosted runners don't have the App Group profile.
           xcodebuild \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
@@ -93,6 +94,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="" \
             CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_ENTITLEMENTS="" \
             test
 
   release-dry-run:
