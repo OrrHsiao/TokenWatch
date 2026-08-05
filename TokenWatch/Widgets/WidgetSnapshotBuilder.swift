@@ -71,12 +71,23 @@ enum WidgetSnapshotBuilder {
                 projectFocusTitle: AppStrings.text(.dashboardProjectUsageTitle, language: language),
                 projectFocusNoDataMessage: AppStrings.text(.dashboardNoProjectData, language: language),
                 modelFocusTitle: AppStrings.text(.dashboardPrimaryModel, language: language),
-                modelFocusNoDataMessage: AppStrings.text(.totalEmptyModels, language: language)
+                modelFocusNoDataMessage: AppStrings.text(.totalEmptyModels, language: language),
+                dailyAverageTitle: AppStrings.text(.popoverDailyAverage, language: language),
+                shareTitle: AppStrings.text(.dashboardSourceShareTitle, language: language)
             ),
             heatmap: WidgetHeatmapSnapshot(
                 totalTokens: heatmap.monthTotalTokens,
                 maxDailyTokens: heatmap.maxDailyTokens,
-                cells: heatmap.cells.map(mapHeatmapCell)
+                cells: heatmap.cells.enumerated().map { index, cell in
+                    let symbolIndex = index % WidgetChartVisualStyle.heatmapRows
+                    let weekdayLabel = heatmap.weekdaySymbols.indices.contains(symbolIndex)
+                        ? heatmap.weekdaySymbols[symbolIndex]
+                        : nil
+                    return mapHeatmapCell(
+                        cell,
+                        weekdayLabel: weekdayLabel
+                    )
+                }
             ),
             hourlyLine: WidgetHourlyLineSnapshot(
                 dayKey: localDayKey,
@@ -241,7 +252,10 @@ enum WidgetSnapshotBuilder {
         )
     }
 
-    private static func mapHeatmapCell(_ cell: CalendarHeatmapCell) -> WidgetHeatmapCell {
+    private static func mapHeatmapCell(
+        _ cell: CalendarHeatmapCell,
+        weekdayLabel: String?
+    ) -> WidgetHeatmapCell {
         switch cell {
         case .placeholder:
             return WidgetHeatmapCell(
@@ -255,7 +269,8 @@ enum WidgetSnapshotBuilder {
                 dateKey: day.dateKey,
                 totalTokens: day.totalTokens,
                 intensity: day.intensity,
-                isPlaceholder: false
+                isPlaceholder: false,
+                weekdayLabel: weekdayLabel
             )
         }
     }

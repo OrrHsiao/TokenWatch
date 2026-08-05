@@ -46,7 +46,9 @@ struct WidgetChartPresentationTests {
         #expect(weekly.title == fallback.weeklySummaryTitle)
         #expect(weekly.message == fallback.notReadyMessage)
         #expect(weekly.points.count == 7)
-        #expect(weekly.points.allSatisfy { $0.totalTokens == 0 && !$0.isCurrentDay })
+        #expect(weekly.points.allSatisfy {
+            $0.dayLabel.isEmpty && $0.totalTokens == 0 && !$0.isCurrentDay
+        })
         #expect(weekly.maximumY == 1)
         #expect(budget.title == fallback.monthlyBudgetTitle)
         #expect(budget.message == fallback.notReadyMessage)
@@ -123,7 +125,8 @@ struct WidgetChartPresentationTests {
                 dateKey: "source-order-\(index)",
                 totalTokens: index * 10,
                 intensity: 0,
-                isPlaceholder: false
+                isPlaceholder: false,
+                weekdayLabel: "D\(index)"
             )
         }
         let snapshot = makeSnapshot(totalTokens: 0, heatmapCells: cells)
@@ -132,6 +135,7 @@ struct WidgetChartPresentationTests {
 
         #expect(current.points.map(\.id) == (3..<10).map { "source-order-\($0)" })
         #expect(current.points.map(\.position) == Array(0..<7))
+        #expect(current.points.map(\.dayLabel) == ["D3", "D4", "D5", "D6", "D7", "D8", "D9"])
         #expect(current.totalText == "420")
         #expect(current.maximumY == 90)
         #expect(current.points.filter(\.isCurrentDay).map(\.id) == ["source-order-9"])
@@ -179,12 +183,14 @@ struct WidgetChartPresentationTests {
         #expect(current.budgetText == "$100.00")
         #expect(current.forecastText == "Month-end forecast $120.00")
         #expect(current.progress == 0.8)
+        #expect(current.forecastProgress == 1)
         #expect(current.isForecastOverBudget)
         #expect(current.message == "Projected to exceed budget")
         #expect(stale.subtitle == configured.localizedText.updatedThroughTitle)
         #expect(setup.budgetText == nil)
         #expect(setup.forecastText == nil)
         #expect(setup.progress == nil)
+        #expect(setup.forecastProgress == nil)
         #expect(setup.message == "Set a monthly budget in TokenWatch")
         #expect(missing.title == fallback.monthlyBudgetTitle)
         #expect(missing.message == fallback.monthlyBudgetUnconfiguredMessage)
@@ -200,6 +206,10 @@ struct WidgetChartPresentationTests {
             totalTokens: 0,
             heatmapCells: dailyCells([100, 100, 0, 0, 0, 0, 0, 500])
         )
+        let extremeSnapshot = makeSnapshot(
+            totalTokens: 0,
+            heatmapCells: dailyCells([1, 1, 1, 1, 1, 1, 1, Int.max])
+        )
 
         let elevated = WidgetChartPresentationBuilder.todayAnomaly(
             for: .current(elevatedSnapshot)
@@ -210,10 +220,16 @@ struct WidgetChartPresentationTests {
         let sparse = WidgetChartPresentationBuilder.todayAnomaly(
             for: .current(sparseSnapshot)
         )
+        let extreme = WidgetChartPresentationBuilder.todayAnomaly(
+            for: .current(extremeSnapshot)
+        )
 
         #expect(elevated.totalText == "250")
+        #expect(elevated.baselineTitle == fallback.weeklySummaryTitle)
         #expect(elevated.baselineText == "42")
+        #expect(elevated.baselineValue == 42)
         #expect(elevated.multiplierText == "6.0×")
+        #expect(elevated.differenceText == "+495%")
         #expect(elevated.hasComparableBaseline)
         #expect(elevated.isElevated)
         #expect(elevated.points.map(\.isToday) == [false, false, false, false, false, false, false, true])
@@ -221,9 +237,12 @@ struct WidgetChartPresentationTests {
         #expect(!stale.hasComparableBaseline)
         #expect(!stale.isElevated)
         #expect(stale.multiplierText == nil)
+        #expect(stale.differenceText == nil)
         #expect(!sparse.hasComparableBaseline)
         #expect(!sparse.isElevated)
         #expect(sparse.multiplierText == nil)
+        #expect(sparse.differenceText == nil)
+        #expect(extreme.differenceText == "+999%+")
     }
 
     @Test("focus cards use stored seven-day shares and honest empty states")
@@ -255,6 +274,7 @@ struct WidgetChartPresentationTests {
 
         #expect(project.projectName == "TokenWatch")
         #expect(project.totalText == "600")
+        #expect(project.shareTitle == nil)
         #expect(project.shareText == "60%")
         #expect(project.progress == 0.6)
         #expect(project.message == nil)
@@ -262,6 +282,7 @@ struct WidgetChartPresentationTests {
         #expect(model.providerName == "Codex")
         #expect(model.modelName == "gpt-5")
         #expect(model.totalText == "400")
+        #expect(model.shareTitle == nil)
         #expect(model.shareText == "40%")
         #expect(model.progress == 0.4)
         #expect(emptyModel.modelName == nil)

@@ -74,6 +74,8 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
     let projectFocusNoDataMessage: String
     let modelFocusTitle: String
     let modelFocusNoDataMessage: String
+    let dailyAverageTitle: String?
+    let shareTitle: String?
 
     init(
         heatmapTitle: String,
@@ -87,7 +89,9 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
         projectFocusTitle: String,
         projectFocusNoDataMessage: String,
         modelFocusTitle: String,
-        modelFocusNoDataMessage: String
+        modelFocusNoDataMessage: String,
+        dailyAverageTitle: String? = nil,
+        shareTitle: String? = nil
     ) {
         self.heatmapTitle = heatmapTitle
         self.todayUsageTitle = todayUsageTitle
@@ -101,6 +105,8 @@ struct WidgetLocalizedText: Codable, Equatable, Sendable {
         self.projectFocusNoDataMessage = projectFocusNoDataMessage
         self.modelFocusTitle = modelFocusTitle
         self.modelFocusNoDataMessage = modelFocusNoDataMessage
+        self.dailyAverageTitle = dailyAverageTitle
+        self.shareTitle = shareTitle
     }
 }
 
@@ -194,6 +200,21 @@ struct WidgetHeatmapCell: Codable, Equatable, Sendable {
     let totalTokens: Int
     let intensity: Int
     let isPlaceholder: Bool
+    let weekdayLabel: String?
+
+    init(
+        dateKey: String?,
+        totalTokens: Int,
+        intensity: Int,
+        isPlaceholder: Bool,
+        weekdayLabel: String? = nil
+    ) {
+        self.dateKey = dateKey
+        self.totalTokens = totalTokens
+        self.intensity = intensity
+        self.isPlaceholder = isPlaceholder
+        self.weekdayLabel = weekdayLabel
+    }
 }
 
 /// A local civil-day line with exactly 24 wall-clock buckets ordered from hour 0 through 23.
