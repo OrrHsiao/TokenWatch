@@ -1,0 +1,228 @@
+require "open3"
+require "uri"
+require "xcodeproj"
+require "fastlane_core/build_watcher"
+
+APP_IDENTIFIER = "com.xiaoao.tokenwatch"
+APP_STORE_PLATFORM = "osx"
+PROJECT_PATH = File.expand_path("../TokenWatch.xcodeproj", __dir__)
+METADATA_PATH = File.expand_path("metadata", __dir__)
+SCREENSHOTS_PATH = File.expand_path("../snapshots/appstore_snapshot", __dir__)
+STORE_LOCALES = %w[en-US zh-Hans].freeze
+PUBLISHED_TARGETS = %w[TokenWatch TokenWatchWidgets].freeze
+MAC_SCREENSHOT_SIZES = [
+  [1280, 800],
+  [1440, 900],
+  [2560, 1600],
+  [2880, 1800]
+].freeze
+BUILD_PROCESSING_TIMEOUT_SECONDS = 3600
+SCREENSHOT_PROCESSING_TIMEOUT_SECONDS = 900
+
+# 返回 lane 的必填字符串参数；缺失时以可读错误终止，避免误操作默认版本。
+def required_option!(options, key)
+  value = options[key].to_s.strip
+  UI.user_error!("缺少必填参数 #{key}") if value.empty?
+  value
+end
+
+# 校验 App Store 版本号；提供构建号时再校验 Xcode Cloud 整数构建号。
+def validate_release_identifiers!(version, build_number = nil)
+  unless version.match?(/\A\d+\.\d+\.\d+\z/)
+    UI.user_error!("app_version 必须是三段数字版本号，例如 1.0.5")
+  end
+  return if build_number.nil?
+
+  unless build_number.match?(/\A[1-9]\d*\z/)
+    UI.user_error!("build_number 必须是正整数，例如 42")
+  end
+end
+
+# 确保所选 Git ref 中 App 与 Widget 的营销版本都对应本次云端构建。
+def validate_project_versions!(expected_version)
+  project = Xcodeproj::Project.open(PROJECT_PATH)
+  PUBLISHED_TARGETS.each do |target_name|
+    target = project.targets.find { |candidate| candidate.name == target_name }
+    UI.user_error!("工程中缺少发布 target：#{target_name}") unless target
+
+    release = target.build_configurations.find { |configuration| configuration.name == "Release" }
+    UI.user_error!("#{target_name} 缺少 Release 配置") unless release
+
+    actual_version = release.build_settings["MARKETING_VERSION"].to_s
+    next if actual_version == expected_version
+
+    UI.user_error!(
+      "#{target_name} 的 MARKETING_VERSION 是 #{actual_version}，与输入 #{expected_version} 不一致"
+    )
+  end
+end
+
+# 验证版本说明和固定 HTTPS 链接，防止空文案覆盖线上商店资料。
+def validate_metadata!
+  STORE_LOCALES.each do |locale|
+    locale_path = File.join(METADATA_PATH, locale)
+    release_notes_path = File.join(locale_path, "release_notes.txt")
+    UI.user_error!("缺少 #{locale} 版本说明：#{release_notes_path}") unless File.file?(release_notes_path)
+
+    release_notes = File.read(release_notes_path, encoding: "UTF-8").strip
+    UI.user_error!("#{locale} 版本说明不能为空") if release_notes.empty?
+    UI.user_error!("#{locale} 版本说明超过 4000 字符") if release_notes.length > 4000
+
+    %w[support_url.txt privacy_url.txt].each do |filename|
+      path = File.join(locale_path, filename)
+      UI.user_error!("缺少 #{locale} 商店链接：#{path}") unless File.file?(path)
+
+      url = URI.parse(File.read(path, encoding: "UTF-8").strip)
+      unless url.is_a?(URI::HTTPS) && url.host
+        UI.user_error!("#{locale}/#{filename} 必须是完整 HTTPS URL")
+      end
+    rescue URI::InvalidURIError
+      UI.user_error!("#{locale}/#{filename} 不是有效 URL")
+    end
+  end
+end
+
+# 通过 macOS 图像元数据校验截图数量、尺寸和透明通道。
+def validate_screenshots!
+  STORE_LOCALES.each do |locale|
+    locale_path = File.join(SCREENSHOTS_PATH, locale)
+    screenshots = Dir.glob(File.join(locale_path, "*.{png,jpg,jpeg}"), File::FNM_CASEFOLD).sort
+    unless (1..10).cover?(screenshots.length)
+      UI.user_error!("#{locale} 必须提供 1 至 10 张截图，当前为 #{screenshots.length} 张")
+    end
+
+    screenshots.each do |path|
+      output, error, status = Open3.capture3(
+        "sips",
+        "-g", "pixelWidth",
+        "-g", "pixelHeight",
+        "-g", "hasAlpha",
+        path
+      )
+      UI.user_error!("无法读取截图 #{path}：#{error.strip}") unless status.success?
+
+      width = output[/pixelWidth:\s+(\d+)/, 1]&.to_i
+      height = output[/pixelHeight:\s+(\d+)/, 1]&.to_i
+      has_alpha = output[/hasAlpha:\s+(yes|no)/, 1]
+      unless MAC_SCREENSHOT_SIZES.include?([width, height])
+        UI.user_error!("截图尺寸不符合 Mac App Store 规范：#{path} (#{width}x#{height})")
+      end
+      UI.user_error!("截图不能包含 alpha 通道：#{path}") if has_alpha == "yes"
+    end
+  end
+end
+
+# 汇总所有不会访问 App Store Connect 的发布前检查。
+def validate_release_assets!(version, build_number = nil)
+  validate_release_identifiers!(version, build_number)
+  validate_project_versions!(version)
+  validate_metadata!
+  validate_screenshots!
+  release_label = build_number ? "#{version} (#{build_number})" : version
+  UI.success("App Store 本地发布资料校验通过：#{release_label}")
+end
+
+# 生成 Deliver 的公共参数。二进制始终由 Xcode Cloud 上传。
+def deliver_options(version, api_key)
+  {
+    api_key: api_key,
+    app_identifier: APP_IDENTIFIER,
+    platform: APP_STORE_PLATFORM,
+    app_version: version,
+    metadata_path: METADATA_PATH,
+    screenshots_path: SCREENSHOTS_PATH,
+    overwrite_screenshots: true,
+    screenshot_processing_timeout: SCREENSHOT_PROCESSING_TIMEOUT_SECONDS,
+    skip_binary_upload: true,
+    skip_app_version_update: false,
+    force: true,
+    reject_if_possible: false,
+    run_precheck_before_submit: true,
+    precheck_include_in_app_purchases: false
+  }
+end
+
+default_platform(:mac)
+
+platform :mac do
+  desc "只在本地校验 App Store 版本、元数据和截图"
+  lane :validate_app_store_release do |options|
+    version = required_option!(options, :app_version)
+    validate_release_assets!(version)
+  end
+
+  # 从仓库外的本地 .p8 文件创建 App Store Connect API 会话。
+  private_lane :app_store_connect_key do
+    %w[ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH].each do |name|
+      UI.user_error!("缺少本地 App Store Connect 配置：#{name}") if ENV[name].to_s.strip.empty?
+    end
+
+    key_path = File.expand_path(ENV.fetch("ASC_KEY_PATH"))
+    UI.user_error!("找不到 App Store Connect .p8 文件：#{key_path}") unless File.file?(key_path)
+    UI.message("正在加载本地 App Store Connect API Key")
+
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: key_path,
+      duration: 1200,
+      in_house: false
+    )
+  end
+
+  private_lane :wait_for_xcode_cloud_build do |options|
+    version = required_option!(options, :app_version)
+    build_number = required_option!(options, :build_number)
+    app = Spaceship::ConnectAPI::App.find(APP_IDENTIFIER)
+    UI.user_error!("App Store Connect 中找不到 #{APP_IDENTIFIER}") unless app
+
+    build = FastlaneCore::BuildWatcher.wait_for_build_processing_to_be_complete(
+      app_id: app.id,
+      platform: APP_STORE_PLATFORM,
+      app_version: version,
+      build_version: build_number,
+      poll_interval: 15,
+      timeout_duration: BUILD_PROCESSING_TIMEOUT_SECONDS,
+      return_when_build_appears: false,
+      return_spaceship_testflight_build: false,
+      select_latest: false
+    )
+
+    valid_state = Spaceship::ConnectAPI::Build::ProcessingState::VALID
+    unless build.processing_state == valid_state
+      UI.user_error!(
+        "Xcode Cloud 构建 #{version} (#{build_number}) 处理失败，状态：#{build.processing_state}"
+      )
+    end
+    UI.success("已找到可提审构建：#{version} (#{build_number})")
+    build
+  end
+
+  desc "上传商店元数据与截图，但不提交审核"
+  lane :upload_app_store_metadata do |options|
+    version = required_option!(options, :app_version)
+    validate_release_assets!(version)
+    api_key = app_store_connect_key
+
+    deliver(
+      **deliver_options(version, api_key),
+      submit_for_review: false
+    )
+  end
+
+  desc "等待指定 Xcode Cloud 构建，上传资料并提交 App Review"
+  lane :submit_xcode_cloud_build do |options|
+    version = required_option!(options, :app_version)
+    build_number = required_option!(options, :build_number)
+    validate_release_assets!(version, build_number)
+    api_key = app_store_connect_key
+    wait_for_xcode_cloud_build(app_version: version, build_number: build_number)
+
+    deliver(
+      **deliver_options(version, api_key),
+      build_number: build_number,
+      submit_for_review: true,
+      automatic_release: false
+    )
+  end
+end
