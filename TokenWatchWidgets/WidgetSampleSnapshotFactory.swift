@@ -38,14 +38,24 @@ enum WidgetSampleSnapshotFactory {
         calendar: Calendar,
         localizedText: WidgetLocalizedText
     ) -> WidgetUsageSnapshot {
-        let cells = (0..<(WidgetChartVisualStyle.heatmapColumns
-            * WidgetChartVisualStyle.heatmapRows)).map { index in
+        let cellCount = WidgetChartVisualStyle.heatmapColumns
+            * WidgetChartVisualStyle.heatmapRows
+        let cells = (0..<cellCount).map { index in
             let intensity = index % (WidgetChartVisualStyle.heatmapMaximumIntensity + 1)
+            let cellDate = calendar.date(
+                byAdding: .day,
+                value: index - (cellCount - 1),
+                to: date
+            ) ?? date
             return WidgetHeatmapCell(
-                dateKey: "sample-\(index)",
+                dateKey: dayKey(cellDate, calendar: calendar),
                 totalTokens: intensity * 100_000,
                 intensity: intensity,
-                isPlaceholder: false
+                isPlaceholder: false,
+                weekdayLabel: weekdayLabel(
+                    for: cellDate,
+                    calendar: calendar
+                )
             )
         }
         let currentHour = calendar.component(.hour, from: date)
@@ -103,5 +113,20 @@ enum WidgetSampleSnapshotFactory {
             components.month ?? 0,
             components.day ?? 0
         )
+    }
+
+    private static func weekdayLabel(
+        for date: Date,
+        calendar: Calendar
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = .autoupdatingCurrent
+        let symbols = formatter.veryShortStandaloneWeekdaySymbols ?? []
+        let index = calendar.component(.weekday, from: date) - 1
+        guard symbols.indices.contains(index) else {
+            return "\(calendar.component(.day, from: date))"
+        }
+        return symbols[index]
     }
 }

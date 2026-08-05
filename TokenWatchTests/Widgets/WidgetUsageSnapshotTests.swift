@@ -151,7 +151,8 @@ struct WidgetUsageSnapshotTests {
                         dateKey: "2026-07-15",
                         totalTokens: 42,
                         intensity: 4,
-                        isPlaceholder: false
+                        isPlaceholder: false,
+                        weekdayLabel: "三"
                     )
                 ]
             ),

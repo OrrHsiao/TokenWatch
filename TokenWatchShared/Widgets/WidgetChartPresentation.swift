@@ -31,6 +31,7 @@ struct WidgetHourlyLinePresentation: Equatable, Sendable {
 struct WidgetWeeklySummaryPoint: Equatable, Sendable, Identifiable {
     let id: String
     let position: Int
+    let dayLabel: String
     let totalTokens: Int
     let isCurrentDay: Bool
 }
@@ -54,6 +55,7 @@ struct WidgetMonthlyBudgetPresentation: Equatable, Sendable {
     let budgetText: String?
     let forecastText: String?
     let progress: Double?
+    let forecastProgress: Double?
     let isForecastOverBudget: Bool
     let message: String?
     let accessibilityLabel: String
@@ -75,8 +77,11 @@ struct WidgetTodayAnomalyPresentation: Equatable, Sendable {
     let title: String
     let subtitle: String?
     let totalText: String
+    let baselineTitle: String?
     let baselineText: String?
+    let baselineValue: Double?
     let multiplierText: String?
+    let differenceText: String?
     let points: [WidgetTodayAnomalyPoint]
     let maximumY: Double
     let hasComparableBaseline: Bool
@@ -91,6 +96,7 @@ struct WidgetProjectFocusPresentation: Equatable, Sendable {
     let subtitle: String?
     let projectName: String?
     let totalText: String
+    let shareTitle: String?
     let shareText: String?
     let progress: Double
     let message: String?
@@ -104,6 +110,7 @@ struct WidgetModelFocusPresentation: Equatable, Sendable {
     let providerName: String?
     let modelName: String?
     let totalText: String
+    let shareTitle: String?
     let shareText: String?
     let progress: Double
     let message: String?
@@ -198,6 +205,7 @@ enum WidgetChartPresentationBuilder {
                 WidgetWeeklySummaryPoint(
                     id: "not-ready-weekly-\($0)",
                     position: $0,
+                    dayLabel: "",
                     totalTokens: 0,
                     isCurrentDay: false
                 )
@@ -236,6 +244,7 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: text.notReadyMessage,
                 accessibilityLabel: aggregateLabel([
@@ -270,8 +279,11 @@ enum WidgetChartPresentationBuilder {
                 title: text.todayUsageTitle,
                 subtitle: nil,
                 totalText: totalText,
+                baselineTitle: nil,
                 baselineText: nil,
+                baselineValue: nil,
                 multiplierText: nil,
+                differenceText: nil,
                 points: points,
                 maximumY: 1,
                 hasComparableBaseline: false,
@@ -301,6 +313,7 @@ enum WidgetChartPresentationBuilder {
                 subtitle: nil,
                 projectName: nil,
                 totalText: WidgetChartNumberFormatter.compact(0),
+                shareTitle: text.shareTitle,
                 shareText: nil,
                 progress: 0,
                 message: text.notReadyMessage,
@@ -328,6 +341,7 @@ enum WidgetChartPresentationBuilder {
                 providerName: nil,
                 modelName: nil,
                 totalText: WidgetChartNumberFormatter.compact(0),
+                shareTitle: text.shareTitle,
                 shareText: nil,
                 progress: 0,
                 message: text.notReadyMessage,
@@ -405,15 +419,23 @@ enum WidgetChartPresentationBuilder {
         isStale: Bool
     ) -> WidgetWeeklySummaryPresentation {
         let recentCells = snapshot.heatmap.cells
-            .compactMap { cell -> (key: String, totalTokens: Int)? in
+            .compactMap { cell -> (
+                key: String,
+                totalTokens: Int,
+                weekdayLabel: String?
+            )? in
                 guard !cell.isPlaceholder, let key = cell.dateKey else { return nil }
-                return (key, cell.totalTokens)
+                return (key, cell.totalTokens, cell.weekdayLabel)
             }
             .suffix(7)
         let points = recentCells.enumerated().map { index, cell in
             WidgetWeeklySummaryPoint(
                 id: cell.key,
                 position: index,
+                dayLabel: cell.weekdayLabel ?? fallbackDayLabel(
+                    for: cell.key,
+                    fallbackPosition: index
+                ),
                 totalTokens: cell.totalTokens,
                 isCurrentDay: !isStale && index == recentCells.count - 1
             )
@@ -451,6 +473,7 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: snapshot.localizedText.monthlyBudgetUnconfiguredMessage,
                 accessibilityLabel: aggregateLabel([
@@ -471,6 +494,27 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                forecastProgress: nil,
+                isForecastOverBudget: false,
+                message: budgetSnapshot.unconfiguredMessage,
+                accessibilityLabel: aggregateLabel([
+                    budgetSnapshot.title,
+                    subtitle,
+                    spentText,
+                    budgetSnapshot.unconfiguredMessage,
+                ])
+            )
+        }
+
+        guard budget.isFinite, budget > 0 else {
+            return WidgetMonthlyBudgetPresentation(
+                title: budgetSnapshot.title,
+                subtitle: subtitle,
+                spentText: spentText,
+                budgetText: nil,
+                forecastText: nil,
+                progress: nil,
+                forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: budgetSnapshot.unconfiguredMessage,
                 accessibilityLabel: aggregateLabel([
@@ -494,6 +538,10 @@ enum WidgetChartPresentationBuilder {
             budgetText: WidgetCostFormatter.usd(budget),
             forecastText: forecastText,
             progress: min(max(budgetSnapshot.spentUSD / budget, 0), 1),
+            forecastProgress: min(
+                max(budgetSnapshot.forecastUSD / budget, 0),
+                1
+            ),
             isForecastOverBudget: forecastOverBudget,
             message: message,
             accessibilityLabel: aggregateLabel([
@@ -535,6 +583,12 @@ enum WidgetChartPresentationBuilder {
                 baselineTokens: baseline ?? 0
             )
             : nil
+        let difference = hasComparableBaseline && !isStale
+            ? differenceText(
+                totalTokens: totalTokens,
+                baselineTokens: baseline ?? 0
+            )
+            : nil
         let elevated = hasComparableBaseline
             && !isStale
             && isAtLeastTwice(totalTokens, baselineTokens: baseline ?? 0)
@@ -554,12 +608,19 @@ enum WidgetChartPresentationBuilder {
             : snapshot.localizedText.weeklySummaryTitle
         let totalText = WidgetChartNumberFormatter.compact(totalTokens)
         let baselineText = baseline.map(WidgetChartNumberFormatter.compact)
+        let baselineTitle = baselineText == nil
+            ? nil
+            : snapshot.localizedText.dailyAverageTitle
+                ?? snapshot.localizedText.weeklySummaryTitle
         return WidgetTodayAnomalyPresentation(
             title: title,
             subtitle: subtitle,
             totalText: totalText,
+            baselineTitle: baselineTitle,
             baselineText: baselineText,
+            baselineValue: baseline.map(Double.init),
             multiplierText: multiplier,
+            differenceText: difference,
             points: points,
             maximumY: max(1, Double(points.map(\.totalTokens).max() ?? 0)),
             hasComparableBaseline: hasComparableBaseline && !isStale,
@@ -569,7 +630,8 @@ enum WidgetChartPresentationBuilder {
                 title,
                 subtitle,
                 totalText,
-                multiplier,
+                difference,
+                baselineTitle,
                 baselineText,
             ])
         )
@@ -597,6 +659,7 @@ enum WidgetChartPresentationBuilder {
             subtitle: subtitle,
             projectName: hasProject ? focus.topProjectName : nil,
             totalText: totalText,
+            shareTitle: snapshot.localizedText.shareTitle,
             shareText: share.map(percentageText),
             progress: share ?? 0,
             message: message,
@@ -605,6 +668,7 @@ enum WidgetChartPresentationBuilder {
                 subtitle,
                 focus.topProjectName,
                 totalText,
+                snapshot.localizedText.shareTitle,
                 share.map(percentageText),
                 message,
             ])
@@ -636,6 +700,7 @@ enum WidgetChartPresentationBuilder {
             providerName: hasModel ? focus.providerName : nil,
             modelName: hasModel ? focus.modelName : nil,
             totalText: totalText,
+            shareTitle: snapshot.localizedText.shareTitle,
             shareText: share.map(percentageText),
             progress: share ?? 0,
             message: message,
@@ -645,6 +710,7 @@ enum WidgetChartPresentationBuilder {
                 focus.providerName,
                 focus.modelName,
                 totalText,
+                snapshot.localizedText.shareTitle,
                 share.map(percentageText),
                 message,
             ])
@@ -666,6 +732,38 @@ enum WidgetChartPresentationBuilder {
             locale: Locale(identifier: "en_US_POSIX"),
             multiplier
         )
+    }
+
+    /// Formats the signed change from the seven-day average for compact comparison copy.
+    private static func differenceText(
+        totalTokens: Int,
+        baselineTokens: Int
+    ) -> String? {
+        guard baselineTokens > 0 else { return nil }
+        let difference = (Double(totalTokens) / Double(baselineTokens) - 1) * 100
+        guard difference.isFinite else { return nil }
+        if difference >= 999 {
+            return "+999%+"
+        }
+        return String(
+            format: "%+.0f%%",
+            locale: Locale(identifier: "en_US_POSIX"),
+            difference
+        )
+    }
+
+    /// Provides a stable numeric label when an older snapshot has no frozen weekday copy.
+    private static func fallbackDayLabel(
+        for dateKey: String,
+        fallbackPosition: Int
+    ) -> String {
+        let components = dateKey.split(separator: "-")
+        guard components.count == 3,
+              let day = Int(components[2])
+        else {
+            return "\(fallbackPosition + 1)"
+        }
+        return "\(day)"
     }
 
     private static func isAtLeastTwice(

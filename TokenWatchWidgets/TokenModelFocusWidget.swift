@@ -3,26 +3,19 @@ import WidgetKit
 
 struct TokenModelFocusWidgetView: View {
     let entry: WidgetUsageEntry
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.modelFocus(for: entry.state)
 
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(presentation.title)
-                        .font(.headline)
-                        .lineLimit(1)
-                    if let subtitle = presentation.subtitle {
-                        Text(subtitle)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
+                Text(presentation.title)
+                    .font(.headline)
+                    .lineLimit(1)
                 Spacer(minLength: 4)
                 Text(presentation.totalText)
-                    .font(.headline)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -31,24 +24,40 @@ struct TokenModelFocusWidgetView: View {
 
             if let modelName = presentation.modelName {
                 Text(modelName)
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.system(.title2, design: .rounded, weight: .bold))
                     .lineLimit(1)
-                HStack(spacing: 6) {
-                    if let providerName = presentation.providerName {
-                        Text(providerName)
-                    }
-                    if let share = presentation.shareText {
-                        Text(verbatim: "·")
+                    .minimumScaleFactor(0.75)
+                if let providerName = presentation.providerName {
+                    Text(providerName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                if let share = presentation.shareText {
+                    HStack(spacing: 4) {
+                        if let subtitle = presentation.subtitle {
+                            Text(subtitle)
+                                .lineLimit(1)
+                            Text(verbatim: "·")
+                        }
+                        if let shareTitle = presentation.shareTitle {
+                            Text(shareTitle)
+                        }
                         Text(share)
                             .monospacedDigit()
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
                 progressBar(progress: presentation.progress)
             } else if let message = presentation.message {
+                if let subtitle = presentation.subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 Text(message)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -66,13 +75,19 @@ struct TokenModelFocusWidgetView: View {
             let width = proxy.size.width * min(max(progress, 0), 1)
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(.secondary.opacity(0.2))
+                    .fill(.primary.opacity(0.1))
                 Capsule()
-                    .fill(Color.accentColor)
+                    .fill(modelColor)
                     .frame(width: width)
             }
         }
         .frame(height: 8)
+    }
+
+    private var modelColor: Color {
+        colorScheme == .dark
+            ? Color(red: 54.0 / 255.0, green: 198.0 / 255.0, blue: 217.0 / 255.0)
+            : Color(red: 14.0 / 255.0, green: 116.0 / 255.0, blue: 144.0 / 255.0)
     }
 }
 
