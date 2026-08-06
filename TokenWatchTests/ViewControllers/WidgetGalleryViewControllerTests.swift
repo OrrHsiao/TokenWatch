@@ -24,9 +24,23 @@ struct WidgetGalleryViewControllerTests {
         #expect(snapshot.hourlyLine.points.map(\.hour) == Array(0...23))
         #expect(snapshot.hourlyLine.points.filter(\.isCurrentHour).map(\.hour) == [15])
         #expect(snapshot.heatmap.cells.allSatisfy { !$0.isPlaceholder })
+        let heatmapIntensities = snapshot.heatmap.cells.map(\.intensity)
+        #expect(Set(heatmapIntensities) == Set(0...4))
         #expect(
-            Array(snapshot.heatmap.cells.prefix(10).map(\.intensity))
-                == [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]
+            heatmapIntensities != (0..<heatmapIntensities.count).map {
+                $0 % (WidgetChartVisualStyle.heatmapMaximumIntensity + 1)
+            }
+        )
+        #expect(
+            heatmapIntensities.filter { $0 == 0 }.count
+                > heatmapIntensities.filter { $0 == 4 }.count
+        )
+        #expect(
+            snapshot == WidgetGallerySampleSnapshotFactory.make(
+                now: now,
+                calendar: calendar,
+                language: .zhHans
+            )
         )
         #expect(snapshot.hourlyLine.points[6].totalTokens == 200_000)
         #expect(snapshot.localizedText.heatmapTitle == "热力图")
