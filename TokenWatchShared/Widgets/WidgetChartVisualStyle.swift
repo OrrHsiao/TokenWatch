@@ -32,13 +32,14 @@ enum WidgetChartVisualStyle {
     static let areaBaselineOpacity = 0.05
     static let gridOpacity = 0.16
 
+    // GitHub Primer contribution tokens provide coordinated neutral and green ramps per appearance.
     private static let lightPalette: [WidgetChartRGBA] = [
-        .bytes(216, 222, 232), .bytes(155, 233, 168),
-        .bytes(64, 196, 99), .bytes(48, 161, 78), .bytes(33, 110, 57),
+        .bytes(239, 242, 245), .bytes(172, 238, 187),
+        .bytes(74, 194, 107), .bytes(45, 164, 78), .bytes(17, 99, 41),
     ]
     private static let darkPalette: [WidgetChartRGBA] = [
-        .bytes(25, 30, 37), .bytes(14, 68, 41),
-        .bytes(0, 109, 50), .bytes(38, 166, 65), .bytes(57, 211, 83),
+        .bytes(21, 27, 35), .bytes(3, 58, 22),
+        .bytes(25, 108, 46), .bytes(46, 160, 67), .bytes(86, 211, 100),
     ]
     private static let accentedHeatmapOpacities = [0.14, 0.32, 0.50, 0.72, 1.00]
     private static let vibrantHeatmapWhiteLevels = [0.24, 0.40, 0.58, 0.76, 0.94]
