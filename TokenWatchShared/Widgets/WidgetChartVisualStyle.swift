@@ -40,11 +40,25 @@ enum WidgetChartVisualStyle {
         .bytes(25, 30, 37), .bytes(14, 68, 41),
         .bytes(0, 109, 50), .bytes(38, 166, 65), .bytes(57, 211, 83),
     ]
+    private static let accentedHeatmapOpacities = [0.14, 0.32, 0.50, 0.72, 1.00]
+    private static let vibrantHeatmapWhiteLevels = [0.24, 0.40, 0.58, 0.76, 0.94]
 
     /// Returns the shared light or dark heatmap color after clamping to the five-level scale.
     static func heatmapRGBA(intensity: Int, isDark: Bool) -> WidgetChartRGBA {
         let clamped = min(max(intensity, 0), heatmapMaximumIntensity)
         return (isDark ? darkPalette : lightPalette)[clamped]
+    }
+
+    /// Returns the alpha level that preserves intensity when WidgetKit replaces RGB colors.
+    static func heatmapAccentedOpacity(intensity: Int) -> Double {
+        let clamped = min(max(intensity, 0), heatmapMaximumIntensity)
+        return accentedHeatmapOpacities[clamped]
+    }
+
+    /// Returns the opaque grayscale level used by WidgetKit's vibrant desktop treatment.
+    static func heatmapVibrantWhiteLevel(intensity: Int) -> Double {
+        let clamped = min(max(intensity, 0), heatmapMaximumIntensity)
+        return vibrantHeatmapWhiteLevels[clamped]
     }
 
     /// Fits a square tile inside the fixed 22-by-7 grid without exceeding the approved side length.

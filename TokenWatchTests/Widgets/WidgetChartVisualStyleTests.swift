@@ -30,6 +30,22 @@ struct WidgetChartVisualStyleTests {
         #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 9, isDark: true) == .bytes(57, 211, 83))
     }
 
+    @Test("system-rendered heatmap keeps all five intensity levels")
+    func systemRenderedHeatmapKeepsIntensityLevels() {
+        #expect(
+            (0...4).map(WidgetChartVisualStyle.heatmapAccentedOpacity)
+                == [0.14, 0.32, 0.50, 0.72, 1.00]
+        )
+        #expect(
+            (0...4).map(WidgetChartVisualStyle.heatmapVibrantWhiteLevel)
+                == [0.24, 0.40, 0.58, 0.76, 0.94]
+        )
+        #expect(WidgetChartVisualStyle.heatmapAccentedOpacity(intensity: -1) == 0.14)
+        #expect(WidgetChartVisualStyle.heatmapAccentedOpacity(intensity: 9) == 1.00)
+        #expect(WidgetChartVisualStyle.heatmapVibrantWhiteLevel(intensity: -1) == 0.24)
+        #expect(WidgetChartVisualStyle.heatmapVibrantWhiteLevel(intensity: 9) == 0.94)
+    }
+
     @Test("medium heatmap and zero chart calculations are stable")
     func layoutAndZeroScaleAreStable() {
         #expect(WidgetChartVisualStyle.heatmapTileSide(availableWidth: 327, availableHeight: 102) == 12)
