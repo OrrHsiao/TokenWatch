@@ -8,6 +8,62 @@ enum WidgetUsageEntryState: Equatable, Sendable {
     case notReady(WidgetLocalizedText)
 }
 
+/// Supplies a concise locked-state call to action without expanding the host's locale catalog.
+enum WidgetLockedGuidance {
+    /// Returns Chinese guidance for Chinese preferences and an English fallback otherwise.
+    /// - Parameter preferredLanguageIdentifiers: Ordered BCP-47 language preferences.
+    /// - Returns: A direct instruction to open the host app and unlock widgets.
+    static func message(
+        preferredLanguageIdentifiers: [String] = Locale.preferredLanguages
+    ) -> String {
+        guard let preferred = preferredLanguageIdentifiers.first?.lowercased(),
+              preferred.hasPrefix("zh") else {
+            return "Open TokenWatch to unlock widgets"
+        }
+        return "打开 TokenWatch 解锁小组件"
+    }
+}
+
+/// Applies the cached purchase entitlement before any usage snapshot can be presented.
+enum WidgetAccessGate {
+    /// Returns whether the widget may read and present the shared usage snapshot.
+    /// - Parameter entitlement: The fail-closed access state shared by the host app.
+    /// - Returns: `true` only for an explicitly unlocked entitlement.
+    static func allowsSnapshotRead(
+        for entitlement: WidgetEntitlementState
+    ) -> Bool {
+        entitlement == .unlocked
+    }
+
+    /// Resolves a render state while ensuring locked access overrides even valid old data.
+    /// - Parameters:
+    ///   - entitlement: The fail-closed access state shared by the host app.
+    ///   - result: The current usage snapshot result; ignored while access is locked.
+    ///   - date: The timeline entry date to classify when access is unlocked.
+    ///   - calendar: The calendar and time zone defining the local day.
+    ///   - fallbackText: Localized copy shown for unavailable unlocked data.
+    ///   - lockedText: Localized locked-state guidance shown without exposing snapshot data.
+    /// - Returns: A locked not-ready state or the existing current/stale/not-ready result.
+    static func state(
+        entitlement: WidgetEntitlementState,
+        result: WidgetSnapshotReadResult,
+        at date: Date,
+        calendar: Calendar,
+        fallbackText: WidgetLocalizedText,
+        lockedText: WidgetLocalizedText
+    ) -> WidgetUsageEntryState {
+        guard allowsSnapshotRead(for: entitlement) else {
+            return .notReady(lockedText)
+        }
+        return WidgetTimelinePlanner.state(
+            for: result,
+            at: date,
+            calendar: calendar,
+            fallbackText: fallbackText
+        )
+    }
+}
+
 /// Classifies stored snapshots and plans calendar-aware widget refresh boundaries.
 enum WidgetTimelinePlanner {
     /// Converts a validated store result into the rendering state for a local calendar day.

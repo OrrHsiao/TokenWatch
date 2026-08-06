@@ -210,6 +210,54 @@ struct WidgetGalleryViewControllerTests {
         assertSize(todayAnomalySmallPreview, equals: smallSize)
     }
 
+    @Test("购买卡片把状态和操作对齐到尾部且不保留空白高度")
+    func purchaseCardUsesBalancedFullWidthLayout() async throws {
+        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
+        await purchaseController.refresh()
+        defer { purchaseController.stop() }
+
+        let settings = languageSettings(language: .en)
+        let controller = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: settings),
+            stateProvider: { [:] },
+            refreshAction: {},
+            widgetPurchaseController: purchaseController,
+            languageSettings: settings
+        )
+        controller.loadViewIfNeeded()
+        controller.view.setFrameSize(MainWindowFactory.contentSize)
+
+        let widgetsButton = try #require(
+            view(identifier: "DashboardNav.widgets", in: controller.view) as? NSButton
+        )
+        widgetsButton.performClick(nil)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let card = try #require(view(identifier: "WidgetPurchaseCard", in: controller.view))
+        let status = try #require(
+            view(identifier: "WidgetPurchaseStatus", in: controller.view) as? NSTextField
+        )
+        let purchaseButton = try #require(
+            view(identifier: "WidgetPurchaseButton", in: controller.view) as? NSButton
+        )
+        let restoreButton = try #require(
+            view(identifier: "WidgetRestorePurchaseButton", in: controller.view) as? NSButton
+        )
+        let cardFrame = card.convert(card.bounds, to: controller.view)
+        let statusFrame = status.convert(status.bounds, to: controller.view)
+        let restoreFrame = restoreButton.convert(restoreButton.bounds, to: controller.view)
+        let statusTextRect = try #require(status.cell?.drawingRect(forBounds: status.bounds))
+
+        #expect(abs((cardFrame.maxX - statusFrame.maxX) - 18) < 3)
+        #expect(abs((cardFrame.maxX - restoreFrame.maxX) - 18) < 3)
+        #expect(statusFrame.minX > cardFrame.midX)
+        #expect(statusFrame.height == 24)
+        #expect(status.cell?.alignment == .center)
+        #expect(abs(statusTextRect.midY - status.bounds.midY) <= 0.5)
+        #expect(purchaseButton.isEnabled)
+        #expect(cardFrame.height <= 120)
+    }
+
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
