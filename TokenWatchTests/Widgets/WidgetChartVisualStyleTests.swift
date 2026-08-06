@@ -20,14 +20,22 @@ struct WidgetChartVisualStyleTests {
         #expect(WidgetChartRendering.lineInterpolationMethodName == "catmullRom")
     }
 
-    @Test("palette values exactly match light and dark popover colors")
-    func paletteMatchesPopover() {
-        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 0, isDark: false) == .bytes(216, 222, 232))
-        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 4, isDark: false) == .bytes(33, 110, 57))
-        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 0, isDark: true) == .bytes(25, 30, 37))
-        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 4, isDark: true) == .bytes(57, 211, 83))
-        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: -1, isDark: false) == .bytes(216, 222, 232))
-        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 9, isDark: true) == .bytes(57, 211, 83))
+    @Test("palette values exactly match current GitHub Primer contribution colors")
+    func paletteMatchesGitHubPrimer() {
+        #expect((0...4).map {
+            WidgetChartVisualStyle.heatmapRGBA(intensity: $0, isDark: false)
+        } == [
+            .bytes(239, 242, 245), .bytes(172, 238, 187),
+            .bytes(74, 194, 107), .bytes(45, 164, 78), .bytes(17, 99, 41),
+        ])
+        #expect((0...4).map {
+            WidgetChartVisualStyle.heatmapRGBA(intensity: $0, isDark: true)
+        } == [
+            .bytes(21, 27, 35), .bytes(3, 58, 22),
+            .bytes(25, 108, 46), .bytes(46, 160, 67), .bytes(86, 211, 100),
+        ])
+        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: -1, isDark: false) == .bytes(239, 242, 245))
+        #expect(WidgetChartVisualStyle.heatmapRGBA(intensity: 9, isDark: true) == .bytes(86, 211, 100))
     }
 
     @Test("system-rendered heatmap keeps all five intensity levels")

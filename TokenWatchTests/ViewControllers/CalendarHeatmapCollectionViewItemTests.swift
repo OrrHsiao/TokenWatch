@@ -155,12 +155,12 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         item.configure(with: .day(day))
 
-        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.129, 0.431, 0.224, 1.0])
+        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.067, 0.388, 0.161, 1.0])
     }
 
     @MainActor
-    @Test("暗色模式 0 token 方块使用更亮的中性色")
-    func zeroTokenUsesLighterNeutralInDarkMode() {
+    @Test("暗色模式 0 token 方块使用 GitHub Primer 中性色")
+    func zeroTokenUsesGitHubPrimerNeutralInDarkMode() {
         let item = CalendarHeatmapCollectionViewItem()
         item.loadView()
         item.view.appearance = NSAppearance(named: .darkAqua)
@@ -178,13 +178,13 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         item.configure(with: .day(day))
 
-        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.098, 0.118, 0.145, 1.0])
+        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.082, 0.106, 0.137, 1.0])
         #expect(item.view.toolTip == "2026-06-10 · 0.0M")
     }
 
     @MainActor
-    @Test("浅色模式 0 token 方块使用更清晰的中性色")
-    func zeroTokenUsesClearerNeutralInLightMode() {
+    @Test("浅色模式 0 token 方块使用 GitHub Primer 中性色")
+    func zeroTokenUsesGitHubPrimerNeutralInLightMode() {
         let item = CalendarHeatmapCollectionViewItem()
         item.loadView()
         item.view.appearance = NSAppearance(named: .aqua)
@@ -202,7 +202,7 @@ struct CalendarHeatmapCollectionViewItemTests {
 
         item.configure(with: .day(day))
 
-        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.847, 0.871, 0.91, 1.0])
+        #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.937, 0.949, 0.961, 1.0])
         #expect(item.view.toolTip == "2026-06-10 · 0.0M")
     }
 
