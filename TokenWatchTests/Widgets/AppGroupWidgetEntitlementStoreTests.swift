@@ -4,24 +4,21 @@ import Testing
 
 @Suite("App Group widget entitlement store")
 struct AppGroupWidgetEntitlementStoreTests {
-    @Test("missing and non-data values fail closed")
-    func missingAndWrongTypeFailClosed() {
-        let fixture = makeFixture()
-        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+    @Test("missing and non-record files fail closed")
+    func missingAndWrongTypeFailClosed() throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
 
         #expect(fixture.store.load() == .locked)
 
-        fixture.defaults.set(
-            "unlocked",
-            forKey: WidgetSharedConfiguration.widgetEntitlementKey
-        )
+        try Data(#""unlocked""#.utf8).write(to: fixture.store.fileURL)
         #expect(fixture.store.load() == .locked)
     }
 
-    @Test("verified state round-trips through the shared preference")
+    @Test("verified state round-trips through the shared file")
     func stateRoundTrips() throws {
-        let fixture = makeFixture()
-        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
 
         try fixture.store.save(.unlocked)
         #expect(fixture.store.load() == .unlocked)
@@ -30,26 +27,21 @@ struct AppGroupWidgetEntitlementStoreTests {
         #expect(fixture.store.load() == .locked)
     }
 
-    @Test("a separately opened suite observes the flushed entitlement")
-    func separateSuiteInstanceObservesSavedState() throws {
-        let suiteName = "AppGroupWidgetEntitlementStoreTests.\(UUID().uuidString)"
-        let writerDefaults = UserDefaults(suiteName: suiteName)!
-        let readerDefaults = UserDefaults(suiteName: suiteName)!
-        writerDefaults.removePersistentDomain(forName: suiteName)
-        defer { writerDefaults.removePersistentDomain(forName: suiteName) }
-        let writer = AppGroupWidgetEntitlementStore(defaults: writerDefaults)
-        let reader = AppGroupWidgetEntitlementStore(defaults: readerDefaults)
+    @Test("a separately opened store observes the atomic entitlement file")
+    func separateStoreInstanceObservesSavedState() throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let reader = AppGroupWidgetEntitlementStore(fileURL: fixture.store.fileURL)
 
-        try writer.save(.unlocked)
+        try fixture.store.save(.unlocked)
 
         #expect(reader.load() == .unlocked)
     }
 
     @Test("corrupt stale and foreign-product records fail closed")
-    func invalidRecordsFailClosed() {
-        let fixture = makeFixture()
-        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
-
+    func invalidRecordsFailClosed() throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
         let invalidRecords = [
             Data("not-json".utf8),
             Data(#"{"schemaVersion":2,"productID":"com.xiaoao.tokenwatch.widgets.lifetime","state":"unlocked"}"#.utf8),
@@ -58,44 +50,68 @@ struct AppGroupWidgetEntitlementStoreTests {
         ]
 
         for record in invalidRecords {
-            fixture.defaults.set(
-                record,
-                forKey: WidgetSharedConfiguration.widgetEntitlementKey
-            )
+            try record.write(to: fixture.store.fileURL, options: .atomic)
             #expect(fixture.store.load() == .locked)
         }
     }
 
-    @Test("App Group resolver is injectable and rejects unavailable suites")
+    @Test("App Group resolver uses the configured container and rejects an unavailable one")
     func appGroupResolutionIsInjectable() throws {
-        let fixture = makeFixture()
-        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
         var resolvedIdentifier: String?
 
         let store = try AppGroupWidgetEntitlementStore.appGroupStore { identifier in
             resolvedIdentifier = identifier
-            return fixture.defaults
+            return fixture.directory
         }
 
         #expect(resolvedIdentifier == WidgetSharedConfiguration.appGroupIdentifier)
+        #expect(store.fileURL.lastPathComponent == WidgetSharedConfiguration.widgetEntitlementFilename)
         #expect(store.load() == .locked)
-        #expect(throws: WidgetEntitlementStoreError.appGroupDefaultsUnavailable) {
+        #expect(throws: WidgetEntitlementStoreError.appGroupContainerUnavailable) {
             try AppGroupWidgetEntitlementStore.appGroupStore { _ in nil }
         }
     }
 
-    private func makeFixture() -> (
-        suiteName: String,
-        defaults: UserDefaults,
+    @Test("atomic write failure leaves the old entitlement readable")
+    func failedAtomicWritePreservesExistingEntitlement() throws {
+        struct InjectedWriteError: Error {}
+
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        try fixture.store.save(.unlocked)
+        let failingStore = AppGroupWidgetEntitlementStore(
+            fileURL: fixture.store.fileURL,
+            atomicWrite: { _, _ in throw InjectedWriteError() }
+        )
+
+        #expect(throws: InjectedWriteError.self) {
+            try failingStore.save(.locked)
+        }
+        #expect(fixture.store.load() == .unlocked)
+    }
+
+    private func makeFixture() throws -> (
+        directory: URL,
         store: AppGroupWidgetEntitlementStore
     ) {
-        let suiteName = "AppGroupWidgetEntitlementStoreTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "AppGroupWidgetEntitlementStoreTests-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
         return (
-            suiteName,
-            defaults,
-            AppGroupWidgetEntitlementStore(defaults: defaults)
+            directory,
+            AppGroupWidgetEntitlementStore(
+                fileURL: directory.appendingPathComponent(
+                    WidgetSharedConfiguration.widgetEntitlementFilename,
+                    isDirectory: false
+                )
+            )
         )
     }
 }

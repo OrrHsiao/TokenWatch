@@ -23,7 +23,7 @@ private struct LockedWidgetEntitlementStore: WidgetEntitlementStoring, Sendable 
     }
 
     func save(_ state: WidgetEntitlementState) throws {
-        throw WidgetEntitlementStoreError.appGroupDefaultsUnavailable
+        throw WidgetEntitlementStoreError.appGroupContainerUnavailable
     }
 }
 

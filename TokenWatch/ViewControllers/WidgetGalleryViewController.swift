@@ -558,8 +558,10 @@ final class WidgetGalleryViewController: NSViewController {
             return copy.unavailableMessage
         case .purchaseVerificationFailed:
             return copy.verificationFailedMessage
-        case .purchaseFailed, .restoreFailed, .entitlementPersistenceFailed:
+        case .purchaseFailed, .restoreFailed:
             return copy.failedMessage
+        case .entitlementPersistenceFailed:
+            return copy.entitlementPersistenceFailedMessage
         }
     }
 

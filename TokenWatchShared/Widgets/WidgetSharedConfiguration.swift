@@ -12,7 +12,7 @@ enum WidgetSharedConfiguration {
     static let schemaVersion = 5
     static let appGroupIdentifier = "group.com.xiaoao.tokenwatch"
     static let widgetLifetimeProductID = "com.xiaoao.tokenwatch.widgets.lifetime"
-    static let widgetEntitlementKey = "TokenWatch.widgetLifetimeEntitlement"
+    static let widgetEntitlementFilename = "widget-entitlement-v1.json"
     static let snapshotFilename = "widget-usage-v5.json"
     static let heatmapKind = "TokenHeatmapWidget"
     static let hourlyLineKind = "TokenHourlyLineWidget"
