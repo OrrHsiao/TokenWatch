@@ -818,12 +818,15 @@ enum WidgetGallerySampleSnapshotFactory {
             * WidgetChartVisualStyle.heatmapRows
         let cells = (0..<cellCount)
             .map { index in
-                let intensity = index % (WidgetChartVisualStyle.heatmapMaximumIntensity + 1)
                 let cellDate = calendar.date(
                     byAdding: .day,
                     value: index - (cellCount - 1),
                     to: now
                 ) ?? now
+                let intensity = sampleHeatmapIntensity(
+                    for: cellDate,
+                    calendar: calendar
+                )
                 return WidgetHeatmapCell(
                     dateKey: dayKey(cellDate, calendar: calendar),
                     totalTokens: intensity * 100_000,
@@ -907,6 +910,35 @@ enum WidgetGallerySampleSnapshotFactory {
                 modelTokens: 2_100_000
             )
         )
+    }
+
+    /// 以日期生成稳定但不重复的用量档位，并降低周末活跃度以贴近日常使用分布。
+    private static func sampleHeatmapIntensity(
+        for date: Date,
+        calendar: Calendar
+    ) -> Int {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let dateCode = UInt64(
+            (components.year ?? 0) * 10_000
+                + (components.month ?? 0) * 100
+                + (components.day ?? 0)
+        )
+
+        // 固定散列让同一日期始终呈现相同档位，避免每次 render 时预览闪动。
+        var sample = dateCode &+ 0x9E37_79B9_7F4A_7C15
+        sample = (sample ^ (sample >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        sample = (sample ^ (sample >> 27)) &* 0x94D0_49BB_1331_11EB
+        sample ^= sample >> 31
+
+        let weekendAdjustment = calendar.isDateInWeekend(date) ? 20 : 0
+        let activityScore = Int(sample % 100) - weekendAdjustment
+        switch activityScore {
+        case ..<30: return 0
+        case ..<55: return 1
+        case ..<75: return 2
+        case ..<90: return 3
+        default: return WidgetChartVisualStyle.heatmapMaximumIntensity
+        }
     }
 
     private static func makeMonthlyBudget(
