@@ -36,8 +36,13 @@ struct WidgetPurchaseControllerTests {
         controller.removeObserver(token)
         let observedCount = observedStates.count
         await controller.refresh()
-        #expect(store.savedStates == [.unlocked])
-        #expect(reloader.kinds == widgetKinds)
+        #expect(store.savedStates == [.unlocked, .unlocked])
+        #expect(reloader.kinds == widgetKinds + widgetKinds)
+        #expect(events.values == (
+            ["save:unlocked"] + widgetKinds.map { "reload:\($0)" }
+        ) + (
+            ["save:unlocked"] + widgetKinds.map { "reload:\($0)" }
+        ))
         #expect(observedStates.count == observedCount)
     }
 
@@ -247,7 +252,7 @@ struct WidgetPurchaseControllerTests {
             controller.state.isUnlocked && client.finishedTransactionIDs == [100]
         }
         #expect(didUnlock)
-        #expect(store.savedStates == [.unlocked])
+        #expect(store.savedStates == [.locked, .unlocked])
 
         client.currentEntitlement = false
         client.send(.verified(.init(
@@ -258,8 +263,8 @@ struct WidgetPurchaseControllerTests {
             !controller.state.isUnlocked && client.finishedTransactionIDs == [100, 101]
         }
         #expect(didLock)
-        #expect(store.savedStates == [.unlocked, .locked])
-        #expect(reloader.kinds == widgetKinds + widgetKinds)
+        #expect(store.savedStates == [.locked, .unlocked, .locked])
+        #expect(reloader.kinds == widgetKinds + widgetKinds + widgetKinds)
 
         client.send(.verified(.init(id: 102, productID: "foreign.product")))
         await Task.yield()
@@ -271,6 +276,38 @@ struct WidgetPurchaseControllerTests {
         }
         #expect(didReject)
         #expect(client.finishedTransactionIDs == [100, 101])
+        controller.stop()
+    }
+
+    @Test("同一生命周期重复 start 不会重复刷新，stop 后可以重新启动")
+    func startIsIdempotentUntilStopped() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: true)
+        let controller = makeController(client: client)
+
+        controller.start()
+        let didStart = await eventually {
+            client.transactionUpdatesCallCount == 1
+                && client.loadedProductIDs.count == 1
+                && client.entitlementProductIDs.count == 1
+                && controller.state.operation == .idle
+        }
+        #expect(didStart)
+
+        controller.start()
+        await Task.yield()
+        #expect(client.transactionUpdatesCallCount == 1)
+        #expect(client.loadedProductIDs.count == 1)
+        #expect(client.entitlementProductIDs.count == 1)
+
+        controller.stop()
+        controller.start()
+        let didRestart = await eventually {
+            client.transactionUpdatesCallCount == 2
+                && client.loadedProductIDs.count == 2
+                && client.entitlementProductIDs.count == 2
+                && controller.state.operation == .idle
+        }
+        #expect(didRestart)
         controller.stop()
     }
 

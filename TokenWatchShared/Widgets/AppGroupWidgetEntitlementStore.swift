@@ -6,10 +6,9 @@ enum WidgetEntitlementState: String, Codable, Equatable, Sendable {
     case unlocked
 }
 
-/// Errors raised while resolving the App Group preference suite.
+/// Errors raised while resolving the App Group entitlement file.
 enum WidgetEntitlementStoreError: Error, Equatable, Sendable {
-    case appGroupDefaultsUnavailable
-    case synchronizationFailed
+    case appGroupContainerUnavailable
 }
 
 /// Cross-process entitlement cache used by the host app and widget extension.
@@ -18,17 +17,19 @@ protocol WidgetEntitlementStoring: Sendable {
     /// - Returns: `.unlocked` only for a valid record for the current lifetime product.
     func load() -> WidgetEntitlementState
 
-    /// Persists the latest StoreKit-derived access state in the shared App Group suite.
+    /// Persists the latest StoreKit-derived access state in the shared App Group container.
     /// - Parameter state: The verified lifetime widget entitlement state.
-    /// - Throws: An encoding or App Group preference synchronization error.
+    /// - Throws: An encoding or atomic file replacement error.
     func save(_ state: WidgetEntitlementState) throws
 }
 
-/// App Group `UserDefaults` storage whose JSON envelope rejects stale or malformed values.
+/// App Group JSON storage whose envelope rejects stale or malformed values.
 ///
-/// `UserDefaults` is documented as thread-safe. The unchecked conformance only bridges
-/// Foundation's missing `Sendable` annotation while each operation remains synchronous.
-struct AppGroupWidgetEntitlementStore: WidgetEntitlementStoring, @unchecked Sendable {
+/// A versioned atomic file avoids cross-process `CFPreferences` cache divergence between the
+/// host app and an already-running WidgetKit extension. Failed replacement preserves old bytes.
+struct AppGroupWidgetEntitlementStore: WidgetEntitlementStoring, Sendable {
+    typealias AtomicWrite = @Sendable (Data, URL) throws -> Void
+
     private static let schemaVersion = 1
 
     private struct Record: Codable {
@@ -37,33 +38,49 @@ struct AppGroupWidgetEntitlementStore: WidgetEntitlementStoring, @unchecked Send
         let state: WidgetEntitlementState
     }
 
-    private let defaults: UserDefaults
+    let fileURL: URL
+    private let atomicWrite: AtomicWrite
 
-    /// Creates a store backed by an explicitly supplied defaults suite.
-    /// - Parameter defaults: The App Group suite in production or an isolated suite in tests.
-    init(defaults: UserDefaults) {
-        self.defaults = defaults
-    }
-
-    /// Resolves the shared App Group preference suite used by both processes.
-    /// - Parameter defaultsProvider: Injectable suite resolver for deterministic tests.
-    /// - Returns: A store backed by the configured App Group suite.
-    /// - Throws: `WidgetEntitlementStoreError.appGroupDefaultsUnavailable` when resolution fails.
-    static func appGroupStore(
-        defaultsProvider: (String) -> UserDefaults? = { UserDefaults(suiteName: $0) }
-    ) throws -> AppGroupWidgetEntitlementStore {
-        guard let defaults = defaultsProvider(WidgetSharedConfiguration.appGroupIdentifier) else {
-            throw WidgetEntitlementStoreError.appGroupDefaultsUnavailable
+    /// Creates a store at an explicit URL with an injectable atomic replacement seam.
+    /// - Parameters:
+    ///   - fileURL: The shared entitlement record URL.
+    ///   - atomicWrite: The replacement operation; defaults to Foundation's atomic write.
+    init(
+        fileURL: URL,
+        atomicWrite: @escaping AtomicWrite = { data, url in
+            try data.write(to: url, options: .atomic)
         }
-        return AppGroupWidgetEntitlementStore(defaults: defaults)
+    ) {
+        self.fileURL = fileURL
+        self.atomicWrite = atomicWrite
     }
 
-    /// Refreshes the shared preference domain, then loads only an exact-schema record.
-    /// - Returns: `.locked` for synchronization failure, missing, malformed, stale, or
-    ///   foreign-product data.
+    /// Resolves the entitlement file inside the App Group container used by both processes.
+    /// - Parameter containerURLProvider: Injectable container resolver for deterministic tests.
+    /// - Returns: A store targeting the configured entitlement filename.
+    /// - Throws: `WidgetEntitlementStoreError.appGroupContainerUnavailable` when resolution fails.
+    static func appGroupStore(
+        containerURLProvider: (String) -> URL? = {
+            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0)
+        }
+    ) throws -> AppGroupWidgetEntitlementStore {
+        guard let containerURL = containerURLProvider(
+            WidgetSharedConfiguration.appGroupIdentifier
+        ) else {
+            throw WidgetEntitlementStoreError.appGroupContainerUnavailable
+        }
+        return AppGroupWidgetEntitlementStore(
+            fileURL: containerURL.appendingPathComponent(
+                WidgetSharedConfiguration.widgetEntitlementFilename,
+                isDirectory: false
+            )
+        )
+    }
+
+    /// Loads only an exact-schema record for the configured lifetime product.
+    /// - Returns: `.locked` for missing, unreadable, malformed, stale, or foreign-product data.
     func load() -> WidgetEntitlementState {
-        guard defaults.synchronize(),
-              let data = defaults.data(forKey: WidgetSharedConfiguration.widgetEntitlementKey),
+        guard let data = try? Data(contentsOf: fileURL),
               let record = try? JSONDecoder().decode(Record.self, from: data),
               record.schemaVersion == Self.schemaVersion,
               record.productID == WidgetSharedConfiguration.widgetLifetimeProductID else {
@@ -72,20 +89,17 @@ struct AppGroupWidgetEntitlementStore: WidgetEntitlementStoring, @unchecked Send
         return record.state
     }
 
-    /// Encodes a versioned record and flushes it before widget timelines are reloaded.
+    /// Encodes and atomically replaces the versioned record before timelines are reloaded.
     /// - Parameter state: The verified widget access state to cache.
-    /// - Throws: An encoding error, or `WidgetEntitlementStoreError.synchronizationFailed`
-    ///   when the App Group preference domain cannot be flushed for the widget process.
+    /// - Throws: The underlying encoder or atomic replacement error.
     func save(_ state: WidgetEntitlementState) throws {
         let record = Record(
             schemaVersion: Self.schemaVersion,
             productID: WidgetSharedConfiguration.widgetLifetimeProductID,
             state: state
         )
-        let data = try JSONEncoder().encode(record)
-        defaults.set(data, forKey: WidgetSharedConfiguration.widgetEntitlementKey)
-        guard defaults.synchronize() else {
-            throw WidgetEntitlementStoreError.synchronizationFailed
-        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        try atomicWrite(try encoder.encode(record), fileURL)
     }
 }

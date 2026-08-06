@@ -69,7 +69,7 @@ final class WidgetPurchaseController {
 
     /// Creates the production controller with StoreKit and the shared App Group entitlement cache.
     /// - Returns: A controller ready for `start()`.
-    /// - Throws: `WidgetEntitlementStoreError` when the App Group suite cannot be resolved.
+    /// - Throws: `WidgetEntitlementStoreError` when the App Group container cannot be resolved.
     static func makeLive() throws -> WidgetPurchaseController {
         WidgetPurchaseController(
             client: StoreKitWidgetPurchaseClient(),
@@ -93,7 +93,6 @@ final class WidgetPurchaseController {
         initialRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
             await self.refresh()
-            self.initialRefreshTask = nil
         }
     }
 
@@ -333,8 +332,8 @@ final class WidgetPurchaseController {
     /// Persists before reloading timelines so the extension never observes the old gate state.
     private func persistEntitlement(_ isUnlocked: Bool) throws {
         let next: WidgetEntitlementState = isUnlocked ? .unlocked : .locked
-        guard entitlementStore.load() != next else { return }
-
+        // StoreKit is authoritative. Always replace the fail-closed cache because `load()` cannot
+        // distinguish a confirmed locked record from a temporarily unreadable unlocked record.
         try entitlementStore.save(next)
         for kind in Self.widgetKinds {
             timelineReloader.reloadTimelines(ofKind: kind)

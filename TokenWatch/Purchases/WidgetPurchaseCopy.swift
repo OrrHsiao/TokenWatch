@@ -19,6 +19,7 @@ struct WidgetPurchaseCopy: Equatable, Sendable {
     let noPurchaseMessage: String
     let unavailableMessage: String
     let failedMessage: String
+    let entitlementPersistenceFailedMessage: String
     let verificationFailedMessage: String
     let purchaseUnavailableTitle: String
     let restoreTitle: String
@@ -43,6 +44,7 @@ struct WidgetPurchaseCopy: Equatable, Sendable {
                 noPurchaseMessage: "未找到可恢复的购买记录。",
                 unavailableMessage: "暂时无法载入 App Store 商品，请稍后重试。",
                 failedMessage: "购买未能完成，请重试。",
+                entitlementPersistenceFailedMessage: "小组件解锁状态更新失败，请稍后重试。",
                 verificationFailedMessage: "无法验证这笔交易，未授予小组件权限。",
                 purchaseUnavailableTitle: "从 App Store 永久解锁",
                 restoreTitle: "恢复购买"
@@ -62,6 +64,7 @@ struct WidgetPurchaseCopy: Equatable, Sendable {
                 noPurchaseMessage: "找不到可恢復的購買記錄。",
                 unavailableMessage: "暫時無法載入 App Store 商品，請稍後再試。",
                 failedMessage: "購買未能完成，請再試一次。",
+                entitlementPersistenceFailedMessage: "小工具解鎖狀態更新失敗，請稍後再試。",
                 verificationFailedMessage: "無法驗證此交易，未授予小工具權限。",
                 purchaseUnavailableTitle: "從 App Store 永久解鎖",
                 restoreTitle: "恢復購買"
@@ -81,6 +84,7 @@ struct WidgetPurchaseCopy: Equatable, Sendable {
                 noPurchaseMessage: "No previous purchase was found.",
                 unavailableMessage: "The App Store product is temporarily unavailable. Try again later.",
                 failedMessage: "The purchase couldn't be completed. Please try again.",
+                entitlementPersistenceFailedMessage: "Widget access couldn't be updated. Please try again.",
                 verificationFailedMessage: "The transaction couldn't be verified, so widget access remains locked.",
                 purchaseUnavailableTitle: "Unlock with the App Store",
                 restoreTitle: "Restore Purchases"
