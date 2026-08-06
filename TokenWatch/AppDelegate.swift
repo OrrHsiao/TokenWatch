@@ -12,6 +12,11 @@ import os.log
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let openMainWindowOnLaunchKey = "TokenWatch.openMainWindowOnLaunch"
+    private static let widgetPurchaseReviewModeKey = "TokenWatch.widgetPurchaseReviewMode"
+    private static let purchaseLogger = Logger(
+        subsystem: "com.xiaoao.TokenWatch",
+        category: "WidgetPurchaseBootstrap"
+    )
 
     static let supportURL = URL(
         string: "https://orrhsiao.github.io/TokenWatch/support/"
@@ -20,6 +25,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// ViewModel 实例,协调数据加载和统计计算
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
     let viewModel: TokenStatsViewModel
+
+    /// StoreKit 控制器由应用生命周期持有，以便窗口关闭后仍能接收交易更新。
+    let widgetPurchaseController: WidgetPurchaseController?
 
     /// 状态栏控制器,长驻 menu bar 显示当日 token 数
     /// 在 didFinishLaunching 时创建,terminate 时 stop() 释放 Timer + 摘掉 status item
@@ -40,6 +48,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: settings,
             widgetSnapshotPublisher: WidgetSnapshotPublisherFactory.makeLive()
         )
+        self.widgetPurchaseController = Self.makeWidgetPurchaseController()
         self.externalURLOpener = { NSWorkspace.shared.open($0) }
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
@@ -48,19 +57,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     init(
         languageSettings: AppLanguageSettings,
         externalURLOpener: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
-        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil
+        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil,
+        widgetPurchaseController: WidgetPurchaseController? = nil
     ) {
         self.languageSettings = languageSettings
         self.viewModel = TokenStatsViewModel(
             languageSettings: languageSettings,
             widgetSnapshotPublisher: widgetSnapshotPublisher
         )
+        self.widgetPurchaseController = widgetPurchaseController
         self.externalURLOpener = externalURLOpener
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
     }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        // StoreKit 建议在应用启动时建立长期 Transaction.updates 监听，避免遗漏延迟交易。
+        widgetPurchaseController?.start()
+
         mainMenuController = AppMainMenuController(actionTarget: self, languageSettings: languageSettings)
         mainMenuController?.start()
 
@@ -109,6 +123,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController = nil
         mainMenuController?.stop()
         mainMenuController = nil
+        widgetPurchaseController?.stop()
         // 停止所有 provider 的 Security-Scoped 访问，释放资源
         SecurityScopedBookmarkManager.shared.stopAccessingAll()
     }
@@ -231,7 +246,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func instantiateMainWindow() -> NSWindow? {
-        let windowController = MainWindowFactory.makeWindowController(languageSettings: languageSettings)
+        let windowController = MainWindowFactory.makeWindowController(
+            languageSettings: languageSettings,
+            widgetPurchaseController: widgetPurchaseController
+        )
         mainWindowController = windowController
         windowController.showWindow(nil)
         return windowController.window
@@ -243,6 +261,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hasStoredPreference: defaults.object(forKey: openMainWindowOnLaunchKey) != nil,
             storedPreference: defaults.bool(forKey: openMainWindowOnLaunchKey)
         )
+    }
+
+    /// 构建生产 StoreKit 控制器；DEBUG 审核模式只能通过显式依赖替换进入。
+    private static func makeWidgetPurchaseController() -> WidgetPurchaseController? {
+#if DEBUG
+        switch UserDefaults.standard.string(forKey: widgetPurchaseReviewModeKey) {
+        case "locked":
+            purchaseLogger.info("Using locked widget purchase review fixture")
+            return WidgetPurchaseReviewFixtures.makeLockedController()
+        case "unlocked":
+            purchaseLogger.info("Using unlocked widget purchase review fixture")
+            return WidgetPurchaseReviewFixtures.makeUnlockedController()
+        default:
+            break
+        }
+#endif
+
+        do {
+            return try WidgetPurchaseController.makeLive()
+        } catch {
+            // App Group 无法建立时不展示购买入口，避免收费后无法向扩展交付权限。
+            purchaseLogger.error("Widget purchase unavailable because App Group storage failed")
+            return nil
+        }
     }
 
 }
@@ -260,7 +302,8 @@ enum MainWindowFactory {
     static let contentSize = NSSize(width: 1180, height: 840)
 
     static func makeWindowController(
-        languageSettings: AppLanguageSettings = .shared
+        languageSettings: AppLanguageSettings = .shared,
+        widgetPurchaseController: WidgetPurchaseController? = nil
     ) -> NSWindowController {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: contentSize),
@@ -268,7 +311,10 @@ enum MainWindowFactory {
             backing: .buffered,
             defer: false
         )
-        let contentController = ViewController(languageSettings: languageSettings)
+        let contentController = ViewController(
+            languageSettings: languageSettings,
+            widgetPurchaseController: widgetPurchaseController
+        )
         window.title = "TokenWatch"
         window.titleVisibility = .hidden
         // 调度中心为透明窗口生成缩略图时，`.clear` 玻璃会采样桌面背景，

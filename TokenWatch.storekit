@@ -1,0 +1,65 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "F2A5B7C1",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "9D4E6A20",
+      "localizations" : [
+        {
+          "description" : "Unlock all 7 desktop widgets permanently.",
+          "displayName" : "Unlock All Widgets",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "一次购买，永久解锁全部 7 款桌面小组件。",
+          "displayName" : "解锁全部桌面小组件",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.xiaoao.tokenwatch.widgets.lifetime",
+      "referenceName" : "All Widgets Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionBundleGroups" : [
+
+  ],
+  "subscriptionGroups" : [
+
+  ],
+  "subscriptionSuiteGroups" : [
+
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
+}

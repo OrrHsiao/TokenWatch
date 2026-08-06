@@ -2,6 +2,33 @@ import AppKit
 import Charts
 import SwiftUI
 
+private final class WidgetPurchaseStatusTextFieldCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        let contentRect = super.drawingRect(forBounds: rect)
+        guard let font else { return contentRect }
+
+        // AppKit keeps the native label baseline when the badge stretches to 24pt,
+        // so constrain the single text line around the badge's vertical midpoint.
+        let lineHeight = min(
+            ceil(font.ascender - font.descender + font.leading),
+            contentRect.height
+        )
+        return NSRect(
+            x: contentRect.minX,
+            y: floor(contentRect.midY - lineHeight / 2),
+            width: contentRect.width,
+            height: lineHeight
+        )
+    }
+}
+
+private final class WidgetPurchaseStatusTextField: NSTextField {
+    override class var cellClass: AnyClass? {
+        get { WidgetPurchaseStatusTextFieldCell.self }
+        set {}
+    }
+}
+
 /// 展示当前桌面小组件的固定示例，便于在应用内查看可用样式。
 @MainActor
 final class WidgetGalleryViewController: NSViewController {
@@ -18,6 +45,14 @@ final class WidgetGalleryViewController: NSViewController {
     private let contentStack = NSStackView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
+    private let purchaseCard = DashboardGlassCardView(cornerRadius: 16)
+    private let purchaseTitleLabel = NSTextField(labelWithString: "")
+    private let purchaseDescriptionLabel = NSTextField(labelWithString: "")
+    private let purchaseStatusLabel = WidgetPurchaseStatusTextField(labelWithString: "")
+    private let purchaseMessageLabel = NSTextField(labelWithString: "")
+    private let purchaseButton = DashboardRangeButton(title: "", target: nil, action: nil)
+    private let restoreButton = DashboardRangeButton(title: "", target: nil, action: nil)
+    private let purchaseProgressIndicator = NSProgressIndicator()
     private let heatmapSectionTitleLabel = NSTextField(labelWithString: "")
     private let hourlyLineSectionTitleLabel = NSTextField(labelWithString: "")
     private let weeklySummarySectionTitleLabel = NSTextField(labelWithString: "")
@@ -44,6 +79,19 @@ final class WidgetGalleryViewController: NSViewController {
     private let projectFocusPreviewContainer = NSView()
     private let modelFocusPreviewContainer = NSView()
 
+    private let purchaseController: WidgetPurchaseController?
+    private var purchaseObservationToken: WidgetPurchaseController.ObservationToken?
+    private var renderedLanguage: AppLanguage = .en
+
+    init(purchaseController: WidgetPurchaseController? = nil) {
+        self.purchaseController = purchaseController
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("WidgetGalleryViewController 必须使用代码 initializer 构造")
+    }
+
     override func loadView() {
         let root = NSView()
         root.userInterfaceLayoutDirection = .leftToRight
@@ -55,6 +103,15 @@ final class WidgetGalleryViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupLayout()
+        subscribeToPurchaseState()
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            if let purchaseObservationToken {
+                purchaseController?.removeObserver(purchaseObservationToken)
+            }
+        }
     }
 
     /// 用当前语言生成固定示例快照并更新所有小组件预览。
@@ -65,8 +122,11 @@ final class WidgetGalleryViewController: NSViewController {
     func render(now: Date, calendar: Calendar, language: AppLanguage) {
         guard isViewLoaded else { return }
 
+        renderedLanguage = language
+
         titleLabel.stringValue = AppStrings.text(.dashboardWidgetsTitle, language: language)
         subtitleLabel.stringValue = AppStrings.text(.dashboardWidgetsSubtitle, language: language)
+        renderPurchaseState()
 
         let state = WidgetUsageEntryState.placeholder(
             WidgetGallerySampleSnapshotFactory.make(
@@ -188,6 +248,9 @@ final class WidgetGalleryViewController: NSViewController {
         contentView.addSubview(contentStack)
 
         addFullWidthArrangedSubview(makeHeaderView(), to: contentStack)
+        if purchaseController != nil {
+            addFullWidthArrangedSubview(makePurchaseCard(), to: contentStack)
+        }
         addFullWidthArrangedSubview(
             makeWidgetSection(
                 identifier: "heatmap",
@@ -278,6 +341,279 @@ final class WidgetGalleryViewController: NSViewController {
             stack.heightAnchor.constraint(greaterThanOrEqualToConstant: 64),
         ])
         return stack
+    }
+
+    /// Builds the commerce card once; later StoreKit state changes only update its contents.
+    private func makePurchaseCard() -> NSView {
+        purchaseCard.identifier = NSUserInterfaceItemIdentifier("WidgetPurchaseCard")
+        purchaseCard.setAccessibilityIdentifier("WidgetPurchaseCard")
+        purchaseCard.setAccessibilityElement(true)
+        purchaseCard.setAccessibilityRole(.group)
+        purchaseCard.translatesAutoresizingMaskIntoConstraints = false
+
+        purchaseTitleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        purchaseTitleLabel.textColor = DashboardPalette.primaryText
+        purchaseTitleLabel.lineBreakMode = .byTruncatingTail
+        purchaseTitleLabel.identifier = NSUserInterfaceItemIdentifier("WidgetPurchaseTitle")
+        purchaseTitleLabel.setAccessibilityIdentifier("WidgetPurchaseTitle")
+
+        purchaseDescriptionLabel.font = .systemFont(ofSize: 12)
+        purchaseDescriptionLabel.textColor = DashboardPalette.secondaryText
+        purchaseDescriptionLabel.lineBreakMode = .byWordWrapping
+        purchaseDescriptionLabel.maximumNumberOfLines = 2
+        purchaseDescriptionLabel.identifier = NSUserInterfaceItemIdentifier(
+            "WidgetPurchaseDescription"
+        )
+        purchaseDescriptionLabel.setAccessibilityIdentifier("WidgetPurchaseDescription")
+
+        purchaseStatusLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        purchaseStatusLabel.alignment = .center
+        purchaseStatusLabel.wantsLayer = true
+        purchaseStatusLabel.layer?.cornerRadius = 8
+        purchaseStatusLabel.identifier = NSUserInterfaceItemIdentifier("WidgetPurchaseStatus")
+        purchaseStatusLabel.setAccessibilityIdentifier("WidgetPurchaseStatus")
+
+        purchaseMessageLabel.font = .systemFont(ofSize: 11)
+        purchaseMessageLabel.textColor = DashboardPalette.secondaryText
+        purchaseMessageLabel.lineBreakMode = .byWordWrapping
+        purchaseMessageLabel.maximumNumberOfLines = 2
+        purchaseMessageLabel.identifier = NSUserInterfaceItemIdentifier("WidgetPurchaseMessage")
+        purchaseMessageLabel.setAccessibilityIdentifier("WidgetPurchaseMessage")
+
+        configurePurchaseButton(purchaseButton, identifier: "WidgetPurchaseButton")
+        purchaseButton.target = self
+        purchaseButton.action = #selector(purchaseButtonClicked(_:))
+        configurePurchaseButton(restoreButton, identifier: "WidgetRestorePurchaseButton")
+        restoreButton.target = self
+        restoreButton.action = #selector(restoreButtonClicked(_:))
+
+        purchaseProgressIndicator.style = .spinning
+        purchaseProgressIndicator.controlSize = .small
+        purchaseProgressIndicator.isDisplayedWhenStopped = false
+        purchaseProgressIndicator.identifier = NSUserInterfaceItemIdentifier(
+            "WidgetPurchaseProgress"
+        )
+        purchaseProgressIndicator.setAccessibilityIdentifier("WidgetPurchaseProgress")
+
+        let headingSpacer = NSView()
+        headingSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        headingSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let headingRow = NSStackView(views: [
+            purchaseTitleLabel,
+            headingSpacer,
+            purchaseStatusLabel,
+        ])
+        headingRow.orientation = .horizontal
+        headingRow.alignment = .centerY
+        headingRow.spacing = 12
+        purchaseTitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        purchaseTitleLabel.setContentHuggingPriority(.required, for: .horizontal)
+        purchaseStatusLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let actions = NSStackView(views: [
+            purchaseProgressIndicator,
+            purchaseButton,
+            restoreButton,
+        ])
+        actions.orientation = .horizontal
+        actions.alignment = .centerY
+        actions.spacing = 10
+        actions.setContentHuggingPriority(.required, for: .horizontal)
+        actions.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let detailRow = NSStackView(views: [purchaseDescriptionLabel, actions])
+        detailRow.orientation = .horizontal
+        detailRow.alignment = .centerY
+        detailRow.spacing = 18
+        purchaseDescriptionLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        purchaseDescriptionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let cardContent = NSStackView(views: [headingRow, detailRow, purchaseMessageLabel])
+        cardContent.orientation = .vertical
+        cardContent.alignment = .leading
+        cardContent.spacing = 8
+        cardContent.translatesAutoresizingMaskIntoConstraints = false
+        purchaseCard.addContentSubview(cardContent)
+
+        NSLayoutConstraint.activate([
+            cardContent.leadingAnchor.constraint(equalTo: purchaseCard.leadingAnchor, constant: 18),
+            cardContent.trailingAnchor.constraint(equalTo: purchaseCard.trailingAnchor, constant: -18),
+            cardContent.topAnchor.constraint(equalTo: purchaseCard.topAnchor, constant: 16),
+            cardContent.bottomAnchor.constraint(equalTo: purchaseCard.bottomAnchor, constant: -16),
+            headingRow.widthAnchor.constraint(equalTo: cardContent.widthAnchor),
+            detailRow.widthAnchor.constraint(equalTo: cardContent.widthAnchor),
+            purchaseMessageLabel.widthAnchor.constraint(equalTo: cardContent.widthAnchor),
+            purchaseStatusLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 72),
+            purchaseStatusLabel.heightAnchor.constraint(equalToConstant: 24),
+            purchaseButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 164),
+            restoreButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 132),
+        ])
+        return purchaseCard
+    }
+
+    private func configurePurchaseButton(
+        _ button: DashboardRangeButton,
+        identifier: String
+    ) {
+        button.bezelStyle = .regularSquare
+        button.isBordered = false
+        button.alignment = .center
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 8
+        button.layer?.borderWidth = 1
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.identifier = NSUserInterfaceItemIdentifier(identifier)
+        button.setAccessibilityIdentifier(identifier)
+        button.heightAnchor.constraint(equalToConstant: 36).isActive = true
+    }
+
+    private func subscribeToPurchaseState() {
+        guard let purchaseController else { return }
+        purchaseObservationToken = purchaseController.observe { [weak self] _ in
+            self?.renderPurchaseState()
+        }
+        purchaseController.start()
+    }
+
+    /// Maps StoreKit state to a stable, reviewable purchase card without displaying raw errors.
+    private func renderPurchaseState() {
+        guard let purchaseController, isViewLoaded else { return }
+        let state = purchaseController.state
+        let copy = WidgetPurchaseCopy.make(language: renderedLanguage)
+        let isBusy: Bool
+        let message: String
+
+        switch state.operation {
+        case .loading:
+            isBusy = true
+            message = copy.loadingMessage
+        case .purchasing:
+            isBusy = true
+            message = copy.purchasingMessage
+        case .restoring:
+            isBusy = true
+            message = copy.restoringMessage
+        case .purchasePending:
+            isBusy = false
+            message = copy.pendingMessage
+        case .noPurchasesToRestore:
+            isBusy = false
+            message = copy.noPurchaseMessage
+        case .failed(let failure):
+            isBusy = false
+            message = purchaseFailureMessage(failure, copy: copy)
+        case .idle, .purchaseCompleted, .restoreCompleted:
+            isBusy = false
+            message = ""
+        }
+
+        purchaseTitleLabel.stringValue = state.isUnlocked
+            ? copy.unlockedTitle
+            : copy.lockedTitle
+        purchaseDescriptionLabel.stringValue = state.isUnlocked
+            ? copy.unlockedDescription
+            : copy.lockedDescription
+        purchaseStatusLabel.stringValue = state.isUnlocked
+            ? copy.unlockedStatus
+            : copy.lockedStatus
+        purchaseStatusLabel.textColor = state.isUnlocked
+            ? DashboardPalette.green
+            : DashboardPalette.yellow
+        DashboardLayerColor.applyBackground(
+            (state.isUnlocked ? DashboardPalette.green : DashboardPalette.yellow)
+                .withAlphaComponent(0.14),
+            to: purchaseStatusLabel
+        )
+        purchaseMessageLabel.stringValue = message
+        purchaseMessageLabel.isHidden = message.isEmpty
+
+        if isBusy {
+            purchaseProgressIndicator.startAnimation(nil)
+        } else {
+            purchaseProgressIndicator.stopAnimation(nil)
+        }
+
+        purchaseButton.title = state.product.map {
+            copy.purchaseTitle(displayPrice: $0.displayPrice)
+        } ?? copy.purchaseUnavailableTitle
+        purchaseButton.setAccessibilityLabel(purchaseButton.title)
+        restoreButton.title = copy.restoreTitle
+        restoreButton.setAccessibilityLabel(copy.restoreTitle)
+        purchaseButton.isHidden = state.isUnlocked
+        restoreButton.isHidden = state.isUnlocked
+        purchaseButton.isEnabled = !isBusy && state.product != nil
+        restoreButton.isEnabled = !isBusy
+        applyPurchaseButtonStyles()
+        purchaseCard.setAccessibilityLabel(
+            "\(purchaseTitleLabel.stringValue). \(purchaseDescriptionLabel.stringValue)"
+        )
+    }
+
+    private func purchaseFailureMessage(
+        _ failure: WidgetPurchaseFailure,
+        copy: WidgetPurchaseCopy
+    ) -> String {
+        switch failure {
+        case .productUnavailable, .productLoadFailed:
+            return copy.unavailableMessage
+        case .purchaseVerificationFailed:
+            return copy.verificationFailedMessage
+        case .purchaseFailed, .restoreFailed, .entitlementPersistenceFailed:
+            return copy.failedMessage
+        }
+    }
+
+    private func applyPurchaseButtonStyles() {
+        applyPurchaseButtonStyle(
+            purchaseButton,
+            backgroundColor: DashboardPalette.rangeSelectedBackground,
+            borderColor: DashboardPalette.rangeSelectedBorder,
+            textColor: DashboardPalette.rangeSelectedText
+        )
+        applyPurchaseButtonStyle(
+            restoreButton,
+            backgroundColor: .clear,
+            borderColor: DashboardPalette.glassControlBorder,
+            textColor: DashboardPalette.primaryText
+        )
+    }
+
+    private func applyPurchaseButtonStyle(
+        _ button: DashboardRangeButton,
+        backgroundColor: NSColor,
+        borderColor: NSColor,
+        textColor: NSColor
+    ) {
+        let isEnabled = button.isEnabled
+        button.setDashboardLayerColors(
+            backgroundColor: backgroundColor,
+            borderColor: borderColor
+        )
+        button.alphaValue = isEnabled ? 1 : 0.55
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        button.attributedTitle = NSAttributedString(
+            string: button.title,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: isEnabled ? textColor : DashboardPalette.secondaryText,
+                .paragraphStyle: paragraph,
+            ]
+        )
+    }
+
+    @objc private func purchaseButtonClicked(_ sender: Any?) {
+        guard let purchaseController, let window = view.window else { return }
+        Task { @MainActor in
+            await purchaseController.purchase(in: window)
+        }
+    }
+
+    @objc private func restoreButtonClicked(_ sender: Any?) {
+        guard let purchaseController else { return }
+        Task { @MainActor in
+            await purchaseController.restorePurchases()
+        }
     }
 
     private func makeHeatmapPreviewRow() -> NSView {
