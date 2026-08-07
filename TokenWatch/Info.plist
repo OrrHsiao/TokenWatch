@@ -90,8 +90,6 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.developer-tools</string>
-    <key>NSHumanReadableCopyright</key>
-    <string></string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>

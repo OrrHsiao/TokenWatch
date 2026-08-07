@@ -4,6 +4,7 @@ import WidgetKit
 struct TokenHeatmapWidgetView: View {
     let entry: WidgetUsageEntry
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetRenderingMode) private var widgetRenderingMode
 
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.heatmap(for: entry.state)
@@ -20,12 +21,8 @@ struct TokenHeatmapWidgetView: View {
                 if let message = presentation.message {
                     Text(message)
                         .font(.caption2)
-                        .multilineTextAlignment(.center)
-                        .padding(6)
-                        .background(
-                            .regularMaterial,
-                            in: RoundedRectangle(cornerRadius: 6)
-                        )
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             }
         }
@@ -68,6 +65,23 @@ struct TokenHeatmapWidgetView: View {
 
     private func color(for cell: WidgetHeatmapPresentationCell) -> Color {
         guard cell.isVisible else { return .clear }
+        if widgetRenderingMode == .vibrant {
+            // Vibrant mode derives material strength from opaque grayscale brightness.
+            return Color(
+                .sRGB,
+                white: WidgetChartVisualStyle.heatmapVibrantWhiteLevel(
+                    intensity: cell.intensity
+                ),
+                opacity: 1
+            )
+        }
+        if widgetRenderingMode == .accented {
+            return .primary.opacity(
+                WidgetChartVisualStyle.heatmapAccentedOpacity(
+                    intensity: cell.intensity
+                )
+            )
+        }
         let rgba = WidgetChartVisualStyle.heatmapRGBA(
             intensity: cell.intensity,
             isDark: colorScheme == .dark

@@ -20,13 +20,8 @@ struct TokenTodayAnomalyWidgetView: View {
                 Spacer(minLength: 0)
                 Text(message)
                     .font(.caption2)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(6)
-                    .background(
-                        .regularMaterial,
-                        in: RoundedRectangle(cornerRadius: 6)
-                    )
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
                 Spacer(minLength: 0)
             } else if family == .systemMedium {
                 mediumContent(presentation)

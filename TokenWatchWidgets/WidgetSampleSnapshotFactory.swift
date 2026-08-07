@@ -1,7 +1,11 @@
 import Foundation
 
 enum WidgetFallbackLocalization {
-    static func make(date: Date, calendar: Calendar) -> WidgetLocalizedText {
+    static func make(
+        date: Date,
+        calendar: Calendar,
+        showsLockedGuidance: Bool = false
+    ) -> WidgetLocalizedText {
         let formatter = DateFormatter()
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
@@ -9,6 +13,7 @@ enum WidgetFallbackLocalization {
         formatter.setLocalizedDateFormatFromTemplate("Md")
         let dateText = formatter.string(from: date)
 
+        let notReadyMessage = String(localized: "widget.notReady")
         return WidgetLocalizedText(
             heatmapTitle: String(localized: "widget.heatmap.title"),
             todayUsageTitle: String(localized: "widget.today.title"),
@@ -20,7 +25,9 @@ enum WidgetFallbackLocalization {
                 format: String(localized: "widget.updated.format"),
                 dateText
             ),
-            notReadyMessage: String(localized: "widget.notReady"),
+            notReadyMessage: showsLockedGuidance
+                ? "🔒 \(String(localized: "widget.locked"))"
+                : notReadyMessage,
             monthlyBudgetTitle: String(localized: "widget.monthlyBudget.name"),
             monthlyBudgetUnconfiguredMessage: String(localized: "widget.notReady"),
             weeklySummaryTitle: String(localized: "widget.weekly.name"),

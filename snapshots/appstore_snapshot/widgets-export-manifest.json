@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-06",
+  "canvas": {
+    "width": 2880,
+    "height": 1800,
+    "colorSpace": "sRGB",
+    "alpha": false
+  },
+  "composition": {
+    "screenshotWidth": 2160,
+    "screenshotPosition": {
+      "x": 360,
+      "y": 390
+    },
+    "templateReferences": [
+      "en-US/02-overview.png",
+      "zh-Hans/02-overview.png"
+    ]
+  },
+  "exports": [
+    {
+      "locale": "en-US",
+      "source": "../widgets_en.png",
+      "output": "en-US/04-widgets.png",
+      "title": "AI Usage on Your Desktop",
+      "subtitle": "Choose from 7 widgets for at-a-glance insights",
+      "sha256": "3a830a5da138dd0f4f0959912d63801199da30890b12dcab602a8a0b454eff70"
+    },
+    {
+      "locale": "zh-Hans",
+      "source": "../widgets_zh.png",
+      "output": "zh-Hans/04-widgets.png",
+      "title": "AI 用量，尽在桌面",
+      "subtitle": "7 款小组件，让关键数据一目了然",
+      "sha256": "949543d6bbfef175f5978068a153ae2e1bb5c2496af76f144343bcb7f6820eca"
+    }
+  ],
+  "provenance": {
+    "sourcePreservation": "The supplied UI screenshots were only resized and composited; interface text, values, colors, and layout were not edited.",
+    "background": "Recovered from the shared background of the existing localized App Store artwork.",
+    "typography": "Rendered with macOS system SF and PingFang fonts using the established title and subtitle geometry."
+  }
+}

@@ -114,42 +114,42 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 171 个 key")
+    @Test("迁移的十二份资源均直接定义全部 189 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 171)
+        #expect(AppStringKey.allCases.count == 189)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
-    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 171 个 key")
+    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 189 个 key")
     func westernAndRegionalResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 171)
+        #expect(AppStringKey.allCases.count == 189)
         try assertCompleteResources([
             "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
             "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
         ])
     }
 
-    @Test("中东欧拉丁文字的十一份资源均直接定义全部 171 个 key")
+    @Test("中东欧拉丁文字的十一份资源均直接定义全部 189 个 key")
     func centralEuropeanLatinResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 171)
+        #expect(AppStringKey.allCases.count == 189)
         try assertCompleteResources(centralEuropeanLatinLocaleIdentifiers)
     }
 
-    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 171 个 key")
+    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 189 个 key")
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 171)
+        #expect(AppStringKey.allCases.count == 189)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
     }
 
-    @Test("中东与南亚文字的十二份资源均直接定义全部 171 个 key")
+    @Test("中东与南亚文字的十二份资源均直接定义全部 189 个 key")
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 171)
+        #expect(AppStringKey.allCases.count == 189)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
-    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 171 个 key")
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 189 个 key")
     func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 171)
+        #expect(AppStringKey.allCases.count == 189)
         try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
     }
 
@@ -186,6 +186,41 @@ struct AppLocalizationResourcesTests {
         #expect(Set(metadata.knownRegions) == Set(expectedKnownRegions))
     }
 
+    @Test("InfoPlist 品牌名已完成全部目标语言审核且没有空版权项")
+    func infoPlistCatalogIsCompleteAndReviewed() throws {
+        let catalogURL = try repositoryRootURL()
+            .appendingPathComponent("TokenWatch/InfoPlist.xcstrings")
+        let data = try Data(contentsOf: catalogURL)
+        let root = try #require(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        let strings = try #require(root["strings"] as? [String: Any])
+        let expectedLocales = Set(frozenCodexLocaleIdentifiers + ["en"])
+        let infoPlistData = try Data(
+            contentsOf: try repositoryRootURL().appendingPathComponent("TokenWatch/Info.plist")
+        )
+        let infoPlist = try #require(
+            try PropertyListSerialization.propertyList(from: infoPlistData, format: nil)
+                as? [String: Any]
+        )
+
+        #expect(Set(strings.keys) == Set(["CFBundleDisplayName", "CFBundleName"]))
+        #expect(infoPlist["NSHumanReadableCopyright"] == nil)
+        for value in strings.values {
+            let entry = try #require(value as? [String: Any])
+            let localizations = try #require(entry["localizations"] as? [String: Any])
+            #expect(Set(localizations.keys) == expectedLocales)
+
+            for (locale, localization) in localizations {
+                let localizedEntry = try #require(localization as? [String: Any])
+                let stringUnit = try #require(localizedEntry["stringUnit"] as? [String: Any])
+                let expectedState = locale == "en" ? "new" : "translated"
+                #expect(stringUnit["state"] as? String == expectedState)
+                #expect(stringUnit["value"] as? String == "AI Token Watch")
+            }
+        }
+    }
+
     @Test("Widget Extension 文案覆盖所有支持语言")
     func widgetExtensionStringsCoverAllSupportedLanguages() throws {
         let catalog = try widgetExtensionLocalizationCatalog()
@@ -197,6 +232,7 @@ struct AppLocalizationResourcesTests {
             "widget.heatmap.title",
             "widget.hourly.description",
             "widget.hourly.name",
+            "widget.locked",
             "widget.monthlyBudget.name",
             "widget.modelFocus.name",
             "widget.notReady",
@@ -235,6 +271,18 @@ struct AppLocalizationResourcesTests {
                 }
             }
         }
+
+        let lockedGuidance = try #require(catalog["widget.locked"])
+        let englishLockedGuidance = try #require(lockedGuidance["en"])
+        for (locale, value) in lockedGuidance where locale != "en" {
+            #expect(
+                value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    != englishLockedGuidance,
+                "English lock guidance reused for \(locale)"
+            )
+        }
+        #expect(lockedGuidance["zh-Hans"] != lockedGuidance["zh-Hant"])
+        #expect(lockedGuidance["zh-HK"] == lockedGuidance["zh-Hant"])
     }
 
     @Test("月度预算标题与 Widget 无快照回退文案保持一致")
@@ -498,6 +546,7 @@ private let expectedFormatSignatures: [AppStringKey: [FormatArgument]] = [
     .chartCostAccessibilityFormat: [.init(position: 1, type: "@")],
     .widgetDatedUsageTitleFormat: [.init(position: 1, type: "@")],
     .widgetUpdatedThroughTitleFormat: [.init(position: 1, type: "@")],
+    .widgetPurchaseActionFormat: [.init(position: 1, type: "@")],
     .errorCannotAccessProviderDirectoryFormat: [.init(position: 1, type: "@")],
     .errorProviderDirectoryAuthorizationFailedFormat: [.init(position: 1, type: "@")],
     .errorDirectoryNotDirectoryFormat: [.init(position: 1, type: "@")],
@@ -512,7 +561,7 @@ private let expectedFormatSignatures: [AppStringKey: [FormatArgument]] = [
 ]
 
 private let fixedTerms = [
-    "AI Token Watch", "Claude Code", "opencode.db", "Codex", "SQLite", "opencode", "Tokens", "Token",
+    "AI Token Watch", "App Store", "Claude Code", "opencode.db", "Codex", "SQLite", "opencode", "Tokens", "Token",
     "printenv", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "opencode db path", ".claude", ".codex",
 ]
 
