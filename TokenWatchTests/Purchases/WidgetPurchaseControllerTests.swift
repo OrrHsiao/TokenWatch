@@ -74,11 +74,10 @@ struct WidgetPurchaseControllerTests {
         await controller.refresh()
         #expect(store.savedStates == [.unlocked, .unlocked])
         #expect(reloader.kinds == widgetKinds + widgetKinds)
-        #expect(events.values == (
-            ["save:unlocked"] + widgetKinds.map { "reload:\($0)" }
-        ) + (
-            ["save:unlocked"] + widgetKinds.map { "reload:\($0)" }
-        ))
+        let refreshEvents: [String] = ["save:unlocked"]
+            + widgetKinds.map { "reload:\($0)" }
+        let expectedEvents = refreshEvents + refreshEvents
+        #expect(events.values == expectedEvents)
         #expect(observedStates.count == observedCount)
     }
 
