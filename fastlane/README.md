@@ -47,6 +47,14 @@ rbenv exec bundle exec fastlane mac upload_app_store_metadata app_version:1.0.5
 
 上传商店元数据与截图，但不提交审核
 
+### mac upload_app_store_screenshots
+
+```sh
+rbenv exec bundle exec fastlane mac upload_app_store_screenshots app_version:1.0.5
+```
+
+只上传商店截图，不修改元数据或提交审核
+
 ### mac submit_xcode_cloud_build
 
 ```sh

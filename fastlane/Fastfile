@@ -264,6 +264,21 @@ platform :mac do
     )
   end
 
+  desc "只上传商店截图，不修改元数据或提交审核"
+  lane :upload_app_store_screenshots do |options|
+    version = required_option!(options, :app_version)
+    validate_release_identifiers!(version)
+    validate_project_versions!(version)
+    validate_screenshots!
+    api_key = app_store_connect_key
+
+    deliver(
+      **deliver_options(version, api_key),
+      skip_metadata: true,
+      submit_for_review: false
+    )
+  end
+
   desc "等待指定 Xcode Cloud 构建，上传资料并提交 App Review"
   lane :submit_xcode_cloud_build do |options|
     version = required_option!(options, :app_version)
