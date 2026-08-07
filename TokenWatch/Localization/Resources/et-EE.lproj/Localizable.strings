@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Kulu tulpdiagramm — %@";
 "periodAxisValueName" = "Periood";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Valige Claude Code'i andmekaust. See peab sisaldama otse kausta \"projects\". Seadistatud asukoha kontrollimiseks käivitage Terminalis \"printenv CLAUDE_CONFIG_DIR\". Kui käsk ei väljasta midagi, otsige kausta nimega \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Valige Codexi andmekaust. See peab sisaldama otse kausta \"sessions\" või \"archived_sessions\". Seadistatud asukoha kontrollimiseks käivitage Terminalis \"printenv CODEX_HOME\". Kui käsk ei väljasta midagi, otsige kausta nimega \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Valige opencode'i andmekaust. See peab sisaldama otse faili \"opencode.db\". Kui te seda ei leia, käivitage Terminalis \"opencode db path\" ja seejärel valige kuvatavat faili sisaldav kaust.";
+"claudeDataDirectoryOpenPanelMessage" = "Valige Claude Code'i andmekaust. Tavaliselt on see ~/.claude.\nSelle leiate käsuga echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Valige Codexi andmekaust. Tavaliselt on see ~/.codex.\nSelle leiate käsuga echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Valige opencode'i andmekaust. Tavaliselt on see ~/.local/share/opencode.\nSelle leiate käsuga echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Vali";
 "errorCannotAccessProviderDirectoryFormat" = "Andmekaustale %@ ei pääse juurde. Valige see uuesti.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Andmekausta %@ juurdepääsu ei saanud salvestada. Valige uuesti.";

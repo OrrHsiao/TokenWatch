@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Grafiku me shtylla i kostos — %@";
 "periodAxisValueName" = "Periudha";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Claude Code. Ajo duhet të përmbajë drejtpërdrejt dosjen \"projects\". Për të kontrolluar një vendndodhje të konfiguruar, ekzekutoni \"printenv CLAUDE_CONFIG_DIR\" në Terminal. Nëse nuk shfaq asgjë, kërkoni një dosje me emrin \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Codex. Ajo duhet të përmbajë drejtpërdrejt dosjen \"sessions\" ose \"archived_sessions\". Për të kontrolluar një vendndodhje të konfiguruar, ekzekutoni \"printenv CODEX_HOME\" në Terminal. Nëse nuk shfaq asgjë, kërkoni një dosje me emrin \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të opencode. Ajo duhet të përmbajë drejtpërdrejt \"opencode.db\". Nëse nuk e gjeni, ekzekutoni \"opencode db path\" në Terminal dhe më pas zgjidhni dosjen që përmban skedarin e shfaqur.";
+"claudeDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Claude Code. Zakonisht është ~/.claude.\nMund ta gjeni me komandën echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Codex. Zakonisht është ~/.codex.\nMund ta gjeni me komandën echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të opencode. Zakonisht është ~/.local/share/opencode.\nMund ta gjeni me komandën echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Zgjidh";
 "errorCannotAccessProviderDirectoryFormat" = "Dosja e të dhënave %@ nuk mund të aksesohet. Zgjidheni përsëri.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Qasja në dosjen e të dhënave %@ nuk mund të ruhet. Zgjidhni përsëri.";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "የ%@ የወጪ አሞሌ ገበታ";
 "periodAxisValueName" = "ጊዜ";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "የClaude Code ውሂብ አቃፊ ይምረጡ። በውስጡ በቀጥታ \"projects\" አቃፊ መኖር አለበት። የተቀናበረውን ቦታ ለማረጋገጥ በTerminal ውስጥ \"printenv CLAUDE_CONFIG_DIR\" ያስኪዱ። ምንም ካልታየ፣ \".claude\" የሚባል አቃፊ ይፈልጉ።";
-"codexDataDirectoryOpenPanelMessage" = "የCodex ውሂብ አቃፊ ይምረጡ። በውስጡ በቀጥታ \"sessions\" ወይም \"archived_sessions\" አቃፊ መኖር አለበት። የተቀናበረውን ቦታ ለማረጋገጥ በTerminal ውስጥ \"printenv CODEX_HOME\" ያስኪዱ። ምንም ካልታየ፣ \".codex\" የሚባል አቃፊ ይፈልጉ።";
-"openCodeDataDirectoryOpenPanelMessage" = "የopencode ውሂብ አቃፊ ይምረጡ። በውስጡ በቀጥታ \"opencode.db\" መኖር አለበት። ማግኘት ካልቻሉ፣ በTerminal ውስጥ \"opencode db path\" ያስኪዱ፣ ከዚያ የታየውን ፋይል የያዘውን አቃፊ ይምረጡ።";
+"claudeDataDirectoryOpenPanelMessage" = "የClaude Code ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.claude ውስጥ ይገኛል።\nለማግኘት echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" ትዕዛዙን ያስኪዱ።";
+"codexDataDirectoryOpenPanelMessage" = "የCodex ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.codex ውስጥ ይገኛል።\nለማግኘት echo \"${CODEX_HOME:-$HOME/.codex}\" ትዕዛዙን ያስኪዱ።";
+"openCodeDataDirectoryOpenPanelMessage" = "የopencode ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.local/share/opencode ውስጥ ይገኛል።\nለማግኘት echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ትዕዛዙን ያስኪዱ።";
 "chooseDirectoryPrompt" = "ይምረጡ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ የውሂብ አቃፊ መድረስ አልተቻለም። እባክዎ እንደገና ይምረጡት።";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ወደ %@ የውሂብ አቃፊ መዳረሻ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይምረጡ።";

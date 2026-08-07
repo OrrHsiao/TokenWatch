@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Izmaksu stabiņu diagramma — %@";
 "periodAxisValueName" = "Periods";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Izvēlieties Claude Code datu mapi. Tajā tieši jābūt mapei \"projects\". Lai pārbaudītu konfigurētu atrašanās vietu, Terminālī palaidiet \"printenv CLAUDE_CONFIG_DIR\". Ja komanda neko neizvada, meklējiet mapi ar nosaukumu \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Izvēlieties Codex datu mapi. Tajā tieši jābūt mapei \"sessions\" vai \"archived_sessions\". Lai pārbaudītu konfigurētu atrašanās vietu, Terminālī palaidiet \"printenv CODEX_HOME\". Ja komanda neko neizvada, meklējiet mapi ar nosaukumu \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Izvēlieties opencode datu mapi. Tajā tieši jābūt failam \"opencode.db\". Ja to nevarat atrast, Terminālī palaidiet \"opencode db path\", pēc tam izvēlieties mapi, kurā ir parādītais fails.";
+"claudeDataDirectoryOpenPanelMessage" = "Izvēlieties Claude Code datu mapi. Parasti tā ir ~/.claude.\nTo var atrast ar komandu echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Izvēlieties Codex datu mapi. Parasti tā ir ~/.codex.\nTo var atrast ar komandu echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Izvēlieties opencode datu mapi. Parasti tā ir ~/.local/share/opencode.\nTo var atrast ar komandu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Izvēlēties";
 "errorCannotAccessProviderDirectoryFormat" = "Nevar piekļūt %@ datu mapei. Izvēlieties to vēlreiz.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Neizdevās saglabāt piekļuvi %@ datu mapei. Izvēlieties to vēlreiz.";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — шығындардың бағандық диаграммасы";
 "periodAxisValueName" = "Кезең";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code деректер қалтасын таңдаңыз. Онда тікелей \"projects\" қалтасы болуы керек. Бапталған орынды тексеру үшін Терминалда \"printenv CLAUDE_CONFIG_DIR\" пәрменін іске қосыңыз. Ештеңе шықпаса, \".claude\" атты қалтаны іздеңіз.";
-"codexDataDirectoryOpenPanelMessage" = "Codex деректер қалтасын таңдаңыз. Онда тікелей \"sessions\" немесе \"archived_sessions\" қалталарының бірі болуы керек. Бапталған орынды тексеру үшін Терминалда \"printenv CODEX_HOME\" пәрменін іске қосыңыз. Ештеңе шықпаса, \".codex\" атты қалтаны іздеңіз.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode деректер қалтасын таңдаңыз. Онда тікелей \"opencode.db\" болуы керек. Оны таба алмасаңыз, Терминалда \"opencode db path\" пәрменін іске қосып, кейін көрсетілген файл бар қалтаны таңдаңыз.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code деректер қалтасын таңдаңыз. Әдетте ол ~/.claude жолында орналасады.\nОны echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" пәрмені арқылы табуға болады.";
+"codexDataDirectoryOpenPanelMessage" = "Codex деректер қалтасын таңдаңыз. Әдетте ол ~/.codex жолында орналасады.\nОны echo \"${CODEX_HOME:-$HOME/.codex}\" пәрмені арқылы табуға болады.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode деректер қалтасын таңдаңыз. Әдетте ол ~/.local/share/opencode жолында орналасады.\nОны echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" пәрмені арқылы табуға болады.";
 "chooseDirectoryPrompt" = "Таңдау";
 "errorCannotAccessProviderDirectoryFormat" = "%@ деректер қалтасына кіру мүмкін емес. Қайта таңдаңыз.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ деректер қалтасына қолжетімділікті сақтау мүмкін болмады. Қайта таңдаңыз.";

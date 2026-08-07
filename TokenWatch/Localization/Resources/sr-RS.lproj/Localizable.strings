@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — тракасти графикон трошкова";
 "periodAxisValueName" = "Период";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Claude Code. Она мора директно да садржи фасциклу \"projects\". Да бисте проверили подешену локацију, покрените \"printenv CLAUDE_CONFIG_DIR\" у Терминалу. Ако не испише ништа, потражите фасциклу под називом \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Codex. Она мора директно да садржи фасциклу \"sessions\" или \"archived_sessions\". Да бисте проверили подешену локацију, покрените \"printenv CODEX_HOME\" у Терминалу. Ако не испише ништа, потражите фасциклу под називом \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за opencode. Она мора директно да садржи \"opencode.db\". Ако не можете да је пронађете, покрените \"opencode db path\" у Терминалу, а затим изаберите фасциклу која садржи приказану датотеку.";
+"claudeDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Claude Code. Обично је то ~/.claude.\nМожете је пронаћи помоћу команде echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Codex. Обично је то ~/.codex.\nМожете је пронаћи помоћу команде echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за opencode. Обично је то ~/.local/share/opencode.\nМожете је пронаћи помоћу команде echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Изабери";
 "errorCannotAccessProviderDirectoryFormat" = "Није могуће приступити фасцикли са подацима %@. Изаберите је поново.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Није могуће сачувати приступ фасцикли са подацима %@. Изаберите поново.";
