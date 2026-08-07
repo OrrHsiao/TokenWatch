@@ -918,11 +918,10 @@ enum WidgetGallerySampleSnapshotFactory {
         calendar: Calendar
     ) -> Int {
         let components = calendar.dateComponents([.year, .month, .day], from: date)
-        let dateCode = UInt64(
-            (components.year ?? 0) * 10_000
-                + (components.month ?? 0) * 100
-                + (components.day ?? 0)
-        )
+        let yearCode = (components.year ?? 0) * 10_000
+        let monthCode = (components.month ?? 0) * 100
+        let dayCode = components.day ?? 0
+        let dateCode = UInt64(yearCode + monthCode + dayCode)
 
         // 固定散列让同一日期始终呈现相同档位，避免每次 render 时预览闪动。
         var sample = dateCode &+ 0x9E37_79B9_7F4A_7C15
