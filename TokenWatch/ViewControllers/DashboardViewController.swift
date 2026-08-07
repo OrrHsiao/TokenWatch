@@ -38,7 +38,7 @@ final class DashboardViewController: NSViewController {
     private static let privacyPolicyURL = URL(string: "https://orrhsiao.github.io/TokenWatch/privacy/")!
 
     private let settingsViewController: SettingsViewController
-    private let widgetGalleryViewController = WidgetGalleryViewController()
+    private let widgetGalleryViewController: WidgetGalleryViewController
     private let stateProvider: @MainActor () -> [ProviderID: TokenStatsViewModel.ProviderState]
     private let initialLoadCompletionProvider: @MainActor () -> Bool
     private let refreshAction: @MainActor () async -> Void
@@ -125,11 +125,15 @@ final class DashboardViewController: NSViewController {
                 await viewModel.loadAllStats()
             }
         },
+        widgetPurchaseController: WidgetPurchaseController? = nil,
         nowProvider: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         languageSettings: AppLanguageSettings = .shared
     ) {
         self.settingsViewController = settingsViewController
+        self.widgetGalleryViewController = WidgetGalleryViewController(
+            purchaseController: widgetPurchaseController
+        )
         self.stateProvider = stateProvider
         self.initialLoadCompletionProvider = initialLoadCompletionProvider
         self.refreshAction = refreshAction
@@ -2123,7 +2127,7 @@ final class DashboardViewController: NSViewController {
     private func enforceLeftAlignedContent(in root: NSView) {
         root.userInterfaceLayoutDirection = .leftToRight
         if let textField = root as? NSTextField {
-            textField.alignment = .left
+            textField.alignment = usesCenteredTextAlignment(textField) ? .center : .left
         }
         if let button = root as? NSButton {
             button.alignment = usesCenteredButtonTitle(button) ? .center : .left
@@ -2131,6 +2135,11 @@ final class DashboardViewController: NSViewController {
         for subview in root.subviews {
             enforceLeftAlignedContent(in: subview)
         }
+    }
+
+    private func usesCenteredTextAlignment(_ textField: NSTextField) -> Bool {
+        let identifier = textField.identifier?.rawValue ?? textField.accessibilityIdentifier()
+        return identifier == "WidgetPurchaseStatus"
     }
 
     private func usesCenteredButtonTitle(_ button: NSButton) -> Bool {

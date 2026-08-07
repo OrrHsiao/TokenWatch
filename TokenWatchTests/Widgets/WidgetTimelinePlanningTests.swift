@@ -4,6 +4,39 @@ import Testing
 
 @Suite("Widget timeline planning")
 struct WidgetTimelinePlanningTests {
+    @Test("locked entitlement blocks even an available old snapshot")
+    func lockedEntitlementOverridesAvailableSnapshot() {
+        let oldSnapshot = snapshot(dayKey: "2026-07-15")
+        let lockedText = fallback(
+            notReadyMessage: "🔒 Open TokenWatch to unlock widgets"
+        )
+
+        #expect(!WidgetAccessGate.allowsSnapshotRead(for: .locked))
+        #expect(WidgetAccessGate.state(
+            entitlement: .locked,
+            result: .available(oldSnapshot),
+            at: isoDate("2026-07-15T13:00:00+08:00"),
+            calendar: shanghaiCalendar,
+            fallbackText: fallback,
+            lockedText: lockedText
+        ) == .notReady(lockedText))
+    }
+
+    @Test("unlocked entitlement preserves existing timeline classification")
+    func unlockedEntitlementUsesSnapshot() {
+        let currentSnapshot = snapshot(dayKey: "2026-07-15")
+
+        #expect(WidgetAccessGate.allowsSnapshotRead(for: .unlocked))
+        #expect(WidgetAccessGate.state(
+            entitlement: .unlocked,
+            result: .available(currentSnapshot),
+            at: isoDate("2026-07-15T13:00:00+08:00"),
+            calendar: shanghaiCalendar,
+            fallbackText: fallback,
+            lockedText: fallback(notReadyMessage: "locked")
+        ) == .current(currentSnapshot))
+    }
+
     @Test("same local day is current and prior local day is stale")
     func classifiesCurrentAndStale() {
         let currentSnapshot = snapshot(dayKey: "2026-07-15")
@@ -113,12 +146,16 @@ struct WidgetTimelinePlanningTests {
     }
 
     private var fallback: WidgetLocalizedText {
+        fallback(notReadyMessage: "Open TokenWatch to refresh data")
+    }
+
+    private func fallback(notReadyMessage: String) -> WidgetLocalizedText {
         WidgetLocalizedText(
             heatmapTitle: "Recent 22 Weeks",
             todayUsageTitle: "Today's Usage",
             datedUsageTitle: "7/15 Usage",
             updatedThroughTitle: "Updated through 7/15",
-            notReadyMessage: "Open TokenWatch to refresh data",
+            notReadyMessage: notReadyMessage,
             monthlyBudgetTitle: "Monthly Budget",
             monthlyBudgetUnconfiguredMessage: "Set a monthly budget in TokenWatch",
             weeklySummaryTitle: "Last 7 Days",

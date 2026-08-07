@@ -2,6 +2,8 @@ require "open3"
 require "uri"
 require "xcodeproj"
 require "fastlane_core/build_watcher"
+require_relative "lib/app_store_connect_api_client"
+require_relative "lib/widget_iap_configurator"
 
 APP_IDENTIFIER = "com.xiaoao.tokenwatch"
 APP_STORE_PLATFORM = "osx"
@@ -18,6 +20,9 @@ MAC_SCREENSHOT_SIZES = [
 ].freeze
 BUILD_PROCESSING_TIMEOUT_SECONDS = 3600
 SCREENSHOT_PROCESSING_TIMEOUT_SECONDS = 900
+
+# 发布与内购 lane 需要显式安全参数，保留人工维护的 README 命令示例。
+skip_docs
 
 # 返回 lane 的必填字符串参数；缺失时以可读错误终止，避免误操作默认版本。
 def required_option!(options, key)
@@ -198,6 +203,55 @@ platform :mac do
     build
   end
 
+  desc "只读检查桌面小组件永久解锁内购的创建计划"
+  lane :plan_widget_iap do
+    app_store_connect_key
+    app = Spaceship::ConnectAPI::App.find(APP_IDENTIFIER)
+    UI.user_error!("App Store Connect 中找不到 #{APP_IDENTIFIER}") unless app
+
+    client = TokenWatchFastlane::AppStoreConnectAPIClient.new(token: Spaceship::ConnectAPI.token)
+    plan = TokenWatchFastlane::WidgetIAPConfigurator.new(
+      client: client,
+      app_id: app.id,
+      logger: UI
+    ).plan
+    UI.success(
+      "内购计划检查完成：#{plan.fetch(:product_id)}，" \
+      "#{plan.fetch(:base_territory)} $#{plan.fetch(:base_price)}"
+    )
+  rescue TokenWatchFastlane::AppStoreConnectAPIClient::Error,
+         TokenWatchFastlane::WidgetIAPConfigurator::Error => error
+    UI.user_error!(error.message)
+  end
+
+  desc "创建并配置 $2.99 的桌面小组件永久解锁内购"
+  lane :create_widget_iap do |options|
+    unless options[:confirm].to_s == "true"
+      UI.user_error!("该 lane 会修改 App Store Connect；请显式传入 confirm:true")
+    end
+
+    app_store_connect_key
+    app = Spaceship::ConnectAPI::App.find(APP_IDENTIFIER)
+    UI.user_error!("App Store Connect 中找不到 #{APP_IDENTIFIER}") unless app
+
+    client = TokenWatchFastlane::AppStoreConnectAPIClient.new(token: Spaceship::ConnectAPI.token)
+    result = TokenWatchFastlane::WidgetIAPConfigurator.new(
+      client: client,
+      app_id: app.id,
+      logger: UI
+    ).configure
+    china_price = result.fetch(:china_price).to_s
+    china_summary = china_price.empty? ? "等待 Apple 生成" : "¥#{china_price}"
+    UI.success(
+      "内购配置完成：#{result.fetch(:product_id)}，" \
+      "USA $#{result.fetch(:base_price)}，CHN #{china_summary}，" \
+      "#{result.fetch(:territory_count)} 个销售地区，状态 #{result.fetch(:state)}"
+    )
+  rescue TokenWatchFastlane::AppStoreConnectAPIClient::Error,
+         TokenWatchFastlane::WidgetIAPConfigurator::Error => error
+    UI.user_error!(error.message)
+  end
+
   desc "上传商店元数据与截图，但不提交审核"
   lane :upload_app_store_metadata do |options|
     version = required_option!(options, :app_version)
@@ -206,6 +260,21 @@ platform :mac do
 
     deliver(
       **deliver_options(version, api_key),
+      submit_for_review: false
+    )
+  end
+
+  desc "只上传商店截图，不修改元数据或提交审核"
+  lane :upload_app_store_screenshots do |options|
+    version = required_option!(options, :app_version)
+    validate_release_identifiers!(version)
+    validate_project_versions!(version)
+    validate_screenshots!
+    api_key = app_store_connect_key
+
+    deliver(
+      **deliver_options(version, api_key),
+      skip_metadata: true,
       submit_for_review: false
     )
   end

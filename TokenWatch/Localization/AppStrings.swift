@@ -158,6 +158,24 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case widgetMonthlyBudgetForecastTitle
     case widgetMonthlyBudgetUnconfiguredMessage
     case widgetMonthlyBudgetForecastOverBudgetMessage
+    case widgetPurchaseLockedTitle
+    case widgetPurchaseLockedDescription
+    case widgetPurchaseUnlockedTitle
+    case widgetPurchaseUnlockedDescription
+    case widgetPurchaseLockedStatus
+    case widgetPurchaseUnlockedStatus
+    case widgetPurchaseLoadingMessage
+    case widgetPurchasePurchasingMessage
+    case widgetPurchaseRestoringMessage
+    case widgetPurchasePendingMessage
+    case widgetPurchaseNoPurchaseMessage
+    case widgetPurchaseUnavailableMessage
+    case widgetPurchaseFailedMessage
+    case widgetPurchaseEntitlementPersistenceFailedMessage
+    case widgetPurchaseVerificationFailedMessage
+    case widgetPurchaseUnavailableTitle
+    case widgetPurchaseRestoreTitle
+    case widgetPurchaseActionFormat
     case chartTokenAccessibility
     case chartCostAccessibility
     case chartTokenAccessibilityFormat

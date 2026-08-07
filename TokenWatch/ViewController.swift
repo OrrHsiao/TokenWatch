@@ -26,11 +26,15 @@ class ViewController: NSViewController {
     /// observer 凭证 — 用于 deinit 时取消订阅,避免 ViewModel 持有失效闭包
     private var observerToken: TokenStatsViewModel.ObservationToken?
 
-    init(languageSettings: AppLanguageSettings = .shared) {
+    init(
+        languageSettings: AppLanguageSettings = .shared,
+        widgetPurchaseController: WidgetPurchaseController? = nil
+    ) {
         self.languageSettings = languageSettings
         self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
         self.dashboardViewController = DashboardViewController(
             settingsViewController: settingsViewController,
+            widgetPurchaseController: widgetPurchaseController,
             languageSettings: languageSettings
         )
         super.init(nibName: nil, bundle: nil)
@@ -42,6 +46,7 @@ class ViewController: NSViewController {
         self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
         self.dashboardViewController = DashboardViewController(
             settingsViewController: settingsViewController,
+            widgetPurchaseController: nil,
             languageSettings: languageSettings
         )
         super.init(coder: coder)

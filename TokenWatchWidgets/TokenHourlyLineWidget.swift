@@ -21,12 +21,8 @@ struct TokenHourlyLineWidgetView: View {
                 if let message = presentation.message {
                     Text(message)
                         .font(.caption2)
-                        .multilineTextAlignment(.center)
-                        .padding(6)
-                        .background(
-                            .regularMaterial,
-                            in: RoundedRectangle(cornerRadius: 6)
-                        )
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             }
         }

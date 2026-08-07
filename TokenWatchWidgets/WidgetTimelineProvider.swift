@@ -17,6 +17,16 @@ private struct MissingWidgetSnapshotStore: WidgetSnapshotStoring, Sendable {
     }
 }
 
+private struct LockedWidgetEntitlementStore: WidgetEntitlementStoring, Sendable {
+    func load() -> WidgetEntitlementState {
+        .locked
+    }
+
+    func save(_ state: WidgetEntitlementState) throws {
+        throw WidgetEntitlementStoreError.appGroupContainerUnavailable
+    }
+}
+
 struct WidgetTimelineProvider: TimelineProvider {
     typealias Entry = WidgetUsageEntry
 
@@ -26,15 +36,19 @@ struct WidgetTimelineProvider: TimelineProvider {
     )
 
     private let store: any WidgetSnapshotStoring
+    private let entitlementStore: any WidgetEntitlementStoring
     private let now: @Sendable () -> Date
     private let calendar: @Sendable () -> Calendar
 
     init(
         store: any WidgetSnapshotStoring = WidgetTimelineProvider.liveStore(),
+        entitlementStore: any WidgetEntitlementStoring =
+            WidgetTimelineProvider.liveEntitlementStore(),
         now: @escaping @Sendable () -> Date = Date.init,
         calendar: @escaping @Sendable () -> Calendar = { .autoupdatingCurrent }
     ) {
         self.store = store
+        self.entitlementStore = entitlementStore
         self.now = now
         self.calendar = calendar
     }
@@ -45,6 +59,15 @@ struct WidgetTimelineProvider: TimelineProvider {
         } catch {
             logger.error("App Group container unavailable; showing not-ready widget state")
             return MissingWidgetSnapshotStore()
+        }
+    }
+
+    static func liveEntitlementStore() -> any WidgetEntitlementStoring {
+        do {
+            return try AppGroupWidgetEntitlementStore.appGroupStore()
+        } catch {
+            logger.error("App Group entitlement store unavailable; keeping widgets locked")
+            return LockedWidgetEntitlementStore()
         }
     }
 
@@ -91,6 +114,26 @@ struct WidgetTimelineProvider: TimelineProvider {
 
     private func currentEntry(date: Date, calendar: Calendar) -> WidgetUsageEntry {
         let fallback = WidgetFallbackLocalization.make(date: date, calendar: calendar)
+        let entitlement = entitlementStore.load()
+        guard WidgetAccessGate.allowsSnapshotRead(for: entitlement) else {
+            let lockedText = WidgetFallbackLocalization.make(
+                date: date,
+                calendar: calendar,
+                showsLockedGuidance: true
+            )
+            return WidgetUsageEntry(
+                date: date,
+                state: WidgetAccessGate.state(
+                    entitlement: entitlement,
+                    result: .missing,
+                    at: date,
+                    calendar: calendar,
+                    fallbackText: fallback,
+                    lockedText: lockedText
+                )
+            )
+        }
+
         let result = store.load()
         switch result {
         case .invalid(.unreadable):
@@ -104,11 +147,13 @@ struct WidgetTimelineProvider: TimelineProvider {
         }
         return WidgetUsageEntry(
             date: date,
-            state: WidgetTimelinePlanner.state(
-                for: result,
+            state: WidgetAccessGate.state(
+                entitlement: entitlement,
+                result: result,
                 at: date,
                 calendar: calendar,
-                fallbackText: fallback
+                fallbackText: fallback,
+                lockedText: fallback
             )
         )
     }
