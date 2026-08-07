@@ -26,7 +26,7 @@ enum WidgetFallbackLocalization {
                 dateText
             ),
             notReadyMessage: showsLockedGuidance
-                ? "🔒 \(WidgetLockedGuidance.message())"
+                ? "🔒 \(String(localized: "widget.locked"))"
                 : notReadyMessage,
             monthlyBudgetTitle: String(localized: "widget.monthlyBudget.name"),
             monthlyBudgetUnconfiguredMessage: String(localized: "widget.notReady"),

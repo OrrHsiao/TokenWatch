@@ -6,6 +6,42 @@ import Testing
 @MainActor
 @Suite("Widget purchase controller")
 struct WidgetPurchaseControllerTests {
+    @Test("购买卡片文案覆盖全部支持语言并保留 StoreKit 价格")
+    func purchaseCopyCoversEverySupportedLanguage() {
+        let displayPrice = "¤2.99"
+
+        for language in AppLanguage.allCases {
+            let copy = WidgetPurchaseCopy.make(language: language)
+            let values = [
+                copy.lockedTitle,
+                copy.lockedDescription,
+                copy.unlockedTitle,
+                copy.unlockedDescription,
+                copy.lockedStatus,
+                copy.unlockedStatus,
+                copy.loadingMessage,
+                copy.purchasingMessage,
+                copy.restoringMessage,
+                copy.pendingMessage,
+                copy.noPurchaseMessage,
+                copy.unavailableMessage,
+                copy.failedMessage,
+                copy.entitlementPersistenceFailedMessage,
+                copy.verificationFailedMessage,
+                copy.purchaseUnavailableTitle,
+                copy.restoreTitle,
+            ]
+
+            #expect(values.allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+            #expect(copy.purchaseTitle(displayPrice: displayPrice).contains(displayPrice))
+        }
+
+        #expect(
+            WidgetPurchaseCopy.make(language: .ja).lockedTitle
+                != WidgetPurchaseCopy.make(language: .en).lockedTitle
+        )
+    }
+
     @Test("产品配置、verified entitlement 与 timeline reload 顺序保持一致")
     func refreshLoadsProductAndPublishesVerifiedEntitlement() async {
         let events = LockedPurchaseEventRecorder()
