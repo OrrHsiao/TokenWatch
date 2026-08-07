@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Grafik batang biaya %@";
 "periodAxisValueName" = "Periode";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Pilih folder data untuk Claude Code. Folder ini harus langsung berisi folder \"projects\". Untuk memeriksa lokasi yang dikonfigurasi, jalankan \"printenv CLAUDE_CONFIG_DIR\" di Terminal. Jika tidak menampilkan apa pun, cari folder bernama \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Pilih folder data untuk Codex. Folder ini harus langsung berisi folder \"sessions\" atau \"archived_sessions\". Untuk memeriksa lokasi yang dikonfigurasi, jalankan \"printenv CODEX_HOME\" di Terminal. Jika tidak menampilkan apa pun, cari folder bernama \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Pilih folder data untuk opencode. Folder ini harus langsung berisi \"opencode.db\". Jika tidak dapat ditemukan, jalankan \"opencode db path\" di Terminal, lalu pilih folder yang berisi file yang ditampilkan.";
+"claudeDataDirectoryOpenPanelMessage" = "Pilih folder data untuk Claude Code; biasanya berada di ~/.claude.\nJalankan echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" untuk menemukannya.";
+"codexDataDirectoryOpenPanelMessage" = "Pilih folder data untuk Codex; biasanya berada di ~/.codex.\nJalankan echo \"${CODEX_HOME:-$HOME/.codex}\" untuk menemukannya.";
+"openCodeDataDirectoryOpenPanelMessage" = "Pilih folder data untuk opencode; biasanya berada di ~/.local/share/opencode.\nJalankan echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" untuk menemukannya.";
 "chooseDirectoryPrompt" = "Pilih";
 "errorCannotAccessProviderDirectoryFormat" = "Tidak dapat mengakses folder data %@. Pilih lagi folder tersebut.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Tidak dapat menyimpan akses ke folder data %@. Pilih lagi.";

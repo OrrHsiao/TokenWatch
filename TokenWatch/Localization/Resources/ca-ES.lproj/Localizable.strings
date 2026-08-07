@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Gràfic de barres de costos — %@";
 "periodAxisValueName" = "Període";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Trieu la carpeta de dades de Claude Code. Ha de contenir directament la carpeta \"projects\". Per comprovar una ubicació configurada, executeu \"printenv CLAUDE_CONFIG_DIR\" al Terminal. Si no mostra res, cerqueu una carpeta anomenada \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Trieu la carpeta de dades de Codex. Ha de contenir directament la carpeta \"sessions\" o \"archived_sessions\". Per comprovar una ubicació configurada, executeu \"printenv CODEX_HOME\" al Terminal. Si no mostra res, cerqueu una carpeta anomenada \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Trieu la carpeta de dades d'opencode. Ha de contenir directament \"opencode.db\". Si no la trobeu, executeu \"opencode db path\" al Terminal i, a continuació, trieu la carpeta que conté el fitxer indicat.";
+"claudeDataDirectoryOpenPanelMessage" = "Trieu la carpeta de dades de Claude Code; normalment es troba a ~/.claude.\nExecuteu echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" per trobar-la.";
+"codexDataDirectoryOpenPanelMessage" = "Trieu la carpeta de dades de Codex; normalment es troba a ~/.codex.\nExecuteu echo \"${CODEX_HOME:-$HOME/.codex}\" per trobar-la.";
+"openCodeDataDirectoryOpenPanelMessage" = "Trieu la carpeta de dades d'opencode; normalment es troba a ~/.local/share/opencode.\nExecuteu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" per trobar-la.";
 "chooseDirectoryPrompt" = "Tria";
 "errorCannotAccessProviderDirectoryFormat" = "No es pot accedir a la carpeta de dades de %@. Torneu a triar-la.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "No s'ha pogut desar l'accés a la carpeta de dades de %@. Torneu a triar-la.";

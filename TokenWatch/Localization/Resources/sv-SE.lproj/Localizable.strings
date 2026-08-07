@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Stapeldiagram över kostnader — %@";
 "periodAxisValueName" = "Period";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Välj datamappen för Claude Code. Den måste innehålla mappen \"projects\" direkt. Kontrollera en konfigurerad plats genom att köra \"printenv CLAUDE_CONFIG_DIR\" i Terminal. Om kommandot inte visar något letar du efter en mapp med namnet \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Välj datamappen för Codex. Den måste innehålla mappen \"sessions\" eller \"archived_sessions\" direkt. Kontrollera en konfigurerad plats genom att köra \"printenv CODEX_HOME\" i Terminal. Om kommandot inte visar något letar du efter en mapp med namnet \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Välj datamappen för opencode. Den måste innehålla \"opencode.db\" direkt. Om du inte hittar den kör du \"opencode db path\" i Terminal och väljer sedan mappen som innehåller den visade filen.";
+"claudeDataDirectoryOpenPanelMessage" = "Välj datamappen för Claude Code; den finns vanligtvis i ~/.claude.\nKör echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" för att hitta den.";
+"codexDataDirectoryOpenPanelMessage" = "Välj datamappen för Codex; den finns vanligtvis i ~/.codex.\nKör echo \"${CODEX_HOME:-$HOME/.codex}\" för att hitta den.";
+"openCodeDataDirectoryOpenPanelMessage" = "Välj datamappen för opencode; den finns vanligtvis i ~/.local/share/opencode.\nKör echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" för att hitta den.";
 "chooseDirectoryPrompt" = "Välj";
 "errorCannotAccessProviderDirectoryFormat" = "Det går inte att komma åt datamappen för %@. Välj den igen.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Det gick inte att spara åtkomsten till datamappen för %@. Välj igen.";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — grafic cu bare pentru costuri";
 "periodAxisValueName" = "Perioadă";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Claude Code. Acesta trebuie să conțină direct folderul \"projects\". Pentru a verifica o locație configurată, rulați \"printenv CLAUDE_CONFIG_DIR\" în Terminal. Dacă nu afișează nimic, căutați un folder numit \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Codex. Acesta trebuie să conțină direct folderul \"sessions\" sau \"archived_sessions\". Pentru a verifica o locație configurată, rulați \"printenv CODEX_HOME\" în Terminal. Dacă nu afișează nimic, căutați un folder numit \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Alegeți folderul de date opencode. Acesta trebuie să conțină direct \"opencode.db\". Dacă nu îl puteți găsi, rulați \"opencode db path\" în Terminal, apoi alegeți folderul care conține fișierul afișat.";
+"claudeDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Claude Code; de obicei se află în ~/.claude.\nRulați echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" pentru a-l găsi.";
+"codexDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Codex; de obicei se află în ~/.codex.\nRulați echo \"${CODEX_HOME:-$HOME/.codex}\" pentru a-l găsi.";
+"openCodeDataDirectoryOpenPanelMessage" = "Alegeți folderul de date opencode; de obicei se află în ~/.local/share/opencode.\nRulați echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" pentru a-l găsi.";
 "chooseDirectoryPrompt" = "Alegeți";
 "errorCannotAccessProviderDirectoryFormat" = "Nu se poate accesa folderul de date %@. Alegeți-l din nou.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nu s-a putut salva accesul la folderul de date %@. Alegeți din nou.";

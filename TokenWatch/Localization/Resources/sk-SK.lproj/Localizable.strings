@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Stĺpcový graf nákladov — %@";
 "periodAxisValueName" = "Obdobie";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok Claude Code. Musí priamo obsahovať priečinok \"projects\". Ak chcete skontrolovať nakonfigurované umiestnenie, spustite v Termináli príkaz \"printenv CLAUDE_CONFIG_DIR\". Ak nič nevypíše, vyhľadajte priečinok s názvom \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok Codex. Musí priamo obsahovať priečinok \"sessions\" alebo \"archived_sessions\". Ak chcete skontrolovať nakonfigurované umiestnenie, spustite v Termináli príkaz \"printenv CODEX_HOME\". Ak nič nevypíše, vyhľadajte priečinok s názvom \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok opencode. Musí priamo obsahovať súbor \"opencode.db\". Ak ho nemôžete nájsť, spustite v Termináli príkaz \"opencode db path\" a potom vyberte priečinok obsahujúci zobrazený súbor.";
+"claudeDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok Claude Code. Zvyčajne je to ~/.claude.\nNájdete ho pomocou príkazu echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok Codex. Zvyčajne je to ~/.codex.\nNájdete ho pomocou príkazu echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok opencode. Zvyčajne je to ~/.local/share/opencode.\nNájdete ho pomocou príkazu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Vybrať";
 "errorCannotAccessProviderDirectoryFormat" = "K dátovému priečinku %@ sa nedá pristupovať. Vyberte ho znova.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Prístup k dátovému priečinku %@ sa nepodarilo uložiť. Vyberte ho znova.";

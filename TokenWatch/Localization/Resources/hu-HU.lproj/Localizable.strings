@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Költségoszlop-diagram — %@";
 "periodAxisValueName" = "Időszak";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Válassza ki a Claude Code adatmappáját. Közvetlenül tartalmaznia kell a \"projects\" mappát. Beállított hely ellenőrzéséhez futtassa a Terminálban a következőt: \"printenv CLAUDE_CONFIG_DIR\". Ha nem ír ki semmit, keressen egy \".claude\" nevű mappát.";
-"codexDataDirectoryOpenPanelMessage" = "Válassza ki a Codex adatmappáját. Közvetlenül a \"sessions\" vagy az \"archived_sessions\" mappát kell tartalmaznia. Beállított hely ellenőrzéséhez futtassa a Terminálban a következőt: \"printenv CODEX_HOME\". Ha nem ír ki semmit, keressen egy \".codex\" nevű mappát.";
-"openCodeDataDirectoryOpenPanelMessage" = "Válassza ki az opencode adatmappáját. Közvetlenül tartalmaznia kell az \"opencode.db\" fájlt. Ha nem találja, futtassa a Terminálban a következőt: \"opencode db path\", majd válassza ki a megjelenített fájlt tartalmazó mappát.";
+"claudeDataDirectoryOpenPanelMessage" = "Válassza ki a Claude Code adatmappáját. Általában itt található: ~/.claude.\nEzzel a paranccsal találhatja meg: echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Válassza ki a Codex adatmappáját. Általában itt található: ~/.codex.\nEzzel a paranccsal találhatja meg: echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Válassza ki az opencode adatmappáját. Általában itt található: ~/.local/share/opencode.\nEzzel a paranccsal találhatja meg: echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Választás";
 "errorCannotAccessProviderDirectoryFormat" = "Nem lehet hozzáférni a %@ adatmappához. Válassza ki újra.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nem sikerült menteni a hozzáférést a %@ adatmappához. Válassza ki újra.";

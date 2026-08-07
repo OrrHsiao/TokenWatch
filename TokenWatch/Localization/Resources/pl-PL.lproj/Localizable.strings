@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ wykres słupkowy kosztów";
 "periodAxisValueName" = "Okres";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Wybierz folder danych Claude Code. Musi bezpośrednio zawierać folder „projects”. Aby sprawdzić skonfigurowaną lokalizację, uruchom w Terminalu „printenv CLAUDE_CONFIG_DIR”. Jeśli nie ma żadnych danych wyjściowych, poszukaj folderu o nazwie „.claude”.";
-"codexDataDirectoryOpenPanelMessage" = "Wybierz folder danych Codex. Musi bezpośrednio zawierać folder „sessions” lub „archived_sessions”. Aby sprawdzić skonfigurowaną lokalizację, uruchom w Terminalu „printenv CODEX_HOME”. Jeśli nie ma żadnych danych wyjściowych, poszukaj folderu o nazwie „.codex”.";
-"openCodeDataDirectoryOpenPanelMessage" = "Wybierz folder danych opencode. Musi bezpośrednio zawierać „opencode.db”. Jeśli nie możesz go znaleźć, uruchom w Terminalu „opencode db path”, a następnie wybierz folder zawierający wyświetlony plik.";
+"claudeDataDirectoryOpenPanelMessage" = "Wybierz folder danych Claude Code; zwykle znajduje się w ~/.claude.\nUruchom echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\", aby go znaleźć.";
+"codexDataDirectoryOpenPanelMessage" = "Wybierz folder danych Codex; zwykle znajduje się w ~/.codex.\nUruchom echo \"${CODEX_HOME:-$HOME/.codex}\", aby go znaleźć.";
+"openCodeDataDirectoryOpenPanelMessage" = "Wybierz folder danych opencode; zwykle znajduje się w ~/.local/share/opencode.\nUruchom echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\", aby go znaleźć.";
 "chooseDirectoryPrompt" = "Wybierz";
 "errorCannotAccessProviderDirectoryFormat" = "Nie można uzyskać dostępu do folderu danych wybranego dla %@. Wybierz go ponownie";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nie udało się zapisać dostępu do folderu danych dla %@. Spróbuj ponownie";

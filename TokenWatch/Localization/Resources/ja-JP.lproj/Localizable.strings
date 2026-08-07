@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ コスト棒グラフ";
 "periodAxisValueName" = "月";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code のデータフォルダを選択してください。直下に「projects」フォルダが必要です。設定済みの場所を確認するには、ターミナルで「printenv CLAUDE_CONFIG_DIR」を実行してください。出力がない場合は、「.claude」という名前のフォルダを探してください。";
-"codexDataDirectoryOpenPanelMessage" = "Codex のデータフォルダを選択してください。直下に「sessions」または「archived_sessions」フォルダが必要です。設定済みの場所を確認するには、ターミナルで「printenv CODEX_HOME」を実行してください。出力がない場合は、「.codex」という名前のフォルダを探してください。";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode のデータフォルダを選択してください。直下に「opencode.db」が必要です。見つからない場合は、ターミナルで「opencode db path」を実行し、表示されたファイルを含むフォルダを選択してください。";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code のデータフォルダを選択してください。通常は ~/.claude です。\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" コマンドで場所を確認できます。";
+"codexDataDirectoryOpenPanelMessage" = "Codex のデータフォルダを選択してください。通常は ~/.codex です。\necho \"${CODEX_HOME:-$HOME/.codex}\" コマンドで場所を確認できます。";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode のデータフォルダを選択してください。通常は ~/.local/share/opencode です。\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" コマンドで場所を確認できます。";
 "chooseDirectoryPrompt" = "選択";
 "errorCannotAccessProviderDirectoryFormat" = "選択した %@ のデータフォルダにアクセスできません。もう一度選択してください";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ のデータフォルダへのアクセス権を保存できませんでした。もう一度お試しください";

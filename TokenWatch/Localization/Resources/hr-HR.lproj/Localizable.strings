@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ – stupčasti grafikon troškova";
 "periodAxisValueName" = "Razdoblje";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Odaberite mapu podataka za Claude Code. Mora izravno sadržavati mapu \"projects\". Da biste provjerili konfiguriranu lokaciju, pokrenite \"printenv CLAUDE_CONFIG_DIR\" u Terminalu. Ako ne ispiše ništa, potražite mapu pod nazivom \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Odaberite mapu podataka za Codex. Mora izravno sadržavati mapu \"sessions\" ili \"archived_sessions\". Da biste provjerili konfiguriranu lokaciju, pokrenite \"printenv CODEX_HOME\" u Terminalu. Ako ne ispiše ništa, potražite mapu pod nazivom \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Odaberite mapu podataka za opencode. Mora izravno sadržavati \"opencode.db\". Ako ga ne možete pronaći, pokrenite \"opencode db path\" u Terminalu, a zatim odaberite mapu koja sadrži prikazanu datoteku.";
+"claudeDataDirectoryOpenPanelMessage" = "Odaberite mapu podataka za Claude Code. Obično je to ~/.claude.\nMožete je pronaći naredbom echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Odaberite mapu podataka za Codex. Obično je to ~/.codex.\nMožete je pronaći naredbom echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Odaberite mapu podataka za opencode. Obično je to ~/.local/share/opencode.\nMožete je pronaći naredbom echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Odaberi";
 "errorCannotAccessProviderDirectoryFormat" = "Nije moguće pristupiti mapi podataka za %@. Ponovno je odaberite.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nije bilo moguće spremiti pristup mapi podataka za %@. Ponovno odaberite.";

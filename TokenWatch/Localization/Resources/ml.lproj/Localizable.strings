@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ ചെലവ് ബാർ ചാർട്ട്";
 "periodAxisValueName" = "കാലയളവ്";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക. അതിൽ നേരിട്ട് \"projects\" ഫോൾഡർ ഉണ്ടായിരിക്കണം. ക്രമീകരിച്ച സ്ഥാനം പരിശോധിക്കാൻ, ടെർമിനലിൽ \"printenv CLAUDE_CONFIG_DIR\" പ്രവർത്തിപ്പിക്കുക. ഒന്നും പ്രിന്റ് ചെയ്യുന്നില്ലെങ്കിൽ, \".claude\" എന്ന ഫോൾഡർ നോക്കുക.";
-"codexDataDirectoryOpenPanelMessage" = "Codex ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക. അതിൽ നേരിട്ട് \"sessions\" അല്ലെങ്കിൽ \"archived_sessions\" ഫോൾഡർ ഉണ്ടായിരിക്കണം. ക്രമീകരിച്ച സ്ഥാനം പരിശോധിക്കാൻ, ടെർമിനലിൽ \"printenv CODEX_HOME\" പ്രവർത്തിപ്പിക്കുക. ഒന്നും പ്രിന്റ് ചെയ്യുന്നില്ലെങ്കിൽ, \".codex\" എന്ന ഫോൾഡർ നോക്കുക.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക. അതിൽ നേരിട്ട് \"opencode.db\" ഉണ്ടായിരിക്കണം. അത് കണ്ടെത്താനാകുന്നില്ലെങ്കിൽ, ടെർമിനലിൽ \"opencode db path\" പ്രവർത്തിപ്പിക്കുക, തുടർന്ന് കാണിച്ച ഫയൽ ഉള്ള ഫോൾഡർ തിരഞ്ഞെടുക്കുക.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.claude എന്നിടത്താണ്.\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
+"codexDataDirectoryOpenPanelMessage" = "Codex ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.codex എന്നിടത്താണ്.\necho \"${CODEX_HOME:-$HOME/.codex}\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.local/share/opencode എന്നിടത്താണ്.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
 "chooseDirectoryPrompt" = "തിരഞ്ഞെടുക്കുക";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ഡാറ്റാ ഫോൾഡർ ആക്‌സസ് ചെയ്യാനായില്ല. ദയവായി അത് വീണ്ടും തിരഞ്ഞെടുക്കുക.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ഡാറ്റാ ഫോൾഡറിലേക്കുള്ള ആക്‌സസ് സംരക്ഷിക്കാനായില്ല. ദയവായി വീണ്ടും തിരഞ്ഞെടുക്കുക.";

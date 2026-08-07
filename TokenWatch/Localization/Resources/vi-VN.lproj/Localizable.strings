@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Biểu đồ cột chi phí %@";
 "periodAxisValueName" = "Giai đoạn";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Claude Code. Thư mục này phải chứa trực tiếp thư mục \"projects\". Để kiểm tra vị trí đã cấu hình, hãy chạy \"printenv CLAUDE_CONFIG_DIR\" trong Terminal. Nếu không có gì được in ra, hãy tìm thư mục có tên \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Codex. Thư mục này phải chứa trực tiếp thư mục \"sessions\" hoặc \"archived_sessions\". Để kiểm tra vị trí đã cấu hình, hãy chạy \"printenv CODEX_HOME\" trong Terminal. Nếu không có gì được in ra, hãy tìm thư mục có tên \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu opencode. Thư mục này phải chứa trực tiếp \"opencode.db\". Nếu không tìm thấy, hãy chạy \"opencode db path\" trong Terminal, rồi chọn thư mục chứa tệp được hiển thị.";
+"claudeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Claude Code; thư mục này thường nằm ở ~/.claude.\nCó thể tìm thấy thư mục bằng lệnh echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Codex; thư mục này thường nằm ở ~/.codex.\nCó thể tìm thấy thư mục bằng lệnh echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu opencode; thư mục này thường nằm ở ~/.local/share/opencode.\nCó thể tìm thấy thư mục bằng lệnh echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Chọn";
 "errorCannotAccessProviderDirectoryFormat" = "Không thể truy cập thư mục dữ liệu %@. Vui lòng chọn lại.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Không thể lưu quyền truy cập thư mục dữ liệu %@. Vui lòng chọn lại.";

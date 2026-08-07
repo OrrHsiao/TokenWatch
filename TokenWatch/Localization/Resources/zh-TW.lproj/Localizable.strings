@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ 費用長條圖";
 "periodAxisValueName" = "月份";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "請選擇 Claude Code 的資料檔案夾；它必須直接包含「projects」資料夾。若要查看已設定的位置，請在終端機執行「printenv CLAUDE_CONFIG_DIR」；若沒有輸出，請尋找名為「.claude」的資料夾。";
-"codexDataDirectoryOpenPanelMessage" = "請選擇 Codex 的資料檔案夾；它必須直接包含「sessions」或「archived_sessions」資料夾。若要查看已設定的位置，請在終端機執行「printenv CODEX_HOME」；若沒有輸出，請尋找名為「.codex」的資料夾。";
-"openCodeDataDirectoryOpenPanelMessage" = "請選擇 opencode 的資料檔案夾；它必須直接包含「opencode.db」。若找不到，請在終端機執行「opencode db path」，然後選擇輸出檔案所在的資料夾。";
+"claudeDataDirectoryOpenPanelMessage" = "請選擇 Claude Code 的資料檔案夾；通常為 ~/.claude。\n可透過 echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" 指令找到。";
+"codexDataDirectoryOpenPanelMessage" = "請選擇 Codex 的資料檔案夾；通常為 ~/.codex。\n可透過 echo \"${CODEX_HOME:-$HOME/.codex}\" 指令找到。";
+"openCodeDataDirectoryOpenPanelMessage" = "請選擇 opencode 的資料檔案夾；通常為 ~/.local/share/opencode。\n可透過 echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" 指令找到。";
 "chooseDirectoryPrompt" = "選擇";
 "errorCannotAccessProviderDirectoryFormat" = "無法存取已選擇的 %@ 資料檔案夾，請重新選擇";
 "errorProviderDirectoryAuthorizationFailedFormat" = "無法儲存 %@ 資料檔案夾的存取權限，請再試一次";

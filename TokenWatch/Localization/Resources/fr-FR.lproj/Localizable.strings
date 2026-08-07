@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ graphique à barres des coûts";
 "periodAxisValueName" = "Période";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Choisissez le dossier de données de Claude Code. Il doit contenir directement le dossier « projects ». Pour vérifier un emplacement configuré, exécutez « printenv CLAUDE_CONFIG_DIR » dans le Terminal. Si aucune sortie ne s’affiche, cherchez un dossier nommé « .claude ».";
-"codexDataDirectoryOpenPanelMessage" = "Choisissez le dossier de données de Codex. Il doit contenir directement le dossier « sessions » ou « archived_sessions ». Pour vérifier un emplacement configuré, exécutez « printenv CODEX_HOME » dans le Terminal. Si aucune sortie ne s’affiche, cherchez un dossier nommé « .codex ».";
-"openCodeDataDirectoryOpenPanelMessage" = "Choisissez le dossier de données d’opencode. Il doit contenir directement « opencode.db ». Si vous ne le trouvez pas, exécutez « opencode db path » dans le Terminal, puis choisissez le dossier qui contient le fichier affiché.";
+"claudeDataDirectoryOpenPanelMessage" = "Choisissez le dossier de données de Claude Code ; il se trouve généralement dans ~/.claude.\nExécutez echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" pour le trouver.";
+"codexDataDirectoryOpenPanelMessage" = "Choisissez le dossier de données de Codex ; il se trouve généralement dans ~/.codex.\nExécutez echo \"${CODEX_HOME:-$HOME/.codex}\" pour le trouver.";
+"openCodeDataDirectoryOpenPanelMessage" = "Choisissez le dossier de données d’opencode ; il se trouve généralement dans ~/.local/share/opencode.\nExécutez echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" pour le trouver.";
 "chooseDirectoryPrompt" = "Choisir";
 "errorCannotAccessProviderDirectoryFormat" = "Impossible d'accéder au dossier de données sélectionné pour %@. Choisissez-le à nouveau";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Impossible d'enregistrer l'accès au dossier de données de %@. Réessayez";
