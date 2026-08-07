@@ -4,22 +4,6 @@ import Testing
 
 @Suite("Widget timeline planning")
 struct WidgetTimelinePlanningTests {
-    @Test("locked guidance supports Chinese and falls back to English")
-    func lockedGuidanceLocalization() {
-        #expect(WidgetLockedGuidance.message(
-            preferredLanguageIdentifiers: ["zh-Hans-CN"]
-        ) == "打开 TokenWatch 解锁小组件")
-        #expect(WidgetLockedGuidance.message(
-            preferredLanguageIdentifiers: ["en-US"]
-        ) == "Open TokenWatch to unlock widgets")
-        #expect(WidgetLockedGuidance.message(
-            preferredLanguageIdentifiers: ["ja-JP"]
-        ) == "Open TokenWatch to unlock widgets")
-        #expect(WidgetLockedGuidance.message(
-            preferredLanguageIdentifiers: []
-        ) == "Open TokenWatch to unlock widgets")
-    }
-
     @Test("locked entitlement blocks even an available old snapshot")
     func lockedEntitlementOverridesAvailableSnapshot() {
         let oldSnapshot = snapshot(dayKey: "2026-07-15")

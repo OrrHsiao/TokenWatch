@@ -2365,6 +2365,400 @@
         }
       }
     },
+    "widget.locked" : {
+      "localizations" : {
+        "am" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "መግብሮችን ለመክፈት TokenWatchን ይክፈቱ"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "افتح TokenWatch لإلغاء قفل الأدوات المصغّرة"
+          }
+        },
+        "bg-BG" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отворете TokenWatch, за да отключите уиджетите"
+          }
+        },
+        "bn-BD" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "উইজেট আনলক করতে TokenWatch খুলুন"
+          }
+        },
+        "bs-BA" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otvorite TokenWatch da otključate widgete"
+          }
+        },
+        "ca-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obriu TokenWatch per desbloquejar els ginys"
+          }
+        },
+        "cs-CZ" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otevřete TokenWatch a odemkněte widgety"
+          }
+        },
+        "da-DK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åbn TokenWatch for at låse widgets op"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TokenWatch öffnen, um Mini-Apps freizuschalten"
+          }
+        },
+        "el-GR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ανοίξτε το TokenWatch για να ξεκλειδώσετε τα γραφικά στοιχεία"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open TokenWatch to unlock widgets"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre TokenWatch para desbloquear los componentes"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre TokenWatch para desbloquear los widgets"
+          }
+        },
+        "et-EE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vidinate lukust avamiseks avage TokenWatch"
+          }
+        },
+        "fa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "برای باز کردن قفل ویجت‌ها TokenWatch را باز کنید"
+          }
+        },
+        "fi-FI" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avaa TokenWatch avataksesi widgettien lukituksen"
+          }
+        },
+        "fil" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buksan ang TokenWatch para i-unlock ang mga widget"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez TokenWatch pour déverrouiller les composants"
+          }
+        },
+        "fr-CA" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez TokenWatch pour déverrouiller les widgets"
+          }
+        },
+        "gu-IN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "વિજેટ્સ અનલૉક કરવા TokenWatch ખોલો"
+          }
+        },
+        "hi-IN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "विजेट अनलॉक करने के लिए TokenWatch खोलें"
+          }
+        },
+        "hr-HR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otvorite TokenWatch kako biste otključali widgete"
+          }
+        },
+        "hu-HU" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nyissa meg a TokenWatchot a widgetek feloldásához"
+          }
+        },
+        "hy-AM" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Բացեք TokenWatch-ը՝ վիջեթներն ապակողպելու համար"
+          }
+        },
+        "id-ID" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka TokenWatch untuk membuka kunci widget"
+          }
+        },
+        "is-IS" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opnaðu TokenWatch til að aflæsa græjum"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri TokenWatch per sbloccare i riquadri"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ウィジェットのロックを解除するにはTokenWatchを開いてください"
+          }
+        },
+        "ka-GE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ვიჯეტების განსაბლოკად გახსენით TokenWatch"
+          }
+        },
+        "kk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виджеттердің құлпын ашу үшін TokenWatch қолданбасын ашыңыз"
+          }
+        },
+        "kn-IN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ವಿಜೆಟ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಲು TokenWatch ತೆರೆಯಿರಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위젯 잠금을 해제하려면 TokenWatch를 여세요"
+          }
+        },
+        "lt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atidarykite „TokenWatch“, kad atrakintumėte valdiklius"
+          }
+        },
+        "lv-LV" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atveriet TokenWatch, lai atbloķētu logrīkus"
+          }
+        },
+        "mk-MK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отворете TokenWatch за да ги отклучите виџетите"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "വിഡ്ജറ്റുകൾ അൺലോക്ക് ചെയ്യാൻ TokenWatch തുറക്കുക"
+          }
+        },
+        "mn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вижетүүдийн түгжээг тайлахын тулд TokenWatch-ийг нээнэ үү"
+          }
+        },
+        "mr-IN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "विजेट अनलॉक करण्यासाठी TokenWatch उघडा"
+          }
+        },
+        "ms-MY" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka TokenWatch untuk membuka kunci widget"
+          }
+        },
+        "my-MM" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ဝစ်ဂျက်များကို လော့ခ်ဖွင့်ရန် TokenWatch ကို ဖွင့်ပါ"
+          }
+        },
+        "nb-NO" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne TokenWatch for å låse opp widgetene"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open TokenWatch om de onderdelen te ontgrendelen"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਵਿਜੇਟ ਅਨਲੌਕ ਕਰਨ ਲਈ TokenWatch ਖੋਲ੍ਹੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz TokenWatch, aby odblokować widżety"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra o TokenWatch para desbloquear os componentes"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra o TokenWatch para desbloquear os widgets"
+          }
+        },
+        "ro-RO" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deschideți TokenWatch pentru a debloca widgeturile"
+          }
+        },
+        "ru-RU" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте TokenWatch, чтобы разблокировать виджеты"
+          }
+        },
+        "sk-SK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otvorte TokenWatch a odomknite widgety"
+          }
+        },
+        "sl-SI" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odprite TokenWatch, da odklenete pripomočke"
+          }
+        },
+        "so-SO" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fur TokenWatch si aad u furto aaladaha yaryar"
+          }
+        },
+        "sq-AL" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hap TokenWatch për të shkyçur widget-et"
+          }
+        },
+        "sr-RS" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отворите TokenWatch да бисте откључали виџете"
+          }
+        },
+        "sv-SE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öppna TokenWatch för att låsa upp widgetarna"
+          }
+        },
+        "sw-TZ" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fungua TokenWatch ili kufungua wijeti"
+          }
+        },
+        "ta-IN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "விட்ஜெட்டுகளைத் திறக்க TokenWatch-ஐத் திறக்கவும்"
+          }
+        },
+        "te-IN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "విడ్జెట్‌లను అన్‌లాక్ చేయడానికి TokenWatch తెరవండి"
+          }
+        },
+        "th-TH" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิด TokenWatch เพื่อปลดล็อกวิดเจ็ต"
+          }
+        },
+        "tr-TR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araç takımlarının kilidini açmak için TokenWatch uygulamasını açın"
+          }
+        },
+        "uk-UA" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрийте TokenWatch, щоб розблокувати віджети"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ویجٹس اَن لاک کرنے کے لیے TokenWatch کھولیں"
+          }
+        },
+        "vi-VN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở TokenWatch để mở khóa tiện ích"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 TokenWatch 以解锁小组件"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 TokenWatch 以解鎖小工具"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 TokenWatch 以解鎖小工具"
+          }
+        }
+      }
+    },
     "widget.modelFocus.name" : {
       "localizations" : {
         "am" : {
