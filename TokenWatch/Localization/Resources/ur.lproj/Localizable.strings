@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ کے لیے لاگت کا بار چارٹ";
 "periodAxisValueName" = "مدت";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code کا ڈیٹا فولڈر منتخب کریں۔ اس میں براہِ راست \"projects\" فولڈر ہونا ضروری ہے۔ کنفیگر کردہ مقام جانچنے کے لیے، ٹرمینل میں \"printenv CLAUDE_CONFIG_DIR\" چلائیں۔ اگر کچھ بھی ظاہر نہ ہو تو \".claude\" نامی فولڈر تلاش کریں۔";
-"codexDataDirectoryOpenPanelMessage" = "Codex کا ڈیٹا فولڈر منتخب کریں۔ اس میں براہِ راست \"sessions\" یا \"archived_sessions\" فولڈر ہونا ضروری ہے۔ کنفیگر کردہ مقام جانچنے کے لیے، ٹرمینل میں \"printenv CODEX_HOME\" چلائیں۔ اگر کچھ بھی ظاہر نہ ہو تو \".codex\" نامی فولڈر تلاش کریں۔";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode کا ڈیٹا فولڈر منتخب کریں۔ اس میں براہِ راست \"opencode.db\" ہونا ضروری ہے۔ اگر یہ نہ ملے تو ٹرمینل میں \"opencode db path\" چلائیں، پھر وہ فولڈر منتخب کریں جس میں دکھائی گئی فائل موجود ہو۔";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code کا ڈیٹا فولڈر منتخب کریں؛ یہ عام طور پر ~/.claude میں ہوتا ہے۔\nاسے echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" کمانڈ کے ذریعے تلاش کیا جا سکتا ہے۔";
+"codexDataDirectoryOpenPanelMessage" = "Codex کا ڈیٹا فولڈر منتخب کریں؛ یہ عام طور پر ~/.codex میں ہوتا ہے۔\nاسے echo \"${CODEX_HOME:-$HOME/.codex}\" کمانڈ کے ذریعے تلاش کیا جا سکتا ہے۔";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode کا ڈیٹا فولڈر منتخب کریں؛ یہ عام طور پر ~/.local/share/opencode میں ہوتا ہے۔\nاسے echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" کمانڈ کے ذریعے تلاش کیا جا سکتا ہے۔";
 "chooseDirectoryPrompt" = "منتخب کریں";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ڈیٹا فولڈر تک رسائی نہیں ہو سکی۔ براہ کرم اسے دوبارہ منتخب کریں۔";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ڈیٹا فولڈر تک رسائی محفوظ نہیں کی جا سکی۔ براہ کرم دوبارہ منتخب کریں۔";

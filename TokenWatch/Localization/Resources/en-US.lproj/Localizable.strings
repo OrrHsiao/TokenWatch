@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ cost bar chart";
 "periodAxisValueName" = "Period";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Choose the Claude Code data folder. It must directly contain the \"projects\" folder. To check a configured location, run \"printenv CLAUDE_CONFIG_DIR\" in Terminal. If it prints nothing, look for a folder named \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Choose the Codex data folder. It must directly contain either the \"sessions\" or \"archived_sessions\" folder. To check a configured location, run \"printenv CODEX_HOME\" in Terminal. If it prints nothing, look for a folder named \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Choose the opencode data folder. It must directly contain \"opencode.db\". If you cannot find it, run \"opencode db path\" in Terminal, then choose the folder that contains the displayed file.";
+"claudeDataDirectoryOpenPanelMessage" = "Choose the Claude Code data folder; it is usually ~/.claude.\nRun echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" to find it.";
+"codexDataDirectoryOpenPanelMessage" = "Choose the Codex data folder; it is usually ~/.codex.\nRun echo \"${CODEX_HOME:-$HOME/.codex}\" to find it.";
+"openCodeDataDirectoryOpenPanelMessage" = "Choose the opencode data folder; it is usually ~/.local/share/opencode.\nRun echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" to find it.";
 "chooseDirectoryPrompt" = "Choose";
 "errorCannotAccessProviderDirectoryFormat" = "Cannot access the %@ data folder. Please choose it again.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Could not save access to the %@ data folder. Please choose again.";

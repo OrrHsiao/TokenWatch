@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ ਦਾ ਲਾਗਤ ਬਾਰ ਚਾਰਟ";
 "periodAxisValueName" = "ਮਿਆਦ";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ। ਇਸ ਵਿੱਚ ਸਿੱਧਾ \"projects\" ਫੋਲਡਰ ਹੋਣਾ ਚਾਹੀਦਾ ਹੈ। ਕੌਂਫਿਗਰ ਕੀਤਾ ਟਿਕਾਣਾ ਜਾਂਚਣ ਲਈ, ਟਰਮੀਨਲ ਵਿੱਚ \"printenv CLAUDE_CONFIG_DIR\" ਚਲਾਓ। ਜੇ ਕੁਝ ਵੀ ਪ੍ਰਿੰਟ ਨਾ ਹੋਵੇ, ਤਾਂ \".claude\" ਨਾਮ ਦਾ ਫੋਲਡਰ ਲੱਭੋ।";
-"codexDataDirectoryOpenPanelMessage" = "Codex ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ। ਇਸ ਵਿੱਚ ਸਿੱਧਾ \"sessions\" ਜਾਂ \"archived_sessions\" ਫੋਲਡਰ ਹੋਣਾ ਚਾਹੀਦਾ ਹੈ। ਕੌਂਫਿਗਰ ਕੀਤਾ ਟਿਕਾਣਾ ਜਾਂਚਣ ਲਈ, ਟਰਮੀਨਲ ਵਿੱਚ \"printenv CODEX_HOME\" ਚਲਾਓ। ਜੇ ਕੁਝ ਵੀ ਪ੍ਰਿੰਟ ਨਾ ਹੋਵੇ, ਤਾਂ \".codex\" ਨਾਮ ਦਾ ਫੋਲਡਰ ਲੱਭੋ।";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ। ਇਸ ਵਿੱਚ ਸਿੱਧਾ \"opencode.db\" ਹੋਣਾ ਚਾਹੀਦਾ ਹੈ। ਜੇ ਇਹ ਨਾ ਮਿਲੇ, ਤਾਂ ਟਰਮੀਨਲ ਵਿੱਚ \"opencode db path\" ਚਲਾਓ, ਫਿਰ ਦਿਖਾਈ ਗਈ ਫਾਈਲ ਵਾਲਾ ਫੋਲਡਰ ਚੁਣੋ।";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.claude ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
+"codexDataDirectoryOpenPanelMessage" = "Codex ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.codex ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"${CODEX_HOME:-$HOME/.codex}\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.local/share/opencode ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
 "chooseDirectoryPrompt" = "ਚੁਣੋ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ਡਾਟਾ ਫੋਲਡਰ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਇਸਨੂੰ ਮੁੜ ਚੁਣੋ।";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ਡਾਟਾ ਫੋਲਡਰ ਤੱਕ ਪਹੁੰਚ ਸੰਭਾਲੀ ਨਹੀਂ ਜਾ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਮੁੜ ਚੁਣੋ।";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — ხარჯის სვეტოვანი დიაგრამა";
 "periodAxisValueName" = "პერიოდი";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "აირჩიეთ Claude Code-ის მონაცემთა საქაღალდე. ის პირდაპირ უნდა შეიცავდეს \"projects\" საქაღალდეს. კონფიგურირებული მდებარეობის შესამოწმებლად ტერმინალში გაუშვით \"printenv CLAUDE_CONFIG_DIR\". თუ ის არაფერს გამოიტანს, მოძებნეთ საქაღალდე სახელად \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "აირჩიეთ Codex-ის მონაცემთა საქაღალდე. ის პირდაპირ უნდა შეიცავდეს \"sessions\" ან \"archived_sessions\" საქაღალდეს. კონფიგურირებული მდებარეობის შესამოწმებლად ტერმინალში გაუშვით \"printenv CODEX_HOME\". თუ ის არაფერს გამოიტანს, მოძებნეთ საქაღალდე სახელად \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "აირჩიეთ opencode-ის მონაცემთა საქაღალდე. ის პირდაპირ უნდა შეიცავდეს \"opencode.db\". თუ მას ვერ პოულობთ, ტერმინალში გაუშვით \"opencode db path\", შემდეგ კი აირჩიეთ საქაღალდე, რომელიც ნაჩვენებ ფაილს შეიცავს.";
+"claudeDataDirectoryOpenPanelMessage" = "აირჩიეთ Claude Code-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.claude.\nმისი პოვნა შეგიძლიათ echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" ბრძანებით.";
+"codexDataDirectoryOpenPanelMessage" = "აირჩიეთ Codex-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.codex.\nმისი პოვნა შეგიძლიათ echo \"${CODEX_HOME:-$HOME/.codex}\" ბრძანებით.";
+"openCodeDataDirectoryOpenPanelMessage" = "აირჩიეთ opencode-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.local/share/opencode.\nმისი პოვნა შეგიძლიათ echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ბრძანებით.";
 "chooseDirectoryPrompt" = "არჩევა";
 "errorCannotAccessProviderDirectoryFormat" = "ვერ მოხერხდა %@ მონაცემთა საქაღალდეზე წვდომა. გთხოვთ, ხელახლა აირჩიოთ.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ვერ მოხერხდა %@ მონაცემთა საქაღალდეზე წვდომის შენახვა. გთხოვთ, ხელახლა აირჩიოთ.";

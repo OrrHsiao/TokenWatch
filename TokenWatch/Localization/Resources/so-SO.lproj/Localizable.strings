@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Shaxda tiirarka kharashka ee %@";
 "periodAxisValueName" = "Muddada";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Dooro galka xogta Claude Code. Waa inuu si toos ah u leeyahay galka \"projects\". Si aad u hubiso goob la habeeyey, ku socodsii \"printenv CLAUDE_CONFIG_DIR\" Terminal-ka. Haddii uusan waxba soo bandhigin, raadi gal la yiraahdo \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Dooro galka xogta Codex. Waa inuu si toos ah u leeyahay galka \"sessions\" ama \"archived_sessions\". Si aad u hubiso goob la habeeyey, ku socodsii \"printenv CODEX_HOME\" Terminal-ka. Haddii uusan waxba soo bandhigin, raadi gal la yiraahdo \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Dooro galka xogta opencode. Waa inuu si toos ah u leeyahay \"opencode.db\". Haddii aadan heli karin, ku socodsii \"opencode db path\" Terminal-ka, kadibna dooro galka uu ku jiro faylka la muujiyey.";
+"claudeDataDirectoryOpenPanelMessage" = "Dooro galka xogta Claude Code. Badanaa wuxuu ku yaal ~/.claude.\nWaxaad ku heli kartaa amarka echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Dooro galka xogta Codex. Badanaa wuxuu ku yaal ~/.codex.\nWaxaad ku heli kartaa amarka echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Dooro galka xogta opencode. Badanaa wuxuu ku yaal ~/.local/share/opencode.\nWaxaad ku heli kartaa amarka echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Dooro";
 "errorCannotAccessProviderDirectoryFormat" = "Lama geli karo galka xogta %@. Fadlan mar kale dooro.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Lama kaydin karo gelitaanka galka xogta %@. Fadlan mar kale dooro.";

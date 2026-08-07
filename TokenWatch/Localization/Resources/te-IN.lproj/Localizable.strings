@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ ఖర్చు బార్ చార్ట్";
 "periodAxisValueName" = "వ్యవధి";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code డేటా ఫోల్డర్‌ను ఎంచుకోండి. దానిలో నేరుగా \"projects\" ఫోల్డర్ ఉండాలి. కాన్ఫిగర్ చేసిన స్థానాన్ని తనిఖీ చేయడానికి, టెర్మినల్‌లో \"printenv CLAUDE_CONFIG_DIR\" అమలు చేయండి. ఏమీ ముద్రించకపోతే, \".claude\" అనే ఫోల్డర్‌ను చూడండి.";
-"codexDataDirectoryOpenPanelMessage" = "Codex డేటా ఫోల్డర్‌ను ఎంచుకోండి. దానిలో నేరుగా \"sessions\" లేదా \"archived_sessions\" ఫోల్డర్ ఉండాలి. కాన్ఫిగర్ చేసిన స్థానాన్ని తనిఖీ చేయడానికి, టెర్మినల్‌లో \"printenv CODEX_HOME\" అమలు చేయండి. ఏమీ ముద్రించకపోతే, \".codex\" అనే ఫోల్డర్‌ను చూడండి.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode డేటా ఫోల్డర్‌ను ఎంచుకోండి. దానిలో నేరుగా \"opencode.db\" ఉండాలి. అది కనిపించకపోతే, టెర్మినల్‌లో \"opencode db path\" అమలు చేసి, చూపించిన ఫైల్ ఉన్న ఫోల్డర్‌ను ఎంచుకోండి.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.claude వద్ద ఉంటుంది.\nదీన్ని echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
+"codexDataDirectoryOpenPanelMessage" = "Codex డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.codex వద్ద ఉంటుంది.\nదీన్ని echo \"${CODEX_HOME:-$HOME/.codex}\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.local/share/opencode వద్ద ఉంటుంది.\nదీన్ని echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
 "chooseDirectoryPrompt" = "ఎంచుకోండి";
 "errorCannotAccessProviderDirectoryFormat" = "%@ డేటా ఫోల్డర్‌ను యాక్సెస్ చేయలేకపోయాం. దయచేసి దాన్ని మళ్లీ ఎంచుకోండి.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ డేటా ఫోల్డర్‌కు యాక్సెస్‌ను సేవ్ చేయలేకపోయాం. దయచేసి మళ్లీ ఎంచుకోండి.";

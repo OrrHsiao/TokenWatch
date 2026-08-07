@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — стовпчаста діаграма витрат";
 "periodAxisValueName" = "Період";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Claude Code. Вона має безпосередньо містити папку \"projects\". Щоб перевірити налаштоване розташування, виконайте в Терміналі \"printenv CLAUDE_CONFIG_DIR\". Якщо команда нічого не виведе, знайдіть папку з назвою \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Codex. Вона має безпосередньо містити папку \"sessions\" або \"archived_sessions\". Щоб перевірити налаштоване розташування, виконайте в Терміналі \"printenv CODEX_HOME\". Якщо команда нічого не виведе, знайдіть папку з назвою \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними opencode. Вона має безпосередньо містити \"opencode.db\". Якщо не вдається її знайти, виконайте в Терміналі \"opencode db path\", а потім виберіть папку, що містить указаний файл.";
+"claudeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Claude Code. Зазвичай це ~/.claude.\nЇї можна знайти за допомогою команди echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Codex. Зазвичай це ~/.codex.\nЇї можна знайти за допомогою команди echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними opencode. Зазвичай це ~/.local/share/opencode.\nЇї можна знайти за допомогою команди echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Вибрати";
 "errorCannotAccessProviderDirectoryFormat" = "Не вдалося отримати доступ до папки з даними %@. Виберіть її ще раз.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Не вдалося зберегти доступ до папки з даними %@. Виберіть її ще раз.";

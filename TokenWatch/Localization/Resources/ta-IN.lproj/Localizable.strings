@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ செலவுப் பட்டை விளக்கப்படம்";
 "periodAxisValueName" = "காலம்";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code தரவுக் கோப்புறையைத் தேர்ந்தெடுக்கவும். அதில் நேரடியாக \"projects\" கோப்புறை இருக்க வேண்டும். அமைக்கப்பட்ட இடத்தைச் சரிபார்க்க, டெர்மினலில் \"printenv CLAUDE_CONFIG_DIR\" ஐ இயக்கவும். எதுவும் அச்சிடப்படவில்லை என்றால், \".claude\" என்ற கோப்புறையைத் தேடவும்.";
-"codexDataDirectoryOpenPanelMessage" = "Codex தரவுக் கோப்புறையைத் தேர்ந்தெடுக்கவும். அதில் நேரடியாக \"sessions\" அல்லது \"archived_sessions\" கோப்புறை இருக்க வேண்டும். அமைக்கப்பட்ட இடத்தைச் சரிபார்க்க, டெர்மினலில் \"printenv CODEX_HOME\" ஐ இயக்கவும். எதுவும் அச்சிடப்படவில்லை என்றால், \".codex\" என்ற கோப்புறையைத் தேடவும்.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode தரவுக் கோப்புறையைத் தேர்ந்தெடுக்கவும். அதில் நேரடியாக \"opencode.db\" இருக்க வேண்டும். அது கிடைக்கவில்லை என்றால், டெர்மினலில் \"opencode db path\" ஐ இயக்கி, காட்டப்படும் கோப்பைக் கொண்ட கோப்புறையைத் தேர்ந்தெடுக்கவும்.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code தரவுக் கோப்புறையைத் தேர்ந்தெடுக்கவும்; இது வழக்கமாக ~/.claude இல் இருக்கும்.\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" கட்டளை மூலம் இதைக் கண்டறியலாம்.";
+"codexDataDirectoryOpenPanelMessage" = "Codex தரவுக் கோப்புறையைத் தேர்ந்தெடுக்கவும்; இது வழக்கமாக ~/.codex இல் இருக்கும்.\necho \"${CODEX_HOME:-$HOME/.codex}\" கட்டளை மூலம் இதைக் கண்டறியலாம்.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode தரவுக் கோப்புறையைத் தேர்ந்தெடுக்கவும்; இது வழக்கமாக ~/.local/share/opencode இல் இருக்கும்.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" கட்டளை மூலம் இதைக் கண்டறியலாம்.";
 "chooseDirectoryPrompt" = "தேர்ந்தெடு";
 "errorCannotAccessProviderDirectoryFormat" = "%@ தரவுக் கோப்புறையை அணுக முடியவில்லை. தயவுசெய்து அதை மீண்டும் தேர்ந்தெடுக்கவும்.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ தரவுக் கோப்புறைக்கான அணுகலைச் சேமிக்க முடியவில்லை. தயவுசெய்து மீண்டும் தேர்ந்தெடுக்கவும்.";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ grafico a barre dei costi";
 "periodAxisValueName" = "Periodo";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Scegli la cartella dati di Claude Code. Deve contenere direttamente la cartella \"projects\". Per verificare una posizione configurata, esegui \"printenv CLAUDE_CONFIG_DIR\" nel Terminale. Se non viene visualizzato nulla, cerca una cartella denominata \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Scegli la cartella dati di Codex. Deve contenere direttamente la cartella \"sessions\" o \"archived_sessions\". Per verificare una posizione configurata, esegui \"printenv CODEX_HOME\" nel Terminale. Se non viene visualizzato nulla, cerca una cartella denominata \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Scegli la cartella dati di opencode. Deve contenere direttamente \"opencode.db\". Se non la trovi, esegui \"opencode db path\" nel Terminale, quindi scegli la cartella che contiene il file visualizzato.";
+"claudeDataDirectoryOpenPanelMessage" = "Scegli la cartella dati di Claude Code; di solito si trova in ~/.claude.\nEsegui echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" per trovarla.";
+"codexDataDirectoryOpenPanelMessage" = "Scegli la cartella dati di Codex; di solito si trova in ~/.codex.\nEsegui echo \"${CODEX_HOME:-$HOME/.codex}\" per trovarla.";
+"openCodeDataDirectoryOpenPanelMessage" = "Scegli la cartella dati di opencode; di solito si trova in ~/.local/share/opencode.\nEsegui echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" per trovarla.";
 "chooseDirectoryPrompt" = "Scegli";
 "errorCannotAccessProviderDirectoryFormat" = "Impossibile accedere alla cartella dati selezionata per %@. Selezionala di nuovo";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Impossibile salvare l'accesso alla cartella dati di %@. Riprova";

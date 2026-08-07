@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ का लागत बार चार्ट";
 "periodAxisValueName" = "अवधि";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code डेटा फ़ोल्डर चुनें। इसमें सीधे \"projects\" फ़ोल्डर होना चाहिए। कॉन्फ़िगर किया गया स्थान देखने के लिए टर्मिनल में \"printenv CLAUDE_CONFIG_DIR\" चलाएँ। यदि यह कुछ भी प्रिंट नहीं करता है, तो \".claude\" नाम का फ़ोल्डर देखें।";
-"codexDataDirectoryOpenPanelMessage" = "Codex डेटा फ़ोल्डर चुनें। इसमें सीधे \"sessions\" या \"archived_sessions\" फ़ोल्डर में से एक होना चाहिए। कॉन्फ़िगर किया गया स्थान देखने के लिए टर्मिनल में \"printenv CODEX_HOME\" चलाएँ। यदि यह कुछ भी प्रिंट नहीं करता है, तो \".codex\" नाम का फ़ोल्डर देखें।";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode डेटा फ़ोल्डर चुनें। इसमें सीधे \"opencode.db\" होना चाहिए। यदि यह नहीं मिलता है, तो टर्मिनल में \"opencode db path\" चलाएँ, फिर प्रदर्शित फ़ाइल वाले फ़ोल्डर को चुनें।";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.claude में होता है।\nइसे echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" कमांड से ढूँढ सकते हैं।";
+"codexDataDirectoryOpenPanelMessage" = "Codex डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.codex में होता है।\nइसे echo \"${CODEX_HOME:-$HOME/.codex}\" कमांड से ढूँढ सकते हैं।";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.local/share/opencode में होता है।\nइसे echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" कमांड से ढूँढ सकते हैं।";
 "chooseDirectoryPrompt" = "चुनें";
 "errorCannotAccessProviderDirectoryFormat" = "%@ डेटा फ़ोल्डर एक्सेस नहीं किया जा सकता। कृपया इसे फिर से चुनें।";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ डेटा फ़ोल्डर का एक्सेस सहेजा नहीं जा सका। कृपया फिर से चुनें।";

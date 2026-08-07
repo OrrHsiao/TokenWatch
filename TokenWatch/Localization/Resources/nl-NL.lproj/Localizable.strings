@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ staafdiagram met kosten";
 "periodAxisValueName" = "Periode";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Claude Code. Deze moet rechtstreeks de map \"projects\" bevatten. Voer \"printenv CLAUDE_CONFIG_DIR\" uit in de Terminal om een geconfigureerde locatie te controleren. Als er niets wordt weergegeven, zoek dan naar een map met de naam \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Codex. Deze moet rechtstreeks de map \"sessions\" of \"archived_sessions\" bevatten. Voer \"printenv CODEX_HOME\" uit in de Terminal om een geconfigureerde locatie te controleren. Als er niets wordt weergegeven, zoek dan naar een map met de naam \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van opencode. Deze moet rechtstreeks \"opencode.db\" bevatten. Als je deze niet kunt vinden, voer dan \"opencode db path\" uit in de Terminal en kies de map die het weergegeven bestand bevat.";
+"claudeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Claude Code; deze staat meestal in ~/.claude.\nVoer echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" uit om deze te vinden.";
+"codexDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Codex; deze staat meestal in ~/.codex.\nVoer echo \"${CODEX_HOME:-$HOME/.codex}\" uit om deze te vinden.";
+"openCodeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van opencode; deze staat meestal in ~/.local/share/opencode.\nVoer echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" uit om deze te vinden.";
 "chooseDirectoryPrompt" = "Kiezen";
 "errorCannotAccessProviderDirectoryFormat" = "De geselecteerde gegevensmap voor %@ is niet toegankelijk. Kies deze opnieuw";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Toegang tot de gegevensmap van %@ kon niet worden opgeslagen. Probeer het opnieuw";

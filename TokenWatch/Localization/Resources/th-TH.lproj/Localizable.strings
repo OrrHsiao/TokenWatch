@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "แผนภูมิแท่งค่าใช้จ่ายของ %@";
 "periodAxisValueName" = "ช่วงเวลา";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Claude Code โดยต้องมีโฟลเดอร์ \"projects\" อยู่โดยตรง หากต้องการตรวจสอบตำแหน่งที่กำหนดค่าไว้ ให้รัน \"printenv CLAUDE_CONFIG_DIR\" ใน Terminal หากไม่มีผลลัพธ์ ให้มองหาโฟลเดอร์ชื่อ \".claude\"";
-"codexDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Codex โดยต้องมีโฟลเดอร์ \"sessions\" หรือ \"archived_sessions\" อยู่โดยตรง หากต้องการตรวจสอบตำแหน่งที่กำหนดค่าไว้ ให้รัน \"printenv CODEX_HOME\" ใน Terminal หากไม่มีผลลัพธ์ ให้มองหาโฟลเดอร์ชื่อ \".codex\"";
-"openCodeDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล opencode โดยต้องมี \"opencode.db\" อยู่โดยตรง หากหาไม่พบ ให้รัน \"opencode db path\" ใน Terminal แล้วเลือกโฟลเดอร์ที่มีไฟล์ที่แสดง";
+"claudeDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Claude Code ซึ่งโดยปกติจะอยู่ที่ ~/.claude\nค้นหาได้ด้วยคำสั่ง echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"";
+"codexDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Codex ซึ่งโดยปกติจะอยู่ที่ ~/.codex\nค้นหาได้ด้วยคำสั่ง echo \"${CODEX_HOME:-$HOME/.codex}\"";
+"openCodeDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล opencode ซึ่งโดยปกติจะอยู่ที่ ~/.local/share/opencode\nค้นหาได้ด้วยคำสั่ง echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\"";
 "chooseDirectoryPrompt" = "เลือก";
 "errorCannotAccessProviderDirectoryFormat" = "ไม่สามารถเข้าถึงโฟลเดอร์ข้อมูล %@ ได้ โปรดเลือกอีกครั้ง";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ไม่สามารถบันทึกการเข้าถึงโฟลเดอร์ข้อมูล %@ ได้ โปรดเลือกอีกครั้ง";

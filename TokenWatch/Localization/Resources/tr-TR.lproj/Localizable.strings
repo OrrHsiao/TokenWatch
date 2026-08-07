@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Maliyet sütun grafiği — %@";
 "periodAxisValueName" = "Dönem";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code veri klasörünü seçin. Bu klasör doğrudan \"projects\" klasörünü içermelidir. Yapılandırılmış bir konumu kontrol etmek için Terminal'de \"printenv CLAUDE_CONFIG_DIR\" komutunu çalıştırın. Hiçbir şey yazdırmazsa \".claude\" adlı klasörü arayın.";
-"codexDataDirectoryOpenPanelMessage" = "Codex veri klasörünü seçin. Bu klasör doğrudan \"sessions\" veya \"archived_sessions\" klasörlerinden birini içermelidir. Yapılandırılmış bir konumu kontrol etmek için Terminal'de \"printenv CODEX_HOME\" komutunu çalıştırın. Hiçbir şey yazdırmazsa \".codex\" adlı klasörü arayın.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode veri klasörünü seçin. Bu klasör doğrudan \"opencode.db\" içermelidir. Bulamazsanız Terminal'de \"opencode db path\" komutunu çalıştırın, ardından görüntülenen dosyayı içeren klasörü seçin.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code veri klasörünü seçin. Genellikle ~/.claude konumundadır.\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" komutuyla bulabilirsiniz.";
+"codexDataDirectoryOpenPanelMessage" = "Codex veri klasörünü seçin. Genellikle ~/.codex konumundadır.\necho \"${CODEX_HOME:-$HOME/.codex}\" komutuyla bulabilirsiniz.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode veri klasörünü seçin. Genellikle ~/.local/share/opencode konumundadır.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" komutuyla bulabilirsiniz.";
 "chooseDirectoryPrompt" = "Seç";
 "errorCannotAccessProviderDirectoryFormat" = "%@ veri klasörüne erişilemiyor. Lütfen yeniden seçin.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ veri klasörüne erişim kaydedilemedi. Lütfen tekrar seçin.";

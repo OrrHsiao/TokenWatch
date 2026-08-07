@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "مخطط أعمدة للتكلفة للفترة %@";
 "periodAxisValueName" = "الفترة";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Claude Code. يجب أن يحتوي مباشرةً على مجلد \"projects\". للتحقق من موقع مُهيأ، شغّل \"printenv CLAUDE_CONFIG_DIR\" في الطرفية. إذا لم يطبع شيئًا، فابحث عن مجلد باسم \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Codex. يجب أن يحتوي مباشرةً على مجلد \"sessions\" أو \"archived_sessions\". للتحقق من موقع مُهيأ، شغّل \"printenv CODEX_HOME\" في الطرفية. إذا لم يطبع شيئًا، فابحث عن مجلد باسم \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات opencode. يجب أن يحتوي مباشرةً على \"opencode.db\". إذا لم تتمكن من العثور عليه، شغّل \"opencode db path\" في الطرفية، ثم اختر المجلد الذي يحتوي على الملف المعروض.";
+"claudeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Claude Code؛ يكون عادةً في ~/.claude.\nيمكن العثور عليه باستخدام الأمر echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Codex؛ يكون عادةً في ~/.codex.\nيمكن العثور عليه باستخدام الأمر echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات opencode؛ يكون عادةً في ~/.local/share/opencode.\nيمكن العثور عليه باستخدام الأمر echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "اختيار";
 "errorCannotAccessProviderDirectoryFormat" = "يتعذر الوصول إلى مجلد البيانات %@. يرجى اختياره مجددًا.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "تعذر حفظ الوصول إلى مجلد البيانات %@. يرجى الاختيار مجددًا.";

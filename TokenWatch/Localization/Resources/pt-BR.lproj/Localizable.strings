@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ gráfico de barras de custos";
 "periodAxisValueName" = "Período";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do Claude Code. Ela deve conter diretamente a pasta \"projects\". Para verificar um local configurado, execute \"printenv CLAUDE_CONFIG_DIR\" no Terminal. Se nada for exibido, procure uma pasta chamada \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do Codex. Ela deve conter diretamente a pasta \"sessions\" ou \"archived_sessions\". Para verificar um local configurado, execute \"printenv CODEX_HOME\" no Terminal. Se nada for exibido, procure uma pasta chamada \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do opencode. Ela deve conter diretamente \"opencode.db\". Se não encontrá-la, execute \"opencode db path\" no Terminal e escolha a pasta que contém o arquivo exibido.";
+"claudeDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do Claude Code; normalmente ela fica em ~/.claude.\nExecute echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" para encontrá-la.";
+"codexDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do Codex; normalmente ela fica em ~/.codex.\nExecute echo \"${CODEX_HOME:-$HOME/.codex}\" para encontrá-la.";
+"openCodeDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do opencode; normalmente ela fica em ~/.local/share/opencode.\nExecute echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" para encontrá-la.";
 "chooseDirectoryPrompt" = "Escolher";
 "errorCannotAccessProviderDirectoryFormat" = "Não foi possível acessar a pasta de dados selecionada para %@. Escolha-a novamente";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Não foi possível salvar o acesso à pasta de dados de %@. Tente novamente";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — ծախսի սյունակային գծապատկեր";
 "periodAxisValueName" = "Ժամանակահատված";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Ընտրեք Claude Code-ի տվյալների պանակը։ Այն պետք է անմիջապես պարունակի \"projects\" պանակը։ Կարգավորված տեղադրությունը ստուգելու համար Տերմինալում գործարկեք \"printenv CLAUDE_CONFIG_DIR\"։ Եթե այն ոչինչ չի արտածում, փնտրեք \".claude\" անունով պանակ։";
-"codexDataDirectoryOpenPanelMessage" = "Ընտրեք Codex-ի տվյալների պանակը։ Այն պետք է անմիջապես պարունակի \"sessions\" կամ \"archived_sessions\" պանակը։ Կարգավորված տեղադրությունը ստուգելու համար Տերմինալում գործարկեք \"printenv CODEX_HOME\"։ Եթե այն ոչինչ չի արտածում, փնտրեք \".codex\" անունով պանակ։";
-"openCodeDataDirectoryOpenPanelMessage" = "Ընտրեք opencode-ի տվյալների պանակը։ Այն պետք է անմիջապես պարունակի \"opencode.db\"։ Եթե չեք գտնում այն, Տերմինալում գործարկեք \"opencode db path\", ապա ընտրեք ցուցադրված ֆայլը պարունակող պանակը։";
+"claudeDataDirectoryOpenPanelMessage" = "Ընտրեք Claude Code-ի տվյալների պանակը։ Սովորաբար այն գտնվում է այստեղ՝ ~/.claude։\nԱյն կարող եք գտնել echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" հրամանով։";
+"codexDataDirectoryOpenPanelMessage" = "Ընտրեք Codex-ի տվյալների պանակը։ Սովորաբար այն գտնվում է այստեղ՝ ~/.codex։\nԱյն կարող եք գտնել echo \"${CODEX_HOME:-$HOME/.codex}\" հրամանով։";
+"openCodeDataDirectoryOpenPanelMessage" = "Ընտրեք opencode-ի տվյալների պանակը։ Սովորաբար այն գտնվում է այստեղ՝ ~/.local/share/opencode։\nԱյն կարող եք գտնել echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" հրամանով։";
 "chooseDirectoryPrompt" = "Ընտրել";
 "errorCannotAccessProviderDirectoryFormat" = "Չհաջողվեց մուտք գործել %@ տվյալների պանակ։ Ընտրեք այն կրկին։";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Չհաջողվեց պահպանել %@ տվյալների պանակի հասանելիությունը։ Կրկին ընտրեք։";
