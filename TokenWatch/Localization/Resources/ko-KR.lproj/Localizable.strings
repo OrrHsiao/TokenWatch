@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ 비용 막대 차트";
 "periodAxisValueName" = "월";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code 데이터 폴더를 선택하세요. 폴더 바로 아래에 “projects” 폴더가 있어야 합니다. 설정된 위치를 확인하려면 터미널에서 “printenv CLAUDE_CONFIG_DIR”를 실행하세요. 출력이 없으면 “.claude”라는 이름의 폴더를 찾으세요.";
-"codexDataDirectoryOpenPanelMessage" = "Codex 데이터 폴더를 선택하세요. 폴더 바로 아래에 “sessions” 또는 “archived_sessions” 폴더가 있어야 합니다. 설정된 위치를 확인하려면 터미널에서 “printenv CODEX_HOME”를 실행하세요. 출력이 없으면 “.codex”라는 이름의 폴더를 찾으세요.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode 데이터 폴더를 선택하세요. 폴더 바로 아래에 “opencode.db”가 있어야 합니다. 찾을 수 없으면 터미널에서 “opencode db path”를 실행한 뒤, 표시된 파일이 있는 폴더를 선택하세요.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code 데이터 폴더를 선택하세요. 보통 ~/.claude입니다.\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" 명령으로 찾을 수 있습니다.";
+"codexDataDirectoryOpenPanelMessage" = "Codex 데이터 폴더를 선택하세요. 보통 ~/.codex입니다.\necho \"${CODEX_HOME:-$HOME/.codex}\" 명령으로 찾을 수 있습니다.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode 데이터 폴더를 선택하세요. 보통 ~/.local/share/opencode입니다.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" 명령으로 찾을 수 있습니다.";
 "chooseDirectoryPrompt" = "선택";
 "errorCannotAccessProviderDirectoryFormat" = "선택한 %@ 데이터 폴더에 접근할 수 없습니다. 다시 선택하세요";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ 데이터 폴더 접근 권한을 저장하지 못했습니다. 다시 시도하세요";

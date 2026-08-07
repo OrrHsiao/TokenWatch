@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Chati ya nguzo za gharama ya %@";
 "periodAxisValueName" = "Kipindi";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Claude Code. Lazima iwe na folda ya \"projects\" moja kwa moja. Ili kuangalia eneo lililosanidiwa, endesha \"printenv CLAUDE_CONFIG_DIR\" katika Terminal. Isipoonyesha chochote, tafuta folda inayoitwa \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Codex. Lazima iwe na folda ya \"sessions\" au \"archived_sessions\" moja kwa moja. Ili kuangalia eneo lililosanidiwa, endesha \"printenv CODEX_HOME\" katika Terminal. Isipoonyesha chochote, tafuta folda inayoitwa \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya opencode. Lazima iwe na \"opencode.db\" moja kwa moja. Usipoipata, endesha \"opencode db path\" katika Terminal, kisha uchague folda yenye faili iliyoonyeshwa.";
+"claudeDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Claude Code. Kwa kawaida ipo kwenye ~/.claude.\nUnaweza kuipata kwa amri echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Codex. Kwa kawaida ipo kwenye ~/.codex.\nUnaweza kuipata kwa amri echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya opencode. Kwa kawaida ipo kwenye ~/.local/share/opencode.\nUnaweza kuipata kwa amri echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Chagua";
 "errorCannotAccessProviderDirectoryFormat" = "Imeshindikana kufikia folda ya data ya %@. Tafadhali ichague tena.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Imeshindikana kuhifadhi ufikiaji wa folda ya data ya %@. Tafadhali chagua tena.";

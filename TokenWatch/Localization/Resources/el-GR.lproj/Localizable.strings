@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ — ραβδόγραμμα κόστους";
 "periodAxisValueName" = "Περίοδος";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Claude Code. Πρέπει να περιέχει απευθείας τον φάκελο \"projects\". Για να ελέγξετε μια διαμορφωμένη τοποθεσία, εκτελέστε το \"printenv CLAUDE_CONFIG_DIR\" στο Τερματικό. Αν δεν εμφανίζει τίποτα, αναζητήστε έναν φάκελο με όνομα \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Codex. Πρέπει να περιέχει απευθείας τον φάκελο \"sessions\" ή \"archived_sessions\". Για να ελέγξετε μια διαμορφωμένη τοποθεσία, εκτελέστε το \"printenv CODEX_HOME\" στο Τερματικό. Αν δεν εμφανίζει τίποτα, αναζητήστε έναν φάκελο με όνομα \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του opencode. Πρέπει να περιέχει απευθείας το \"opencode.db\". Αν δεν μπορείτε να το βρείτε, εκτελέστε το \"opencode db path\" στο Τερματικό και κατόπιν επιλέξτε τον φάκελο που περιέχει το εμφανιζόμενο αρχείο.";
+"claudeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Claude Code. Συνήθως βρίσκεται στο ~/.claude.\nΜπορείτε να τον βρείτε με την εντολή echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Codex. Συνήθως βρίσκεται στο ~/.codex.\nΜπορείτε να τον βρείτε με την εντολή echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του opencode. Συνήθως βρίσκεται στο ~/.local/share/opencode.\nΜπορείτε να τον βρείτε με την εντολή echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Επιλογή";
 "errorCannotAccessProviderDirectoryFormat" = "Δεν είναι δυνατή η πρόσβαση στον φάκελο δεδομένων %@. Επιλέξτε τον ξανά.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Δεν ήταν δυνατή η αποθήκευση της πρόσβασης στον φάκελο δεδομένων %@. Επιλέξτε ξανά.";

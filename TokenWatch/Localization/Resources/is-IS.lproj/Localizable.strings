@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Kostnaðarsúlurit — %@";
 "periodAxisValueName" = "Tímabil";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu Claude Code. Hún verður að innihalda möppuna \"projects\" beint. Til að athuga stillta staðsetningu skaltu keyra \"printenv CLAUDE_CONFIG_DIR\" í Terminal. Ef það birtir ekkert skaltu leita að möppu sem heitir \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu Codex. Hún verður að innihalda annaðhvort möppuna \"sessions\" eða \"archived_sessions\" beint. Til að athuga stillta staðsetningu skaltu keyra \"printenv CODEX_HOME\" í Terminal. Ef það birtir ekkert skaltu leita að möppu sem heitir \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu opencode. Hún verður að innihalda \"opencode.db\" beint. Ef þú finnur hana ekki skaltu keyra \"opencode db path\" í Terminal og velja síðan möppuna sem inniheldur skrána sem birt er.";
+"claudeDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu Claude Code; hún er venjulega í ~/.claude.\nKeyrðu echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" til að finna hana.";
+"codexDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu Codex; hún er venjulega í ~/.codex.\nKeyrðu echo \"${CODEX_HOME:-$HOME/.codex}\" til að finna hana.";
+"openCodeDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu opencode; hún er venjulega í ~/.local/share/opencode.\nKeyrðu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" til að finna hana.";
 "chooseDirectoryPrompt" = "Velja";
 "errorCannotAccessProviderDirectoryFormat" = "Ekki er hægt að fá aðgang að gagnamöppu %@. Veldu hana aftur.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Ekki tókst að vista aðgang að gagnamöppu %@. Veldu aftur.";

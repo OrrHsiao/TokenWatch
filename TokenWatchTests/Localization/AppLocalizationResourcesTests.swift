@@ -176,6 +176,60 @@ struct AppLocalizationResourcesTests {
         try assertCompleteResources(frozenCodexLocaleIdentifiers)
     }
 
+    @Test("三条授权面板文案在全部语言中均为选择与通常路径、命令定位两行")
+    func providerOpenPanelMessagesAreExactlyTwoLines() throws {
+        let expectedDetails: [(key: AppStringKey, usualPath: String, command: String)] = [
+            (
+                .claudeDataDirectoryOpenPanelMessage,
+                "~/.claude",
+                "echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\""
+            ),
+            (
+                .codexDataDirectoryOpenPanelMessage,
+                "~/.codex",
+                "echo \"${CODEX_HOME:-$HOME/.codex}\""
+            ),
+            (
+                .openCodeDataDirectoryOpenPanelMessage,
+                "~/.local/share/opencode",
+                "echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\""
+            ),
+        ]
+        let removedStructureTerms = ["projects", "sessions", "archived_sessions", "opencode.db"]
+        let resources = try loadResources(frozenCodexLocaleIdentifiers)
+
+        for localeIdentifier in frozenCodexLocaleIdentifiers {
+            let resource = try requiredResource(localeIdentifier, in: resources)
+            for (key, usualPath, expectedCommand) in expectedDetails {
+                let message = try requiredValue(key, in: resource)
+                let lines = message.components(separatedBy: "\n")
+                #expect(
+                    lines.count == 2,
+                    "Expected exactly two lines in \(localeIdentifier)/\(key.rawValue)"
+                )
+                guard lines.count == 2 else { continue }
+
+                for line in lines {
+                    #expect(!line.isEmpty, "Empty line in \(localeIdentifier)/\(key.rawValue)")
+                    #expect(
+                        line == line.trimmingCharacters(in: .whitespaces),
+                        "Leading or trailing whitespace in \(localeIdentifier)/\(key.rawValue)"
+                    )
+                }
+                #expect(occurrenceCount(of: usualPath, in: lines[0]) == 1)
+                #expect(!lines[0].contains(expectedCommand))
+                #expect(!lines[1].contains(usualPath))
+                #expect(occurrenceCount(of: expectedCommand, in: lines[1]) == 1)
+                #expect(lines[1] != expectedCommand)
+                #expect(!message.contains(" · "))
+                #expect(
+                    removedStructureTerms.allSatisfy { !message.contains($0) },
+                    "Obsolete structure guidance in \(localeIdentifier)/\(key.rawValue)"
+                )
+            }
+        }
+    }
+
     @Test("Xcode localization 元数据与冻结目录完全一致")
     func projectLocalizationMetadataMatchesFrozenCodexLocales() throws {
         let metadata = try projectLocalizationMetadata()
@@ -562,7 +616,10 @@ private let expectedFormatSignatures: [AppStringKey: [FormatArgument]] = [
 
 private let fixedTerms = [
     "AI Token Watch", "App Store", "Claude Code", "opencode.db", "Codex", "SQLite", "opencode", "Tokens", "Token",
-    "printenv", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "opencode db path", ".claude", ".codex",
+    "echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"", "CLAUDE_CONFIG_DIR",
+    "echo \"${CODEX_HOME:-$HOME/.codex}\"", "CODEX_HOME",
+    "echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\"", "XDG_DATA_HOME",
+    "~/.claude", "~/.codex", "~/.local/share/opencode", ".claude", ".codex",
 ]
 
 // 目录中的固定子路径可能因语言而显示为原名或译名；仅在英文短语复用扫描时忽略它们。

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Kustannusten pylväskaavio — %@";
 "periodAxisValueName" = "Ajanjakso";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Valitse Claude Coden datakansio. Sen täytyy sisältää suoraan kansio \"projects\". Tarkistaaksesi määritetyn sijainnin suorita Terminalissa \"printenv CLAUDE_CONFIG_DIR\". Jos komento ei tulosta mitään, etsi kansio nimeltä \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Valitse Codexin datakansio. Sen täytyy sisältää suoraan joko kansio \"sessions\" tai \"archived_sessions\". Tarkistaaksesi määritetyn sijainnin suorita Terminalissa \"printenv CODEX_HOME\". Jos komento ei tulosta mitään, etsi kansio nimeltä \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Valitse opencoden datakansio. Sen täytyy sisältää suoraan \"opencode.db\". Jos et löydä sitä, suorita Terminalissa \"opencode db path\" ja valitse sitten näytetyn tiedoston sisältävä kansio.";
+"claudeDataDirectoryOpenPanelMessage" = "Valitse Claude Coden datakansio; se on yleensä polussa ~/.claude.\nLöydät sen komennolla echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Valitse Codexin datakansio; se on yleensä polussa ~/.codex.\nLöydät sen komennolla echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Valitse opencoden datakansio; se on yleensä polussa ~/.local/share/opencode.\nLöydät sen komennolla echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Valitse";
 "errorCannotAccessProviderDirectoryFormat" = "Kohteen %@ datakansiota ei voi käyttää. Valitse se uudelleen.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Kohteen %@ datakansion käyttöoikeutta ei voitu tallentaa. Valitse se uudelleen.";

@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ चा खर्च बार आलेख";
 "periodAxisValueName" = "कालावधी";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Claude Code डेटा फोल्डर निवडा. त्यात थेट \"projects\" फोल्डर असणे आवश्यक आहे. कॉन्फिगर केलेले स्थान तपासण्यासाठी, टर्मिनलमध्ये \"printenv CLAUDE_CONFIG_DIR\" चालवा. काहीही प्रदर्शित न झाल्यास, \".claude\" नावाचा फोल्डर शोधा.";
-"codexDataDirectoryOpenPanelMessage" = "Codex डेटा फोल्डर निवडा. त्यात थेट \"sessions\" किंवा \"archived_sessions\" फोल्डर असणे आवश्यक आहे. कॉन्फिगर केलेले स्थान तपासण्यासाठी, टर्मिनलमध्ये \"printenv CODEX_HOME\" चालवा. काहीही प्रदर्शित न झाल्यास, \".codex\" नावाचा फोल्डर शोधा.";
-"openCodeDataDirectoryOpenPanelMessage" = "opencode डेटा फोल्डर निवडा. त्यात थेट \"opencode.db\" असणे आवश्यक आहे. ते सापडत नसल्यास, टर्मिनलमध्ये \"opencode db path\" चालवा आणि नंतर दर्शविलेली फाइल असलेला फोल्डर निवडा.";
+"claudeDataDirectoryOpenPanelMessage" = "Claude Code डेटा फोल्डर निवडा; तो सामान्यतः ~/.claude येथे असतो.\nतो echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" कमांडद्वारे शोधता येतो.";
+"codexDataDirectoryOpenPanelMessage" = "Codex डेटा फोल्डर निवडा; तो सामान्यतः ~/.codex येथे असतो.\nतो echo \"${CODEX_HOME:-$HOME/.codex}\" कमांडद्वारे शोधता येतो.";
+"openCodeDataDirectoryOpenPanelMessage" = "opencode डेटा फोल्डर निवडा; तो सामान्यतः ~/.local/share/opencode येथे असतो.\nतो echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" कमांडद्वारे शोधता येतो.";
 "chooseDirectoryPrompt" = "निवडा";
 "errorCannotAccessProviderDirectoryFormat" = "%@ डेटा फोल्डरमध्ये प्रवेश करता आला नाही. कृपया ते पुन्हा निवडा.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ डेटा फोल्डरचा प्रवेश जतन करता आला नाही. कृपया पुन्हा निवडा.";

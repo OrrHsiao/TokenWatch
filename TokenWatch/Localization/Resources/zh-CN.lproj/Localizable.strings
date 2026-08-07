@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "%@ 费用柱状图";
 "periodAxisValueName" = "月份";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "请选择 Claude Code 的数据文件夹；它必须直接包含“projects”文件夹。若要查看已配置的位置，请在终端运行“printenv CLAUDE_CONFIG_DIR”；若没有输出，请查找名为“.claude”的文件夹。";
-"codexDataDirectoryOpenPanelMessage" = "请选择 Codex 的数据文件夹；它必须直接包含“sessions”或“archived_sessions”文件夹。若要查看已配置的位置，请在终端运行“printenv CODEX_HOME”；若没有输出，请查找名为“.codex”的文件夹。";
-"openCodeDataDirectoryOpenPanelMessage" = "请选择 opencode 的数据文件夹；它必须直接包含“opencode.db”。若找不到，请在终端运行“opencode db path”，然后选择输出文件所在的文件夹。";
+"claudeDataDirectoryOpenPanelMessage" = "请选择 Claude Code 的数据文件夹；通常为 ~/.claude。\n可通过 echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" 命令找到。";
+"codexDataDirectoryOpenPanelMessage" = "请选择 Codex 的数据文件夹；通常为 ~/.codex。\n可通过 echo \"${CODEX_HOME:-$HOME/.codex}\" 命令找到。";
+"openCodeDataDirectoryOpenPanelMessage" = "请选择 opencode 的数据文件夹；通常为 ~/.local/share/opencode。\n可通过 echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" 命令找到。";
 "chooseDirectoryPrompt" = "选择";
 "errorCannotAccessProviderDirectoryFormat" = "无法访问 %@ 数据文件夹，请再次选择。";
 "errorProviderDirectoryAuthorizationFailedFormat" = "无法保存 %@ 数据文件夹的访问权限，请重新选择。";

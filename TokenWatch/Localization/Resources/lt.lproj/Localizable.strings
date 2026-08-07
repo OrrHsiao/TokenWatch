@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Išlaidų stulpelinė diagrama — %@";
 "periodAxisValueName" = "Laikotarpis";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Pasirinkite Claude Code duomenų aplanką. Jame turi būti tiesiogiai aplankas \"projects\". Norėdami patikrinti sukonfigūruotą vietą, Terminale paleiskite \"printenv CLAUDE_CONFIG_DIR\". Jei komanda nieko neišveda, ieškokite aplanko pavadinimu \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Pasirinkite Codex duomenų aplanką. Jame turi būti tiesiogiai aplankas \"sessions\" arba \"archived_sessions\". Norėdami patikrinti sukonfigūruotą vietą, Terminale paleiskite \"printenv CODEX_HOME\". Jei komanda nieko neišveda, ieškokite aplanko pavadinimu \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Pasirinkite opencode duomenų aplanką. Jame turi būti tiesiogiai failas \"opencode.db\". Jei jo nerandate, Terminale paleiskite \"opencode db path\", tada pasirinkite aplanką, kuriame yra rodomas failas.";
+"claudeDataDirectoryOpenPanelMessage" = "Pasirinkite Claude Code duomenų aplanką. Paprastai tai yra ~/.claude.\nJį galite rasti naudodami komandą echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Pasirinkite Codex duomenų aplanką. Paprastai tai yra ~/.codex.\nJį galite rasti naudodami komandą echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Pasirinkite opencode duomenų aplanką. Paprastai tai yra ~/.local/share/opencode.\nJį galite rasti naudodami komandą echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Pasirinkti";
 "errorCannotAccessProviderDirectoryFormat" = "Nepavyksta pasiekti %@ duomenų aplanko. Pasirinkite jį iš naujo.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nepavyko išsaugoti prieigos prie %@ duomenų aplanko. Pasirinkite jį dar kartą.";

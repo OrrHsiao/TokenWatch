@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "Stolpčni grafikon stroškov — %@";
 "periodAxisValueName" = "Obdobje";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "Izberite podatkovno mapo Claude Code. Neposredno mora vsebovati mapo \"projects\". Če želite preveriti nastavljeno mesto, v Terminalu zaženite \"printenv CLAUDE_CONFIG_DIR\". Če ne izpiše ničesar, poiščite mapo z imenom \".claude\".";
-"codexDataDirectoryOpenPanelMessage" = "Izberite podatkovno mapo Codex. Neposredno mora vsebovati mapo \"sessions\" ali \"archived_sessions\". Če želite preveriti nastavljeno mesto, v Terminalu zaženite \"printenv CODEX_HOME\". Če ne izpiše ničesar, poiščite mapo z imenom \".codex\".";
-"openCodeDataDirectoryOpenPanelMessage" = "Izberite podatkovno mapo opencode. Neposredno mora vsebovati \"opencode.db\". Če je ne najdete, v Terminalu zaženite \"opencode db path\" in nato izberite mapo, ki vsebuje prikazano datoteko.";
+"claudeDataDirectoryOpenPanelMessage" = "Izberite podatkovno mapo Claude Code. Običajno je to ~/.claude.\nNajdete jo z ukazom echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
+"codexDataDirectoryOpenPanelMessage" = "Izberite podatkovno mapo Codex. Običajno je to ~/.codex.\nNajdete jo z ukazom echo \"${CODEX_HOME:-$HOME/.codex}\".";
+"openCodeDataDirectoryOpenPanelMessage" = "Izberite podatkovno mapo opencode. Običajno je to ~/.local/share/opencode.\nNajdete jo z ukazom echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "chooseDirectoryPrompt" = "Izberi";
 "errorCannotAccessProviderDirectoryFormat" = "Do podatkovne mape %@ ni mogoče dostopati. Znova jo izberite.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Dostopa do podatkovne mape %@ ni bilo mogoče shraniti. Izberite jo znova.";

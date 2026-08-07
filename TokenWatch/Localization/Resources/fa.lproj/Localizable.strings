@@ -173,9 +173,9 @@
 "chartCostAccessibilityFormat" = "نمودار میله‌ای هزینه برای %@";
 "periodAxisValueName" = "دوره";
 "statusBarTokenUnit" = "Tokens";
-"claudeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Claude Code را انتخاب کنید. این پوشه باید مستقیماً شامل پوشهٔ \"projects\" باشد. برای بررسی یک مکان پیکربندی‌شده، در ترمینال \"printenv CLAUDE_CONFIG_DIR\" را اجرا کنید. اگر چیزی چاپ نکرد، پوشه‌ای با نام \".claude\" را جست‌وجو کنید.";
-"codexDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Codex را انتخاب کنید. این پوشه باید مستقیماً شامل پوشهٔ \"sessions\" یا \"archived_sessions\" باشد. برای بررسی یک مکان پیکربندی‌شده، در ترمینال \"printenv CODEX_HOME\" را اجرا کنید. اگر چیزی چاپ نکرد، پوشه‌ای با نام \".codex\" را جست‌وجو کنید.";
-"openCodeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ opencode را انتخاب کنید. این پوشه باید مستقیماً شامل \"opencode.db\" باشد. اگر آن را پیدا نمی‌کنید، در ترمینال \"opencode db path\" را اجرا کنید و سپس پوشه‌ای را که فایل نمایش‌داده‌شده را دارد انتخاب کنید.";
+"claudeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Claude Code را انتخاب کنید؛ مسیر معمول آن ~/.claude است.\nمی‌توانید آن را با دستور echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" پیدا کنید.";
+"codexDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Codex را انتخاب کنید؛ مسیر معمول آن ~/.codex است.\nمی‌توانید آن را با دستور echo \"${CODEX_HOME:-$HOME/.codex}\" پیدا کنید.";
+"openCodeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ opencode را انتخاب کنید؛ مسیر معمول آن ~/.local/share/opencode است.\nمی‌توانید آن را با دستور echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" پیدا کنید.";
 "chooseDirectoryPrompt" = "انتخاب";
 "errorCannotAccessProviderDirectoryFormat" = "دسترسی به پوشهٔ دادهٔ %@ ممکن نیست. لطفاً دوباره آن را انتخاب کنید.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ذخیرهٔ دسترسی به پوشهٔ دادهٔ %@ ممکن نشد. لطفاً دوباره انتخاب کنید.";

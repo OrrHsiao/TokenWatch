@@ -29,20 +29,19 @@ struct ProviderRegistryTests {
         }) == expected)
     }
 
-    @Test("provider 面板文案互相独立且不含预设目录")
-    func openPanelMessagesAreProviderSpecificAndAvoidPresetDirectorySemantics() {
+    @Test("provider 面板文案互相独立且不含绝对用户路径")
+    func openPanelMessagesAreProviderSpecificAndAvoidAbsoluteUserPaths() {
         let messages = ProviderRegistry.allProviders.map {
             AppStrings.text($0.openPanelMessageKey, language: .en)
         }
 
         #expect(Set(messages) == [
-            "Choose the Claude Code data folder. It must directly contain the \"projects\" folder. To check a configured location, run \"printenv CLAUDE_CONFIG_DIR\" in Terminal. If it prints nothing, look for a folder named \".claude\".",
-            "Choose the Codex data folder. It must directly contain either the \"sessions\" or \"archived_sessions\" folder. To check a configured location, run \"printenv CODEX_HOME\" in Terminal. If it prints nothing, look for a folder named \".codex\".",
-            "Choose the opencode data folder. It must directly contain \"opencode.db\". If you cannot find it, run \"opencode db path\" in Terminal, then choose the folder that contains the displayed file.",
+            "Choose the Claude Code data folder; it is usually ~/.claude.\nRun echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" to find it.",
+            "Choose the Codex data folder; it is usually ~/.codex.\nRun echo \"${CODEX_HOME:-$HOME/.codex}\" to find it.",
+            "Choose the opencode data folder; it is usually ~/.local/share/opencode.\nRun echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" to find it.",
         ])
         #expect(messages.allSatisfy {
             !$0.localizedCaseInsensitiveContains("home folder")
-                && !$0.contains("~/")
                 && !$0.contains("/Users/")
         })
     }

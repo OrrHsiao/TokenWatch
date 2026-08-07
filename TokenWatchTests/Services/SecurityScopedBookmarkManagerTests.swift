@@ -27,15 +27,15 @@ struct SecurityScopedBookmarkManagerTests {
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: ClaudeProvider(),
             language: .en
-        ).message == "Choose the Claude Code data folder. It must directly contain the \"projects\" folder. To check a configured location, run \"printenv CLAUDE_CONFIG_DIR\" in Terminal. If it prints nothing, look for a folder named \".claude\".")
+        ).message == "Choose the Claude Code data folder; it is usually ~/.claude.\nRun echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" to find it.")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: CodexProvider(),
             language: .en
-        ).message == "Choose the Codex data folder. It must directly contain either the \"sessions\" or \"archived_sessions\" folder. To check a configured location, run \"printenv CODEX_HOME\" in Terminal. If it prints nothing, look for a folder named \".codex\".")
+        ).message == "Choose the Codex data folder; it is usually ~/.codex.\nRun echo \"${CODEX_HOME:-$HOME/.codex}\" to find it.")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: OpenCodeProvider(),
             language: .en
-        ).message == "Choose the opencode data folder. It must directly contain \"opencode.db\". If you cannot find it, run \"opencode db path\" in Terminal, then choose the folder that contains the displayed file.")
+        ).message == "Choose the opencode data folder; it is usually ~/.local/share/opencode.\nRun echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" to find it.")
         #expect(SecurityScopedBookmarkManager.openPanelCopy(
             for: ClaudeProvider(),
             language: .en
@@ -121,7 +121,7 @@ struct SecurityScopedBookmarkManagerTests {
         )
 
         #expect(panel.directoryURL == FileManager.default.temporaryDirectory)
-        #expect(panel.message == "Choose the Codex data folder. It must directly contain either the \"sessions\" or \"archived_sessions\" folder. To check a configured location, run \"printenv CODEX_HOME\" in Terminal. If it prints nothing, look for a folder named \".codex\".")
+        #expect(panel.message == "Choose the Codex data folder; it is usually ~/.codex.\nRun echo \"${CODEX_HOME:-$HOME/.codex}\" to find it.")
         #expect(panel.prompt == "Choose")
         #expect(panel.canChooseDirectories)
         #expect(!panel.canChooseFiles)
