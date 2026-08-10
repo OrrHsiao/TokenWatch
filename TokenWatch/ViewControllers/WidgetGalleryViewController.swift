@@ -816,29 +816,49 @@ enum WidgetGallerySampleSnapshotFactory {
     ) -> WidgetUsageSnapshot {
         let cellCount = WidgetChartVisualStyle.heatmapColumns
             * WidgetChartVisualStyle.heatmapRows
-        let cells = (0..<cellCount)
-            .map { index in
-                let cellDate = calendar.date(
-                    byAdding: .day,
-                    value: index - (cellCount - 1),
-                    to: now
-                ) ?? now
-                let intensity = sampleHeatmapIntensity(
-                    for: cellDate,
-                    calendar: calendar
+        let recentSamples = [
+            80_000,
+            100_000,
+            120_000,
+            90_000,
+            110_000,
+            100_000,
+            100_000,
+            140_000,
+        ]
+        let sampleDays = (0..<cellCount).map { index in
+            let cellDate = calendar.date(
+                byAdding: .day,
+                value: index - (cellCount - 1),
+                to: now
+            ) ?? now
+            let fallbackIntensity = sampleHeatmapIntensity(
+                for: cellDate,
+                calendar: calendar
+            )
+            let recentIndex = index - (cellCount - recentSamples.count)
+            let tokens = recentSamples.indices.contains(recentIndex)
+                ? recentSamples[recentIndex]
+                : fallbackIntensity * 100_000
+            return (date: cellDate, tokens: tokens)
+        }
+        let maximumSampleTokens = sampleDays.map(\.tokens).max() ?? 0
+        let cells = sampleDays.map { sample in
+            WidgetHeatmapCell(
+                dateKey: dayKey(sample.date, calendar: calendar),
+                totalTokens: sample.tokens,
+                intensity: sampleHeatmapIntensity(
+                    forTotalTokens: sample.tokens,
+                    maximumTokens: maximumSampleTokens
+                ),
+                isPlaceholder: false,
+                weekdayLabel: weekdayLabel(
+                    for: sample.date,
+                    calendar: calendar,
+                    language: language
                 )
-                return WidgetHeatmapCell(
-                    dateKey: dayKey(cellDate, calendar: calendar),
-                    totalTokens: intensity * 100_000,
-                    intensity: intensity,
-                    isPlaceholder: false,
-                    weekdayLabel: weekdayLabel(
-                        for: cellDate,
-                        calendar: calendar,
-                        language: language
-                    )
-                )
-            }
+            )
+        }
         let currentHour = calendar.component(.hour, from: now)
         let points = (0...23).map { hour in
             let total = max(0, 18 - abs(14 - hour) * 2) * 100_000
@@ -861,7 +881,7 @@ enum WidgetGallerySampleSnapshotFactory {
             generatedAt: now,
             localDayKey: localDayKey,
             localizedText: WidgetLocalizedText(
-                heatmapTitle: AppStrings.text(.widgetHeatmapTitle, language: language),
+                heatmapTitle: AppStrings.text(.heatmapRecent22Weeks, language: language),
                 todayUsageTitle: AppStrings.text(.widgetTodayUsageTitle, language: language),
                 datedUsageTitle: String(
                     format: AppStrings.text(.widgetDatedUsageTitleFormat, language: language),
@@ -938,6 +958,23 @@ enum WidgetGallerySampleSnapshotFactory {
         case ..<90: return 3
         default: return WidgetChartVisualStyle.heatmapMaximumIntensity
         }
+    }
+
+    /// Mirrors the production heatmap's proportional four-band intensity calculation.
+    private static func sampleHeatmapIntensity(
+        forTotalTokens totalTokens: Int,
+        maximumTokens: Int
+    ) -> Int {
+        guard totalTokens > 0, maximumTokens > 0 else { return 0 }
+        let scaled = Int(ceil(
+            Double(totalTokens)
+                / Double(maximumTokens)
+                * Double(WidgetChartVisualStyle.heatmapMaximumIntensity)
+        ))
+        return max(1, min(
+            WidgetChartVisualStyle.heatmapMaximumIntensity,
+            scaled
+        ))
     }
 
     private static func makeMonthlyBudget(
@@ -1052,17 +1089,51 @@ private struct WidgetGalleryPreviewHeader: View {
     }
 }
 
+private struct WidgetGalleryMetricItem {
+    let symbolName: String
+    let text: String
+}
+
+private struct WidgetGalleryMetricStrip: View {
+    let items: [WidgetGalleryMetricItem]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(items.indices, id: \.self) { index in
+                if index > 0 {
+                    Divider()
+                        .frame(height: 10)
+                }
+                HStack(spacing: 3) {
+                    Image(systemName: items[index].symbolName)
+                        .accessibilityHidden(true)
+                    Text(items[index].text)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+    }
+}
+
 private struct WidgetGalleryHeatmapPreview: View {
     let presentation: WidgetHeatmapPresentation
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             WidgetGalleryPreviewHeader(
                 title: presentation.title,
                 subtitle: presentation.subtitle,
                 total: presentation.totalText
             )
+            if presentation.message == nil {
+                WidgetGalleryMetricStrip(items: metricItems)
+            }
             ZStack {
                 GeometryReader { proxy in
                     let side = CGFloat(WidgetChartVisualStyle.heatmapTileSide(
@@ -1096,6 +1167,23 @@ private struct WidgetGalleryHeatmapPreview: View {
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 
+    private var metricItems: [WidgetGalleryMetricItem] {
+        var items: [WidgetGalleryMetricItem] = []
+        if let dailyAverageText = presentation.dailyAverageText {
+            items.append(WidgetGalleryMetricItem(
+                symbolName: "calendar",
+                text: dailyAverageText
+            ))
+        }
+        if let peakText = presentation.peakText {
+            items.append(WidgetGalleryMetricItem(
+                symbolName: "arrow.up.to.line",
+                text: peakText
+            ))
+        }
+        return items
+    }
+
     private func color(for cell: WidgetHeatmapPresentationCell) -> Color {
         guard cell.isVisible else { return .clear }
         let rgba = WidgetChartVisualStyle.heatmapRGBA(
@@ -1118,12 +1206,15 @@ private struct WidgetGalleryHourlyLinePreview: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             WidgetGalleryPreviewHeader(
                 title: presentation.title,
                 subtitle: nil,
                 total: presentation.totalText
             )
+            if presentation.message == nil {
+                WidgetGalleryMetricStrip(items: metricItems)
+            }
             Chart {
                 ForEach(presentation.points) { point in
                     AreaMark(
@@ -1187,6 +1278,23 @@ private struct WidgetGalleryHourlyLinePreview: View {
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 
+    private var metricItems: [WidgetGalleryMetricItem] {
+        var items: [WidgetGalleryMetricItem] = []
+        if let currentHourText = presentation.currentHourText {
+            items.append(WidgetGalleryMetricItem(
+                symbolName: "clock",
+                text: currentHourText
+            ))
+        }
+        if let peakHourText = presentation.peakHourText {
+            items.append(WidgetGalleryMetricItem(
+                symbolName: "arrow.up.to.line",
+                text: peakHourText
+            ))
+        }
+        return items
+    }
+
     private var areaGradient: LinearGradient {
         let rgba = WidgetChartVisualStyle.heatmapRGBA(
             intensity: WidgetChartVisualStyle.heatmapMaximumIntensity,
@@ -1222,24 +1330,37 @@ private struct WidgetGalleryWeeklySummaryPreview: View {
     let presentation: WidgetWeeklySummaryPresentation
     let language: AppLanguage
     let isCompact: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: isCompact ? 4 : 7) {
+        VStack(alignment: .leading, spacing: isCompact ? 5 : 6) {
             if isCompact {
-                Text(presentation.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text(presentation.totalText)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(presentation.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if let subtitle = presentation.subtitle {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Text(presentation.totalText)
+                        .font(.system(.title, design: .rounded, weight: .bold))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
             } else {
                 WidgetGalleryPreviewHeader(
                     title: presentation.title,
                     subtitle: presentation.subtitle,
                     total: presentation.totalText
                 )
+            }
+
+            if presentation.message == nil {
+                WidgetGalleryMetricStrip(items: metricItems)
             }
 
             if let message = presentation.message {
@@ -1256,6 +1377,23 @@ private struct WidgetGalleryWeeklySummaryPreview: View {
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 
+    private var metricItems: [WidgetGalleryMetricItem] {
+        var items: [WidgetGalleryMetricItem] = []
+        if let dailyAverageText = presentation.dailyAverageText {
+            items.append(WidgetGalleryMetricItem(
+                symbolName: "calendar",
+                text: dailyAverageText
+            ))
+        }
+        if let peakText = presentation.peakText {
+            items.append(WidgetGalleryMetricItem(
+                symbolName: "arrow.up.to.line",
+                text: peakText
+            ))
+        }
+        return isCompact ? Array(items.prefix(1)) : items
+    }
+
     @ViewBuilder
     private var weeklyChart: some View {
         if isCompact {
@@ -1264,14 +1402,17 @@ private struct WidgetGalleryWeeklySummaryPreview: View {
         } else {
             baseChart
                 .chartXAxis {
-                    AxisMarks(values: presentation.points.map(\.position)) { value in
-                        AxisValueLabel {
+                    AxisMarks(
+                        position: .bottom,
+                        values: presentation.points.map(\.position)
+                    ) { value in
+                        AxisValueLabel(verticalSpacing: 3) {
                             if let position = value.as(Int.self),
                                let point = presentation.points.first(
                                    where: { $0.position == position }
                                ) {
                                 Text(point.dayLabel)
-                                    .font(.system(size: 9))
+                                    .font(.caption2)
                                     .fontWeight(
                                         point.isCurrentDay ? .semibold : .regular
                                     )
@@ -1288,24 +1429,36 @@ private struct WidgetGalleryWeeklySummaryPreview: View {
     }
 
     private var baseChart: some View {
-        Chart(presentation.points) { point in
-            BarMark(
-                x: .value(
-                    AppStrings.text(.dashboardRangeDay, language: language),
-                    point.position
-                ),
-                y: .value(
-                    AppStrings.text(.recentDetailsTokens, language: language),
-                    point.totalTokens
-                ),
-                width: .fixed(isCompact ? 10 : 14)
-            )
-            .foregroundStyle(
-                point.isCurrentDay
-                    ? WidgetGalleryMetricPalette.usage
-                    : WidgetGalleryMetricPalette.usage.opacity(0.7)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 2))
+        Chart {
+            if let averageY = presentation.averageY, averageY > 0 {
+                RuleMark(y: .value(
+                    presentation.dailyAverageText ?? "",
+                    averageY
+                ))
+                .foregroundStyle(.secondary.opacity(0.55))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            }
+            ForEach(presentation.points) { point in
+                BarMark(
+                    x: .value(
+                        AppStrings.text(.dashboardRangeDay, language: language),
+                        point.position
+                    ),
+                    y: .value(
+                        AppStrings.text(.recentDetailsTokens, language: language),
+                        point.totalTokens
+                    ),
+                    width: .fixed(isCompact ? 9 : 13)
+                )
+                .foregroundStyle(
+                    point.isCurrentDay
+                        ? WidgetGalleryMetricPalette.usage
+                        : WidgetGalleryMetricPalette.usage.opacity(
+                            colorScheme == .dark ? 0.58 : 0.72
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 2))
+            }
         }
         .chartLegend(.hidden)
         .chartXScale(domain: -0.5...6.5)
@@ -1320,65 +1473,86 @@ private struct WidgetGalleryMonthlyBudgetPreview: View {
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            WidgetGalleryPreviewHeader(
-                title: presentation.title,
-                subtitle: presentation.subtitle,
-                total: presentation.spentText
-            )
+        VStack(
+            alignment: .leading,
+            spacing: presentation.isForecastOverBudget ? 5 : 7
+        ) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(presentation.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if let progressText = presentation.progressText {
+                    Text(progressText)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+            }
 
             if let budgetText = presentation.budgetText,
                let progress = presentation.progress {
-                Text(presentation.spentText)
-                    .font(.system(.title2, design: .rounded, weight: .bold))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(2)
-
-                HStack(spacing: 6) {
-                    Text(budgetText)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(presentation.spentText)
+                        .font(.system(
+                            presentation.isForecastOverBudget ? .title2 : .title,
+                            design: .rounded,
+                            weight: .bold
+                        ))
                         .monospacedDigit()
-                    if let subtitle = presentation.subtitle {
-                        Text(verbatim: "·")
-                        Text(subtitle)
-                            .lineLimit(1)
-                    }
-                }
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(alignment: .center, spacing: 10) {
-                    progressBar(
-                        progress: progress,
-                        forecastProgress: presentation.forecastProgress
-                    )
-
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(verbatim: "/ \(budgetText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
                     if let forecastText = presentation.forecastText {
                         Text(forecastText)
                             .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundStyle(forecastColor)
-                            .monospacedDigit()
                             .lineLimit(2)
-                            .minimumScaleFactor(0.75)
                             .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 96, alignment: .trailing)
+                            .frame(maxWidth: 112, alignment: .trailing)
                     }
                 }
-                .frame(height: 24)
-                .layoutPriority(1)
+
+                progressBar(
+                    progress: progress,
+                    forecastProgress: presentation.forecastProgress,
+                    isCompact: presentation.isForecastOverBudget
+                )
+                if let subtitle = presentation.subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } else {
+                Text(presentation.spentText)
+                    .font(.system(.title, design: .rounded, weight: .bold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
 
             if let message = presentation.message {
+                if presentation.budgetText == nil,
+                   let subtitle = presentation.subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 Text(message)
                     .font(.caption2)
                     .foregroundStyle(
                         presentation.isForecastOverBudget ? .red : .secondary
                     )
-                    .lineLimit(2)
+                    .lineLimit(presentation.budgetText == nil ? 2 : 1)
             }
 
             Spacer(minLength: 0)
@@ -1393,7 +1567,8 @@ private struct WidgetGalleryMonthlyBudgetPreview: View {
 
     private func progressBar(
         progress: Double,
-        forecastProgress: Double?
+        forecastProgress: Double?,
+        isCompact: Bool
     ) -> some View {
         GeometryReader { proxy in
             let width = proxy.size.width * min(max(progress, 0), 1)
@@ -1431,7 +1606,7 @@ private struct WidgetGalleryMonthlyBudgetPreview: View {
                 }
             }
         }
-        .frame(height: 24)
+        .frame(height: isCompact ? 18 : 22)
     }
 }
 
@@ -1441,10 +1616,8 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
     let language: AppLanguage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(presentation.title)
-                .font(.headline)
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: showsChart ? 7 : 4) {
+            contextHeader
             if let message = presentation.message {
                 Spacer(minLength: 0)
                 Text(message)
@@ -1453,14 +1626,19 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
                     .frame(maxWidth: .infinity)
                 Spacer(minLength: 0)
             } else if showsChart {
-                HStack(alignment: .bottom, spacing: 12) {
+                HStack(alignment: .bottom, spacing: 16) {
                     VStack(alignment: .leading, spacing: 4) {
                         anomalyTotal
                         differenceIndicator
                         Spacer(minLength: 2)
                         baselineSummary
                     }
-                    .frame(width: 102, alignment: .leading)
+                    .frame(
+                        minWidth: 104,
+                        maxWidth: 120,
+                        maxHeight: .infinity,
+                        alignment: .leading
+                    )
 
                     anomalyChart
                 }
@@ -1475,12 +1653,49 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 
+    @ViewBuilder
+    private var contextHeader: some View {
+        if showsChart {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(presentation.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if let subtitle = presentation.subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(presentation.title)
+                        .font(.headline)
+                        .fixedSize(horizontal: true, vertical: false)
+                    if let subtitle = presentation.subtitle {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                Text(presentation.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+    }
+
     private var anomalyTotal: some View {
         Text(presentation.totalText)
             .font(.system(
-                size: showsChart ? 25 : 28,
-                weight: .bold,
-                design: .rounded
+                showsChart ? .title2 : .title,
+                design: .rounded,
+                weight: .bold
             ))
             .monospacedDigit()
             .lineLimit(1)
@@ -1489,8 +1704,7 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
 
     @ViewBuilder
     private var differenceIndicator: some View {
-        if let difference = presentation.differenceText
-            ?? presentation.multiplierText {
+        if let difference = presentation.differenceText {
             HStack(spacing: 4) {
                 Image(systemName: statusSymbol)
                     .font(.caption)
@@ -1502,10 +1716,24 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
             .foregroundStyle(statusColor)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+        } else if let multiplier = presentation.multiplierText {
+            HStack(spacing: 4) {
+                Image(systemName: statusSymbol)
+                    .font(.caption)
+                Text(multiplier)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+            }
+            .foregroundStyle(statusColor)
         } else {
-            Text(verbatim: "—")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Image(systemName: statusSymbol)
+                    .font(.caption)
+                Text(verbatim: "—")
+                    .font(.headline)
+            }
+            .foregroundStyle(statusColor)
         }
     }
 
@@ -1514,7 +1742,7 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
         if let baseline = presentation.baselineText {
             if let baselineTitle = presentation.baselineTitle {
                 Text(baselineTitle)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -1523,6 +1751,7 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
                 .fontWeight(.semibold)
                 .monospacedDigit()
                 .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
     }
 
@@ -1577,9 +1806,7 @@ private struct WidgetGalleryTodayAnomalyPreview: View {
         if presentation.isElevated {
             return .red
         }
-        return presentation.differenceText?.hasPrefix("-") == true
-            ? .green
-            : WidgetGalleryMetricPalette.usage
+        return WidgetGalleryMetricPalette.usage
     }
 
     private var statusSymbol: String {
@@ -1611,6 +1838,7 @@ private struct WidgetGalleryProjectFocusPreview: View {
             primaryName: presentation.projectName,
             secondaryName: nil,
             total: presentation.totalText,
+            windowTotal: presentation.windowTotalText,
             shareTitle: presentation.shareTitle,
             share: presentation.shareText,
             progress: presentation.progress,
@@ -1631,6 +1859,7 @@ private struct WidgetGalleryModelFocusPreview: View {
             primaryName: presentation.modelName,
             secondaryName: presentation.providerName,
             total: presentation.totalText,
+            windowTotal: presentation.windowTotalText,
             shareTitle: presentation.shareTitle,
             share: presentation.shareText,
             progress: presentation.progress,
@@ -1647,6 +1876,7 @@ private struct WidgetGalleryFocusPreview: View {
     let primaryName: String?
     let secondaryName: String?
     let total: String
+    let windowTotal: String?
     let shareTitle: String?
     let share: String?
     let progress: Double
@@ -1655,29 +1885,42 @@ private struct WidgetGalleryFocusPreview: View {
     let accessibilityLabel: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .top, spacing: 6) {
                 Text(title)
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(total)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                VStack(alignment: .trailing, spacing: 0) {
+                    if let windowTotal {
+                        Text(windowTotal)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
             if let primaryName {
-                Text(primaryName)
-                    .font(.system(.title2, design: .rounded, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                if let secondaryName {
-                    Text(secondaryName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(primaryName)
+                        .font(.system(.title2, design: .rounded, weight: .bold))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Spacer(minLength: 4)
+                    Text(total)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 focusShareSummary
                 GeometryReader { proxy in
@@ -1707,8 +1950,8 @@ private struct WidgetGalleryFocusPreview: View {
     private var focusShareSummary: some View {
         if let share {
             HStack(spacing: 4) {
-                if let subtitle {
-                    Text(subtitle)
+                if let secondaryName {
+                    Text(secondaryName)
                         .lineLimit(1)
                     Text(verbatim: "·")
                 }

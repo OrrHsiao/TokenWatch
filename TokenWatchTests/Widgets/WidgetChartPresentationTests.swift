@@ -16,10 +16,14 @@ struct WidgetChartPresentationTests {
         #expect(heatmap.cells[0].isVisible)
         #expect(!heatmap.cells[152].isVisible)
         #expect(!heatmap.cells[153].isVisible)
+        #expect(heatmap.dailyAverageText == "Daily Average 0")
+        #expect(heatmap.peakText == nil)
         #expect(hourly.message == nil)
         #expect(hourly.totalText == "0")
         #expect(hourly.points.count == 24)
         #expect(hourly.maximumY == 1)
+        #expect(hourly.currentHourText == "13 0")
+        #expect(hourly.peakHourText == nil)
     }
 
     @Test("not-ready uses neutral full shapes and no current marker")
@@ -72,6 +76,8 @@ struct WidgetChartPresentationTests {
         #expect(heatmap.message == nil)
         #expect(hourly.title == snapshot.localizedText.datedUsageTitle)
         #expect(hourly.currentPoint == nil)
+        #expect(hourly.currentHourText == nil)
+        #expect(hourly.peakHourText == "13 42")
         #expect(hourly.points.contains { $0.isCurrentHour })
     }
 
@@ -89,6 +95,8 @@ struct WidgetChartPresentationTests {
             #expect(heatmap.subtitle == nil)
             #expect(hourly.title == snapshot.localizedText.todayUsageTitle)
             #expect(hourly.currentPoint?.hour == 13)
+            #expect(hourly.currentHourText == "13 42")
+            #expect(hourly.peakHourText == nil)
         }
     }
 
@@ -100,11 +108,20 @@ struct WidgetChartPresentationTests {
 
         #expect(heatmap.accessibilityLabel.contains(heatmap.title))
         #expect(heatmap.accessibilityLabel.contains(heatmap.totalText))
+        if let dailyAverageText = heatmap.dailyAverageText {
+            #expect(heatmap.accessibilityLabel.contains(dailyAverageText))
+        }
+        if let peakText = heatmap.peakText {
+            #expect(heatmap.accessibilityLabel.contains(peakText))
+        }
         #expect(heatmap.accessibilityLabel.contains(
             snapshot.localizedText.updatedThroughTitle
         ))
         #expect(hourly.accessibilityLabel.contains(hourly.title))
         #expect(hourly.accessibilityLabel.contains(hourly.totalText))
+        if let currentHourText = hourly.currentHourText {
+            #expect(hourly.accessibilityLabel.contains(currentHourText))
+        }
         #expect(hourly.accessibilityLabel.contains(
             snapshot.localizedText.datedUsageTitle
         ))
@@ -138,6 +155,9 @@ struct WidgetChartPresentationTests {
         #expect(current.points.map(\.dayLabel) == ["D3", "D4", "D5", "D6", "D7", "D8", "D9"])
         #expect(current.totalText == "420")
         #expect(current.maximumY == 90)
+        #expect(current.dailyAverageText == "Daily Average 60")
+        #expect(current.peakText == "D9 90")
+        #expect(current.averageY == 60)
         #expect(current.points.filter(\.isCurrentDay).map(\.id) == ["source-order-9"])
         #expect(stale.subtitle == snapshot.localizedText.updatedThroughTitle)
         #expect(stale.points.allSatisfy { !$0.isCurrentDay })
@@ -183,6 +203,7 @@ struct WidgetChartPresentationTests {
         #expect(current.budgetText == "$100.00")
         #expect(current.forecastText == "Month-end forecast $120.00")
         #expect(current.progress == 0.8)
+        #expect(current.progressText == "80%")
         #expect(current.forecastProgress == 1)
         #expect(current.isForecastOverBudget)
         #expect(current.message == "Projected to exceed budget")
@@ -190,6 +211,7 @@ struct WidgetChartPresentationTests {
         #expect(setup.budgetText == nil)
         #expect(setup.forecastText == nil)
         #expect(setup.progress == nil)
+        #expect(setup.progressText == nil)
         #expect(setup.forecastProgress == nil)
         #expect(setup.message == "Set a monthly budget in TokenWatch")
         #expect(missing.title == fallback.monthlyBudgetTitle)
@@ -225,7 +247,7 @@ struct WidgetChartPresentationTests {
         )
 
         #expect(elevated.totalText == "250")
-        #expect(elevated.baselineTitle == fallback.weeklySummaryTitle)
+        #expect(elevated.baselineTitle == fallback.dailyAverageTitle)
         #expect(elevated.baselineText == "42")
         #expect(elevated.baselineValue == 42)
         #expect(elevated.multiplierText == "6.0×")
@@ -274,19 +296,28 @@ struct WidgetChartPresentationTests {
 
         #expect(project.projectName == "TokenWatch")
         #expect(project.totalText == "600")
-        #expect(project.shareTitle == nil)
+        #expect(project.windowTotalText == "1.0k")
+        #expect(project.shareTitle == "Share")
         #expect(project.shareText == "60%")
         #expect(project.progress == 0.6)
         #expect(project.message == nil)
+        #expect(project.accessibilityLabel.contains("Last 7 Days 1.0k"))
         #expect(staleProject.subtitle == snapshot.localizedText.updatedThroughTitle)
         #expect(model.providerName == "Codex")
         #expect(model.modelName == "gpt-5")
         #expect(model.totalText == "400")
-        #expect(model.shareTitle == nil)
+        #expect(model.windowTotalText == "1.0k")
+        #expect(model.shareTitle == "Share")
         #expect(model.shareText == "40%")
         #expect(model.progress == 0.4)
+        #expect(model.accessibilityLabel.contains("Last 7 Days 1.0k"))
         #expect(emptyModel.modelName == nil)
+        #expect(emptyModel.windowTotalText == nil)
         #expect(emptyModel.message == empty.localizedText.modelFocusNoDataMessage)
+        #expect(
+            emptyModel.accessibilityLabel
+                == "Primary Model, Last 7 Days, No model data"
+        )
     }
 
     private var fallback: WidgetLocalizedText {
@@ -302,7 +333,9 @@ struct WidgetChartPresentationTests {
             projectFocusTitle: "Project Usage",
             projectFocusNoDataMessage: "No project data",
             modelFocusTitle: "Primary Model",
-            modelFocusNoDataMessage: "No model data"
+            modelFocusNoDataMessage: "No model data",
+            dailyAverageTitle: "Daily Average",
+            shareTitle: "Share"
         )
     }
 
