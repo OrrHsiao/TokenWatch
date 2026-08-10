@@ -28,3 +28,34 @@ struct WidgetChartHeader: View {
         }
     }
 }
+
+struct WidgetMetricItem {
+    let symbolName: String
+    let text: String
+}
+
+struct WidgetMetricStrip: View {
+    let items: [WidgetMetricItem]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(items.indices, id: \.self) { index in
+                if index > 0 {
+                    Divider()
+                        .frame(height: 10)
+                }
+                HStack(spacing: 3) {
+                    Image(systemName: items[index].symbolName)
+                        .accessibilityHidden(true)
+                    Text(items[index].text)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+    }
+}

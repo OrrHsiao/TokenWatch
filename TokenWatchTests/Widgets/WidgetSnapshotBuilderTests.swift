@@ -150,7 +150,7 @@ struct WidgetSnapshotBuilderTests {
             language: .en
         ))
 
-        #expect(snapshot.localizedText.heatmapTitle == "Heatmap")
+        #expect(snapshot.localizedText.heatmapTitle == "Last 22 Weeks")
         #expect(snapshot.localizedText.todayUsageTitle == "Today's Usage")
         #expect(snapshot.localizedText.datedUsageTitle == "7/15 Usage")
         #expect(snapshot.localizedText.updatedThroughTitle == "Updated through 7/15")

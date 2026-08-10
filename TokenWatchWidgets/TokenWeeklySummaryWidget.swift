@@ -10,8 +10,11 @@ struct TokenWeeklySummaryWidgetView: View {
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.weeklySummary(for: entry.state)
 
-        VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 6) {
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 5 : 6) {
             header(presentation)
+            if presentation.message == nil {
+                WidgetMetricStrip(items: metricItems(presentation))
+            }
             ZStack {
                 chart(presentation)
                     .opacity(presentation.message == nil ? 1 : 0.35)
@@ -25,6 +28,25 @@ struct TokenWeeklySummaryWidgetView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private func metricItems(
+        _ presentation: WidgetWeeklySummaryPresentation
+    ) -> [WidgetMetricItem] {
+        var items: [WidgetMetricItem] = []
+        if let dailyAverageText = presentation.dailyAverageText {
+            items.append(WidgetMetricItem(
+                symbolName: "calendar",
+                text: dailyAverageText
+            ))
+        }
+        if let peakText = presentation.peakText {
+            items.append(WidgetMetricItem(
+                symbolName: "arrow.up.to.line",
+                text: peakText
+            ))
+        }
+        return family == .systemSmall ? Array(items.prefix(1)) : items
     }
 
     @ViewBuilder
@@ -56,24 +78,34 @@ struct TokenWeeklySummaryWidgetView: View {
     }
 
     private func chart(_ presentation: WidgetWeeklySummaryPresentation) -> some View {
-        Chart(presentation.points) { point in
-            BarMark(
-                x: .value(
-                    String(localized: "widget.weekly.axis.day"),
-                    point.position
-                ),
-                y: .value(
-                    String(localized: "widget.weekly.axis.tokens"),
-                    point.totalTokens
-                ),
-                width: .fixed(family == .systemSmall ? 9 : 13)
-            )
-            .foregroundStyle(
-                point.isCurrentDay
-                    ? usageBlue
-                    : usageBlue.opacity(colorScheme == .dark ? 0.58 : 0.72)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 2))
+        Chart {
+            if let averageY = presentation.averageY, averageY > 0 {
+                RuleMark(y: .value(
+                    presentation.dailyAverageText ?? "",
+                    averageY
+                ))
+                    .foregroundStyle(.secondary.opacity(0.55))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            }
+            ForEach(presentation.points) { point in
+                BarMark(
+                    x: .value(
+                        String(localized: "widget.weekly.axis.day"),
+                        point.position
+                    ),
+                    y: .value(
+                        String(localized: "widget.weekly.axis.tokens"),
+                        point.totalTokens
+                    ),
+                    width: .fixed(family == .systemSmall ? 9 : 13)
+                )
+                .foregroundStyle(
+                    point.isCurrentDay
+                        ? usageBlue
+                        : usageBlue.opacity(colorScheme == .dark ? 0.58 : 0.72)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 2))
+            }
         }
         .chartLegend(.hidden)
         .chartXScale(domain: -0.5...6.5)

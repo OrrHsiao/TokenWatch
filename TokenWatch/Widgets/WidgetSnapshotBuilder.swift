@@ -54,7 +54,7 @@ enum WidgetSnapshotBuilder {
             generatedAt: now,
             localDayKey: localDayKey,
             localizedText: WidgetLocalizedText(
-                heatmapTitle: AppStrings.text(.widgetHeatmapTitle, language: language),
+                heatmapTitle: AppStrings.text(.heatmapRecent22Weeks, language: language),
                 todayUsageTitle: AppStrings.text(.widgetTodayUsageTitle, language: language),
                 datedUsageTitle: String(
                     format: AppStrings.text(.widgetDatedUsageTitleFormat, language: language),

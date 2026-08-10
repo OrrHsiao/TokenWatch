@@ -8,32 +8,46 @@ struct TokenProjectFocusWidgetView: View {
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.projectFocus(for: entry.state)
 
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .top, spacing: 6) {
                 Text(presentation.title)
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(presentation.totalText)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                VStack(alignment: .trailing, spacing: 0) {
+                    if let windowTotalText = presentation.windowTotalText {
+                        Text(windowTotalText)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    if let subtitle = presentation.subtitle {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
 
             if let projectName = presentation.projectName {
-                Text(projectName)
-                    .font(.system(.title2, design: .rounded, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(projectName)
+                        .font(.system(.title2, design: .rounded, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Spacer(minLength: 4)
+                    Text(presentation.totalText)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
                 if let share = presentation.shareText {
                     HStack(spacing: 4) {
-                        if let subtitle = presentation.subtitle {
-                            Text(subtitle)
-                                .lineLimit(1)
-                            Text(verbatim: "·")
-                        }
                         if let shareTitle = presentation.shareTitle {
                             Text(shareTitle)
                         }
@@ -43,15 +57,11 @@ struct TokenProjectFocusWidgetView: View {
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 }
                 progressBar(progress: presentation.progress)
             } else if let message = presentation.message {
-                if let subtitle = presentation.subtitle {
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
                 Text(message)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
