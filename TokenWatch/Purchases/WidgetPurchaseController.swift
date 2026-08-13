@@ -96,6 +96,13 @@ final class WidgetPurchaseController {
         guard initialRefreshTask == nil else { return }
         initialRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            // 冷启动先用 App Group entitlement 缓存初始化解锁状态：
+            // 首次 StoreKit 查询 indeterminate 时，主 app 与 widget 扩展
+            // （读同一缓存的 fail-closed 副本）保持一致。
+            let cachedState = self.entitlementStore.load()
+            self.updateState { next in
+                next.isUnlocked = cachedState == .unlocked
+            }
             await self.refresh()
         }
     }
