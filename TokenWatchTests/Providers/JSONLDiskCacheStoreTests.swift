@@ -59,4 +59,38 @@ struct JSONLDiskCacheStoreTests {
         #expect(loaded.isEmpty)
         try? FileManager.default.removeItem(at: tempDir)
     }
+
+    @Test("不同 cacheVersion 的 store 互不读取对方 payload")
+    func versionMismatchDiscardsPayload() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("JSONLVersionTest-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let fileURL = tempDir.appendingPathComponent("versioned.json")
+
+        let metadata = JSONLFileMetadata(
+            identity: JSONLFileIdentity(deviceID: 1, fileID: 100),
+            size: 512,
+            modificationDate: Date(timeIntervalSince1970: 1000)
+        )
+        let entry = JSONLDiskCacheEntry(
+            key: "/path/to/file.jsonl",
+            scopeIdentifier: "standard",
+            metadata: metadata,
+            state: TestState(committedOffset: 384, candidates: ["item1"])
+        )
+
+        // 版本 2 写入
+        let v2Writer = SystemJSONLDiskCacheStore<TestState>(fileURL: fileURL, cacheVersion: 2)
+        v2Writer.saveAll(["/path/to/file.jsonl": entry])
+
+        // 版本 3 读取 → 版本不匹配，丢弃旧 payload
+        let v3Reader = SystemJSONLDiskCacheStore<TestState>(fileURL: fileURL, cacheVersion: 3)
+        #expect(v3Reader.loadAll().isEmpty)
+
+        // 版本 2 仍可读取自己的 payload
+        let v2Reader = SystemJSONLDiskCacheStore<TestState>(fileURL: fileURL, cacheVersion: 2)
+        #expect(v2Reader.loadAll().count == 1)
+
+        try? FileManager.default.removeItem(at: tempDir)
+    }
 }
