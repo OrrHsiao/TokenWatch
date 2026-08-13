@@ -1418,4 +1418,32 @@ struct ClaudeJSONLParserTests {
         )
         return (file, dir, { try? FileManager.default.removeItem(at: dir) })
     }
+
+    @Test("sourceRevision 组件以 parser 语义版本开头，解析规则变化可区分新旧解析")
+    func sourceRevisionComponentPrefixesParserSemanticsVersion() {
+        let state = ClaudeJSONLParser.ClaudeFileState(
+            metadata: JSONLFileMetadata(
+                identity: nil,
+                size: 200,
+                modificationDate: Date(timeIntervalSince1970: 1_000)
+            ),
+            committedOffset: 100,
+            stableCandidates: [],
+            provisionalTail: Data(),
+            provisionalCandidates: [],
+            continuityAnchor: JSONLContinuityAnchor(
+                offset: 40,
+                bytes: Data([0x01, 0x02, 0x03])
+            ),
+            checkpointAtCommittedOffset: StatelessJSONLCheckpoint()
+        )
+
+        let component = ClaudeJSONLParser.sourceRevisionComponent(for: state)
+
+        var expectedPrefix = ClaudeJSONLParser.parserSemanticsVersion.bigEndian
+        let prefix = withUnsafeBytes(of: &expectedPrefix) { Data($0) }
+        // 布局 = 语义版本(8) + committedOffset(8) + anchor.offset(8) + anchor.bytes
+        #expect(component.prefix(8) == prefix)
+        #expect(component.count == 24 + state.continuityAnchor.bytes.count)
+    }
 }
