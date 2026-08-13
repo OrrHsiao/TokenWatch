@@ -968,6 +968,67 @@ struct CodexRolloutParserTests {
         #expect(coldParser.debugContinuityAnchor(for: fixture.file.url) != nil)
     }
 
+    @Test("Codex 仅复用显式兼容的磁盘缓存版本")
+    func coldStartReusesOnlyCompatibleDiskCacheVersions() throws {
+        let fixture = try makeRolloutFixture(lines: [
+            sessionMeta,
+            turnContextGpt5,
+            normalEvent,
+        ])
+        defer { fixture.cleanup() }
+
+        for persistedVersion in [2, 3] {
+            let cacheURL = fixture.file.url.deletingLastPathComponent()
+                .appendingPathComponent(
+                    "codex-v\(persistedVersion)-cache.json"
+                )
+            let persistedParser = CodexRolloutParser(
+                fileReader: RecordingJSONLFileReader(),
+                diskStore: SystemJSONLDiskCacheStore(
+                    fileURL: cacheURL,
+                    cacheVersion: persistedVersion
+                )
+            )
+            #expect(try persistedParser.parseAllFiles([fixture.file]).count == 1)
+
+            let compatibleReader = RecordingJSONLFileReader()
+            let currentParser = CodexRolloutParser(
+                fileReader: compatibleReader,
+                diskStore: SystemJSONLDiskCacheStore(
+                    fileURL: cacheURL,
+                    cacheVersion: CodexProvider.currentDiskCacheVersion,
+                    compatibleCacheVersions:
+                        CodexProvider.compatibleDiskCacheVersions
+                )
+            )
+            #expect(try currentParser.parseAllFiles([fixture.file]).count == 1)
+            #expect(compatibleReader.totalBytesRead == 0)
+        }
+
+        let incompatibleCacheURL = fixture.file.url.deletingLastPathComponent()
+            .appendingPathComponent("codex-v4-cache.json")
+        let futureParser = CodexRolloutParser(
+            fileReader: RecordingJSONLFileReader(),
+            diskStore: SystemJSONLDiskCacheStore(
+                fileURL: incompatibleCacheURL,
+                cacheVersion: 4
+            )
+        )
+        #expect(try futureParser.parseAllFiles([fixture.file]).count == 1)
+        let incompatibleReader = RecordingJSONLFileReader()
+        let currentParser = CodexRolloutParser(
+            fileReader: incompatibleReader,
+            diskStore: SystemJSONLDiskCacheStore(
+                fileURL: incompatibleCacheURL,
+                cacheVersion: CodexProvider.currentDiskCacheVersion,
+                compatibleCacheVersions:
+                    CodexProvider.compatibleDiskCacheVersions
+            )
+        )
+        #expect(try currentParser.parseAllFiles([fixture.file]).count == 1)
+        #expect(incompatibleReader.totalBytesRead > 0)
+    }
+
     @Test("已成功 rollout 随后 seek 失败时复用 last-good 并按 scanner prune")
     func seekFailureReusesLastGoodUntilScannerOmitsRollout() throws {
         let (file, cleanup) = try makeJsonlFile([sessionMeta, turnContextGpt5, normalEvent])
