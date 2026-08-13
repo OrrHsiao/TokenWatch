@@ -505,6 +505,25 @@ struct WidgetPurchaseControllerTests {
         controller.stop()
     }
 
+    @Test("冷启动从 entitlement 缓存恢复已解锁状态")
+    func coldStartRestoresUnlockedFromCache() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
+        client.indeterminateEntitlement = true
+        let store = RecordingWidgetEntitlementStore(state: .unlocked)
+        let controller = makeController(client: client, store: store)
+
+        controller.start()
+        let didRefresh = await eventually {
+            client.entitlementProductIDs.count >= 1
+        }
+        #expect(didRefresh)
+        // 首次查询 indeterminate：保留从缓存恢复的解锁状态，
+        // 主 app 与 widget 扩展（读同一 App Group 缓存）保持一致
+        #expect(controller.state.isUnlocked)
+        #expect(store.savedStates.isEmpty)
+        controller.stop()
+    }
+
     @Test("indeterminate 后台调和不应让 UI 停留在 busy 状态")
     func indeterminateReconciliationRestoresIdleUI() async {
         let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
