@@ -3,6 +3,10 @@ import Foundation
 /// Codex CLI / Codex Desktop 数据源
 /// 装配 CodexRolloutScanner + CodexRolloutParser，适配 UsageProvider 协议
 struct CodexProvider: UsageProvider {
+    /// Codex v2/v3 期间解析状态未变化，因此可复用 v2 并继续以 v3 写回。
+    static let currentDiskCacheVersion = 3
+    static let compatibleDiskCacheVersions: Set<Int> = [2]
+
     let id: ProviderID = .codex
     let displayName = "Codex"
     let bookmarkKey = "CodexDataDirectoryBookmark"
@@ -18,7 +22,13 @@ struct CodexProvider: UsageProvider {
 
     init(
         scanner: CodexRolloutScanner = CodexRolloutScanner(),
-        parser: CodexRolloutParser = CodexRolloutParser(diskStore: SystemJSONLDiskCacheStore(namespace: "codex")),
+        parser: CodexRolloutParser = CodexRolloutParser(
+            diskStore: SystemJSONLDiskCacheStore(
+                namespace: "codex",
+                cacheVersion: CodexProvider.currentDiskCacheVersion,
+                compatibleCacheVersions: CodexProvider.compatibleDiskCacheVersions
+            )
+        ),
         serviceTierResolver: CodexServiceTierResolver = CodexServiceTierResolver()
     ) {
         self.scanner = scanner

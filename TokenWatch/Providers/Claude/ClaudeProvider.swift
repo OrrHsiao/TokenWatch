@@ -3,6 +3,10 @@ import Foundation
 /// Claude Code 数据源
 /// 装配现有 ClaudeJSONLScanner + ClaudeJSONLParser，适配 UsageProvider 协议
 struct ClaudeProvider: UsageProvider {
+    /// Claude v2 可能已缓存缺行状态，因此 v3 不兼容任何旧版本。
+    static let currentDiskCacheVersion = 3
+    static let compatibleDiskCacheVersions: Set<Int> = []
+
     let id: ProviderID = .claude
     let displayName = "Claude Code"
     let bookmarkKey = "ClaudeDataDirectoryBookmark"
@@ -11,9 +15,12 @@ struct ClaudeProvider: UsageProvider {
     let hasReasoningDimension = false
 
     private let scanner = ClaudeJSONLScanner()
-    // cacheVersion 3：speed 白名单放宽前旧缓存中的 candidates 已丢行，不可复用。
     private let parser = ClaudeJSONLParser(
-        diskStore: SystemJSONLDiskCacheStore(namespace: "claude", cacheVersion: 3)
+        diskStore: SystemJSONLDiskCacheStore(
+            namespace: "claude",
+            cacheVersion: ClaudeProvider.currentDiskCacheVersion,
+            compatibleCacheVersions: ClaudeProvider.compatibleDiskCacheVersions
+        )
     )
 
     /// 扫描 Claude 数据根下所有 JSONL 文件并解析为统一条目
