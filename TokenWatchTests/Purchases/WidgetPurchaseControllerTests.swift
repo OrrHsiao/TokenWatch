@@ -373,7 +373,7 @@ struct WidgetPurchaseControllerTests {
         #expect(controller.state.isUnlocked)
         #expect(controller.state.operation == .purchaseCompleted)
 
-        client.resumeSuspendedEntitlementCheck(with: false)
+        client.resumeSuspendedEntitlementCheck(with: .notEntitled)
         await staleRefresh.value
 
         #expect(controller.state.isUnlocked)
@@ -394,6 +394,53 @@ struct WidgetPurchaseControllerTests {
         await unlocked.refresh()
         #expect(unlocked.state.product == WidgetPurchaseReviewFixtures.product)
         #expect(unlocked.state.isUnlocked)
+    }
+
+    @Test("indeterminate 权益查询保留现状不 finish，延迟重查收敛后交付")
+    func indeterminateEntitlementRetainsStateAndRechecks() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
+        let store = RecordingWidgetEntitlementStore(state: .locked)
+        let reloader = RecordingWidgetPurchaseTimelineReloader()
+        let controller = makeController(
+            client: client,
+            store: store,
+            reloader: reloader,
+            entitlementRecheckDelay: .milliseconds(10)
+        )
+
+        controller.start()
+        let didStart = await eventually {
+            client.transactionUpdatesCallCount == 1
+                && client.loadedProductIDs.count == 1
+                && controller.state.operation == .idle
+        }
+        #expect(didStart)
+        // start 的 refresh 查询到 notEntitled，写入一次 locked
+        #expect(store.savedStates == [.locked])
+
+        client.indeterminateEntitlement = true
+        client.send(.verified(.init(
+            id: 200,
+            productID: WidgetPurchaseController.productID
+        )))
+        let didHandle = await eventually {
+            client.entitlementProductIDs.count >= 2
+        }
+        #expect(didHandle)
+        // 目标交易无法验证：保留交易不 finish、不覆盖 entitlement 缓存、不改变解锁状态
+        #expect(client.finishedTransactionIDs == [])
+        #expect(store.savedStates == [.locked])
+        #expect(!controller.state.isUnlocked)
+
+        // StoreKit 恢复可验证后，延迟重查收敛并完成交付
+        client.indeterminateEntitlement = false
+        client.currentEntitlement = true
+        let didConverge = await eventually {
+            controller.state.isUnlocked && client.finishedTransactionIDs == [200]
+        }
+        #expect(didConverge)
+        #expect(store.savedStates == [.locked, .unlocked])
+        controller.stop()
     }
 
     private var product: WidgetPurchaseProduct {
@@ -420,12 +467,14 @@ struct WidgetPurchaseControllerTests {
     private func makeController(
         client: FakeWidgetPurchaseClient,
         store: RecordingWidgetEntitlementStore? = nil,
-        reloader: RecordingWidgetPurchaseTimelineReloader? = nil
+        reloader: RecordingWidgetPurchaseTimelineReloader? = nil,
+        entitlementRecheckDelay: Duration = .seconds(3)
     ) -> WidgetPurchaseController {
         WidgetPurchaseController(
             client: client,
             entitlementStore: store ?? RecordingWidgetEntitlementStore(state: .locked),
-            timelineReloader: reloader ?? RecordingWidgetPurchaseTimelineReloader()
+            timelineReloader: reloader ?? RecordingWidgetPurchaseTimelineReloader(),
+            entitlementRecheckDelay: entitlementRecheckDelay
         )
     }
 
@@ -454,6 +503,7 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
     var purchaseError: InjectedWidgetPurchaseError?
     var syncError: InjectedWidgetPurchaseError?
     var suspendNextEntitlementCheck = false
+    var indeterminateEntitlement = false
     private(set) var loadedProductIDs: [String] = []
     private(set) var purchasedProductIDs: [String] = []
     private(set) weak var purchaseWindow: NSWindow?
@@ -461,7 +511,7 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
     private(set) var syncCallCount = 0
     private(set) var transactionUpdatesCallCount = 0
     private(set) var finishedTransactionIDs: [UInt64] = []
-    private var suspendedEntitlementContinuation: CheckedContinuation<Bool, Never>?
+    private var suspendedEntitlementContinuation: CheckedContinuation<WidgetEntitlementQueryResult, Never>?
 
     init(
         product: WidgetPurchaseProduct?,
@@ -499,7 +549,7 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
         }
     }
 
-    func hasVerifiedCurrentEntitlement(productID: String) async -> Bool {
+    func currentEntitlementStatus(for productID: String) async -> WidgetEntitlementQueryResult {
         entitlementProductIDs.append(productID)
         if suspendNextEntitlementCheck {
             suspendNextEntitlementCheck = false
@@ -507,14 +557,17 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
                 suspendedEntitlementContinuation = continuation
             }
         }
-        return currentEntitlement
+        if indeterminateEntitlement {
+            return .indeterminate
+        }
+        return currentEntitlement ? .entitled : .notEntitled
     }
 
     var hasSuspendedEntitlementCheck: Bool {
         suspendedEntitlementContinuation != nil
     }
 
-    func resumeSuspendedEntitlementCheck(with result: Bool) {
+    func resumeSuspendedEntitlementCheck(with result: WidgetEntitlementQueryResult) {
         let continuation = suspendedEntitlementContinuation
         suspendedEntitlementContinuation = nil
         continuation?.resume(returning: result)
