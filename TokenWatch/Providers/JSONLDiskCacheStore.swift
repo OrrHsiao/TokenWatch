@@ -26,7 +26,9 @@ protocol JSONLDiskCacheStoring<State>: Sendable {
 final class SystemJSONLDiskCacheStore<State: Codable & Sendable>: JSONLDiskCacheStoring, @unchecked Sendable {
     private let fileURL: URL
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "JSONLDiskCacheStore")
-    private let currentVersion = 2
+    // v3：Claude parser 不再白名单拒绝未知 speed（ClaudeBillingUsage），
+    // 旧缓存中已丢行的 candidates 不可继续复用，版本提升强制清除重建。
+    private let currentVersion = 3
 
     init(namespace: String) {
         let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil

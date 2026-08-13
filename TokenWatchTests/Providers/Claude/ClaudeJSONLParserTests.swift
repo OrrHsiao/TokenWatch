@@ -405,23 +405,23 @@ struct ClaudeJSONLParserTests {
         #expect(entries.map(\.messageId) == ["kept", "whitespace-null"])
     }
 
-    @Test("daily billing DTO 严格限制 token 和 speed，忽略无关字段")
+    @Test("daily billing DTO 严格限制 token，speed 非白名单值保留原值并退化为 standard 计价")
     func dailyBillingShapeIsStrictButNarrow() throws {
         let unrelatedGarbage = #"{"timestamp":"2026-06-13T12:00:00.000Z","message":{"id":"kept","model":"claude-sonnet-4-5","role":{"bad":true},"content":42,"usage":{"input_tokens":1,"output_tokens":1,"speed":"fast"}}}"#
         let standard = #"{"timestamp":"2026-06-13T12:00:01.000Z","message":{"id":"standard","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"speed":"standard"}}}"#
         let missingSpeed = #"{"timestamp":"2026-06-13T12:00:02.000Z","message":{"id":"missing-speed","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1}}}"#
         let negative = #"{"timestamp":"2026-06-13T12:00:03.000Z","message":{"id":"negative","model":"claude-sonnet-4-5","usage":{"input_tokens":-1,"output_tokens":1}}}"#
         let fractional = #"{"timestamp":"2026-06-13T12:00:04.000Z","message":{"id":"fractional","model":"claude-sonnet-4-5","usage":{"input_tokens":1.5,"output_tokens":1}}}"#
-        let badSpeed = #"{"timestamp":"2026-06-13T12:00:05.000Z","message":{"id":"speed","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"speed":"turbo"}}}"#
+        let unknownSpeed = #"{"timestamp":"2026-06-13T12:00:05.000Z","message":{"id":"unknown-speed","model":"claude-sonnet-4-5","usage":{"input_tokens":1,"output_tokens":1,"speed":"turbo"}}}"#
         let (file, root, cleanup) = try makeClaudeJSONL([
-            unrelatedGarbage, standard, missingSpeed, negative, fractional, badSpeed,
+            unrelatedGarbage, standard, missingSpeed, negative, fractional, unknownSpeed,
         ])
         defer { cleanup() }
 
         let entries = try ClaudeJSONLParser().parseJSONLFile(file, claudeDataRoot: root)
 
-        #expect(entries.map(\.messageId) == ["kept", "standard", "missing-speed"])
-        #expect(entries.map(\.usage.speed) == ["fast", "standard", ""])
+        #expect(entries.map(\.messageId) == ["kept", "standard", "missing-speed", "unknown-speed"])
+        #expect(entries.map(\.usage.speed) == ["fast", "standard", "", "turbo"])
     }
 
     @Test("daily timestamp 仅接受无小数或三位毫秒及 Z/offset")
