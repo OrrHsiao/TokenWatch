@@ -29,6 +29,16 @@ enum WidgetTransactionUpdate: Equatable, Sendable {
     case unverified(productID: String)
 }
 
+/// 权益查询的三态结论。
+/// `entitled` 与 `notEntitled` 是确定性结果；`indeterminate` 表示目标产品存在
+/// 交易但 StoreKit 暂时无法给出确定结论（如签名验证未完成），调用方必须
+/// 保留当前状态与未 finish 的交易，并通过延迟重查或下次启动的 updates 重投递收敛。
+enum WidgetEntitlementQueryResult: Equatable, Sendable {
+    case entitled
+    case notEntitled
+    case indeterminate
+}
+
 /// Minimal StoreKit seam used by `WidgetPurchaseController` and deterministic tests.
 @MainActor
 protocol WidgetPurchaseClient: AnyObject {
@@ -47,9 +57,10 @@ protocol WidgetPurchaseClient: AnyObject {
     /// Explicitly synchronizes the local transaction history with the App Store.
     func sync() async throws
 
-    /// Returns whether StoreKit currently exposes a verified entitlement for the product.
+    /// 查询目标产品的权益状态：确定性 entitled/notEntitled，
+    /// 或目标交易存在但验证状态未知时返回 indeterminate。
     /// - Parameter productID: The product whose non-consumable entitlement is queried.
-    func hasVerifiedCurrentEntitlement(productID: String) async -> Bool
+    func currentEntitlementStatus(for productID: String) async -> WidgetEntitlementQueryResult
 
     /// Creates a stream that forwards verified and unverified StoreKit transaction updates.
     func transactionUpdates() -> AsyncStream<WidgetTransactionUpdate>
@@ -122,14 +133,21 @@ final class StoreKitWidgetPurchaseClient: WidgetPurchaseClient {
         try await AppStore.sync()
     }
 
-    func hasVerifiedCurrentEntitlement(productID: String) async -> Bool {
+    func currentEntitlementStatus(for productID: String) async -> WidgetEntitlementQueryResult {
+        // 区分"确认无权益"与"目标交易无法验证"：只有目标产品的交易存在
+        // 且签名验证未完成时才返回 indeterminate，调用方不得把该状态误写成 locked。
+        var sawUnverifiedTarget = false
         for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            if transaction.productID == productID {
-                return true
+            switch result {
+            case .verified(let transaction) where transaction.productID == productID:
+                return .entitled
+            case .unverified(let transaction, _) where transaction.productID == productID:
+                sawUnverifiedTarget = true
+            default:
+                continue
             }
         }
-        return false
+        return sawUnverifiedTarget ? .indeterminate : .notEntitled
     }
 
     func transactionUpdates() -> AsyncStream<WidgetTransactionUpdate> {
