@@ -73,14 +73,10 @@ struct ClaudeBillingUsage: Decodable, Sendable {
             .cacheReadInputTokens,
             from: container
         )
+        // speed 不做白名单校验：未知值（如兼容端点的 "turbo"）保留原值，
+        // 计价层只对精确 "fast" 加倍（PricingEngine.multiplier），其余自然按 standard 计费。
+        // 严格拒绝会把同行 input/output/cache 全部计价字段一并丢失。
         speed = try container.decodeIfPresent(String.self, forKey: .speed)
-        if let speed, speed != "standard", speed != "fast" {
-            throw DecodingError.dataCorruptedError(
-                forKey: .speed,
-                in: container,
-                debugDescription: "Claude speed must be standard or fast"
-            )
-        }
         cacheCreation = try container.decodeIfPresent(
             ClaudeBillingCacheCreation.self,
             forKey: .cacheCreation
