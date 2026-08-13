@@ -11,7 +11,10 @@ struct ClaudeProvider: UsageProvider {
     let hasReasoningDimension = false
 
     private let scanner = ClaudeJSONLScanner()
-    private let parser = ClaudeJSONLParser(diskStore: SystemJSONLDiskCacheStore(namespace: "claude"))
+    // cacheVersion 3：speed 白名单放宽前旧缓存中的 candidates 已丢行，不可复用。
+    private let parser = ClaudeJSONLParser(
+        diskStore: SystemJSONLDiskCacheStore(namespace: "claude", cacheVersion: 3)
+    )
 
     /// 扫描 Claude 数据根下所有 JSONL 文件并解析为统一条目
     /// - Parameter dataRootURL: 已授权的 Claude 数据根
