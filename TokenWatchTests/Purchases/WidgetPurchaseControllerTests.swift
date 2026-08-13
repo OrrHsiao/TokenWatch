@@ -443,6 +443,115 @@ struct WidgetPurchaseControllerTests {
         controller.stop()
     }
 
+    @Test("过期重查结果不会覆盖更新的购买状态")
+    func staleRecheckCannotOverwriteNewerPurchase() async {
+        let transaction = WidgetPurchaseTransaction(
+            id: 300,
+            productID: WidgetPurchaseController.productID
+        )
+        let client = FakeWidgetPurchaseClient(
+            product: product,
+            currentEntitlement: false,
+            purchaseResult: .verified(transaction)
+        )
+        let store = RecordingWidgetEntitlementStore(state: .locked)
+        let controller = makeController(
+            client: client,
+            store: store,
+            entitlementRecheckDelay: .milliseconds(10)
+        )
+
+        controller.start()
+        let didStart = await eventually {
+            controller.state.operation == .idle
+        }
+        #expect(didStart)
+
+        // 触发 indeterminate → 后台重查循环启动
+        client.indeterminateEntitlement = true
+        client.send(.verified(.init(
+            id: 200,
+            productID: WidgetPurchaseController.productID
+        )))
+        let didHandle = await eventually {
+            client.entitlementProductIDs.count >= 2
+        }
+        #expect(didHandle)
+
+        // 挂起重查的下一轮查询，制造查询期间发生新操作的窗口
+        client.suspendNextEntitlementCheck = true
+        let didSuspend = await eventually {
+            client.hasSuspendedEntitlementCheck
+        }
+        #expect(didSuspend)
+
+        // 查询挂起期间用户完成 verified 购买并解锁
+        await controller.purchase(in: NSWindow())
+        #expect(controller.state.isUnlocked)
+        #expect(controller.state.operation == .purchaseCompleted)
+        #expect(store.savedStates.last == .unlocked)
+
+        // 旧重查查询返回过期的 notEntitled：不得覆盖解锁状态、不得写回 locked、
+        // 不得 finish 已由购买流程交付的交易之外的旧交易
+        client.indeterminateEntitlement = false
+        client.currentEntitlement = false
+        client.resumeSuspendedEntitlementCheck(with: .notEntitled)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(controller.state.isUnlocked)
+        #expect(controller.state.operation == .purchaseCompleted)
+        #expect(store.savedStates.last == .unlocked)
+        #expect(client.finishedTransactionIDs == [300])
+        controller.stop()
+    }
+
+    @Test("indeterminate 后台调和不应让 UI 停留在 busy 状态")
+    func indeterminateReconciliationRestoresIdleUI() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
+        let store = RecordingWidgetEntitlementStore(state: .locked)
+        let controller = makeController(client: client, store: store)
+
+        controller.start()
+        let didStart = await eventually {
+            // entitlement 查询计数保证 refresh 已完整执行（初始 state 即为 .idle）
+            client.entitlementProductIDs.count >= 1
+                && controller.state.operation == .idle
+        }
+        #expect(didStart)
+
+        // 挂起 restore 的权益查询，让 restore 停留在 .restoring（busy）状态
+        client.suspendNextEntitlementCheck = true
+        let restoreTask = Task { @MainActor in
+            await controller.restorePurchases()
+        }
+        let didSuspend = await eventually {
+            client.hasSuspendedEntitlementCheck
+        }
+        #expect(didSuspend)
+        #expect(controller.state.operation == .restoring)
+
+        // 期间 verified update 到达且查询 indeterminate：
+        // 后台调和不得让 UI 停留在 busy，必须恢复 .idle
+        client.indeterminateEntitlement = true
+        client.send(.verified(.init(
+            id: 200,
+            productID: WidgetPurchaseController.productID
+        )))
+        let didReconcile = await eventually {
+            controller.state.operation == .idle
+                && client.entitlementProductIDs.count >= 3
+        }
+        #expect(didReconcile)
+        #expect(!controller.state.isUnlocked)
+        #expect(client.finishedTransactionIDs == [])
+
+        // 释放被挂起的旧 restore：其 generation 已失效，静默返回
+        client.resumeSuspendedEntitlementCheck(with: .notEntitled)
+        await restoreTask.value
+        #expect(controller.state.operation == .idle)
+        controller.stop()
+    }
+
     private var product: WidgetPurchaseProduct {
         WidgetPurchaseProduct(
             id: WidgetPurchaseController.productID,

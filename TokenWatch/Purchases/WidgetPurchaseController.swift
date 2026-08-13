@@ -345,7 +345,10 @@ final class WidgetPurchaseController {
                 // 目标交易验证状态未知：保留交易不 finish、不覆盖 entitlement 缓存，
                 // 由延迟重查收敛；重查仍不确定时，未 finish 的交易会在下次启动
                 // 被 Transaction.updates 重新投递。
+                // beginOperation 已使并发中的前台操作失效，这里恢复空闲，
+                // 避免 purchase/restore 残留 busy 状态导致购买与恢复按钮永久禁用。
                 logger.warning("Widget entitlement query is indeterminate; retaining transaction for recheck")
+                setOperation(.idle)
                 scheduleEntitlementRecheck(transactionID: transaction.id)
             }
         case .verified:
@@ -365,12 +368,18 @@ final class WidgetPurchaseController {
         guard entitlementRecheckTask == nil else { return }
         entitlementRecheckTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { self.entitlementRecheckTask = nil }
             for _ in 0..<Self.maxEntitlementRechecks {
-                guard !Task.isCancelled else { break }
+                guard !Task.isCancelled else { return }
                 try? await Task.sleep(for: self.entitlementRecheckDelay)
-                guard !Task.isCancelled else { break }
+                guard !Task.isCancelled else { return }
 
+                // 查询前快照 operation generation：查询期间发生的购买、刷新或
+                // stop() 使本任务过期，返回结果不得覆盖更新的状态或 finish 旧交易。
+                let snapshotGeneration = self.operationGeneration
                 let status = await self.client.currentEntitlementStatus(for: Self.productID)
+                guard !Task.isCancelled else { return }
+                guard self.operationGeneration == snapshotGeneration else { return }
                 guard status != .indeterminate else { continue }
 
                 let generation = self.beginOperation()
@@ -389,10 +398,8 @@ final class WidgetPurchaseController {
                 }
                 await self.client.finish(transactionID: transactionID)
                 self.logger.info("Widget entitlement recheck converged; unlocked=\(isUnlocked)")
-                self.entitlementRecheckTask = nil
                 return
             }
-            self.entitlementRecheckTask = nil
             self.logger.warning("Widget entitlement recheck did not converge; waiting for next launch")
         }
     }
