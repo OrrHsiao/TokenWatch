@@ -57,6 +57,15 @@ final class OpenCodeSQLiteScanner: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "OpenCodeSQLiteScanner")
 
+    /// 锁冲突等待窗口(毫秒)。opencode 常驻写库时,checkpoint、独占锁等
+    /// 少数窗口会瞬时返回 SQLITE_BUSY;等待超过该窗口才失败,避免整轮
+    /// 扫描因瞬时锁冲突直接抛错。测试可注入更短窗口验证有界失败。
+    private let busyTimeoutMs: Int32
+
+    init(busyTimeoutMs: Int32 = 2000) {
+        self.busyTimeoutMs = busyTimeoutMs
+    }
+
     /// SQL 文本作为静态常量便于 Scanner 测试断言可见
     static let assistantMessageQuery = """
     SELECT m.id,
@@ -96,6 +105,7 @@ final class OpenCodeSQLiteScanner: Sendable {
             throw OpenCodeScannerError.openFailed(code: openCode, message: msg)
         }
         defer { sqlite3_close(database) }
+        sqlite3_busy_timeout(database, busyTimeoutMs)
 
         var stmt: OpaquePointer?
         let prepCode = sqlite3_prepare_v2(database, Self.assistantMessageQuery, -1, &stmt, nil)
