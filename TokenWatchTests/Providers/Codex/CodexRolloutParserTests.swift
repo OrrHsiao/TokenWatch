@@ -1006,12 +1006,12 @@ struct CodexRolloutParserTests {
         }
 
         let incompatibleCacheURL = fixture.file.url.deletingLastPathComponent()
-            .appendingPathComponent("codex-v4-cache.json")
+            .appendingPathComponent("codex-v5-cache.json")
         let futureParser = CodexRolloutParser(
             fileReader: RecordingJSONLFileReader(),
             diskStore: SystemJSONLDiskCacheStore(
                 fileURL: incompatibleCacheURL,
-                cacheVersion: 4
+                cacheVersion: 5
             )
         )
         #expect(try futureParser.parseAllFiles([fixture.file]).count == 1)

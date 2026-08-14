@@ -12,10 +12,136 @@ struct CodexEventDedupKey: Hashable, Sendable, Codable {
     let total: Int
 }
 
-/// 保留展示 entry 与上游原始计数，避免 per-file cache 丢失去重信息。
+/// Codex 增量缓存中的紧凑候选。
+///
+/// 不直接常驻 `ParsedUsageEntry`：该类型包含多个可由 session、timestamp 与
+/// token 计数重建的长字符串。真实数据量达到数万条时，缓存 entry 会显著放大
+/// 常驻数组与磁盘 JSON；这里只保存去重和重建所需的最小信息。
 struct CodexUsageCandidate: Sendable, Codable {
-    let entry: ParsedUsageEntry
+    let sessionID: String
+    let timestamp: Date
+    let sourceOffset: UInt64
+    let cwd: String?
+    let isFast: Bool
     let dedupKey: CodexEventDedupKey
+
+    /// 按现有公开语义重建统一 usage entry。
+    var entry: ParsedUsageEntry {
+        let messageID = "\(sessionID):\(dedupKey.timestampKey)"
+        let usage = TokenUsage(
+            inputTokens: max(0, dedupKey.rawInput - dedupKey.cachedInput),
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: dedupKey.cachedInput,
+            outputTokens: dedupKey.output,
+            reasoningTokens: dedupKey.reasoning,
+            serverToolUse: ServerToolUse(
+                webSearchRequests: 0,
+                webFetchRequests: 0
+            ),
+            serviceTier: isFast ? "fast" : "",
+            cacheCreation: nil,
+            inferenceGeo: "",
+            iterations: [],
+            speed: ""
+        )
+        return ParsedUsageEntry(
+            recordUUID: "\(messageID):\(sourceOffset)",
+            messageId: messageID,
+            requestId: nil,
+            sessionID: sessionID,
+            timestamp: timestamp,
+            model: dedupKey.model,
+            cwd: cwd,
+            agentId: nil,
+            usage: usage,
+            isSubagent: false,
+            isSidechain: false,
+            provider: .codex,
+            upstreamProviderID: nil,
+            upstreamCost: nil
+        )
+    }
+
+    init(
+        sessionID: String,
+        timestamp: Date,
+        sourceOffset: UInt64,
+        cwd: String?,
+        isFast: Bool,
+        dedupKey: CodexEventDedupKey
+    ) {
+        self.sessionID = sessionID
+        self.timestamp = timestamp
+        self.sourceOffset = sourceOffset
+        self.cwd = cwd
+        self.isFast = isFast
+        self.dedupKey = dedupKey
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionID
+        case timestamp
+        case sourceOffset
+        case cwd
+        case isFast
+        case dedupKey
+        // v2/v3 将完整 entry 写入 candidate；仅用于升级时读取。
+        case entry
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dedupKey = try container.decode(
+            CodexEventDedupKey.self,
+            forKey: .dedupKey
+        )
+
+        if container.contains(.entry) {
+            let legacyEntry = try container.decode(
+                ParsedUsageEntry.self,
+                forKey: .entry
+            )
+            guard let legacyTimestamp = legacyEntry.timestamp else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .entry,
+                    in: container,
+                    debugDescription: "Codex cached entry is missing its timestamp"
+                )
+            }
+            guard let offsetText = legacyEntry.recordUUID
+                .split(separator: ":", omittingEmptySubsequences: false)
+                .last,
+                  let legacySourceOffset = UInt64(offsetText) else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .entry,
+                    in: container,
+                    debugDescription: "Codex cached entry has an invalid source offset"
+                )
+            }
+            sessionID = legacyEntry.sessionID
+            timestamp = legacyTimestamp
+            sourceOffset = legacySourceOffset
+            cwd = legacyEntry.cwd
+            isFast = legacyEntry.usage.serviceTier == "fast"
+            return
+        }
+
+        sessionID = try container.decode(String.self, forKey: .sessionID)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        sourceOffset = try container.decode(UInt64.self, forKey: .sourceOffset)
+        cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
+        isFast = try container.decode(Bool.self, forKey: .isFast)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(sessionID, forKey: .sessionID)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(sourceOffset, forKey: .sourceOffset)
+        try container.encodeIfPresent(cwd, forKey: .cwd)
+        try container.encode(isFast, forKey: .isFast)
+        try container.encode(dedupKey, forKey: .dedupKey)
+    }
 }
 
 /// replay 预检结果；`.pending` 为后续增量解析保留未决状态。
