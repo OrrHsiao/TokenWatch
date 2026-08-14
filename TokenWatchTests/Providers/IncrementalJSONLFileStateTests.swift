@@ -160,4 +160,30 @@ struct IncrementalJSONLFileStateTests {
         #expect(restored.continuityAnchor == state.continuityAnchor)
         #expect(restored.checkpointAtCommittedOffset == state.checkpointAtCommittedOffset)
     }
+
+    @Test("返回候选覆盖稳定、临时与组合状态")
+    func returnedCandidatesCoverAllBufferShapes() {
+        func state(
+            stable: [Int],
+            provisional: [Int]
+        ) -> IncrementalJSONLFileState<Int, String> {
+            IncrementalJSONLFileState(
+                metadata: JSONLFileMetadata(
+                    identity: identity,
+                    size: 0,
+                    modificationDate: .distantPast
+                ),
+                committedOffset: 0,
+                stableCandidates: stable,
+                provisionalTail: Data(),
+                provisionalCandidates: provisional,
+                continuityAnchor: .empty,
+                checkpointAtCommittedOffset: "checkpoint"
+            )
+        }
+
+        #expect(state(stable: [1, 2], provisional: []).returnedCandidates == [1, 2])
+        #expect(state(stable: [], provisional: [3]).returnedCandidates == [3])
+        #expect(state(stable: [1, 2], provisional: [3]).returnedCandidates == [1, 2, 3])
+    }
 }

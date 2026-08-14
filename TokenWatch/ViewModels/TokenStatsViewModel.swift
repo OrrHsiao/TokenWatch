@@ -470,6 +470,12 @@ final class TokenStatsViewModel: Sendable {
         let logger = self.logger
         let providerCopy = provider
         let previousFingerprint = entryFingerprints[id]
+        let previousEntryCount = states[id]?.entries?.count
+        // 已有明细时，缓存命中只需返回源版本；继续物化大量 entries
+        // 会在每次定时刷新时额外创建 candidates、去重 Set 与 entries 数组。
+        let needsMaterializedEntries = previousEntryCount == nil
+        let hasReusableMaterializedState =
+            states[id]?.stats != nil && previousEntryCount != nil
         let canReuseExistingStats =
             states[id]?.stats != nil
             && states[id]?.errorMessage == nil
@@ -479,10 +485,20 @@ final class TokenStatsViewModel: Sendable {
                 do {
                     let loadResult = try providerCopy.loadEntriesWithCacheStatus(
                         from: rootURL,
-                        materializeEntriesWhenUnchanged: true
+                        materializeEntriesWhenUnchanged: needsMaterializedEntries
                     )
                     guard let entries = loadResult.entries else {
-                        throw ProviderLoadError.missingMaterializedEntries
+                        guard !loadResult.didChange,
+                              hasReusableMaterializedState,
+                              let previousEntryCount else {
+                            throw ProviderLoadError.missingMaterializedEntries
+                        }
+                        return .success(
+                            .unchanged(
+                                entryCount: previousEntryCount,
+                                sourceRevision: loadResult.sourceRevision
+                            )
+                        )
                     }
                     logger.info(
                         "\(providerCopy.displayName) 解析得 \(entries.count) 条记录"
