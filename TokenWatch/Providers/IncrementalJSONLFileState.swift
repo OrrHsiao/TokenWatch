@@ -13,7 +13,15 @@ struct IncrementalJSONLFileState<
     let checkpointAtCommittedOffset: Checkpoint
 
     var returnedCandidates: [Candidate] {
-        stableCandidates + provisionalCandidates
+        // JSONL 尾部通常完整提交，provisional 为空；直接返回稳定数组可共享
+        // CoW buffer，避免每个文件仅为 `stable + []` 再分配整段历史。
+        if provisionalCandidates.isEmpty {
+            return stableCandidates
+        }
+        if stableCandidates.isEmpty {
+            return provisionalCandidates
+        }
+        return stableCandidates + provisionalCandidates
     }
 }
 

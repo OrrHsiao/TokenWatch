@@ -141,11 +141,18 @@ final class ClaudeJSONLParser: @unchecked Sendable {
         )
     }
 
-    private static func sourceRevisionComponent(
+    /// Claude parser 语义版本。解析/去重/计价映射规则发生变化时必须递增，
+    /// 使同一文件重解析产生的 sourceRevision 与旧解析不同，聚合快照不再复用
+    /// 旧统计（如 speed 白名单放宽前漏计的数据）。P0-1 的 pipelineRevision
+    /// 落地后由统一机制替代。
+    static let parserSemanticsVersion: UInt64 = 1
+
+    static func sourceRevisionComponent(
         for state: ClaudeFileState
     ) -> Data {
         var component = Data()
         for value in [
+            Self.parserSemanticsVersion,
             state.committedOffset,
             state.continuityAnchor.offset,
         ] {

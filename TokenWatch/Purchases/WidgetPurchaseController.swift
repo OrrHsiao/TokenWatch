@@ -55,16 +55,20 @@ final class WidgetPurchaseController {
     private var observers: [ObservationToken: @MainActor (WidgetPurchaseState) -> Void] = [:]
     private var transactionUpdatesTask: Task<Void, Never>?
     private var initialRefreshTask: Task<Void, Never>?
+    private var entitlementRecheckTask: Task<Void, Never>?
     private var operationGeneration: UInt64 = 0
+    private let entitlementRecheckDelay: Duration
 
     init(
         client: any WidgetPurchaseClient = StoreKitWidgetPurchaseClient(),
         entitlementStore: any WidgetEntitlementStoring,
-        timelineReloader: any WidgetTimelineReloading = WidgetKitTimelineReloader()
+        timelineReloader: any WidgetTimelineReloading = WidgetKitTimelineReloader(),
+        entitlementRecheckDelay: Duration = .seconds(3)
     ) {
         self.client = client
         self.entitlementStore = entitlementStore
         self.timelineReloader = timelineReloader
+        self.entitlementRecheckDelay = entitlementRecheckDelay
     }
 
     /// Creates the production controller with StoreKit and the shared App Group entitlement cache.
@@ -92,6 +96,13 @@ final class WidgetPurchaseController {
         guard initialRefreshTask == nil else { return }
         initialRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            // 冷启动先用 App Group entitlement 缓存初始化解锁状态：
+            // 首次 StoreKit 查询 indeterminate 时，主 app 与 widget 扩展
+            // （读同一缓存的 fail-closed 副本）保持一致。
+            let cachedState = self.entitlementStore.load()
+            self.updateState { next in
+                next.isUnlocked = cachedState == .unlocked
+            }
             await self.refresh()
         }
     }
@@ -103,6 +114,8 @@ final class WidgetPurchaseController {
         transactionUpdatesTask = nil
         initialRefreshTask?.cancel()
         initialRefreshTask = nil
+        entitlementRecheckTask?.cancel()
+        entitlementRecheckTask = nil
     }
 
     /// Loads localized product metadata and reconciles the verified current entitlement.
@@ -128,8 +141,19 @@ final class WidgetPurchaseController {
         }
         guard isCurrentOperation(generation) else { return }
 
-        let isUnlocked = await client.hasVerifiedCurrentEntitlement(productID: Self.productID)
+        let status = await client.currentEntitlementStatus(for: Self.productID)
         guard isCurrentOperation(generation) else { return }
+        guard status != .indeterminate else {
+            // 无法验证时保留现有解锁状态与 entitlement 缓存，
+            // 避免把"暂时无法验证"误写成 locked；未 finish 的交易会由重查或下次启动收敛。
+            logger.warning("Widget entitlement refresh is indeterminate; retaining previous state")
+            updateState { next in
+                next.product = product
+                next.operation = failure.map(WidgetPurchaseOperationState.failed) ?? .idle
+            }
+            return
+        }
+        let isUnlocked = status == .entitled
         do {
             try persistEntitlement(isUnlocked)
             logger.info("Widget entitlement refresh completed; unlocked=\(isUnlocked)")
@@ -213,8 +237,15 @@ final class WidgetPurchaseController {
         do {
             try await client.sync()
             guard isCurrentOperation(generation) else { return }
-            let isUnlocked = await client.hasVerifiedCurrentEntitlement(productID: Self.productID)
+            let status = await client.currentEntitlementStatus(for: Self.productID)
             guard isCurrentOperation(generation) else { return }
+            guard status != .indeterminate else {
+                // 显式恢复动作无法得到确定结论时如实反馈失败，且不覆盖现有 entitlement 缓存。
+                setOperation(.failed(.restoreFailed))
+                logger.error("Widget purchase restore could not determine entitlement")
+                return
+            }
+            let isUnlocked = status == .entitled
             do {
                 try persistEntitlement(isUnlocked)
             } catch {
@@ -285,22 +316,48 @@ final class WidgetPurchaseController {
         switch update {
         case .verified(let transaction) where transaction.productID == Self.productID:
             let generation = beginOperation()
-            let isUnlocked = await client.hasVerifiedCurrentEntitlement(productID: Self.productID)
+            let status = await client.currentEntitlementStatus(for: Self.productID)
             guard isCurrentOperation(generation) else { return }
-            do {
-                try persistEntitlement(isUnlocked)
-            } catch {
-                setOperation(.failed(.entitlementPersistenceFailed))
-                logger.error("Widget transaction update could not persist entitlement")
-                return
+            switch status {
+            case .entitled:
+                do {
+                    try persistEntitlement(true)
+                } catch {
+                    setOperation(.failed(.entitlementPersistenceFailed))
+                    logger.error("Widget transaction update could not persist entitlement")
+                    return
+                }
+                updateState { next in
+                    next.isUnlocked = true
+                    next.operation = .purchaseCompleted
+                }
+                await client.finish(transactionID: transaction.id)
+                logger.info("Verified widget transaction update applied; unlocked=true")
+            case .notEntitled:
+                // 已确认撤销（如退款完成）：锁定并 finish 是确定性交付结果。
+                do {
+                    try persistEntitlement(false)
+                } catch {
+                    setOperation(.failed(.entitlementPersistenceFailed))
+                    logger.error("Widget transaction update could not persist entitlement")
+                    return
+                }
+                updateState { next in
+                    next.isUnlocked = false
+                    next.operation = .idle
+                }
+                await client.finish(transactionID: transaction.id)
+                logger.info("Verified widget transaction update applied; unlocked=false")
+            case .indeterminate:
+                // 目标交易验证状态未知：保留交易不 finish、不覆盖 entitlement 缓存，
+                // 由延迟重查收敛；重查仍不确定时，未 finish 的交易会在下次启动
+                // 被 Transaction.updates 重新投递。
+                // beginOperation 已使并发中的前台操作失效，这里恢复空闲，
+                // 避免 purchase/restore 残留 busy 状态导致购买与恢复按钮永久禁用。
+                logger.warning("Widget entitlement query is indeterminate; retaining transaction for recheck")
+                setOperation(.idle)
+                scheduleEntitlementRecheck(transactionID: transaction.id)
             }
-
-            updateState { next in
-                next.isUnlocked = isUnlocked
-                next.operation = isUnlocked ? .purchaseCompleted : .idle
-            }
-            await client.finish(transactionID: transaction.id)
-            logger.info("Verified widget transaction update applied; unlocked=\(isUnlocked)")
         case .verified:
             return
         case .unverified(let productID) where productID == Self.productID:
@@ -311,6 +368,50 @@ final class WidgetPurchaseController {
             return
         }
     }
+
+    /// 权益查询不确定时，以固定间隔重新查询并完成交付；最多重查
+    /// `maxEntitlementRechecks` 次，之后保留未 finish 的交易等待下次启动重投递。
+    private func scheduleEntitlementRecheck(transactionID: UInt64) {
+        guard entitlementRecheckTask == nil else { return }
+        entitlementRecheckTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.entitlementRecheckTask = nil }
+            for _ in 0..<Self.maxEntitlementRechecks {
+                guard !Task.isCancelled else { return }
+                try? await Task.sleep(for: self.entitlementRecheckDelay)
+                guard !Task.isCancelled else { return }
+
+                // 查询前快照 operation generation：查询期间发生的购买、刷新或
+                // stop() 使本任务过期，返回结果不得覆盖更新的状态或 finish 旧交易。
+                let snapshotGeneration = self.operationGeneration
+                let status = await self.client.currentEntitlementStatus(for: Self.productID)
+                guard !Task.isCancelled else { return }
+                guard self.operationGeneration == snapshotGeneration else { return }
+                guard status != .indeterminate else { continue }
+
+                let generation = self.beginOperation()
+                let isUnlocked = status == .entitled
+                do {
+                    try self.persistEntitlement(isUnlocked)
+                } catch {
+                    self.setOperation(.failed(.entitlementPersistenceFailed))
+                    self.logger.error("Widget entitlement recheck could not persist entitlement")
+                    return
+                }
+                guard self.isCurrentOperation(generation) else { return }
+                self.updateState { next in
+                    next.isUnlocked = isUnlocked
+                    next.operation = isUnlocked ? .purchaseCompleted : .idle
+                }
+                await self.client.finish(transactionID: transactionID)
+                self.logger.info("Widget entitlement recheck converged; unlocked=\(isUnlocked)")
+                return
+            }
+            self.logger.warning("Widget entitlement recheck did not converge; waiting for next launch")
+        }
+    }
+
+    private static let maxEntitlementRechecks = 10
 
     private func beginOperation() -> UInt64 {
         operationGeneration &+= 1
@@ -363,6 +464,7 @@ final class WidgetPurchaseController {
     deinit {
         transactionUpdatesTask?.cancel()
         initialRefreshTask?.cancel()
+        entitlementRecheckTask?.cancel()
     }
 }
 
@@ -446,8 +548,11 @@ private final class StaticWidgetPurchaseClient: WidgetPurchaseClient {
 
     func sync() async throws {}
 
-    func hasVerifiedCurrentEntitlement(productID: String) async -> Bool {
-        productID == WidgetPurchaseReviewFixtures.product.id && isUnlocked
+    func currentEntitlementStatus(for productID: String) async -> WidgetEntitlementQueryResult {
+        guard productID == WidgetPurchaseReviewFixtures.product.id else {
+            return .notEntitled
+        }
+        return isUnlocked ? .entitled : .notEntitled
     }
 
     func transactionUpdates() -> AsyncStream<WidgetTransactionUpdate> {

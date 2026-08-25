@@ -107,6 +107,64 @@ struct OpenCodeSQLiteScannerTests {
         }
     }
 
+    // MARK: - 锁竞争（busy timeout）
+
+    @Test("写连接短暂持锁时扫描等待锁释放后成功")
+    func busyWaitSucceedsWhenLockReleasedWithinTimeout() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try buildMiniDB(
+            at: dir.appendingPathComponent("opencode.db"),
+            sessions: [("ses", "/project")],
+            messages: [("msg_1", "ses", 100, #"{"role":"assistant","tokens":{"input":1,"output":1,"reasoning":0,"cache":{"read":0,"write":0}}}"#)]
+        )
+
+        // 写连接以 EXCLUSIVE 锁短暂占用（journal 模式下会阻塞其他连接的读锁）
+        let writer = try openWriterHoldingExclusiveLock(at: dir.appendingPathComponent("opencode.db"))
+
+        let scanTask = Task { try scanner.scanAll(in: dir) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try commitAndClose(writer)
+
+        let rows = try await scanTask.value
+        #expect(rows.map(\.id) == ["msg_1"])
+    }
+
+    @Test("锁持有超过 busy_timeout 时有界失败且不无限挂起")
+    func busyTimeoutFailsAfterBoundedWait() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try buildMiniDB(
+            at: dir.appendingPathComponent("opencode.db"),
+            sessions: [("ses", "/project")],
+            messages: [("msg_1", "ses", 100, #"{"role":"assistant","tokens":{"input":1,"output":1,"reasoning":0,"cache":{"read":0,"write":0}}}"#)]
+        )
+
+        // 写连接持续持有 EXCLUSIVE 锁直到测试结束
+        let writer = try openWriterHoldingExclusiveLock(at: dir.appendingPathComponent("opencode.db"))
+        defer { try? commitAndClose(writer) }
+
+        let shortTimeoutScanner = OpenCodeSQLiteScanner(busyTimeoutMs: 100)
+        let clock = ContinuousClock()
+        let start = clock.now
+        do {
+            _ = try shortTimeoutScanner.scanAll(in: dir)
+            Issue.record("锁持续持有时应抛错")
+        } catch let err as OpenCodeScannerError {
+            guard case .queryFailed(let code, _) = err else {
+                Issue.record("错误类型不对: \(err)")
+                return
+            }
+            #expect(code == SQLITE_BUSY)
+            let elapsed = start.duration(to: clock.now)
+            // 至少等待了注入的 timeout，且远早于无限挂起（上界仅为防回归护栏）
+            #expect(elapsed >= .milliseconds(50))
+            #expect(elapsed < .seconds(5))
+        }
+    }
+
     // MARK: - Helpers
 
     /// 在临时目录用 sqlite3 C API 构造 opencode mini schema(只含本测试用到的列约束)
@@ -190,5 +248,29 @@ struct OpenCodeSQLiteScannerTests {
             .appendingPathComponent("opencode-scanner-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    /// 打开写连接并立即 BEGIN EXCLUSIVE 持有排他锁
+    /// （mini db 使用默认 journal 模式，EXCLUSIVE 锁会阻塞其他连接的读锁）
+    private func openWriterHoldingExclusiveLock(at dbURL: URL) throws -> OpaquePointer {
+        var writer: OpaquePointer?
+        guard sqlite3_open_v2(dbURL.path, &writer, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK,
+              let database = writer else {
+            throw NSError(domain: "test.sqlite", code: 5)
+        }
+        var errMsg: UnsafeMutablePointer<CChar>?
+        guard sqlite3_exec(database, "BEGIN EXCLUSIVE", nil, nil, &errMsg) == SQLITE_OK else {
+            sqlite3_free(errMsg)
+            sqlite3_close(database)
+            throw NSError(domain: "test.sqlite", code: 6)
+        }
+        return database
+    }
+
+    private func commitAndClose(_ writer: OpaquePointer) throws {
+        var errMsg: UnsafeMutablePointer<CChar>?
+        sqlite3_exec(writer, "COMMIT", nil, nil, &errMsg)
+        sqlite3_free(errMsg)
+        sqlite3_close(writer)
     }
 }

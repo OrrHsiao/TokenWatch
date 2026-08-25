@@ -9,12 +9,15 @@ struct TokenHeatmapWidgetView: View {
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.heatmap(for: entry.state)
 
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             WidgetChartHeader(
                 title: presentation.title,
                 subtitle: presentation.subtitle,
                 total: presentation.totalText
             )
+            if presentation.message == nil {
+                WidgetMetricStrip(items: metricItems(presentation))
+            }
             ZStack {
                 heatmapGrid(presentation)
                     .opacity(presentation.message == nil ? 1 : 0.35)
@@ -28,6 +31,25 @@ struct TokenHeatmapWidgetView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private func metricItems(
+        _ presentation: WidgetHeatmapPresentation
+    ) -> [WidgetMetricItem] {
+        var items: [WidgetMetricItem] = []
+        if let dailyAverageText = presentation.dailyAverageText {
+            items.append(WidgetMetricItem(
+                symbolName: "calendar",
+                text: dailyAverageText
+            ))
+        }
+        if let peakText = presentation.peakText {
+            items.append(WidgetMetricItem(
+                symbolName: "arrow.up.to.line",
+                text: peakText
+            ))
+        }
+        return items
     }
 
     private func heatmapGrid(_ presentation: WidgetHeatmapPresentation) -> some View {

@@ -80,6 +80,67 @@ struct CodexRolloutParsingStateTests {
         #expect(restored.isSkippingReplay == checkpoint.isSkippingReplay)
     }
 
+    @Test("紧凑 candidate 可回读并迁移 v2/v3 完整 entry")
+    func compactCandidateRoundTripsAndMigratesLegacyPayload() throws {
+        let timestamp = try #require(
+            CodexNormalizedTimestamp.parse("2026-05-04T08:35:46.000Z")
+        )
+        let original = CodexUsageCandidate.make(
+            sessionID: "session",
+            timestamp: timestamp,
+            sourceOffset: 42,
+            model: "gpt-5.4",
+            cwd: "/tmp/project",
+            counts: CodexTokenCounts(
+                inputTokens: 1_000,
+                cachedInputTokens: 300,
+                outputTokens: 200,
+                reasoningOutputTokens: 50,
+                totalTokens: 1_200
+            ),
+            pricingSpeed: .fast
+        )
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        let compactData = try encoder.encode(original)
+        let compactJSON = try #require(
+            String(data: compactData, encoding: .utf8)
+        )
+        #expect(!compactJSON.contains(#""entry""#))
+
+        let roundTripped = try decoder.decode(
+            CodexUsageCandidate.self,
+            from: compactData
+        )
+        let legacyData = try encoder.encode(
+            LegacyCodexUsageCandidateFixture(
+                entry: original.entry,
+                dedupKey: original.dedupKey
+            )
+        )
+        let migrated = try decoder.decode(
+            CodexUsageCandidate.self,
+            from: legacyData
+        )
+
+        for candidate in [roundTripped, migrated] {
+            let entry = candidate.entry
+            #expect(candidate.dedupKey == original.dedupKey)
+            #expect(entry.recordUUID == "session:2026-05-04T08:35:46.000Z:42")
+            #expect(entry.messageId == "session:2026-05-04T08:35:46.000Z")
+            #expect(entry.sessionID == "session")
+            #expect(entry.timestamp == timestamp.date)
+            #expect(entry.model == "gpt-5.4")
+            #expect(entry.cwd == "/tmp/project")
+            #expect(entry.usage.inputTokens == 700)
+            #expect(entry.usage.cacheReadInputTokens == 300)
+            #expect(entry.usage.outputTokens == 200)
+            #expect(entry.usage.reasoningTokens == 50)
+            #expect(entry.usage.serviceTier == "fast")
+        }
+    }
+
     @Test("checkpoint 保留 last-first、cached clamp 与 zero-model 顺序")
     func reducerMatchesPinnedOrdering() throws {
         let decoder = JSONDecoder()
@@ -197,4 +258,9 @@ struct CodexRolloutParsingStateTests {
         #expect(reset.usage.inputTokens == 30)
         #expect(reset.model == "gpt-5.4")
     }
+}
+
+private struct LegacyCodexUsageCandidateFixture: Encodable {
+    let entry: ParsedUsageEntry
+    let dedupKey: CodexEventDedupKey
 }

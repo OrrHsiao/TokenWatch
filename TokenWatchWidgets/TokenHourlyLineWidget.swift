@@ -9,12 +9,15 @@ struct TokenHourlyLineWidgetView: View {
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.hourlyLine(for: entry.state)
 
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             WidgetChartHeader(
                 title: presentation.title,
                 subtitle: nil,
                 total: presentation.totalText
             )
+            if presentation.message == nil {
+                WidgetMetricStrip(items: metricItems(presentation))
+            }
             ZStack {
                 chart(presentation)
                     .opacity(presentation.message == nil ? 1 : 0.35)
@@ -28,6 +31,25 @@ struct TokenHourlyLineWidgetView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private func metricItems(
+        _ presentation: WidgetHourlyLinePresentation
+    ) -> [WidgetMetricItem] {
+        var items: [WidgetMetricItem] = []
+        if let currentHourText = presentation.currentHourText {
+            items.append(WidgetMetricItem(
+                symbolName: "clock",
+                text: currentHourText
+            ))
+        }
+        if let peakHourText = presentation.peakHourText {
+            items.append(WidgetMetricItem(
+                symbolName: "arrow.up.to.line",
+                text: peakHourText
+            ))
+        }
+        return items
     }
 
     private func chart(_ presentation: WidgetHourlyLinePresentation) -> some View {

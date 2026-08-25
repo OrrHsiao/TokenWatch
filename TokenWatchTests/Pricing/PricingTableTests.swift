@@ -203,54 +203,255 @@ extension PricingTableTests {
         #expect(abs((table.pricing(for: "gpt-5.3-spark")?.inputPrice ?? 0) - 1.75) < 1e-9)
     }
 
-    @Test("exact builtin 整条覆盖 LiteLLM；provider fast 显式优先且 override 只补缺失")
+    @Test("exact builtin 覆盖 LiteLLM；fast 显式优先且仅第一方 Anthropic 补缺失")
     func fastOverlayPriority() {
         let conflictingExact = catalogEntry(
-            id: "gpt-5.5",
+            id: "gpt-5.6-sol",
             input: 99.0,
             explicitFast: 3.0
         )
         let providerExplicit = catalogEntry(
-            id: "anthropic/claude-opus-4-6-v1",
+            id: "anthropic/claude-opus-5-v1",
             input: 5.0,
             explicitFast: 7.0
         )
-        let providerMissing = catalogEntry(
-            id: "amazon/claude-opus-4-6-v1",
+        let firstPartyMissing = catalogEntry(
+            id: "anthropic/claude-opus-5-v2",
+            input: 5.0
+        )
+        let partnerMissing = catalogEntry(
+            id: "amazon/claude-opus-5-v1",
+            input: 5.0
+        )
+        let bedrockMissing = catalogEntry(
+            id: "anthropic.claude-opus-5-v1:0",
             input: 5.0
         )
         let table = PricingTable(
             liteLLMEntries: [
-                "gpt-5.5": conflictingExact,
-                "anthropic/claude-opus-4-6-v1": providerExplicit,
-                "amazon/claude-opus-4-6-v1": providerMissing,
+                "gpt-5.6-sol": conflictingExact,
+                "anthropic/claude-opus-5-v1": providerExplicit,
+                "anthropic/claude-opus-5-v2": firstPartyMissing,
+                "amazon/claude-opus-5-v1": partnerMissing,
+                "anthropic.claude-opus-5-v1:0": bedrockMissing,
             ],
             modelsDevEntries: [:],
-            builtins: ["gpt-5.5": pricing(id: "gpt-5.5", input: 5.0, fast: 2.5)]
+            builtins: ["gpt-5.6-sol": pricing(id: "gpt-5.6-sol", input: 4.0, fast: 2.0)]
         )
-        #expect(abs((table.pricing(for: "gpt-5.5")?.inputPrice ?? 0) - 5.0) < 1e-9)
-        #expect(abs((table.pricing(for: "gpt-5.5")?.fastMultiplier ?? 0) - 2.5) < 1e-9)
+        #expect(abs((table.pricing(for: "gpt-5.6-sol")?.inputPrice ?? 0) - 4.0) < 1e-9)
+        #expect(abs((table.pricing(for: "gpt-5.6-sol")?.fastMultiplier ?? 0) - 2.0) < 1e-9)
         #expect(abs((table.pricing(
-            for: "anthropic/claude-opus-4-6-v1"
+            for: "anthropic/claude-opus-5-v1"
         )?.fastMultiplier ?? 0) - 7.0) < 1e-9)
         #expect(abs((table.pricing(
-            for: "amazon/claude-opus-4-6-v1"
-        )?.fastMultiplier ?? 0) - 6.0) < 1e-9)
+            for: "anthropic/claude-opus-5-v2"
+        )?.fastMultiplier ?? 0) - 2.0) < 1e-9)
+        #expect(abs((table.pricing(
+            for: "amazon/claude-opus-5-v1"
+        )?.fastMultiplier ?? 0) - 1.0) < 1e-9)
+        #expect(abs((table.pricing(
+            for: "anthropic.claude-opus-5-v1:0"
+        )?.fastMultiplier ?? 0) - 1.0) < 1e-9)
+
+        let fuzzyFallbackTable = PricingTable(
+            liteLLMEntries: [:],
+            modelsDevEntries: [:],
+            builtins: [
+                "claude-opus-5": pricing(id: "claude-opus-5", input: 5.0, fast: 2.0),
+            ]
+        )
+        #expect(fuzzyFallbackTable.pricing(
+            for: "anthropic/claude-opus-5-20260820"
+        )?.fastMultiplier == 2.0)
+        #expect(fuzzyFallbackTable.pricing(
+            for: "amazon/claude-opus-5-v1"
+        )?.fastMultiplier == 1.0)
+        #expect(fuzzyFallbackTable.pricing(
+            for: "anthropic.claude-opus-5-v1:0"
+        )?.fastMultiplier == 1.0)
     }
 
-    @Test("六个 builtin 模型的 effective fast multiplier 固定")
+    @Test("当前 builtin 模型的 effective fast multiplier 固定")
     func builtinEffectiveFastMultipliers() {
         let expected: [String: Double] = [
-            "claude-opus-4-6": 6.0,
-            "claude-opus-4-7": 6.0,
+            "claude-opus-4-6": 1.0,
+            "claude-opus-4-7": 1.0,
             "claude-opus-4-8": 2.0,
+            "claude-opus-5": 2.0,
             "gpt-5.3-codex": 2.0,
             "gpt-5.4": 2.0,
             "gpt-5.5": 2.5,
+            "gpt-5.6-sol": 2.0,
+            "gpt-5.6-terra": 2.0,
+            "gpt-5.6-luna": 2.0,
         ]
 
         for modelID in expected.keys.sorted() {
             #expect(PricingTable.pricing(for: modelID)?.fastMultiplier == expected[modelID])
+        }
+    }
+
+    @Test("最新模型默认价格、长上下文与 fast 契约固定")
+    func updatedAndNewModelPricingContracts() {
+        let expected: [PricingExpectation] = [
+            .init(
+                requestedID: "gpt-5.6", matchedID: "gpt-5.6-sol",
+                input: 4, output: 20, cacheRead: 0.4, cacheWrite: 5,
+                inputAbove: 8, outputAbove: 30, cacheReadAbove: 0.8,
+                cacheWriteAbove: 10, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-5.6-sol", matchedID: "gpt-5.6-sol",
+                input: 4, output: 20, cacheRead: 0.4, cacheWrite: 5,
+                inputAbove: 8, outputAbove: 30, cacheReadAbove: 0.8,
+                cacheWriteAbove: 10, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-5.6-terra", matchedID: "gpt-5.6-terra",
+                input: 2, output: 12, cacheRead: 0.2, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 18, cacheReadAbove: 0.4,
+                cacheWriteAbove: 5, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-5.6-luna", matchedID: "gpt-5.6-luna",
+                input: 0.2, output: 1.2, cacheRead: 0.02, cacheWrite: 0.25,
+                inputAbove: 0.4, outputAbove: 1.8, cacheReadAbove: 0.04,
+                cacheWriteAbove: 0.5, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "claude-opus-5", matchedID: "claude-opus-5",
+                input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25,
+                fast: 2
+            ),
+            .init(
+                requestedID: "claude-sonnet-5", matchedID: "claude-sonnet-5",
+                input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5,
+                fast: 1
+            ),
+            .init(
+                requestedID: "gemini-3.5-flash", matchedID: "gemini-3.5-flash",
+                input: 1.5, output: 9, cacheRead: 0.15, cacheWrite: 1.875,
+                cacheReadIsExplicit: true, fast: 1
+            ),
+            .init(
+                requestedID: "gemini-3.5-flash-lite", matchedID: "gemini-3.5-flash-lite",
+                input: 0.3, output: 2.5, cacheRead: 0.03, cacheWrite: 0.375,
+                cacheReadIsExplicit: true, fast: 1
+            ),
+            .init(
+                requestedID: "gemini-3.6-flash", matchedID: "gemini-3.6-flash",
+                input: 0.75, output: 3.75, cacheRead: 0.075, cacheWrite: 0.9375,
+                cacheReadIsExplicit: true, fast: 1
+            ),
+            .init(
+                requestedID: "gemini-3.7-flash", matchedID: "gemini-3.7-flash",
+                input: 0.75, output: 3.75, cacheRead: 0.075, cacheWrite: 0.9375,
+                cacheReadIsExplicit: true, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.3", matchedID: "grok-4.3",
+                input: 1.25, output: 2.5, cacheRead: 0.2, cacheWrite: 1.5625,
+                inputAbove: 2.5, outputAbove: 5, cacheReadAbove: 0.4,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.20-multi-agent-0309",
+                matchedID: "grok-4.20-multi-agent-0309",
+                input: 1.25, output: 2.5, cacheRead: 0.2, cacheWrite: 1.5625,
+                inputAbove: 2.5, outputAbove: 5, cacheReadAbove: 0.4,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.20-0309-reasoning",
+                matchedID: "grok-4.20-0309-reasoning",
+                input: 1.25, output: 2.5, cacheRead: 0.2, cacheWrite: 1.5625,
+                inputAbove: 2.5, outputAbove: 5, cacheReadAbove: 0.4,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.20-0309-non-reasoning",
+                matchedID: "grok-4.20-0309-non-reasoning",
+                input: 1.25, output: 2.5, cacheRead: 0.2, cacheWrite: 1.5625,
+                inputAbove: 2.5, outputAbove: 5, cacheReadAbove: 0.4,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.5", matchedID: "grok-4.5",
+                input: 2, output: 6, cacheRead: 0.3, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 12, cacheReadAbove: 0.6,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.6", matchedID: "grok-4.6",
+                input: 2, output: 6, cacheRead: 0.5, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 12, cacheReadAbove: 1,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-build-0.1", matchedID: "grok-build-0.1",
+                input: 1, output: 2, cacheRead: 0.2, cacheWrite: 1.25,
+                inputAbove: 2, outputAbove: 4, cacheReadAbove: 0.4,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "moonshot/kimi-k3", matchedID: "moonshot/kimi-k3",
+                input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75,
+                fast: 1
+            ),
+            .init(
+                requestedID: "moonshot/kimi-k2.7-code", matchedID: "moonshot/kimi-k2.7-code",
+                input: 0.95, output: 4, cacheRead: 0.19, cacheWrite: 1.1875,
+                fast: 1
+            ),
+            .init(
+                requestedID: "glm-5.2", matchedID: "glm-5.2",
+                input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0,
+                fast: 1
+            ),
+            .init(
+                requestedID: "glm-5.3", matchedID: "glm-5.3",
+                input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0,
+                fast: 1
+            ),
+        ]
+
+        for item in expected {
+            let actual = PricingTable.pricing(for: item.requestedID)
+            #expect(actual != nil, Comment(rawValue: "missing: \(item.requestedID)"))
+            guard let actual else { continue }
+            #expect(actual.modelID == item.matchedID, Comment(rawValue: item.requestedID))
+            #expect(abs(actual.inputPrice - item.input) < 1e-9, Comment(rawValue: item.requestedID))
+            #expect(abs(actual.outputPrice - item.output) < 1e-9, Comment(rawValue: item.requestedID))
+            #expect(abs(actual.cacheReadPrice - item.cacheRead) < 1e-9, Comment(rawValue: item.requestedID))
+            #expect(abs(actual.cacheWritePrice - item.cacheWrite) < 1e-9, Comment(rawValue: item.requestedID))
+            #expect(
+                actual.cacheReadPriceIsExplicit == item.cacheReadIsExplicit,
+                Comment(rawValue: item.requestedID)
+            )
+            #expect(optionalPriceMatches(actual.inputPriceAbove200k, item.inputAbove))
+            #expect(optionalPriceMatches(actual.outputPriceAbove200k, item.outputAbove))
+            #expect(optionalPriceMatches(actual.cacheReadPriceAbove200k, item.cacheReadAbove))
+            #expect(optionalPriceMatches(actual.cacheWritePriceAbove200k, item.cacheWriteAbove))
+            #expect(actual.longContextThreshold == item.threshold, Comment(rawValue: item.requestedID))
+            #expect(abs(actual.fastMultiplier - item.fast) < 1e-9, Comment(rawValue: item.requestedID))
+        }
+    }
+
+    @Test("GPT-5.6 裸名稳定 alias 到 Sol，Kimi 裸名命中 canonical")
+    func latestModelLookupBoundaries() {
+        let expectedMatches = [
+            (requested: "gpt-5.6", matched: "gpt-5.6-sol"),
+            (requested: "openai/gpt-5.6", matched: "gpt-5.6-sol"),
+            (requested: "azure:gpt-5.6", matched: "gpt-5.6-sol"),
+            (requested: "kimi-k3", matched: "moonshot/kimi-k3"),
+            (requested: "kimi-k2.7-code", matched: "moonshot/kimi-k2.7-code"),
+        ]
+
+        for item in expectedMatches {
+            #expect(
+                PricingTable.pricing(for: item.requested)?.modelID == item.matched,
+                Comment(rawValue: item.requested)
+            )
         }
     }
 
@@ -293,6 +494,63 @@ extension PricingTableTests {
             pricing: pricing(id: id, input: input, fast: explicitFast ?? 1.0),
             explicitFastMultiplier: explicitFast
         )
+    }
+
+    private struct PricingExpectation {
+        let requestedID: String
+        let matchedID: String
+        let input: Double
+        let output: Double
+        let cacheRead: Double
+        let cacheWrite: Double
+        let cacheReadIsExplicit: Bool
+        let inputAbove: Double?
+        let outputAbove: Double?
+        let cacheReadAbove: Double?
+        let cacheWriteAbove: Double?
+        let threshold: Int?
+        let fast: Double
+
+        init(
+            requestedID: String,
+            matchedID: String,
+            input: Double,
+            output: Double,
+            cacheRead: Double,
+            cacheWrite: Double,
+            cacheReadIsExplicit: Bool = true,
+            inputAbove: Double? = nil,
+            outputAbove: Double? = nil,
+            cacheReadAbove: Double? = nil,
+            cacheWriteAbove: Double? = nil,
+            threshold: Int? = nil,
+            fast: Double
+        ) {
+            self.requestedID = requestedID
+            self.matchedID = matchedID
+            self.input = input
+            self.output = output
+            self.cacheRead = cacheRead
+            self.cacheWrite = cacheWrite
+            self.cacheReadIsExplicit = cacheReadIsExplicit
+            self.inputAbove = inputAbove
+            self.outputAbove = outputAbove
+            self.cacheReadAbove = cacheReadAbove
+            self.cacheWriteAbove = cacheWriteAbove
+            self.threshold = threshold
+            self.fast = fast
+        }
+    }
+
+    private func optionalPriceMatches(_ actual: Double?, _ expected: Double?) -> Bool {
+        switch (actual, expected) {
+        case (.none, .none):
+            return true
+        case let (.some(actual), .some(expected)):
+            return abs(actual - expected) < 1e-9
+        default:
+            return false
+        }
     }
 
     private func pricing(

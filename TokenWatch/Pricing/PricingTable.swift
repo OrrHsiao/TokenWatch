@@ -50,17 +50,25 @@ struct PricingTable: Sendable {
         )
     }
 
-    /// 查询模型定价，依次尝试 primary 原名、primary alias 与 fallback alias。
+    /// 查询模型定价，依次尝试 primary exact、alias、primary fuzzy 与 fallback。
     /// - Parameter modelID: 原始模型 ID，匹配时不区分大小写。
     /// - Returns: 确定性选出的定价；没有候选时返回 `nil`。
     func pricing(for modelID: String) -> ModelPricing? {
         let model = modelID.lowercased()
-        if let direct = Self.find(model, in: primary) { return direct }
+        guard !model.isEmpty else { return nil }
+        if let exact = primary[model] { return exact }
 
         let alias = Self.alias(for: model)
-        if alias != model, let aliased = Self.find(alias, in: primary) { return aliased }
+        if alias != model, let aliased = Self.find(alias, in: primary) {
+            return Self.scopingFastMultiplier(aliased, requestedModel: model)
+        }
+        if let direct = Self.find(model, in: primary) {
+            return Self.scopingFastMultiplier(direct, requestedModel: model)
+        }
 
-        return Self.find(alias, in: fallback)
+        return Self.find(alias, in: fallback).map {
+            Self.scopingFastMultiplier($0, requestedModel: model)
+        }
     }
 
     /// 使用共享离线定价表查询模型价格。
@@ -212,7 +220,17 @@ struct PricingTable: Sendable {
     }
 
     private static func alias(for model: String) -> String {
-        model == "gpt-5.3-spark" ? "gpt-5.3-codex-spark" : model
+        switch model {
+        case "gpt-5.3-spark":
+            return "gpt-5.3-codex-spark"
+        case "gpt-5.6":
+            return "gpt-5.6-sol"
+        default:
+            if model.hasSuffix("/gpt-5.6") || model.hasSuffix(":gpt-5.6") {
+                return "\(model)-sol"
+            }
+            return model
+        }
     }
 }
 
@@ -225,15 +243,17 @@ private extension PricingTable {
     }
 
     static let fastExactOverrides: [String: Double] = [
+        "gpt-5.6-luna": 2.0,
+        "gpt-5.6-sol": 2.0,
+        "gpt-5.6-terra": 2.0,
         "gpt-5.5": 2.5,
         "gpt-5.4": 2.0,
         "gpt-5.3-codex": 2.0,
     ]
 
     static let fastPrefixOverrides: [(modelID: String, multiplier: Double)] = [
-        ("claude-opus-4-6", 6.0),
-        ("claude-opus-4-7", 6.0),
         ("claude-opus-4-8", 2.0),
+        ("claude-opus-5", 2.0),
     ]
 
     static let builtinPrices: [String: ModelPricing] = {
@@ -243,11 +263,11 @@ private extension PricingTable {
             _ output: Double,
             _ cacheRead: Double,
             _ cacheWrite: Double,
-            explicitCacheRead: Bool = true,
             inputAbove: Double? = nil,
             outputAbove: Double? = nil,
             cacheReadAbove: Double? = nil,
-            cacheWriteAbove: Double? = nil
+            cacheWriteAbove: Double? = nil,
+            longContextThreshold: Int? = nil
         ) -> ModelPricing {
             ModelPricing(
                 modelID: id,
@@ -256,11 +276,12 @@ private extension PricingTable {
                 outputPrice: output,
                 cacheReadPrice: cacheRead,
                 cacheWritePrice: cacheWrite,
-                cacheReadPriceIsExplicit: explicitCacheRead,
+                cacheReadPriceIsExplicit: true,
                 inputPriceAbove200k: inputAbove,
                 outputPriceAbove200k: outputAbove,
                 cacheReadPriceAbove200k: cacheReadAbove,
                 cacheWritePriceAbove200k: cacheWriteAbove,
+                longContextThreshold: longContextThreshold,
                 fastMultiplier: builtinFastMultiplier(for: id) ?? 1.0
             )
         }
@@ -274,6 +295,8 @@ private extension PricingTable {
             "claude-opus-4-6": p("claude-opus-4-6", 5, 25, 0.5, 6.25),
             "claude-opus-4-7": p("claude-opus-4-7", 5, 25, 0.5, 6.25),
             "claude-opus-4-8": p("claude-opus-4-8", 5, 25, 0.5, 6.25),
+            "claude-opus-5": p("claude-opus-5", 5, 25, 0.5, 6.25),
+            "claude-sonnet-5": p("claude-sonnet-5", 2, 10, 0.2, 2.5),
             "claude-haiku-4-5": p("claude-haiku-4-5", 1, 5, 0.1, 1.25),
             "claude-opus-4": p("claude-opus-4", 15, 75, 1.5, 18.75),
             "claude-sonnet-4-6": p("claude-sonnet-4-6", 3, 15, 0.3, 3.75),
@@ -296,9 +319,51 @@ private extension PricingTable {
             "claude-3-haiku": p("claude-3-haiku", 0.25, 1.25, 0.03, 0.3),
             "gpt-5": p("gpt-5", 1.25, 10, 0.125, 1.25),
             "gpt-5.5": p("gpt-5.5", 5, 30, 0.5, 5),
-            "grok-4.3": p("grok-4.3", 1.25, 2.5, 0.125, 1.25, explicitCacheRead: false),
+            // xAI 在 prompt 达到 200K 时对整条请求使用 long-context 价格。
+            // PricingEngine 的阈值判断为严格大于，因此这里用 199,999 表达包含边界。
+            // xAI 未公布独立 cache-write 价，该字段沿用 catalog 的 input × 1.25 fallback。
+            "grok-4.3": p(
+                "grok-4.3", 1.25, 2.5, 0.2, 1.5625,
+                inputAbove: 2.5, outputAbove: 5,
+                cacheReadAbove: 0.4, longContextThreshold: 199_999
+            ),
+            "grok-4.20-multi-agent-0309": p(
+                "grok-4.20-multi-agent-0309", 1.25, 2.5, 0.2, 1.5625,
+                inputAbove: 2.5, outputAbove: 5,
+                cacheReadAbove: 0.4, longContextThreshold: 199_999
+            ),
+            "grok-4.20-0309-reasoning": p(
+                "grok-4.20-0309-reasoning", 1.25, 2.5, 0.2, 1.5625,
+                inputAbove: 2.5, outputAbove: 5,
+                cacheReadAbove: 0.4, longContextThreshold: 199_999
+            ),
+            "grok-4.20-0309-non-reasoning": p(
+                "grok-4.20-0309-non-reasoning", 1.25, 2.5, 0.2, 1.5625,
+                inputAbove: 2.5, outputAbove: 5,
+                cacheReadAbove: 0.4, longContextThreshold: 199_999
+            ),
+            "grok-4.5": p(
+                "grok-4.5", 2, 6, 0.3, 2.5,
+                inputAbove: 4, outputAbove: 12,
+                cacheReadAbove: 0.6, longContextThreshold: 199_999
+            ),
+            "grok-4.6": p(
+                "grok-4.6", 2, 6, 0.5, 2.5,
+                inputAbove: 4, outputAbove: 12,
+                cacheReadAbove: 1, longContextThreshold: 199_999
+            ),
+            "grok-build-0.1": p(
+                "grok-build-0.1", 1, 2, 0.2, 1.25,
+                inputAbove: 2, outputAbove: 4,
+                cacheReadAbove: 0.4, longContextThreshold: 199_999
+            ),
+            // Moonshot 未公布独立 cache-write 价，沿用相同 catalog fallback。
             "moonshot/kimi-k2.5": p("moonshot/kimi-k2.5", 0.6, 3, 0.1, 0.75),
             "moonshot/kimi-k2.6": p("moonshot/kimi-k2.6", 0.95, 4, 0.16, 1.1875),
+            "moonshot/kimi-k2.7-code": p(
+                "moonshot/kimi-k2.7-code", 0.95, 4, 0.19, 1.1875
+            ),
+            "moonshot/kimi-k3": p("moonshot/kimi-k3", 3, 15, 0.3, 3.75),
             "gpt-5.1": gpt51,
             "gpt-5.1-codex": ModelPricing(
                 modelID: "gpt-5.1-codex",
@@ -314,9 +379,22 @@ private extension PricingTable {
             "gpt-5.4": p("gpt-5.4", 2.5, 15, 0.25, 2.5),
             "gpt-5.4-mini": p("gpt-5.4-mini", 0.75, 4.5, 0.075, 0.75),
             "gpt-5.4-nano": p("gpt-5.4-nano", 0.2, 1.25, 0.02, 0.2),
-            "gpt-5.6-sol": p("gpt-5.6-sol", 5, 30, 0.5, 6.25),
-            "gpt-5.6-terra": p("gpt-5.6-terra", 2.5, 15, 0.25, 3.125),
-            "gpt-5.6-luna": p("gpt-5.6-luna", 1, 6, 0.1, 1.25),
+            "gpt-5.6-sol": p("gpt-5.6-sol", 4, 20, 0.4, 5),
+            "gpt-5.6-terra": p("gpt-5.6-terra", 2, 12, 0.2, 2.5),
+            "gpt-5.6-luna": p("gpt-5.6-luna", 0.2, 1.2, 0.02, 0.25),
+            // Google 仅公布 cached-input 与 token-hour storage；当前 schema 无法表达 storage，
+            // cacheWrite 仍沿用 catalog fallback。
+            "gemini-3.5-flash": p("gemini-3.5-flash", 1.5, 9, 0.15, 1.875),
+            "gemini-3.5-flash-lite": p(
+                "gemini-3.5-flash-lite", 0.3, 2.5, 0.03, 0.375
+            ),
+            // 官方 Standard 限时价有效至 2026-12-31，到期后需重新核验。
+            "gemini-3.6-flash": p(
+                "gemini-3.6-flash", 0.75, 3.75, 0.075, 0.9375
+            ),
+            "gemini-3.7-flash": p(
+                "gemini-3.7-flash", 0.75, 3.75, 0.075, 0.9375
+            ),
             "glm-4.5": p("glm-4.5", 0.6, 2.2, 0.11, 0),
             "zai/glm-4.5": p("zai/glm-4.5", 0.6, 2.2, 0.11, 0),
             "zai/glm-4.5-x": p("zai/glm-4.5-x", 2.2, 8.9, 0.45, 0),
@@ -330,23 +408,54 @@ private extension PricingTable {
             "glm-5": p("glm-5", 1, 3.2, 0.2, 0),
             "glm-5-turbo": p("glm-5-turbo", 1.2, 4, 0.24, 0),
             "glm-5.1": p("glm-5.1", 1.4, 4.4, 0.26, 0),
+            "glm-5.2": p("glm-5.2", 1.4, 4.4, 0.26, 0),
+            "glm-5.3": p("glm-5.3", 1.4, 4.4, 0.26, 0),
         ]
     }()
 
     static func builtinFastMultiplier(for modelID: String) -> Double? {
-        if let value = fastExactOverrides[modelID] { return value }
+        let canonicalID = modelID.lowercased()
+        if let value = fastExactOverrides[canonicalID] { return value }
 
-        let normalized = normalizeSeparators(modelID)
-        for part in normalized.split(whereSeparator: { $0 == "/" || $0 == ":" }) {
+        return claudeFastMultiplier(for: canonicalID)
+    }
+
+    static func claudeFastMultiplier(for modelID: String) -> Double? {
+        guard isFirstPartyAnthropicModel(modelID) else { return nil }
+
+        let normalized = normalizeSeparators(modelID.lowercased())
+        let parts = normalized.split(whereSeparator: { $0 == "/" || $0 == ":" })
+        let modelParts = parts.first == "anthropic" ? parts.dropFirst() : parts[...]
+
+        for part in modelParts {
             for (base, multiplier) in fastPrefixOverrides {
-                guard let range = part.range(of: base, options: .backwards) else { continue }
-                let suffix = part[range.lowerBound...]
-                if suffix == base || suffix.dropFirst(base.count).first == "-" {
+                guard part.hasPrefix(base) else { continue }
+                let suffix = part.dropFirst(base.count)
+                if suffix.isEmpty || suffix.first == "-" {
                     return multiplier
                 }
             }
         }
         return nil
+    }
+
+    static func isFirstPartyAnthropicModel(_ modelID: String) -> Bool {
+        let model = modelID.lowercased()
+        return model.hasPrefix("claude-")
+            || model.hasPrefix("anthropic/")
+            || model.hasPrefix("anthropic:")
+    }
+
+    static func scopingFastMultiplier(
+        _ pricing: ModelPricing,
+        requestedModel: String
+    ) -> ModelPricing {
+        guard pricing.fastMultiplier != 1.0,
+              claudeFastMultiplier(for: pricing.modelID) != nil,
+              !isFirstPartyAnthropicModel(requestedModel) else {
+            return pricing
+        }
+        return replacingFastMultiplier(pricing, with: 1.0)
     }
 
     static func replacingFastMultiplier(
@@ -401,11 +510,11 @@ private extension PricingTable {
     static func longContextRates(for modelID: String) -> LongContextRates? {
         switch modelID {
         case "gpt-5.6-sol":
-            return LongContextRates(input: 10, output: 45, cacheWrite: 12.5, cacheRead: 1)
+            return LongContextRates(input: 8, output: 30, cacheWrite: 10, cacheRead: 0.8)
         case "gpt-5.6-terra":
-            return LongContextRates(input: 5, output: 22.5, cacheWrite: 6.25, cacheRead: 0.5)
+            return LongContextRates(input: 4, output: 18, cacheWrite: 5, cacheRead: 0.4)
         case "gpt-5.6-luna":
-            return LongContextRates(input: 2, output: 9, cacheWrite: 2.5, cacheRead: 0.2)
+            return LongContextRates(input: 0.4, output: 1.8, cacheWrite: 0.5, cacheRead: 0.04)
         case "gpt-5.5":
             return LongContextRates(input: 10, output: 45, cacheWrite: 10, cacheRead: 1)
         case "gpt-5.4":

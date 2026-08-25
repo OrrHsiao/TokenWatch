@@ -113,39 +113,12 @@ extension CodexUsageCandidate {
         pricingSpeed: CodexPricingSpeed
     ) -> CodexUsageCandidate {
         let normalized = counts.normalizedForBilling
-        let messageID = "\(sessionID):\(timestamp.key)"
-        let recordUUID = "\(messageID):\(sourceOffset)"
-        let usage = TokenUsage(
-            inputTokens: normalized.pureInput,
-            cacheCreationInputTokens: 0,
-            cacheReadInputTokens: normalized.cachedInput,
-            outputTokens: normalized.output,
-            reasoningTokens: normalized.reasoning,
-            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
-            serviceTier: pricingSpeed == .fast ? "fast" : "",
-            cacheCreation: nil,
-            inferenceGeo: "",
-            iterations: [],
-            speed: ""
-        )
-        let entry = ParsedUsageEntry(
-            recordUUID: recordUUID,
-            messageId: messageID,
-            requestId: nil,
+        return CodexUsageCandidate(
             sessionID: sessionID,
             timestamp: timestamp.date,
-            model: model,
+            sourceOffset: sourceOffset,
             cwd: cwd,
-            agentId: nil,
-            usage: usage,
-            isSubagent: false,
-            isSidechain: false,
-            provider: .codex,
-            upstreamProviderID: nil,
-            upstreamCost: nil
-        )
-        return CodexUsageCandidate(
-            entry: entry,
+            isFast: pricingSpeed == .fast,
             dedupKey: CodexEventDedupKey(
                 timestampKey: timestamp.key,
                 model: model,

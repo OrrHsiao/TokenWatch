@@ -49,7 +49,11 @@ struct CCUsagePricingParityTests {
         let serviceTier: String?
     }
 
-    @Test("固定 fixture 全部金额与 ccusage offline Auto 一致")
+    private static let supersededPricingCases: Set<String> = [
+        "gpt-56-sol-long-context",
+    ]
+
+    @Test("固定 fixture 中未过期的金额与 ccusage offline Auto 一致")
     func fixedAmounts() throws {
         let fixture = try loadFixture()
         #expect(fixture.baseline.ccusageVersion == "v20.0.17")
@@ -61,11 +65,17 @@ struct CCUsagePricingParityTests {
         #expect(fixture.baseline.modelsDevSourceSHA256 == "5d61cc3148100cd670d3289033b5e2fb05c4244cbe32f92888ef7bd2df1abf67")
         #expect(fixture.baseline.fastOverridesSourceSHA256 == "647b3ae8e44349455f32ce9f4633910b5151b08cda1707601a97701927490762")
         #expect(fixture.baseline.autoReviewFallbacksSourceSHA256 == "344d2438312beed608c19e616031d1b194f3c6efdfcbd0925f39f4df9008c037")
+        #expect(fixture.baseline.fastOverridesArtifactSHA256 == "148f61be850408d66bc146201a663d5a6edbd75db1a7e554e16958da26b0ee69")
         #expect(fixture.cases.count == 21)
         #expect(Set(fixture.cases.map(\.name)).count == fixture.cases.count)
 
+        let excludedNames = Set(fixture.cases.compactMap { testCase in
+            Self.supersededPricingCases.contains(testCase.name) ? testCase.name : nil
+        })
+        #expect(excludedNames == Self.supersededPricingCases)
+
         let resolver = UsageCostResolver()
-        for testCase in fixture.cases {
+        for testCase in fixture.cases where !Self.supersededPricingCases.contains(testCase.name) {
             let actual = resolver.resolvedCost(for: entry(from: testCase))
             #expect(
                 abs(actual - testCase.expectedUSD) < 1e-9,
@@ -84,14 +94,18 @@ struct CCUsagePricingParityTests {
             == fixture.baseline.modelsDevArtifactSHA256)
     }
 
-    @Test("生产 fast 与 auto-review 映射的规范序列化哈希固定")
-    func productionMappingArtifacts() throws {
+    @Test("生产 auto-review 映射的规范序列化哈希固定")
+    func autoReviewMappingArtifact() throws {
         let fixture = try loadFixture()
 
-        #expect(sha256(PricingTable.canonicalFastMultiplierOverrides)
-            == fixture.baseline.fastOverridesArtifactSHA256)
         #expect(sha256(CodexModelResolver.canonicalAutoReviewFallbacks)
             == fixture.baseline.autoReviewFallbacksArtifactSHA256)
+    }
+
+    @Test("当前生产 fast 映射的规范序列化哈希固定")
+    func currentFastMappingArtifact() {
+        #expect(sha256(PricingTable.canonicalFastMultiplierOverrides)
+            == "c3d475e0cb2ecdef6d97d4956f85078b058f8c42c18b91c5fd96ce6635cde3c6")
     }
 
     private func loadFixture() throws -> Fixture {
