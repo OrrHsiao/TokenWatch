@@ -18,66 +18,62 @@ struct TokenMonthlyBudgetWidgetView: View {
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(presentation.spentText)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                if let progressText = presentation.progressText {
+                    Text(progressText)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
             }
-
-            Text(presentation.spentText)
-                .font(.system(
-                    presentation.isForecastOverBudget ? .title2 : .title,
-                    design: .rounded,
-                    weight: .bold
-                ))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
 
             if let budgetText = presentation.budgetText,
                let progress = presentation.progress {
-                HStack(spacing: 6) {
-                    Text(budgetText)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(presentation.spentText)
+                        .font(.system(
+                            presentation.isForecastOverBudget ? .title2 : .title,
+                            design: .rounded,
+                            weight: .bold
+                        ))
                         .monospacedDigit()
-                    if let subtitle = presentation.subtitle {
-                        Text(verbatim: "·")
-                        Text(subtitle)
-                            .lineLimit(1)
-                    }
-                }
-                    .font(
-                        presentation.isForecastOverBudget
-                            ? .caption2
-                            : .caption
-                    )
-                    .foregroundStyle(.secondary)
-
-                HStack(alignment: .center, spacing: 10) {
-                    progressBar(
-                        progress: progress,
-                        forecastProgress: presentation.forecastProgress,
-                        isCompact: presentation.isForecastOverBudget
-                    )
-
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(verbatim: "/ \(budgetText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
                     if let forecastText = presentation.forecastText {
                         Text(forecastText)
-                            .font(
-                                presentation.isForecastOverBudget
-                                    ? .caption2
-                                    : .caption
-                            )
+                            .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundStyle(forecastColor)
-                            .lineLimit(
-                                presentation.isForecastOverBudget ? 1 : 2
-                            )
-                            .minimumScaleFactor(0.75)
+                            .lineLimit(2)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: 112, alignment: .trailing)
                     }
                 }
+
+                progressBar(
+                    progress: progress,
+                    forecastProgress: presentation.forecastProgress,
+                    isCompact: presentation.isForecastOverBudget
+                )
+
+                if let subtitle = presentation.subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } else {
+                Text(presentation.spentText)
+                    .font(.system(.title, design: .rounded, weight: .bold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
 
             if let message = presentation.message {
@@ -144,7 +140,7 @@ struct TokenMonthlyBudgetWidgetView: View {
                 }
             }
         }
-        .frame(height: isCompact ? 20 : 26)
+        .frame(height: isCompact ? 18 : 22)
     }
 
     private var actualColor: Color {

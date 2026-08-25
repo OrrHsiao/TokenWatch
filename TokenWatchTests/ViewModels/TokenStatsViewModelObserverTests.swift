@@ -917,6 +917,71 @@ struct TokenStatsViewModelObserverTests {
         #expect(received.isEmpty)
     }
 
+    @Test("已有明细时静默刷新不再物化未变化的缓存")
+    func silentRefreshReusesMaterializedEntriesWhenSourceIsUnchanged() async {
+        let entries = [
+            makeEntry(
+                id: .codex,
+                usage: makeUsage(cacheCreation5m: 0, cacheCreation1h: 0)
+            ),
+        ]
+        let provider = CacheStatusUsageProvider(
+            id: .codex,
+            entries: entries,
+            didChange: false,
+            sourceRevision: "r1"
+        )
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: StubBookmarkManager(
+                rootURL: URL(fileURLWithPath: NSTemporaryDirectory())
+            ),
+            aggregator: aggregator
+        )
+
+        await vm.loadStats(for: .codex, mode: .silentIfUnchanged)
+        await vm.loadStats(for: .codex, mode: .silentIfUnchanged)
+
+        #expect(provider.materializationRequests == [true, false])
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(vm.states[.codex]?.entries == entries)
+    }
+
+    @Test("缓存未变化时可从一次临时读取失败中恢复")
+    func unchangedCacheHitClearsTransientLoadError() async {
+        let provider = CacheStatusUsageProvider(
+            id: .codex,
+            entries: [
+                makeEntry(
+                    id: .codex,
+                    usage: makeUsage(cacheCreation5m: 0, cacheCreation1h: 0)
+                ),
+            ],
+            didChange: false,
+            sourceRevision: "r1"
+        )
+        let aggregator = CountingUsageAggregator()
+        let vm = TokenStatsViewModel(
+            providers: [provider],
+            bookmarkManager: StubBookmarkManager(
+                rootURL: URL(fileURLWithPath: NSTemporaryDirectory())
+            ),
+            aggregator: aggregator
+        )
+
+        await vm.loadStats(for: .codex)
+        provider.failNextLoad()
+        await vm.loadStats(for: .codex)
+        #expect(vm.states[.codex]?.errorMessage != nil)
+
+        await vm.loadStats(for: .codex, mode: .silentIfUnchanged)
+
+        #expect(provider.materializationRequests == [true, false, false])
+        #expect(aggregator.aggregateCallCount == 1)
+        #expect(vm.states[.codex]?.errorMessage == nil)
+    }
+
     /// cache creation 总量相同但 5m/1h 拆分变化时,计费会变化,静默刷新不能跳过聚合。
     @Test func silentRefreshReloadsWhenCacheCreationSplitChanges() async throws {
         let provider = MutableUsageProvider(
@@ -1282,6 +1347,7 @@ private final class CacheStatusUsageProvider:
     private let sourceRevision: String
     private let lock = NSLock()
     private var recordedMaterializationRequests: [Bool] = []
+    private var shouldFailNextLoad = false
 
     init(
         id: ProviderID,
@@ -1301,6 +1367,12 @@ private final class CacheStatusUsageProvider:
         return recordedMaterializationRequests
     }
 
+    func failNextLoad() {
+        lock.lock()
+        shouldFailNextLoad = true
+        lock.unlock()
+    }
+
     func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
         entries
     }
@@ -1313,7 +1385,12 @@ private final class CacheStatusUsageProvider:
         recordedMaterializationRequests.append(
             materializeEntriesWhenUnchanged
         )
+        let shouldFail = shouldFailNextLoad
+        shouldFailNextLoad = false
         lock.unlock()
+        if shouldFail {
+            throw StubLoadError()
+        }
         return UsageProviderLoadResult(
             entries: materializeEntriesWhenUnchanged ? entries : nil,
             didChange: didChange,

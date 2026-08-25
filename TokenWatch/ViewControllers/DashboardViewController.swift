@@ -5,6 +5,51 @@ private final class DashboardSessionTableDocumentView: DashboardGlassCardView {
     override var isFlipped: Bool { true }
 }
 
+/// 保留原生年月日编辑能力，同时让步进器第一次操作默认调整“日”。
+final class DashboardSessionDatePicker: NSDatePicker {
+    /// AppKit 没有公开的当前子字段 API，因此在完成字体等样式配置后逐项探测，立即还原日期并停在“日”。
+    func selectDayAsInitialStepperField() {
+        let originalDate = dateValue
+        var effectiveCalendar = calendar ?? .current
+        if let timeZone {
+            effectiveCalendar.timeZone = timeZone
+        }
+        guard let nextDay = effectiveCalendar.date(byAdding: .day, value: 1, to: originalDate),
+              let incrementEvent = Self.keyEvent(for: .upArrow, keyCode: 126),
+              let moveRightEvent = Self.keyEvent(for: .rightArrow, keyCode: 124) else { return }
+
+        // 非公历可能额外展示 era；NSDatePicker 的日期元素最多为 era/year/month/day 四项。
+        let maximumDateFieldCount = 4
+        for fieldIndex in 0..<maximumDateFieldCount {
+            keyDown(with: incrementEvent)
+            let selectedFieldAdjustsDay = dateValue == nextDay
+            dateValue = originalDate
+            if selectedFieldAdjustsDay {
+                return
+            }
+            if fieldIndex < maximumDateFieldCount - 1 {
+                keyDown(with: moveRightEvent)
+            }
+        }
+    }
+
+    private static func keyEvent(for specialKey: NSEvent.SpecialKey, keyCode: UInt16) -> NSEvent? {
+        let characters = String(specialKey.unicodeScalar)
+        return NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: characters,
+            charactersIgnoringModifiers: characters,
+            isARepeat: false,
+            keyCode: keyCode
+        )
+    }
+}
+
 /// Pencil 设计稿中的 AI Token Watch 深色总览 Dashboard。
 final class DashboardViewController: NSViewController {
     private static let sidebarWidth: CGFloat = 244
@@ -82,7 +127,7 @@ final class DashboardViewController: NSViewController {
     private let statusLabel = NSTextField(labelWithString: "")
     private let sessionTitleLabel = NSTextField(labelWithString: "")
     private let sessionSubtitleLabel = NSTextField(labelWithString: "")
-    private let sessionDatePicker = NSDatePicker()
+    private let sessionDatePicker = DashboardSessionDatePicker()
     private let sessionTodayButton = DashboardSessionButton(
         title: "",
         target: nil,
@@ -600,9 +645,11 @@ final class DashboardViewController: NSViewController {
         sessionDatePicker.dateValue = selectedSessionDate
         sessionDatePicker.datePickerElements = [.yearMonthDay]
         sessionDatePicker.datePickerStyle = .textFieldAndStepper
-        sessionDatePicker.maxDate = calendar.startOfDay(for: nowProvider())
         sessionDatePicker.font = .systemFont(ofSize: 12, weight: .semibold)
         sessionDatePicker.textColor = DashboardPalette.primaryText
+        // 设置字体会让 NSDatePicker 重建子字段；必须在其后选择“日”，且需早于 maxDate 以免当天探测被上限截断。
+        sessionDatePicker.selectDayAsInitialStepperField()
+        sessionDatePicker.maxDate = calendar.startOfDay(for: nowProvider())
         sessionDatePicker.target = self
         sessionDatePicker.action = #selector(sessionDateChanged(_:))
         sessionDatePicker.identifier = NSUserInterfaceItemIdentifier("DashboardSessionsDatePicker")

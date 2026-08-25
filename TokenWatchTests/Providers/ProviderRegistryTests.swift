@@ -65,6 +65,14 @@ struct ProviderRegistryTests {
         #expect(ProviderRegistry.provider(for: .opencode)?.hasReasoningDimension == true)
     }
 
+    @Test("JSONL provider 使用各自声明的磁盘缓存兼容策略")
+    func diskCacheCompatibilityIsProviderSpecific() {
+        #expect(CodexProvider.currentDiskCacheVersion == 4)
+        #expect(CodexProvider.compatibleDiskCacheVersions == [2, 3])
+        #expect(ClaudeProvider.currentDiskCacheVersion == 3)
+        #expect(ClaudeProvider.compatibleDiskCacheVersions.isEmpty)
+    }
+
     @Test("Claude provider 从用户选择的数据根读取 projects")
     func claudeLoadsFromSelectedDataRoot() throws {
         let root = try makeTempDataRoot()

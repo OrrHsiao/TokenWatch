@@ -11,6 +11,8 @@ struct WidgetHeatmapPresentation: Equatable, Sendable {
     let title: String
     let subtitle: String?
     let totalText: String
+    let dailyAverageText: String?
+    let peakText: String?
     let cells: [WidgetHeatmapPresentationCell]
     let message: String?
     let accessibilityLabel: String
@@ -23,6 +25,8 @@ struct WidgetHourlyLinePresentation: Equatable, Sendable {
     let points: [WidgetHourlyPoint]
     let maximumY: Double
     let currentPoint: WidgetHourlyPoint?
+    let currentHourText: String?
+    let peakHourText: String?
     let message: String?
     let accessibilityLabel: String
 }
@@ -41,6 +45,9 @@ struct WidgetWeeklySummaryPresentation: Equatable, Sendable {
     let title: String
     let subtitle: String?
     let totalText: String
+    let dailyAverageText: String?
+    let peakText: String?
+    let averageY: Double?
     let points: [WidgetWeeklySummaryPoint]
     let maximumY: Double
     let message: String?
@@ -55,6 +62,7 @@ struct WidgetMonthlyBudgetPresentation: Equatable, Sendable {
     let budgetText: String?
     let forecastText: String?
     let progress: Double?
+    let progressText: String?
     let forecastProgress: Double?
     let isForecastOverBudget: Bool
     let message: String?
@@ -96,6 +104,7 @@ struct WidgetProjectFocusPresentation: Equatable, Sendable {
     let subtitle: String?
     let projectName: String?
     let totalText: String
+    let windowTotalText: String?
     let shareTitle: String?
     let shareText: String?
     let progress: Double
@@ -110,6 +119,7 @@ struct WidgetModelFocusPresentation: Equatable, Sendable {
     let providerName: String?
     let modelName: String?
     let totalText: String
+    let windowTotalText: String?
     let shareTitle: String?
     let shareText: String?
     let progress: Double
@@ -142,6 +152,8 @@ enum WidgetChartPresentationBuilder {
                 title: text.heatmapTitle,
                 subtitle: nil,
                 totalText: totalText,
+                dailyAverageText: nil,
+                peakText: nil,
                 cells: cells,
                 message: text.notReadyMessage,
                 accessibilityLabel: aggregateLabel([
@@ -181,6 +193,8 @@ enum WidgetChartPresentationBuilder {
                     maxHourlyTokens: 0
                 ),
                 currentPoint: nil,
+                currentHourText: nil,
+                peakHourText: nil,
                 message: text.notReadyMessage,
                 accessibilityLabel: aggregateLabel([
                     text.todayUsageTitle,
@@ -215,6 +229,9 @@ enum WidgetChartPresentationBuilder {
                 title: text.weeklySummaryTitle,
                 subtitle: nil,
                 totalText: totalText,
+                dailyAverageText: nil,
+                peakText: nil,
+                averageY: nil,
                 points: points,
                 maximumY: 1,
                 message: text.notReadyMessage,
@@ -244,6 +261,7 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                progressText: nil,
                 forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: text.notReadyMessage,
@@ -313,6 +331,7 @@ enum WidgetChartPresentationBuilder {
                 subtitle: nil,
                 projectName: nil,
                 totalText: WidgetChartNumberFormatter.compact(0),
+                windowTotalText: nil,
                 shareTitle: text.shareTitle,
                 shareText: nil,
                 progress: 0,
@@ -341,6 +360,7 @@ enum WidgetChartPresentationBuilder {
                 providerName: nil,
                 modelName: nil,
                 totalText: WidgetChartNumberFormatter.compact(0),
+                windowTotalText: nil,
                 shareTitle: text.shareTitle,
                 shareText: nil,
                 progress: 0,
@@ -364,6 +384,29 @@ enum WidgetChartPresentationBuilder {
         let totalText = WidgetChartNumberFormatter.compact(
             snapshot.heatmap.totalTokens
         )
+        let realDayCount = snapshot.heatmap.cells.lazy.filter {
+            !$0.isPlaceholder
+        }.count
+        let dailyAverage = realDayCount > 0
+            ? snapshot.heatmap.totalTokens / realDayCount
+            : 0
+        let dailyAverageText = metricText(
+            label: snapshot.localizedText.dailyAverageTitle,
+            value: WidgetChartNumberFormatter.compact(dailyAverage)
+        )
+        let peakText = snapshot.heatmap.maxDailyTokens > 0
+            ? snapshot.heatmap.cells.first {
+                !$0.isPlaceholder
+                    && $0.totalTokens == snapshot.heatmap.maxDailyTokens
+            }.map {
+                let label = $0.weekdayLabel
+                    ?? fallbackDayLabel(
+                        for: $0.dateKey ?? "",
+                        fallbackPosition: 0
+                    )
+                return "\(label) \(WidgetChartNumberFormatter.compact($0.totalTokens))"
+            }
+            : nil
         let cells = snapshot.heatmap.cells.map { cell in
             WidgetHeatmapPresentationCell(
                 intensity: cell.intensity,
@@ -374,12 +417,16 @@ enum WidgetChartPresentationBuilder {
             title: title,
             subtitle: subtitle,
             totalText: totalText,
+            dailyAverageText: dailyAverageText,
+            peakText: peakText,
             cells: cells,
             message: nil,
             accessibilityLabel: aggregateLabel([
                 title,
                 snapshot.localizedText.updatedThroughTitle,
                 totalText,
+                dailyAverageText,
+                peakText,
             ])
         )
     }
@@ -397,6 +444,15 @@ enum WidgetChartPresentationBuilder {
         let currentPoint = isStale
             ? nil
             : snapshot.hourlyLine.points.first(where: \.isCurrentHour)
+        let peakPoint = snapshot.hourlyLine.maxHourlyTokens > 0
+            ? snapshot.hourlyLine.points.first {
+                $0.totalTokens == snapshot.hourlyLine.maxHourlyTokens
+            }
+            : nil
+        let currentHourText = currentPoint.map(hourMetricText)
+        let peakHourText = peakPoint.flatMap { point in
+            point.hour == currentPoint?.hour ? nil : hourMetricText(point)
+        }
         return WidgetHourlyLinePresentation(
             title: title,
             totalText: totalText,
@@ -405,11 +461,15 @@ enum WidgetChartPresentationBuilder {
                 maxHourlyTokens: snapshot.hourlyLine.maxHourlyTokens
             ),
             currentPoint: currentPoint,
+            currentHourText: currentHourText,
+            peakHourText: peakHourText,
             message: nil,
             accessibilityLabel: aggregateLabel([
                 title,
                 isStale ? nil : snapshot.localizedText.datedUsageTitle,
                 totalText,
+                currentHourText,
+                peakHourText,
             ])
         )
     }
@@ -446,10 +506,30 @@ enum WidgetChartPresentationBuilder {
         let totalText = WidgetChartNumberFormatter.compact(total)
         let title = snapshot.localizedText.weeklySummaryTitle
         let subtitle = isStale ? snapshot.localizedText.updatedThroughTitle : nil
+        let dailyAverageValue = points.isEmpty
+            ? nil
+            : Double(total) / Double(points.count)
+        let dailyAverageText = dailyAverageValue.map {
+            metricText(
+                label: snapshot.localizedText.dailyAverageTitle,
+                value: WidgetChartNumberFormatter.compact(Int($0))
+            )
+        }
+        let peakPoint = points.map(\.totalTokens).max().flatMap { maximum in
+            maximum > 0
+                ? points.first(where: { $0.totalTokens == maximum })
+                : nil
+        }
+        let peakText = peakPoint.map {
+            "\($0.dayLabel) \(WidgetChartNumberFormatter.compact($0.totalTokens))"
+        }
         return WidgetWeeklySummaryPresentation(
             title: title,
             subtitle: subtitle,
             totalText: totalText,
+            dailyAverageText: dailyAverageText,
+            peakText: peakText,
+            averageY: dailyAverageValue,
             points: points,
             maximumY: max(1, Double(points.map(\.totalTokens).max() ?? 0)),
             message: nil,
@@ -457,6 +537,8 @@ enum WidgetChartPresentationBuilder {
                 title,
                 subtitle,
                 totalText,
+                dailyAverageText,
+                peakText,
             ])
         )
     }
@@ -473,6 +555,7 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                progressText: nil,
                 forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: snapshot.localizedText.monthlyBudgetUnconfiguredMessage,
@@ -494,6 +577,7 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                progressText: nil,
                 forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: budgetSnapshot.unconfiguredMessage,
@@ -514,6 +598,7 @@ enum WidgetChartPresentationBuilder {
                 budgetText: nil,
                 forecastText: nil,
                 progress: nil,
+                progressText: nil,
                 forecastProgress: nil,
                 isForecastOverBudget: false,
                 message: budgetSnapshot.unconfiguredMessage,
@@ -531,13 +616,19 @@ enum WidgetChartPresentationBuilder {
         let message = forecastOverBudget
             ? budgetSnapshot.forecastOverBudgetMessage
             : nil
+        let progress = min(max(budgetSnapshot.spentUSD / budget, 0), 1)
+        let progressText = budgetProgressText(
+            spentUSD: budgetSnapshot.spentUSD,
+            budgetUSD: budget
+        )
         return WidgetMonthlyBudgetPresentation(
             title: budgetSnapshot.title,
             subtitle: subtitle,
             spentText: spentText,
             budgetText: WidgetCostFormatter.usd(budget),
             forecastText: forecastText,
-            progress: min(max(budgetSnapshot.spentUSD / budget, 0), 1),
+            progress: progress,
+            progressText: progressText,
             forecastProgress: min(
                 max(budgetSnapshot.forecastUSD / budget, 0),
                 1
@@ -549,6 +640,7 @@ enum WidgetChartPresentationBuilder {
                 subtitle,
                 spentText,
                 WidgetCostFormatter.usd(budget),
+                progressText,
                 forecastText,
                 message,
             ])
@@ -653,23 +745,30 @@ enum WidgetChartPresentationBuilder {
         let totalText = WidgetChartNumberFormatter.compact(
             hasProject ? focus.topProjectTokens : 0
         )
+        let windowTotalText = hasProject
+            ? WidgetChartNumberFormatter.compact(focus.windowTotalTokens)
+            : nil
+        let windowSummary = windowTotalText.map {
+            metricText(label: subtitle, value: $0)
+        }
         let message = hasProject ? nil : snapshot.localizedText.projectFocusNoDataMessage
         return WidgetProjectFocusPresentation(
             title: snapshot.localizedText.projectFocusTitle,
             subtitle: subtitle,
             projectName: hasProject ? focus.topProjectName : nil,
             totalText: totalText,
+            windowTotalText: windowTotalText,
             shareTitle: snapshot.localizedText.shareTitle,
             shareText: share.map(percentageText),
             progress: share ?? 0,
             message: message,
             accessibilityLabel: aggregateLabel([
                 snapshot.localizedText.projectFocusTitle,
-                subtitle,
-                focus.topProjectName,
-                totalText,
-                snapshot.localizedText.shareTitle,
-                share.map(percentageText),
+                hasProject ? windowSummary : subtitle,
+                hasProject ? focus.topProjectName : nil,
+                hasProject ? totalText : nil,
+                hasProject ? snapshot.localizedText.shareTitle : nil,
+                hasProject ? share.map(percentageText) : nil,
                 message,
             ])
         )
@@ -693,6 +792,12 @@ enum WidgetChartPresentationBuilder {
         let totalText = WidgetChartNumberFormatter.compact(
             hasModel ? focus.modelTokens : 0
         )
+        let windowTotalText = hasModel
+            ? WidgetChartNumberFormatter.compact(focus.windowTotalTokens)
+            : nil
+        let windowSummary = windowTotalText.map {
+            metricText(label: subtitle, value: $0)
+        }
         let message = hasModel ? nil : snapshot.localizedText.modelFocusNoDataMessage
         return WidgetModelFocusPresentation(
             title: snapshot.localizedText.modelFocusTitle,
@@ -700,18 +805,19 @@ enum WidgetChartPresentationBuilder {
             providerName: hasModel ? focus.providerName : nil,
             modelName: hasModel ? focus.modelName : nil,
             totalText: totalText,
+            windowTotalText: windowTotalText,
             shareTitle: snapshot.localizedText.shareTitle,
             shareText: share.map(percentageText),
             progress: share ?? 0,
             message: message,
             accessibilityLabel: aggregateLabel([
                 snapshot.localizedText.modelFocusTitle,
-                subtitle,
-                focus.providerName,
-                focus.modelName,
-                totalText,
-                snapshot.localizedText.shareTitle,
-                share.map(percentageText),
+                hasModel ? windowSummary : subtitle,
+                hasModel ? focus.providerName : nil,
+                hasModel ? focus.modelName : nil,
+                hasModel ? totalText : nil,
+                hasModel ? snapshot.localizedText.shareTitle : nil,
+                hasModel ? share.map(percentageText) : nil,
                 message,
             ])
         )
@@ -731,6 +837,33 @@ enum WidgetChartPresentationBuilder {
             format: "%.1f×",
             locale: Locale(identifier: "en_US_POSIX"),
             multiplier
+        )
+    }
+
+    private static func metricText(label: String?, value: String) -> String {
+        [label, value]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private static func hourMetricText(_ point: WidgetHourlyPoint) -> String {
+        "\(point.hourLabel) \(WidgetChartNumberFormatter.compact(point.totalTokens))"
+    }
+
+    private static func budgetProgressText(
+        spentUSD: Double,
+        budgetUSD: Double
+    ) -> String {
+        let percentage = spentUSD / budgetUSD * 100
+        guard percentage.isFinite, percentage >= 0 else { return "0%" }
+        if percentage >= 999 {
+            return "999%+"
+        }
+        return String(
+            format: "%.0f%%",
+            locale: Locale(identifier: "en_US_POSIX"),
+            percentage
         )
     }
 

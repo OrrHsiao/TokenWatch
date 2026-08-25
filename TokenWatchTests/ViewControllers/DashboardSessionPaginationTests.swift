@@ -120,6 +120,87 @@ struct DashboardSessionPaginationTests {
     }
 
     @MainActor
+    @Test("会话日期选择器上下箭头默认按天调整")
+    func dashboardSessionDatePickerStepperDefaultsToDay() throws {
+        let baseDate = dateTime(2026, 6, 15, hour: 12, minute: 0)
+        let scenarios: [(localeIdentifier: String, calendarIdentifier: Calendar.Identifier)] = [
+            ("zh_CN", .gregorian),
+            ("en_US", .gregorian),
+            ("fr_FR", .gregorian),
+            ("ar", .gregorian),
+            ("he_IL", .gregorian),
+            ("fa_IR", .gregorian),
+            ("ur_PK", .gregorian),
+            ("ja_JP", .japanese),
+            ("zh_TW", .republicOfChina),
+            ("ar_SA", .islamicUmmAlQura),
+            ("ar_EG", .coptic),
+        ]
+
+        for scenario in scenarios {
+            var pickerCalendar = Calendar(identifier: scenario.calendarIdentifier)
+            pickerCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+            let datePicker = DashboardSessionDatePicker()
+            datePicker.locale = Locale(identifier: scenario.localeIdentifier)
+            datePicker.calendar = pickerCalendar
+            datePicker.timeZone = pickerCalendar.timeZone
+            datePicker.datePickerElements = [.yearMonthDay]
+            datePicker.datePickerStyle = .textFieldAndStepper
+            datePicker.dateValue = baseDate
+            datePicker.font = .systemFont(ofSize: 12, weight: .semibold)
+            datePicker.textColor = .white
+            datePicker.selectDayAsInitialStepperField()
+            datePicker.maxDate = dateTime(2026, 8, 11, hour: 0, minute: 0)
+
+            let cell = try #require(datePicker.cell as? NSDatePickerCell)
+            _ = cell.accessibilityPerformDecrement()
+            var components = calendar().dateComponents([.year, .month, .day], from: datePicker.dateValue)
+            #expect(components.year == 2026, "\(scenario) 的向下箭头不应修改年份")
+            #expect(components.month == 6, "\(scenario) 的向下箭头不应修改月份")
+            #expect(components.day == 14, "\(scenario) 的向下箭头应减一天")
+
+            datePicker.dateValue = baseDate
+            _ = cell.accessibilityPerformIncrement()
+            components = calendar().dateComponents([.year, .month, .day], from: datePicker.dateValue)
+            #expect(components.year == 2026, "\(scenario) 的向上箭头不应修改年份")
+            #expect(components.month == 6, "\(scenario) 的向上箭头不应修改月份")
+            #expect(components.day == 16, "\(scenario) 的向上箭头应加一天")
+        }
+    }
+
+    @MainActor
+    @Test("生产会话日期选择器的下箭头默认减一天")
+    func dashboardSessionDatePickerProductionConfigurationDefaultsToDay() throws {
+        let now = dateTime(2026, 8, 11, hour: 12, minute: 0)
+        let languageSettings = zhHansLanguageSettings()
+        let controller = DashboardViewController(
+            settingsViewController: settingsViewController(languageSettings: languageSettings),
+            stateProvider: { [:] },
+            nowProvider: { now },
+            calendar: calendar(),
+            languageSettings: languageSettings
+        )
+
+        controller.loadViewIfNeeded()
+        try button(withIdentifier: "DashboardNav.sessions", in: controller.view).performClick(nil)
+
+        let datePicker = try #require(
+            findView(withIdentifier: "DashboardSessionsDatePicker", in: controller.view) as? NSDatePicker
+        )
+        #expect(datePicker.dateValue == calendar().startOfDay(for: now))
+
+        // 必须取生产控件；若 font 在选择“日”之后设置，这里会回归为减一年。
+        let cell = try #require(datePicker.cell as? NSDatePickerCell)
+        _ = cell.accessibilityPerformDecrement()
+
+        let components = calendar().dateComponents([.year, .month, .day], from: datePicker.dateValue)
+        #expect(components.year == 2026)
+        #expect(components.month == 8)
+        #expect(components.day == 10)
+        withExtendedLifetime(controller) {}
+    }
+
+    @MainActor
     @Test("默认窗口无需滚动即可完整显示表头、十行数据与分页栏")
     func dashboardDefaultWindowShowsAllColumnsTenRowsAndPaginationWithoutScrolling() throws {
         let now = dateTime(2026, 7, 4, hour: 12, minute: 0)

@@ -35,6 +35,23 @@ struct WidgetGalleryViewControllerTests {
             heatmapIntensities.filter { $0 == 0 }.count
                 > heatmapIntensities.filter { $0 == 4 }.count
         )
+        let heatmapMaximum = snapshot.heatmap.maxDailyTokens
+        #expect(snapshot.heatmap.cells.allSatisfy { cell in
+            let expected = cell.totalTokens == 0 || heatmapMaximum == 0
+                ? 0
+                : max(
+                    1,
+                    min(
+                        WidgetChartVisualStyle.heatmapMaximumIntensity,
+                        Int(ceil(
+                            Double(cell.totalTokens)
+                                / Double(heatmapMaximum)
+                                * Double(WidgetChartVisualStyle.heatmapMaximumIntensity)
+                        ))
+                    )
+                )
+            return cell.intensity == expected
+        })
         #expect(
             snapshot == WidgetGallerySampleSnapshotFactory.make(
                 now: now,
@@ -43,7 +60,7 @@ struct WidgetGalleryViewControllerTests {
             )
         )
         #expect(snapshot.hourlyLine.points[6].totalTokens == 200_000)
-        #expect(snapshot.localizedText.heatmapTitle == "热力图")
+        #expect(snapshot.localizedText.heatmapTitle == "最近 22 周")
         #expect(snapshot.localizedText.weeklySummaryTitle == "最近 7 天")
         #expect(snapshot.monthlyBudget?.title == "本月预算")
         #expect(snapshot.monthlyBudget?.budgetUSD == 100)
@@ -51,6 +68,11 @@ struct WidgetGalleryViewControllerTests {
         #expect(snapshot.projectFocus.topProjectTokens == 2_500_000)
         #expect(snapshot.modelFocus.providerName == "Claude")
         #expect(snapshot.modelFocus.modelName == "claude-sonnet-4")
+        let anomaly = WidgetChartPresentationBuilder.todayAnomaly(
+            for: .current(snapshot)
+        )
+        #expect(anomaly.differenceText == "+40%")
+        #expect(anomaly.multiplierText == "1.4×")
         #expect(WidgetUsageSnapshotValidator.isValid(snapshot))
     }
 
@@ -140,7 +162,7 @@ struct WidgetGalleryViewControllerTests {
             view(identifier: "DashboardWidgetPreview.modelFocus.content", in: controller.view)
         )
         let sectionFixtures: [(identifier: String, title: String, previews: [NSView])] = [
-            ("heatmap", "热力图", [heatmapPreview]),
+            ("heatmap", "最近 22 周", [heatmapPreview]),
             ("hourlyLine", "趋势", [hourlyLinePreview]),
             ("weeklySummary", "最近 7 天", [weeklySmallPreview, weeklyMediumPreview]),
             ("todayAnomaly", "今日用量", [todayAnomalySmallPreview, todayAnomalyMediumPreview]),

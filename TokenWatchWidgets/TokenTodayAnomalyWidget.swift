@@ -37,9 +37,7 @@ struct TokenTodayAnomalyWidgetView: View {
         _ presentation: WidgetTodayAnomalyPresentation
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(presentation.title)
-                .font(.headline)
-                .lineLimit(1)
+            contextHeader(presentation)
             Text(presentation.totalText)
                 .font(.system(.title, design: .rounded, weight: .bold))
                 .monospacedDigit()
@@ -55,9 +53,7 @@ struct TokenTodayAnomalyWidgetView: View {
         _ presentation: WidgetTodayAnomalyPresentation
     ) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(presentation.title)
-                .font(.headline)
-                .lineLimit(1)
+            contextHeader(presentation)
 
             HStack(alignment: .bottom, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -74,6 +70,45 @@ struct TokenTodayAnomalyWidgetView: View {
 
                 chart(presentation)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func contextHeader(
+        _ presentation: WidgetTodayAnomalyPresentation
+    ) -> some View {
+        if family == .systemSmall {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(presentation.title)
+                        .font(.headline)
+                        .fixedSize(horizontal: true, vertical: false)
+                    if let subtitle = presentation.subtitle {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                Text(presentation.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(presentation.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if let subtitle = presentation.subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
         }
     }

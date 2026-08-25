@@ -373,7 +373,7 @@ struct WidgetPurchaseControllerTests {
         #expect(controller.state.isUnlocked)
         #expect(controller.state.operation == .purchaseCompleted)
 
-        client.resumeSuspendedEntitlementCheck(with: false)
+        client.resumeSuspendedEntitlementCheck(with: .notEntitled)
         await staleRefresh.value
 
         #expect(controller.state.isUnlocked)
@@ -394,6 +394,181 @@ struct WidgetPurchaseControllerTests {
         await unlocked.refresh()
         #expect(unlocked.state.product == WidgetPurchaseReviewFixtures.product)
         #expect(unlocked.state.isUnlocked)
+    }
+
+    @Test("indeterminate 权益查询保留现状不 finish，延迟重查收敛后交付")
+    func indeterminateEntitlementRetainsStateAndRechecks() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
+        let store = RecordingWidgetEntitlementStore(state: .locked)
+        let reloader = RecordingWidgetPurchaseTimelineReloader()
+        let controller = makeController(
+            client: client,
+            store: store,
+            reloader: reloader,
+            entitlementRecheckDelay: .milliseconds(10)
+        )
+
+        controller.start()
+        let didStart = await eventually {
+            client.transactionUpdatesCallCount == 1
+                && client.loadedProductIDs.count == 1
+                && controller.state.operation == .idle
+        }
+        #expect(didStart)
+        // start 的 refresh 查询到 notEntitled，写入一次 locked
+        #expect(store.savedStates == [.locked])
+
+        client.indeterminateEntitlement = true
+        client.send(.verified(.init(
+            id: 200,
+            productID: WidgetPurchaseController.productID
+        )))
+        let didHandle = await eventually {
+            client.entitlementProductIDs.count >= 2
+        }
+        #expect(didHandle)
+        // 目标交易无法验证：保留交易不 finish、不覆盖 entitlement 缓存、不改变解锁状态
+        #expect(client.finishedTransactionIDs == [])
+        #expect(store.savedStates == [.locked])
+        #expect(!controller.state.isUnlocked)
+
+        // StoreKit 恢复可验证后，延迟重查收敛并完成交付
+        client.indeterminateEntitlement = false
+        client.currentEntitlement = true
+        let didConverge = await eventually {
+            controller.state.isUnlocked && client.finishedTransactionIDs == [200]
+        }
+        #expect(didConverge)
+        #expect(store.savedStates == [.locked, .unlocked])
+        controller.stop()
+    }
+
+    @Test("过期重查结果不会覆盖更新的购买状态")
+    func staleRecheckCannotOverwriteNewerPurchase() async {
+        let transaction = WidgetPurchaseTransaction(
+            id: 300,
+            productID: WidgetPurchaseController.productID
+        )
+        let client = FakeWidgetPurchaseClient(
+            product: product,
+            currentEntitlement: false,
+            purchaseResult: .verified(transaction)
+        )
+        let store = RecordingWidgetEntitlementStore(state: .locked)
+        let controller = makeController(
+            client: client,
+            store: store,
+            entitlementRecheckDelay: .milliseconds(10)
+        )
+
+        controller.start()
+        let didStart = await eventually {
+            controller.state.operation == .idle
+        }
+        #expect(didStart)
+
+        // 触发 indeterminate → 后台重查循环启动
+        client.indeterminateEntitlement = true
+        client.send(.verified(.init(
+            id: 200,
+            productID: WidgetPurchaseController.productID
+        )))
+        let didHandle = await eventually {
+            client.entitlementProductIDs.count >= 2
+        }
+        #expect(didHandle)
+
+        // 挂起重查的下一轮查询，制造查询期间发生新操作的窗口
+        client.suspendNextEntitlementCheck = true
+        let didSuspend = await eventually {
+            client.hasSuspendedEntitlementCheck
+        }
+        #expect(didSuspend)
+
+        // 查询挂起期间用户完成 verified 购买并解锁
+        await controller.purchase(in: NSWindow())
+        #expect(controller.state.isUnlocked)
+        #expect(controller.state.operation == .purchaseCompleted)
+        #expect(store.savedStates.last == .unlocked)
+
+        // 旧重查查询返回过期的 notEntitled：不得覆盖解锁状态、不得写回 locked、
+        // 不得 finish 已由购买流程交付的交易之外的旧交易
+        client.indeterminateEntitlement = false
+        client.currentEntitlement = false
+        client.resumeSuspendedEntitlementCheck(with: .notEntitled)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(controller.state.isUnlocked)
+        #expect(controller.state.operation == .purchaseCompleted)
+        #expect(store.savedStates.last == .unlocked)
+        #expect(client.finishedTransactionIDs == [300])
+        controller.stop()
+    }
+
+    @Test("冷启动从 entitlement 缓存恢复已解锁状态")
+    func coldStartRestoresUnlockedFromCache() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
+        client.indeterminateEntitlement = true
+        let store = RecordingWidgetEntitlementStore(state: .unlocked)
+        let controller = makeController(client: client, store: store)
+
+        controller.start()
+        let didRefresh = await eventually {
+            client.entitlementProductIDs.count >= 1
+        }
+        #expect(didRefresh)
+        // 首次查询 indeterminate：保留从缓存恢复的解锁状态，
+        // 主 app 与 widget 扩展（读同一 App Group 缓存）保持一致
+        #expect(controller.state.isUnlocked)
+        #expect(store.savedStates.isEmpty)
+        controller.stop()
+    }
+
+    @Test("indeterminate 后台调和不应让 UI 停留在 busy 状态")
+    func indeterminateReconciliationRestoresIdleUI() async {
+        let client = FakeWidgetPurchaseClient(product: product, currentEntitlement: false)
+        let store = RecordingWidgetEntitlementStore(state: .locked)
+        let controller = makeController(client: client, store: store)
+
+        controller.start()
+        let didStart = await eventually {
+            // entitlement 查询计数保证 refresh 已完整执行（初始 state 即为 .idle）
+            client.entitlementProductIDs.count >= 1
+                && controller.state.operation == .idle
+        }
+        #expect(didStart)
+
+        // 挂起 restore 的权益查询，让 restore 停留在 .restoring（busy）状态
+        client.suspendNextEntitlementCheck = true
+        let restoreTask = Task { @MainActor in
+            await controller.restorePurchases()
+        }
+        let didSuspend = await eventually {
+            client.hasSuspendedEntitlementCheck
+        }
+        #expect(didSuspend)
+        #expect(controller.state.operation == .restoring)
+
+        // 期间 verified update 到达且查询 indeterminate：
+        // 后台调和不得让 UI 停留在 busy，必须恢复 .idle
+        client.indeterminateEntitlement = true
+        client.send(.verified(.init(
+            id: 200,
+            productID: WidgetPurchaseController.productID
+        )))
+        let didReconcile = await eventually {
+            controller.state.operation == .idle
+                && client.entitlementProductIDs.count >= 3
+        }
+        #expect(didReconcile)
+        #expect(!controller.state.isUnlocked)
+        #expect(client.finishedTransactionIDs == [])
+
+        // 释放被挂起的旧 restore：其 generation 已失效，静默返回
+        client.resumeSuspendedEntitlementCheck(with: .notEntitled)
+        await restoreTask.value
+        #expect(controller.state.operation == .idle)
+        controller.stop()
     }
 
     private var product: WidgetPurchaseProduct {
@@ -420,12 +595,14 @@ struct WidgetPurchaseControllerTests {
     private func makeController(
         client: FakeWidgetPurchaseClient,
         store: RecordingWidgetEntitlementStore? = nil,
-        reloader: RecordingWidgetPurchaseTimelineReloader? = nil
+        reloader: RecordingWidgetPurchaseTimelineReloader? = nil,
+        entitlementRecheckDelay: Duration = .seconds(3)
     ) -> WidgetPurchaseController {
         WidgetPurchaseController(
             client: client,
             entitlementStore: store ?? RecordingWidgetEntitlementStore(state: .locked),
-            timelineReloader: reloader ?? RecordingWidgetPurchaseTimelineReloader()
+            timelineReloader: reloader ?? RecordingWidgetPurchaseTimelineReloader(),
+            entitlementRecheckDelay: entitlementRecheckDelay
         )
     }
 
@@ -454,6 +631,7 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
     var purchaseError: InjectedWidgetPurchaseError?
     var syncError: InjectedWidgetPurchaseError?
     var suspendNextEntitlementCheck = false
+    var indeterminateEntitlement = false
     private(set) var loadedProductIDs: [String] = []
     private(set) var purchasedProductIDs: [String] = []
     private(set) weak var purchaseWindow: NSWindow?
@@ -461,7 +639,7 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
     private(set) var syncCallCount = 0
     private(set) var transactionUpdatesCallCount = 0
     private(set) var finishedTransactionIDs: [UInt64] = []
-    private var suspendedEntitlementContinuation: CheckedContinuation<Bool, Never>?
+    private var suspendedEntitlementContinuation: CheckedContinuation<WidgetEntitlementQueryResult, Never>?
 
     init(
         product: WidgetPurchaseProduct?,
@@ -499,7 +677,7 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
         }
     }
 
-    func hasVerifiedCurrentEntitlement(productID: String) async -> Bool {
+    func currentEntitlementStatus(for productID: String) async -> WidgetEntitlementQueryResult {
         entitlementProductIDs.append(productID)
         if suspendNextEntitlementCheck {
             suspendNextEntitlementCheck = false
@@ -507,14 +685,17 @@ private final class FakeWidgetPurchaseClient: WidgetPurchaseClient {
                 suspendedEntitlementContinuation = continuation
             }
         }
-        return currentEntitlement
+        if indeterminateEntitlement {
+            return .indeterminate
+        }
+        return currentEntitlement ? .entitled : .notEntitled
     }
 
     var hasSuspendedEntitlementCheck: Bool {
         suspendedEntitlementContinuation != nil
     }
 
-    func resumeSuspendedEntitlementCheck(with result: Bool) {
+    func resumeSuspendedEntitlementCheck(with result: WidgetEntitlementQueryResult) {
         let continuation = suspendedEntitlementContinuation
         suspendedEntitlementContinuation = nil
         continuation?.resume(returning: result)

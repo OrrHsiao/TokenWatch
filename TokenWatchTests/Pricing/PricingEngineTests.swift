@@ -671,11 +671,15 @@ struct PricingEngineTests {
         #expect(abs(cost - 2.25) < 0.0001)
     }
 
-    @Test("fast - PricingTable 中 Opus 4.6/4.7/4.8 已带 fastMultiplier")
+    @Test("fast - PricingTable 使用当前 Opus 与 GPT-5.6 multiplier")
     func fastPricingTableEntries() {
-        #expect(PricingTable.pricing(for: "claude-opus-4-6")?.fastMultiplier == 6.0)
-        #expect(PricingTable.pricing(for: "claude-opus-4-7")?.fastMultiplier == 6.0)
+        #expect(PricingTable.pricing(for: "claude-opus-4-6")?.fastMultiplier == 1.0)
+        #expect(PricingTable.pricing(for: "claude-opus-4-7")?.fastMultiplier == 1.0)
         #expect(PricingTable.pricing(for: "claude-opus-4-8")?.fastMultiplier == 2.0)
+        #expect(PricingTable.pricing(for: "claude-opus-5")?.fastMultiplier == 2.0)
+        #expect(PricingTable.pricing(for: "gpt-5.6-sol")?.fastMultiplier == 2.0)
+        #expect(PricingTable.pricing(for: "gpt-5.6-terra")?.fastMultiplier == 2.0)
+        #expect(PricingTable.pricing(for: "gpt-5.6-luna")?.fastMultiplier == 2.0)
     }
 
     @Test("fast - 其他模型 fastMultiplier 默认 1.0")
@@ -686,11 +690,10 @@ struct PricingEngineTests {
         #expect(PricingTable.pricing(for: "claude-haiku-4-5")?.fastMultiplier == 1.0)
     }
 
-    @Test("fast - 带日期后缀的 Opus 4.8 也命中 fast=2.0")
+    @Test("fast - 带日期后缀的 Opus 5 也命中 fast=2.0")
     func fastDateSuffixMatch() {
-        // claude-opus-4-8-20260101 → 前缀匹配 claude-opus-4-8 → fast=2.0
-        let pricing = PricingTable.pricing(for: "claude-opus-4-8-20260101")
-        #expect(pricing?.modelID == "claude-opus-4-8")
+        let pricing = PricingTable.pricing(for: "claude-opus-5-20260820")
+        #expect(pricing?.modelID == "claude-opus-5")
         #expect(pricing?.fastMultiplier == 2.0)
     }
 
@@ -733,6 +736,59 @@ struct PricingEngineTests {
 }
 
 extension PricingEngineTests {
+    @Test("Grok 4.6 在 input 恰好 200K 时整请求使用 long-context 价格")
+    func grok46LongContextStartsAt200K() throws {
+        let pricing = try #require(PricingTable.pricing(for: "grok-4.6"))
+        let usage = codexUsage(rawInput: 200_000, cached: 0, output: 1_000)
+
+        let cost = PricingEngine().calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .standard
+        )
+
+        #expect(abs(cost - 0.812) < 1e-9)
+    }
+
+    @Test("Grok 4.6 用 input、cache read/write 的完整 prompt 判断 200K")
+    func grok46LongContextUsesCompletePrompt() throws {
+        let pricing = try #require(PricingTable.pricing(for: "grok-4.6"))
+        let usage = TokenUsage(
+            inputTokens: 100_000,
+            cacheCreationInputTokens: 20_000,
+            cacheReadInputTokens: 80_000,
+            outputTokens: 1_000,
+            serverToolUse: ServerToolUse(webSearchRequests: 0, webFetchRequests: 0),
+            serviceTier: "",
+            cacheCreation: nil,
+            inferenceGeo: "",
+            iterations: [],
+            speed: ""
+        )
+
+        let cost = PricingEngine().calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .standard
+        )
+
+        #expect(abs(cost - 0.542) < 1e-9)
+    }
+
+    @Test("GPT-5.6 Sol Codex 长上下文使用当前官方价格")
+    func gpt56SolUsesCurrentLongContextRates() throws {
+        let pricing = try #require(PricingTable.pricing(for: "gpt-5.6-sol"))
+        let usage = codexUsage(rawInput: 300_000, cached: 100_000, output: 1_000)
+
+        let cost = PricingEngine().calculateCost(
+            usage: usage,
+            pricing: pricing,
+            semantics: .codex
+        )
+
+        #expect(abs(cost - 1.71) < 1e-9)
+    }
+
     @Test("Codex raw input 超过 272K 时整请求使用 long-context rates")
     func codexWholeRequestLongContext() {
         let pricing = openAIPrice(
@@ -909,8 +965,8 @@ extension PricingEngineTests {
         #expect(abs(result.cost - 0.01) < 1e-9)
     }
 
-    @Test("standard OpenAI 阈值只看 inputTokens，Codex 才重建 pure 加 cached")
-    func standardLongContextUsesRawInputField() {
+    @Test("whole-request 阈值对 standard 与 Codex 都使用完整 prompt")
+    func wholeRequestLongContextUsesCompletePromptForAllSemantics() {
         let pricing = openAIPrice(
             id: "gpt-5.4",
             input: 2.5,
@@ -935,7 +991,7 @@ extension PricingEngineTests {
             semantics: .codex
         )
 
-        #expect(abs(standard - 0.525) < 1e-9)
+        #expect(abs(standard - 1.05) < 1e-9)
         #expect(abs(codex - 1.05) < 1e-9)
     }
 

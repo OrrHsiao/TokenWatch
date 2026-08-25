@@ -73,9 +73,9 @@ enum PricingSemantics: Sendable, Equatable {
 /// 定价计算引擎。
 ///
 /// `standard` 对无 whole-request 阈值的模型按 token 类别独立应用 200K
-/// marginal tier；有 `longContextThreshold` 时，整条请求统一选择 base/long rate。
-/// `codex` 在此基础上用 pure input + cache read 重建 raw input，并按 Codex 的
-/// implicit cache-read 与 fast/priority 规则计费。
+/// marginal tier；有 `longContextThreshold` 时，按 input 与 cache 各桶合计的完整
+/// prompt 为整条请求统一选择 base/long rate。`codex` 在此基础上应用 implicit
+/// cache-read 与 fast/priority 规则。
 struct PricingEngine: Sendable {
     private static let marginalTierThreshold = 200_000
     private static let cacheCreate1hInputMultiplier = 2.0
@@ -124,13 +124,12 @@ struct PricingEngine: Sendable {
 
         let subtotal: Double
         if let threshold = pricing.longContextThreshold {
-            // Codex 的 input_tokens 已扣除 cached_input_tokens，判断长上下文时需还原。
-            // 对负数先归零，延续 marginal tier 对无效 token 数不计费的保护。
-            let rawInput = semantics == .codex
-                ? Double(max(0, usage.inputTokens))
-                    + Double(max(0, usage.cacheReadInputTokens))
-                : Double(max(0, usage.inputTokens))
-            let isLong = rawInput > Double(threshold)
+            // 统一 usage 会把非缓存 input、cache read 与 cache write 拆桶；供应商的
+            // whole-request 阈值看完整 prompt，因此三者需合并且不能计入 output。
+            let promptTokens = Double(max(0, usage.inputTokens))
+                + Double(max(0, usage.cacheReadInputTokens))
+                + Double(max(0, usage.totalCacheCreationTokens))
+            let isLong = promptTokens > Double(threshold)
             let rate: (Double, Double?) -> Double = { base, above in
                 isLong ? (above ?? base) : base
             }
