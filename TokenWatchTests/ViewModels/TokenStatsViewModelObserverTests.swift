@@ -1181,6 +1181,7 @@ private struct StubUsageProvider: UsageProvider {
         case .claude: .claudeDataDirectoryOpenPanelMessage
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity: .antigravityDataDirectoryOpenPanelMessage
         }
     }
     let hasCacheWriteDimension = true
@@ -1200,6 +1201,7 @@ private final class MutableUsageProvider: UsageProvider, @unchecked Sendable {
         case .claude: .claudeDataDirectoryOpenPanelMessage
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity: .antigravityDataDirectoryOpenPanelMessage
         }
     }
     let hasCacheWriteDimension = true
@@ -1236,6 +1238,7 @@ private final class FailingAfterFirstLoadProvider: UsageProvider, @unchecked Sen
         case .claude: .claudeDataDirectoryOpenPanelMessage
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity: .antigravityDataDirectoryOpenPanelMessage
         }
     }
     let hasCacheWriteDimension = true
@@ -1339,6 +1342,7 @@ private final class CacheStatusUsageProvider:
         case .claude: .claudeDataDirectoryOpenPanelMessage
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity: .antigravityDataDirectoryOpenPanelMessage
         }
     }
 
@@ -1427,6 +1431,8 @@ private final class DirectoryTestUsageProvider:
             .codexDataDirectoryOpenPanelMessage
         case .opencode:
             .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity:
+            .antigravityDataDirectoryOpenPanelMessage
         }
     }
 
@@ -1467,6 +1473,7 @@ private final class DirectoryTestUsageProvider:
         case .claude: "Claude Code"
         case .codex: "Codex"
         case .opencode: "opencode"
+        case .antigravity: "Antigravity"
         }
 
         let signal = AsyncStream<Void>.makeStream()

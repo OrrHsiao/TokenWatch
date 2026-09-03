@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Claude Code. Zakonisht është ~/.claude.\nMund ta gjeni me komandën echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Codex. Zakonisht është ~/.codex.\nMund ta gjeni me komandën echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të opencode. Zakonisht është ~/.local/share/opencode.\nMund ta gjeni me komandën echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Zgjidhni dosjen e të dhënave të Antigravity. Zakonisht është ~/.gemini/antigravity.\nMund ta gjeni me komandën echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Zgjidh";
 "errorCannotAccessProviderDirectoryFormat" = "Dosja e të dhënave %@ nuk mund të aksesohet. Zgjidheni përsëri.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Qasja në dosjen e të dhënave %@ nuk mund të ruhet. Zgjidhni përsëri.";

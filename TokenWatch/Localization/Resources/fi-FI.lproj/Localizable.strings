@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Valitse Claude Coden datakansio; se on yleensä polussa ~/.claude.\nLöydät sen komennolla echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Valitse Codexin datakansio; se on yleensä polussa ~/.codex.\nLöydät sen komennolla echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Valitse opencoden datakansio; se on yleensä polussa ~/.local/share/opencode.\nLöydät sen komennolla echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Valitse Antigravityn datakansio; se on yleensä polussa ~/.gemini/antigravity.\nLöydät sen komennolla echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Valitse";
 "errorCannotAccessProviderDirectoryFormat" = "Kohteen %@ datakansiota ei voi käyttää. Valitse se uudelleen.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Kohteen %@ datakansion käyttöoikeutta ei voitu tallentaa. Valitse se uudelleen.";

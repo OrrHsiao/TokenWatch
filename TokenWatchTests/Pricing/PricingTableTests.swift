@@ -349,6 +349,16 @@ extension PricingTableTests {
                 cacheReadIsExplicit: true, fast: 1
             ),
             .init(
+                requestedID: "gemini-3.8-flash", matchedID: "gemini-3.8-flash",
+                input: 0.75, output: 3.75, cacheRead: 0.075, cacheWrite: 0.9375,
+                cacheReadIsExplicit: true, fast: 1
+            ),
+            .init(
+                requestedID: "gemini-3.8-pro", matchedID: "gemini-3.8-pro",
+                input: 2.5, output: 10.0, cacheRead: 0.25, cacheWrite: 3.125,
+                cacheReadIsExplicit: true, fast: 1
+            ),
+            .init(
                 requestedID: "grok-4.3", matchedID: "grok-4.3",
                 input: 1.25, output: 2.5, cacheRead: 0.2, cacheWrite: 1.5625,
                 inputAbove: 2.5, outputAbove: 5, cacheReadAbove: 0.4,

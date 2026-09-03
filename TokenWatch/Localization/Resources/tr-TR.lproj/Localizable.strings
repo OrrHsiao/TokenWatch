@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code veri klasörünü seçin. Genellikle ~/.claude konumundadır.\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" komutuyla bulabilirsiniz.";
 "codexDataDirectoryOpenPanelMessage" = "Codex veri klasörünü seçin. Genellikle ~/.codex konumundadır.\necho \"${CODEX_HOME:-$HOME/.codex}\" komutuyla bulabilirsiniz.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode veri klasörünü seçin. Genellikle ~/.local/share/opencode konumundadır.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" komutuyla bulabilirsiniz.";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity veri klasörünü seçin. Genellikle ~/.gemini/antigravity konumundadır.\necho \"$HOME/.gemini/antigravity\" komutuyla bulabilirsiniz.";
 "chooseDirectoryPrompt" = "Seç";
 "errorCannotAccessProviderDirectoryFormat" = "%@ veri klasörüne erişilemiyor. Lütfen yeniden seçin.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ veri klasörüne erişim kaydedilemedi. Lütfen tekrar seçin.";

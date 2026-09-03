@@ -451,6 +451,7 @@ private final class MutableTestUsageProvider: UsageProvider, @unchecked Sendable
         case .claude: .claudeDataDirectoryOpenPanelMessage
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity: .antigravityDataDirectoryOpenPanelMessage
         }
     }
 
@@ -513,6 +514,7 @@ private final class BlockingTestUsageProvider: UsageProvider, @unchecked Sendabl
         case .claude: .claudeDataDirectoryOpenPanelMessage
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
+        case .antigravity: .antigravityDataDirectoryOpenPanelMessage
         }
     }
 

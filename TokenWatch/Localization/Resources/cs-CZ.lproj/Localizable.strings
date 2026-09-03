@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Vyberte datovou složku Claude Code. Obvykle je to ~/.claude.\nNajdete ji pomocí příkazu echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Vyberte datovou složku Codex. Obvykle je to ~/.codex.\nNajdete ji pomocí příkazu echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Vyberte datovou složku opencode. Obvykle je to ~/.local/share/opencode.\nNajdete ji pomocí příkazu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Vyberte datovou složku Antigravity. Obvykle je to ~/.gemini/antigravity.\nNajdete ji pomocí příkazu echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Vybrat";
 "errorCannotAccessProviderDirectoryFormat" = "K datové složce %@ nelze přistupovat. Vyberte ji znovu.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Přístup k datové složce %@ se nepodařilo uložit. Vyberte ji znovu.";

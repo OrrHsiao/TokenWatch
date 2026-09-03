@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Válassza ki a Claude Code adatmappáját. Általában itt található: ~/.claude.\nEzzel a paranccsal találhatja meg: echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Válassza ki a Codex adatmappáját. Általában itt található: ~/.codex.\nEzzel a paranccsal találhatja meg: echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Válassza ki az opencode adatmappáját. Általában itt található: ~/.local/share/opencode.\nEzzel a paranccsal találhatja meg: echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Válassza ki az Antigravity adatmappáját. Általában itt található: ~/.gemini/antigravity.\nEzzel a paranccsal találhatja meg: echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Választás";
 "errorCannotAccessProviderDirectoryFormat" = "Nem lehet hozzáférni a %@ adatmappához. Válassza ki újra.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nem sikerült menteni a hozzáférést a %@ adatmappához. Válassza ki újra.";

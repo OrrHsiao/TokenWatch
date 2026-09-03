@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "აირჩიეთ Claude Code-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.claude.\nმისი პოვნა შეგიძლიათ echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" ბრძანებით.";
 "codexDataDirectoryOpenPanelMessage" = "აირჩიეთ Codex-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.codex.\nმისი პოვნა შეგიძლიათ echo \"${CODEX_HOME:-$HOME/.codex}\" ბრძანებით.";
 "openCodeDataDirectoryOpenPanelMessage" = "აირჩიეთ opencode-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.local/share/opencode.\nმისი პოვნა შეგიძლიათ echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ბრძანებით.";
+"antigravityDataDirectoryOpenPanelMessage" = "აირჩიეთ Antigravity-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.gemini/antigravity.\nმისი პოვნა შეგიძლიათ echo \"$HOME/.gemini/antigravity\" ბრძანებით.";
 "chooseDirectoryPrompt" = "არჩევა";
 "errorCannotAccessProviderDirectoryFormat" = "ვერ მოხერხდა %@ მონაცემთა საქაღალდეზე წვდომა. გთხოვთ, ხელახლა აირჩიოთ.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ვერ მოხერხდა %@ მონაცემთა საქაღალდეზე წვდომის შენახვა. გთხოვთ, ხელახლა აირჩიოთ.";

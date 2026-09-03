@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Claude Code؛ يكون عادةً في ~/.claude.\nيمكن العثور عليه باستخدام الأمر echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Codex؛ يكون عادةً في ~/.codex.\nيمكن العثور عليه باستخدام الأمر echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات opencode؛ يكون عادةً في ~/.local/share/opencode.\nيمكن العثور عليه باستخدام الأمر echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Antigravity؛ يكون عادةً في ~/.gemini/antigravity.\nيمكن العثور عليه باستخدام الأمر echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "اختيار";
 "errorCannotAccessProviderDirectoryFormat" = "يتعذر الوصول إلى مجلد البيانات %@. يرجى اختياره مجددًا.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "تعذر حفظ الوصول إلى مجلد البيانات %@. يرجى الاختيار مجددًا.";

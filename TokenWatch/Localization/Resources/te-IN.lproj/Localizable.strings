@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.claude వద్ద ఉంటుంది.\nదీన్ని echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
 "codexDataDirectoryOpenPanelMessage" = "Codex డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.codex వద్ద ఉంటుంది.\nదీన్ని echo \"${CODEX_HOME:-$HOME/.codex}\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.local/share/opencode వద్ద ఉంటుంది.\nదీన్ని echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity డేటా ఫోల్డర్‌ను ఎంచుకోండి; ఇది సాధారణంగా ~/.gemini/antigravity వద్ద ఉంటుంది.\nదీన్ని echo \"$HOME/.gemini/antigravity\" కమాండ్ ద్వారా కనుగొనవచ్చు.";
 "chooseDirectoryPrompt" = "ఎంచుకోండి";
 "errorCannotAccessProviderDirectoryFormat" = "%@ డేటా ఫోల్డర్‌ను యాక్సెస్ చేయలేకపోయాం. దయచేసి దాన్ని మళ్లీ ఎంచుకోండి.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ డేటా ఫోల్డర్‌కు యాక్సెస్‌ను సేవ్ చేయలేకపోయాం. దయచేసి మళ్లీ ఎంచుకోండి.";

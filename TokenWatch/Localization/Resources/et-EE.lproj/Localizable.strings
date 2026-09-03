@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Valige Claude Code'i andmekaust. Tavaliselt on see ~/.claude.\nSelle leiate käsuga echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Valige Codexi andmekaust. Tavaliselt on see ~/.codex.\nSelle leiate käsuga echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Valige opencode'i andmekaust. Tavaliselt on see ~/.local/share/opencode.\nSelle leiate käsuga echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Valige Antigravity'i andmekaust. Tavaliselt on see ~/.gemini/antigravity.\nSelle leiate käsuga echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Vali";
 "errorCannotAccessProviderDirectoryFormat" = "Andmekaustale %@ ei pääse juurde. Valige see uuesti.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Andmekausta %@ juurdepääsu ei saanud salvestada. Valige uuesti.";

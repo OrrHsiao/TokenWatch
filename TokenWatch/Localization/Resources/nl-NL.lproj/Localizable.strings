@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Claude Code; deze staat meestal in ~/.claude.\nVoer echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" uit om deze te vinden.";
 "codexDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Codex; deze staat meestal in ~/.codex.\nVoer echo \"${CODEX_HOME:-$HOME/.codex}\" uit om deze te vinden.";
 "openCodeDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van opencode; deze staat meestal in ~/.local/share/opencode.\nVoer echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" uit om deze te vinden.";
+"antigravityDataDirectoryOpenPanelMessage" = "Kies de gegevensmap van Antigravity; deze staat meestal in ~/.gemini/antigravity.\nVoer echo \"$HOME/.gemini/antigravity\" uit om deze te vinden.";
 "chooseDirectoryPrompt" = "Kiezen";
 "errorCannotAccessProviderDirectoryFormat" = "De geselecteerde gegevensmap voor %@ is niet toegankelijk. Kies deze opnieuw";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Toegang tot de gegevensmap van %@ kon niet worden opgeslagen. Probeer het opnieuw";

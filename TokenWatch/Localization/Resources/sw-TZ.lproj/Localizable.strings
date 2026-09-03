@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Claude Code. Kwa kawaida ipo kwenye ~/.claude.\nUnaweza kuipata kwa amri echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Codex. Kwa kawaida ipo kwenye ~/.codex.\nUnaweza kuipata kwa amri echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya opencode. Kwa kawaida ipo kwenye ~/.local/share/opencode.\nUnaweza kuipata kwa amri echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Chagua folda ya data ya Antigravity. Kwa kawaida ipo kwenye ~/.gemini/antigravity.\nUnaweza kuipata kwa amri echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Chagua";
 "errorCannotAccessProviderDirectoryFormat" = "Imeshindikana kufikia folda ya data ya %@. Tafadhali ichague tena.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Imeshindikana kuhifadhi ufikiaji wa folda ya data ya %@. Tafadhali chagua tena.";

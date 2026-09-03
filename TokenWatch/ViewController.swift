@@ -301,7 +301,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
 
 /// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
 final class SettingsViewController: NSViewController {
-    static let minimumContentHeight: CGFloat = 750
+    static let minimumContentHeight: CGFloat = 810
     private static let directoryActionHorizontalPadding: CGFloat = 24
     private static let valueControlWidth: CGFloat = 132
     private static let valueControlHeight: CGFloat = 32

@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Claude Code; thư mục này thường nằm ở ~/.claude.\nCó thể tìm thấy thư mục bằng lệnh echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Codex; thư mục này thường nằm ở ~/.codex.\nCó thể tìm thấy thư mục bằng lệnh echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu opencode; thư mục này thường nằm ở ~/.local/share/opencode.\nCó thể tìm thấy thư mục bằng lệnh echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Antigravity; thư mục này thường nằm ở ~/.gemini/antigravity.\nCó thể tìm thấy thư mục bằng lệnh echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Chọn";
 "errorCannotAccessProviderDirectoryFormat" = "Không thể truy cập thư mục dữ liệu %@. Vui lòng chọn lại.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Không thể lưu quyền truy cập thư mục dữ liệu %@. Vui lòng chọn lại.";

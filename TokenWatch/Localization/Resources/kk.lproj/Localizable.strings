@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code деректер қалтасын таңдаңыз. Әдетте ол ~/.claude жолында орналасады.\nОны echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" пәрмені арқылы табуға болады.";
 "codexDataDirectoryOpenPanelMessage" = "Codex деректер қалтасын таңдаңыз. Әдетте ол ~/.codex жолында орналасады.\nОны echo \"${CODEX_HOME:-$HOME/.codex}\" пәрмені арқылы табуға болады.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode деректер қалтасын таңдаңыз. Әдетте ол ~/.local/share/opencode жолында орналасады.\nОны echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" пәрмені арқылы табуға болады.";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity деректер қалтасын таңдаңыз. Әдетте ол ~/.gemini/antigravity жолында орналасады.\nОны echo \"$HOME/.gemini/antigravity\" пәрмені арқылы табуға болады.";
 "chooseDirectoryPrompt" = "Таңдау";
 "errorCannotAccessProviderDirectoryFormat" = "%@ деректер қалтасына кіру мүмкін емес. Қайта таңдаңыз.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ деректер қалтасына қолжетімділікті сақтау мүмкін болмады. Қайта таңдаңыз.";

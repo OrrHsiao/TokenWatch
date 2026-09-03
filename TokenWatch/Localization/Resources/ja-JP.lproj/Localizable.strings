@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code のデータフォルダを選択してください。通常は ~/.claude です。\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" コマンドで場所を確認できます。";
 "codexDataDirectoryOpenPanelMessage" = "Codex のデータフォルダを選択してください。通常は ~/.codex です。\necho \"${CODEX_HOME:-$HOME/.codex}\" コマンドで場所を確認できます。";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode のデータフォルダを選択してください。通常は ~/.local/share/opencode です。\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" コマンドで場所を確認できます。";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity のデータフォルダを選択してください。通常は ~/.gemini/antigravity です。\necho \"$HOME/.gemini/antigravity\" コマンドで場所を確認できます。";
 "chooseDirectoryPrompt" = "選択";
 "errorCannotAccessProviderDirectoryFormat" = "選択した %@ のデータフォルダにアクセスできません。もう一度選択してください";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ のデータフォルダへのアクセス権を保存できませんでした。もう一度お試しください";

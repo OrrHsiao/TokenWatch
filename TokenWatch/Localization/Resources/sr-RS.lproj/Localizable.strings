@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Claude Code. Обично је то ~/.claude.\nМожете је пронаћи помоћу команде echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Codex. Обично је то ~/.codex.\nМожете је пронаћи помоћу команде echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за opencode. Обично је то ~/.local/share/opencode.\nМожете је пронаћи помоћу команде echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Изаберите фасциклу са подацима за Antigravity. Обично је то ~/.gemini/antigravity.\nМожете је пронаћи помоћу команде echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Изабери";
 "errorCannotAccessProviderDirectoryFormat" = "Није могуће приступити фасцикли са подацима %@. Изаберите је поново.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Није могуће сачувати приступ фасцикли са подацима %@. Изаберите поново.";

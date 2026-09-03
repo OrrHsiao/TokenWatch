@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Выберите папку с данными Claude Code. Обычно это ~/.claude.\nЕё можно найти командой echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Выберите папку с данными Codex. Обычно это ~/.codex.\nЕё можно найти командой echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Выберите папку с данными opencode. Обычно это ~/.local/share/opencode.\nЕё можно найти командой echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Выберите папку с данными Antigravity. Обычно это ~/.gemini/antigravity.\nЕё можно найти командой echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Выбрать";
 "errorCannotAccessProviderDirectoryFormat" = "Нет доступа к папке с данными %@. Выберите её снова.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Не удалось сохранить доступ к папке с данными %@. Выберите её снова.";

@@ -395,6 +395,18 @@ private extension PricingTable {
             "gemini-3.7-flash": p(
                 "gemini-3.7-flash", 0.75, 3.75, 0.075, 0.9375
             ),
+            "gemini-3.8-flash": p(
+                "gemini-3.8-flash", 0.75, 3.75, 0.075, 0.9375
+            ),
+            "gemini-3.8-pro": p(
+                "gemini-3.8-pro", 2.5, 10.0, 0.25, 3.125
+            ),
+            "gemini-flash": p(
+                "gemini-flash", 0.75, 3.75, 0.075, 0.9375
+            ),
+            "gemini-pro": p(
+                "gemini-pro", 2.5, 10.0, 0.25, 3.125
+            ),
             "glm-4.5": p("glm-4.5", 0.6, 2.2, 0.11, 0),
             "zai/glm-4.5": p("zai/glm-4.5", 0.6, 2.2, 0.11, 0),
             "zai/glm-4.5-x": p("zai/glm-4.5-x", 2.2, 8.9, 0.45, 0),

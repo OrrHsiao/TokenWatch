@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Claude Code ซึ่งโดยปกติจะอยู่ที่ ~/.claude\nค้นหาได้ด้วยคำสั่ง echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"";
 "codexDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Codex ซึ่งโดยปกติจะอยู่ที่ ~/.codex\nค้นหาได้ด้วยคำสั่ง echo \"${CODEX_HOME:-$HOME/.codex}\"";
 "openCodeDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล opencode ซึ่งโดยปกติจะอยู่ที่ ~/.local/share/opencode\nค้นหาได้ด้วยคำสั่ง echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\"";
+"antigravityDataDirectoryOpenPanelMessage" = "เลือกโฟลเดอร์ข้อมูล Antigravity ซึ่งโดยปกติจะอยู่ที่ ~/.gemini/antigravity\nค้นหาได้ด้วยคำสั่ง echo \"$HOME/.gemini/antigravity\"";
 "chooseDirectoryPrompt" = "เลือก";
 "errorCannotAccessProviderDirectoryFormat" = "ไม่สามารถเข้าถึงโฟลเดอร์ข้อมูล %@ ได้ โปรดเลือกอีกครั้ง";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ไม่สามารถบันทึกการเข้าถึงโฟลเดอร์ข้อมูล %@ ได้ โปรดเลือกอีกครั้ง";

@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Dooro galka xogta Claude Code. Badanaa wuxuu ku yaal ~/.claude.\nWaxaad ku heli kartaa amarka echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Dooro galka xogta Codex. Badanaa wuxuu ku yaal ~/.codex.\nWaxaad ku heli kartaa amarka echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Dooro galka xogta opencode. Badanaa wuxuu ku yaal ~/.local/share/opencode.\nWaxaad ku heli kartaa amarka echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Dooro galka xogta Antigravity. Badanaa wuxuu ku yaal ~/.gemini/antigravity.\nWaxaad ku heli kartaa amarka echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Dooro";
 "errorCannotAccessProviderDirectoryFormat" = "Lama geli karo galka xogta %@. Fadlan mar kale dooro.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Lama kaydin karo gelitaanka galka xogta %@. Fadlan mar kale dooro.";

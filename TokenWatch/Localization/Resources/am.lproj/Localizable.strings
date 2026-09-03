@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "የClaude Code ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.claude ውስጥ ይገኛል።\nለማግኘት echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" ትዕዛዙን ያስኪዱ።";
 "codexDataDirectoryOpenPanelMessage" = "የCodex ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.codex ውስጥ ይገኛል።\nለማግኘት echo \"${CODEX_HOME:-$HOME/.codex}\" ትዕዛዙን ያስኪዱ።";
 "openCodeDataDirectoryOpenPanelMessage" = "የopencode ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.local/share/opencode ውስጥ ይገኛል።\nለማግኘት echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ትዕዛዙን ያስኪዱ።";
+"antigravityDataDirectoryOpenPanelMessage" = "የAntigravity ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.gemini/antigravity ውስጥ ይገኛል።\nለማግኘት echo \"$HOME/.gemini/antigravity\" ትዕዛዙን ያስኪዱ።";
 "chooseDirectoryPrompt" = "ይምረጡ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ የውሂብ አቃፊ መድረስ አልተቻለም። እባክዎ እንደገና ይምረጡት።";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ወደ %@ የውሂብ አቃፊ መዳረሻ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይምረጡ።";

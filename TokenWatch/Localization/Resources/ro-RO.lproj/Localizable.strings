@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Claude Code; de obicei se află în ~/.claude.\nRulați echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" pentru a-l găsi.";
 "codexDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Codex; de obicei se află în ~/.codex.\nRulați echo \"${CODEX_HOME:-$HOME/.codex}\" pentru a-l găsi.";
 "openCodeDataDirectoryOpenPanelMessage" = "Alegeți folderul de date opencode; de obicei se află în ~/.local/share/opencode.\nRulați echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" pentru a-l găsi.";
+"antigravityDataDirectoryOpenPanelMessage" = "Alegeți folderul de date Antigravity; de obicei se află în ~/.gemini/antigravity.\nRulați echo \"$HOME/.gemini/antigravity\" pentru a-l găsi.";
 "chooseDirectoryPrompt" = "Alegeți";
 "errorCannotAccessProviderDirectoryFormat" = "Nu se poate accesa folderul de date %@. Alegeți-l din nou.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nu s-a putut salva accesul la folderul de date %@. Alegeți din nou.";
