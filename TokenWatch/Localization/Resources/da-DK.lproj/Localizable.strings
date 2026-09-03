@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Vælg datamappen til Claude Code; den ligger normalt i ~/.claude.\nKør echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" for at finde den.";
 "codexDataDirectoryOpenPanelMessage" = "Vælg datamappen til Codex; den ligger normalt i ~/.codex.\nKør echo \"${CODEX_HOME:-$HOME/.codex}\" for at finde den.";
 "openCodeDataDirectoryOpenPanelMessage" = "Vælg datamappen til opencode; den ligger normalt i ~/.local/share/opencode.\nKør echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" for at finde den.";
+"antigravityDataDirectoryOpenPanelMessage" = "Vælg datamappen til Antigravity; den ligger normalt i ~/.gemini/antigravity.\nKør echo \"$HOME/.gemini/antigravity\" for at finde den.";
 "chooseDirectoryPrompt" = "Vælg";
 "errorCannotAccessProviderDirectoryFormat" = "Kan ikke få adgang til datamappen for %@. Vælg den igen.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Kunne ikke gemme adgang til datamappen for %@. Vælg igen.";

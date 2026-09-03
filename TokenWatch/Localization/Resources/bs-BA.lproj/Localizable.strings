@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za Claude Code. Obično je to ~/.claude.\nMožete je pronaći naredbom echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za Codex. Obično je to ~/.codex.\nMožete je pronaći naredbom echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za opencode. Obično je to ~/.local/share/opencode.\nMožete je pronaći naredbom echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za Antigravity. Obično je to ~/.gemini/antigravity.\nMožete je pronaći naredbom echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Odaberi";
 "errorCannotAccessProviderDirectoryFormat" = "Nije moguće pristupiti mapi s podacima za %@. Ponovo je odaberite.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nije bilo moguće spremiti pristup mapi s podacima za %@. Odaberite ponovo.";

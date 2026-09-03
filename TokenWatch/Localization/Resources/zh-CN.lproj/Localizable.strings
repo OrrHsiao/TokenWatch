@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "请选择 Claude Code 的数据文件夹；通常为 ~/.claude。\n可通过 echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" 命令找到。";
 "codexDataDirectoryOpenPanelMessage" = "请选择 Codex 的数据文件夹；通常为 ~/.codex。\n可通过 echo \"${CODEX_HOME:-$HOME/.codex}\" 命令找到。";
 "openCodeDataDirectoryOpenPanelMessage" = "请选择 opencode 的数据文件夹；通常为 ~/.local/share/opencode。\n可通过 echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" 命令找到。";
+"antigravityDataDirectoryOpenPanelMessage" = "请选择 Antigravity 的数据文件夹；通常为 ~/.gemini/antigravity。\n可通过 echo \"$HOME/.gemini/antigravity\" 命令找到。";
 "chooseDirectoryPrompt" = "选择";
 "errorCannotAccessProviderDirectoryFormat" = "无法访问 %@ 数据文件夹，请再次选择。";
 "errorProviderDirectoryAuthorizationFailedFormat" = "无法保存 %@ 数据文件夹的访问权限，请重新选择。";

@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Wybierz folder danych Claude Code; zwykle znajduje się w ~/.claude.\nUruchom echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\", aby go znaleźć.";
 "codexDataDirectoryOpenPanelMessage" = "Wybierz folder danych Codex; zwykle znajduje się w ~/.codex.\nUruchom echo \"${CODEX_HOME:-$HOME/.codex}\", aby go znaleźć.";
 "openCodeDataDirectoryOpenPanelMessage" = "Wybierz folder danych opencode; zwykle znajduje się w ~/.local/share/opencode.\nUruchom echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\", aby go znaleźć.";
+"antigravityDataDirectoryOpenPanelMessage" = "Wybierz folder danych Antigravity; zwykle znajduje się w ~/.gemini/antigravity.\nUruchom echo \"$HOME/.gemini/antigravity\", aby go znaleźć.";
 "chooseDirectoryPrompt" = "Wybierz";
 "errorCannotAccessProviderDirectoryFormat" = "Nie można uzyskać dostępu do folderu danych wybranego dla %@. Wybierz go ponownie";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nie udało się zapisać dostępu do folderu danych dla %@. Spróbuj ponownie";

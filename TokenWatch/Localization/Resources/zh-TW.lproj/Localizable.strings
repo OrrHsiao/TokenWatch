@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "請選擇 Claude Code 的資料檔案夾；通常為 ~/.claude。\n可透過 echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" 指令找到。";
 "codexDataDirectoryOpenPanelMessage" = "請選擇 Codex 的資料檔案夾；通常為 ~/.codex。\n可透過 echo \"${CODEX_HOME:-$HOME/.codex}\" 指令找到。";
 "openCodeDataDirectoryOpenPanelMessage" = "請選擇 opencode 的資料檔案夾；通常為 ~/.local/share/opencode。\n可透過 echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" 指令找到。";
+"antigravityDataDirectoryOpenPanelMessage" = "請選擇 Antigravity 的資料檔案夾；通常為 ~/.gemini/antigravity。\n可透過 echo \"$HOME/.gemini/antigravity\" 指令找到。";
 "chooseDirectoryPrompt" = "選擇";
 "errorCannotAccessProviderDirectoryFormat" = "無法存取已選擇的 %@ 資料檔案夾，請重新選擇";
 "errorProviderDirectoryAuthorizationFailedFormat" = "無法儲存 %@ 資料檔案夾的存取權限，請再試一次";

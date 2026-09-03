@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.claude में होता है।\nइसे echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" कमांड से ढूँढ सकते हैं।";
 "codexDataDirectoryOpenPanelMessage" = "Codex डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.codex में होता है।\nइसे echo \"${CODEX_HOME:-$HOME/.codex}\" कमांड से ढूँढ सकते हैं।";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.local/share/opencode में होता है।\nइसे echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" कमांड से ढूँढ सकते हैं।";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity डेटा फ़ोल्डर चुनें; यह आमतौर पर ~/.gemini/antigravity में होता है।\nइसे echo \"$HOME/.gemini/antigravity\" कमांड से ढूँढ सकते हैं।";
 "chooseDirectoryPrompt" = "चुनें";
 "errorCannotAccessProviderDirectoryFormat" = "%@ डेटा फ़ोल्डर एक्सेस नहीं किया जा सकता। कृपया इसे फिर से चुनें।";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ डेटा फ़ोल्डर का एक्सेस सहेजा नहीं जा सका। कृपया फिर से चुनें।";

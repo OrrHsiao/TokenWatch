@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Claude Code. Зазвичай це ~/.claude.\nЇї можна знайти за допомогою команди echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Codex. Зазвичай це ~/.codex.\nЇї можна знайти за допомогою команди echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними opencode. Зазвичай це ~/.local/share/opencode.\nЇї можна знайти за допомогою команди echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Antigravity. Зазвичай це ~/.gemini/antigravity.\nЇї можна знайти за допомогою команди echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Вибрати";
 "errorCannotAccessProviderDirectoryFormat" = "Не вдалося отримати доступ до папки з даними %@. Виберіть її ще раз.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Не вдалося зберегти доступ до папки з даними %@. Виберіть її ще раз.";

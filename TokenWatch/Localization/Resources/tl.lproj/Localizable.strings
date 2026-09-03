@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng Claude Code. Karaniwan itong nasa ~/.claude.\nMahahanap ito gamit ang utos na echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng Codex. Karaniwan itong nasa ~/.codex.\nMahahanap ito gamit ang utos na echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng opencode. Karaniwan itong nasa ~/.local/share/opencode.\nMahahanap ito gamit ang utos na echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng Antigravity. Karaniwan itong nasa ~/.gemini/antigravity.\nMahahanap ito gamit ang utos na echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Pumili";
 "errorCannotAccessProviderDirectoryFormat" = "Hindi ma-access ang folder ng data ng %@. Pakipili itong muli.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Hindi mai-save ang access sa folder ng data ng %@. Pumili muli.";

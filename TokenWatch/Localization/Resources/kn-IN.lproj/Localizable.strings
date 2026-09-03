@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code ಡೇಟಾ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ; ಇದು ಸಾಮಾನ್ಯವಾಗಿ ~/.claude ನಲ್ಲಿರುತ್ತದೆ.\necho \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" ಕಮಾಂಡ್ ಮೂಲಕ ಇದನ್ನು ಕಂಡುಹಿಡಿಯಬಹುದು.";
 "codexDataDirectoryOpenPanelMessage" = "Codex ಡೇಟಾ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ; ಇದು ಸಾಮಾನ್ಯವಾಗಿ ~/.codex ನಲ್ಲಿರುತ್ತದೆ.\necho \"${CODEX_HOME:-$HOME/.codex}\" ಕಮಾಂಡ್ ಮೂಲಕ ಇದನ್ನು ಕಂಡುಹಿಡಿಯಬಹುದು.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode ಡೇಟಾ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ; ಇದು ಸಾಮಾನ್ಯವಾಗಿ ~/.local/share/opencode ನಲ್ಲಿರುತ್ತದೆ.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ಕಮಾಂಡ್ ಮೂಲಕ ಇದನ್ನು ಕಂಡುಹಿಡಿಯಬಹುದು.";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity ಡೇಟಾ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ; ಇದು ಸಾಮಾನ್ಯವಾಗಿ ~/.gemini/antigravity ನಲ್ಲಿರುತ್ತದೆ.\necho \"$HOME/.gemini/antigravity\" ಕಮಾಂಡ್ ಮೂಲಕ ಇದನ್ನು ಕಂಡುಹಿಡಿಯಬಹುದು.";
 "chooseDirectoryPrompt" = "ಆಯ್ಕೆಮಾಡಿ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ಡೇಟಾ ಫೋಲ್ಡರ್ ಪ್ರವೇಶಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಅದನ್ನು ಮತ್ತೆ ಆಯ್ಕೆಮಾಡಿ.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ಡೇಟಾ ಫೋಲ್ಡರ್‌ಗೆ ಪ್ರವೇಶ ಉಳಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಆಯ್ಕೆಮಾಡಿ.";

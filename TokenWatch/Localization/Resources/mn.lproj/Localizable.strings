@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Claude Code-ийн өгөгдлийн хавтсыг сонгоно уу. Ихэвчлэн ~/.claude замд байрладаг.\nҮүнийг echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" тушаалаар олж болно.";
 "codexDataDirectoryOpenPanelMessage" = "Codex-ийн өгөгдлийн хавтсыг сонгоно уу. Ихэвчлэн ~/.codex замд байрладаг.\nҮүнийг echo \"${CODEX_HOME:-$HOME/.codex}\" тушаалаар олж болно.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode-ийн өгөгдлийн хавтсыг сонгоно уу. Ихэвчлэн ~/.local/share/opencode замд байрладаг.\nҮүнийг echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" тушаалаар олж болно.";
+"antigravityDataDirectoryOpenPanelMessage" = "Antigravity-ийн өгөгдлийн хавтсыг сонгоно уу. Ихэвчлэн ~/.gemini/antigravity замд байрладаг.\nҮүнийг echo \"$HOME/.gemini/antigravity\" тушаалаар олж болно.";
 "chooseDirectoryPrompt" = "Сонгох";
 "errorCannotAccessProviderDirectoryFormat" = "%@ өгөгдлийн хавтаст хандах боломжгүй. Дахин сонгоно уу.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ өгөгдлийн хавтаст хандах эрхийг хадгалах боломжгүй. Дахин сонгоно уу.";

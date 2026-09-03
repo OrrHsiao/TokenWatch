@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Claude Code. Συνήθως βρίσκεται στο ~/.claude.\nΜπορείτε να τον βρείτε με την εντολή echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\".";
 "codexDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Codex. Συνήθως βρίσκεται στο ~/.codex.\nΜπορείτε να τον βρείτε με την εντολή echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του opencode. Συνήθως βρίσκεται στο ~/.local/share/opencode.\nΜπορείτε να τον βρείτε με την εντολή echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
+"antigravityDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Antigravity. Συνήθως βρίσκεται στο ~/.gemini/antigravity.\nΜπορείτε να τον βρείτε με την εντολή echo \"$HOME/.gemini/antigravity\".";
 "chooseDirectoryPrompt" = "Επιλογή";
 "errorCannotAccessProviderDirectoryFormat" = "Δεν είναι δυνατή η πρόσβαση στον φάκελο δεδομένων %@. Επιλέξτε τον ξανά.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Δεν ήταν δυνατή η αποθήκευση της πρόσβασης στον φάκελο δεδομένων %@. Επιλέξτε ξανά.";

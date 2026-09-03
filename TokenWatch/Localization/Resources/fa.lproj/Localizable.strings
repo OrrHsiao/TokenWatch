@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Claude Code را انتخاب کنید؛ مسیر معمول آن ~/.claude است.\nمی‌توانید آن را با دستور echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" پیدا کنید.";
 "codexDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Codex را انتخاب کنید؛ مسیر معمول آن ~/.codex است.\nمی‌توانید آن را با دستور echo \"${CODEX_HOME:-$HOME/.codex}\" پیدا کنید.";
 "openCodeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ opencode را انتخاب کنید؛ مسیر معمول آن ~/.local/share/opencode است.\nمی‌توانید آن را با دستور echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" پیدا کنید.";
+"antigravityDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Antigravity را انتخاب کنید؛ مسیر معمول آن ~/.gemini/antigravity است.\nمی‌توانید آن را با دستور echo \"$HOME/.gemini/antigravity\" پیدا کنید.";
 "chooseDirectoryPrompt" = "انتخاب";
 "errorCannotAccessProviderDirectoryFormat" = "دسترسی به پوشهٔ دادهٔ %@ ممکن نیست. لطفاً دوباره آن را انتخاب کنید.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ذخیرهٔ دسترسی به پوشهٔ دادهٔ %@ ممکن نشد. لطفاً دوباره انتخاب کنید.";

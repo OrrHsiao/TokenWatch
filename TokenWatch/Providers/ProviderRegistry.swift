@@ -7,7 +7,8 @@ enum ProviderRegistry {
     static let allProviders: [any UsageProvider] = [
         ClaudeProvider(),
         CodexProvider(),
-        OpenCodeProvider()
+        OpenCodeProvider(),
+        AntigravityProvider()
     ]
 
     /// 按 id 查找已注册的 provider 实例

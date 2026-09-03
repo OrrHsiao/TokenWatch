@@ -176,6 +176,7 @@
 "claudeDataDirectoryOpenPanelMessage" = "Pilih folder data Claude Code; biasanya terletak di ~/.claude.\nJalankan echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" untuk mencarinya.";
 "codexDataDirectoryOpenPanelMessage" = "Pilih folder data Codex; biasanya terletak di ~/.codex.\nJalankan echo \"${CODEX_HOME:-$HOME/.codex}\" untuk mencarinya.";
 "openCodeDataDirectoryOpenPanelMessage" = "Pilih folder data opencode; biasanya terletak di ~/.local/share/opencode.\nJalankan echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" untuk mencarinya.";
+"antigravityDataDirectoryOpenPanelMessage" = "Pilih folder data Antigravity; biasanya terletak di ~/.gemini/antigravity.\nJalankan echo \"$HOME/.gemini/antigravity\" untuk mencarinya.";
 "chooseDirectoryPrompt" = "Pilih";
 "errorCannotAccessProviderDirectoryFormat" = "Tidak dapat mengakses folder data %@. Sila pilih semula.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Tidak dapat menyimpan akses ke folder data %@. Sila pilih sekali lagi.";
