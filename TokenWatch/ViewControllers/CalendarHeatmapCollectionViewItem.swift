@@ -206,6 +206,11 @@ private final class CalendarHeatmapCellView: NSView {
     private func applyHeatmapBackgroundColor() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = heatmapBackgroundColor.cgColor
+            let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            layer?.borderWidth = 0.5
+            layer?.borderColor = isDark
+                ? NSColor(white: 1.0, alpha: 0.08).cgColor
+                : NSColor(white: 0.0, alpha: 0.06).cgColor
         }
     }
 

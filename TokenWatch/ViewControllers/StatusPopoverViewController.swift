@@ -41,6 +41,12 @@ final class StatusPopoverViewController: NSViewController {
     private let todayDescriptionLabel = NSTextField(labelWithString: "")
     private let todayRefreshButton = RefreshIconButton()
     private let hoverLabel = NSTextField(labelWithString: "")
+    private let heatmapCard = DashboardRoundedView(
+        backgroundColor: DashboardPalette.panelBackground,
+        cornerRadius: 8,
+        borderColor: DashboardPalette.border,
+        borderWidth: 1
+    )
     private let collectionView = NSCollectionView()
     private let hourlyLineChartView = TodayHourlyTokenLineChartView()
     private let loadingOverlay = LoadingOverlayView()
@@ -111,6 +117,20 @@ final class StatusPopoverViewController: NSViewController {
             secondItem: view,
             secondAttribute: .centerX,
             constant: 0
+        ) || (
+            hasConstraint(
+                firstItem: todayDescriptionRow,
+                firstAttribute: .leading,
+                secondItem: heatmapCard,
+                secondAttribute: .leading,
+                constant: 0
+            ) && hasConstraint(
+                firstItem: todayDescriptionRow,
+                firstAttribute: .trailing,
+                secondItem: heatmapCard,
+                secondAttribute: .trailing,
+                constant: 0
+            )
         )
     }
     var debugTodayDescriptionLabelSitsAboveSummary: Bool {
@@ -182,7 +202,25 @@ final class StatusPopoverViewController: NSViewController {
         )
     }
     var debugHourlyLineChartWidthMatchesCollectionView: Bool {
-        hasConstraint(
+        (hasConstraint(
+            firstItem: hourlyLineChartView,
+            firstAttribute: .leading,
+            secondItem: heatmapCard,
+            secondAttribute: .leading,
+            constant: 0
+        ) && hasConstraint(
+            firstItem: hourlyLineChartView,
+            firstAttribute: .trailing,
+            secondItem: heatmapCard,
+            secondAttribute: .trailing,
+            constant: 0
+        )) || hasConstraint(
+            firstItem: hourlyLineChartView,
+            firstAttribute: .width,
+            secondItem: heatmapCard,
+            secondAttribute: .width,
+            constant: 0
+        ) || hasConstraint(
             firstItem: hourlyLineChartView,
             firstAttribute: .width,
             secondItem: collectionView,
@@ -345,11 +383,13 @@ final class StatusPopoverViewController: NSViewController {
 
         configureTodayRefreshButton()
 
-        hoverLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        hoverLabel.font = .systemFont(ofSize: 11, weight: .semibold)
         hoverLabel.textColor = DashboardPalette.secondaryText
         hoverLabel.alignment = .right
         hoverLabel.lineBreakMode = .byTruncatingMiddle
         hoverLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        heatmapCard.translatesAutoresizingMaskIntoConstraints = false
 
         let layout = NSCollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -374,6 +414,7 @@ final class StatusPopoverViewController: NSViewController {
         todayDescriptionRow.addSubview(todayRefreshButton)
         addToRootGlass(todayDescriptionRow)
         addToRootGlass(summaryStack)
+        addToRootGlass(heatmapCard)
         addToRootGlass(hoverLabel)
         addToRootGlass(collectionView)
         addToRootGlass(hourlyLineChartView)
@@ -381,8 +422,8 @@ final class StatusPopoverViewController: NSViewController {
 
         NSLayoutConstraint.activate([
             todayDescriptionRow.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
-            todayDescriptionRow.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            todayDescriptionRow.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
+            todayDescriptionRow.leadingAnchor.constraint(equalTo: heatmapCard.leadingAnchor),
+            todayDescriptionRow.trailingAnchor.constraint(equalTo: heatmapCard.trailingAnchor),
             todayDescriptionRow.heightAnchor.constraint(equalToConstant: Self.todayDescriptionHeight),
 
             todayDescriptionLabel.leadingAnchor.constraint(equalTo: todayDescriptionRow.leadingAnchor),
@@ -402,9 +443,14 @@ final class StatusPopoverViewController: NSViewController {
                 equalTo: todayDescriptionRow.bottomAnchor,
                 constant: Self.todayDescriptionToSummarySpacing
             ),
-            summaryStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            summaryStack.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
+            summaryStack.leadingAnchor.constraint(equalTo: heatmapCard.leadingAnchor),
+            summaryStack.trailingAnchor.constraint(equalTo: heatmapCard.trailingAnchor),
             summaryStack.heightAnchor.constraint(equalToConstant: Self.summaryCardHeight),
+
+            heatmapCard.leadingAnchor.constraint(equalTo: collectionView.leadingAnchor, constant: -8),
+            heatmapCard.trailingAnchor.constraint(equalTo: collectionView.trailingAnchor, constant: 8),
+            heatmapCard.topAnchor.constraint(equalTo: summaryStack.bottomAnchor, constant: 6),
+            heatmapCard.bottomAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 8),
 
             hoverLabel.leadingAnchor.constraint(equalTo: collectionView.leadingAnchor),
             hoverLabel.trailingAnchor.constraint(equalTo: collectionView.trailingAnchor),
@@ -420,8 +466,8 @@ final class StatusPopoverViewController: NSViewController {
                 equalTo: collectionView.bottomAnchor,
                 constant: Self.hourlyLineChartTopSpacing
             ),
-            hourlyLineChartView.centerXAnchor.constraint(equalTo: collectionView.centerXAnchor),
-            hourlyLineChartView.widthAnchor.constraint(equalTo: collectionView.widthAnchor),
+            hourlyLineChartView.leadingAnchor.constraint(equalTo: heatmapCard.leadingAnchor),
+            hourlyLineChartView.trailingAnchor.constraint(equalTo: heatmapCard.trailingAnchor),
             hourlyLineChartView.heightAnchor.constraint(equalToConstant: Self.hourlyLineChartHeight),
             hourlyLineChartView.bottomAnchor.constraint(
                 lessThanOrEqualTo: view.bottomAnchor,
@@ -663,12 +709,12 @@ private final class SummaryMetricCardView: NSView {
 
         titleLabel.stringValue = title
         titleLabel.alignment = .center
-        titleLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        titleLabel.font = .systemFont(ofSize: 10, weight: .semibold)
         titleLabel.textColor = DashboardPalette.secondaryText
         titleLabel.lineBreakMode = .byTruncatingTail
 
         valueLabel.alignment = .center
-        valueLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        valueLabel.font = .systemFont(ofSize: 16, weight: .bold)
         valueLabel.textColor = DashboardPalette.primaryText
         valueLabel.lineBreakMode = .byTruncatingTail
 

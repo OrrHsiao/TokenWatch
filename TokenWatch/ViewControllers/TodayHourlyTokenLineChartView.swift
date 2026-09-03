@@ -86,14 +86,19 @@ final class TodayHourlyTokenLineChartView: NSView {
         updateHoverText(monthKey: monthKey)
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateCardColors()
+    }
+
     private func setupView() {
         wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
+        updateCardColors()
 
         chartHost.translatesAutoresizingMaskIntoConstraints = false
         addSubview(chartHost)
-        hoverLabel.font = .systemFont(ofSize: 10, weight: .medium)
-        hoverLabel.textColor = .secondaryLabelColor
+        hoverLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        hoverLabel.textColor = DashboardPalette.primaryText
         hoverLabel.alignment = .right
         hoverLabel.lineBreakMode = .byTruncatingMiddle
         hoverLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -114,6 +119,13 @@ final class TodayHourlyTokenLineChartView: NSView {
             hoverLabelTrailingConstraint,
             hoverLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
         ])
+    }
+
+    private func updateCardColors() {
+        layer?.cornerRadius = 8
+        layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.panelBackground, for: self)
+        layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.border, for: self)
+        layer?.borderWidth = 1
     }
 
     private func updateHoverText(monthKey: String?) {
@@ -149,6 +161,8 @@ enum TodayHourlyLineChartRendering {
     static let areaGradientPeakOpacity = WidgetChartVisualStyle.areaPeakOpacity
     static let areaGradientBaselineOpacity = WidgetChartVisualStyle.areaBaselineOpacity
     static var areaGradientColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
+    static var lineColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
+    static var pointColor: NSColor { CalendarHeatmapGitHubPalette.maxIntensityColor }
 
     static func areaGradientRoundedRGBAComponents(for appearanceName: NSAppearance.Name) -> [CGFloat]? {
         guard let appearance = NSAppearance(named: appearanceName) else {
@@ -169,6 +183,10 @@ private struct TodayHourlyTokenLineChartContent: View {
     let axisKeys: [String]
     let accessibilityLabelText: String
     let onHoverMonthKeyChange: (String?) -> Void
+
+    private var hasAnyTokens: Bool {
+        (buckets.map(\.totalTokens).max() ?? 0) > 0
+    }
 
     private var maxTokens: Double {
         WidgetChartVisualStyle.hourlyMaximumY(
@@ -193,7 +211,7 @@ private struct TodayHourlyTokenLineChartContent: View {
                     y: .value(tokenAxisValueName, Double(bucket.totalTokens))
                 )
                 .interpolationMethod(TodayHourlyLineChartRendering.interpolationMethod)
-                .foregroundStyle(Color(nsColor: .controlAccentColor))
+                .foregroundStyle(Color(nsColor: TodayHourlyLineChartRendering.lineColor))
                 .lineStyle(StrokeStyle(
                     lineWidth: CGFloat(WidgetChartVisualStyle.lineWidth),
                     lineCap: .round,
@@ -207,7 +225,7 @@ private struct TodayHourlyTokenLineChartContent: View {
                         x: .value(axisValueName, bucket.monthKey),
                         y: .value(tokenAxisValueName, Double(bucket.totalTokens))
                     )
-                    .foregroundStyle(Color(nsColor: .controlAccentColor))
+                    .foregroundStyle(Color(nsColor: TodayHourlyLineChartRendering.pointColor))
                     .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
                 }
             }
@@ -220,19 +238,31 @@ private struct TodayHourlyTokenLineChartContent: View {
                 AxisValueLabel {
                     if let monthKey = value.as(String.self) {
                         Text(MonthlyBarChartStyle.monthAxisLabel(for: monthKey, language: language))
-                            .font(.system(size: 8))
+                            .font(.system(size: 9, weight: .medium))
                     }
                 }
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
-                AxisGridLine()
-                    .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
-                AxisTick()
-                if let tokens = value.as(Double.self) {
-                    AxisValueLabel(MonthlyBarChartStyle.tokenAxisLabel(for: tokens))
-                        .font(.system(size: 8))
+            if hasAnyTokens {
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
+                    AxisTick()
+                    if let tokens = value.as(Double.self) {
+                        AxisValueLabel(MonthlyBarChartStyle.tokenAxisLabel(for: tokens))
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                }
+            } else {
+                AxisMarks(position: .leading, values: [0.0]) { value in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
+                    AxisTick()
+                    if let tokens = value.as(Double.self) {
+                        AxisValueLabel(MonthlyBarChartStyle.tokenAxisLabel(for: tokens))
+                            .font(.system(size: 9, weight: .medium))
+                    }
                 }
             }
         }
@@ -240,6 +270,8 @@ private struct TodayHourlyTokenLineChartContent: View {
             hoverOverlay(proxy: proxy)
         }
         .padding(.top, 4)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 2)
         .accessibilityLabel(accessibilityLabelText)
     }
 
