@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import TokenWatch
 
-@Suite("TokenStatsViewModel widget publication")
+@Suite("TokenStatsViewModel widget publication", .serialized)
 @MainActor
 struct TokenStatsViewModelWidgetPublishingTests {
     @Test("all-provider refresh publishes once after every provider finishes")
@@ -341,7 +341,7 @@ struct TokenStatsViewModelWidgetPublishingTests {
         _ predicate: @escaping @MainActor () async -> Bool
     ) async throws {
         // 这是防止测试永久挂起的安全上限，不是产品时序断言；并行回归会延后后台 provider 调度。
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(30)
         while !(await predicate()) {
             guard Date() < deadline else {
                 throw WidgetPublishingTestTimeout()
