@@ -18,7 +18,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 ### mac validate_app_store_release
 
 ```sh
-rbenv exec bundle exec fastlane mac validate_app_store_release app_version:1.0.6
+rbenv exec bundle exec fastlane mac validate_app_store_release app_version:1.1.0
 ```
 
 只在本地校验 App Store 版本、元数据和截图
@@ -42,7 +42,7 @@ rbenv exec bundle exec fastlane mac create_widget_iap confirm:true
 ### mac upload_app_store_metadata
 
 ```sh
-rbenv exec bundle exec fastlane mac upload_app_store_metadata app_version:1.0.6
+rbenv exec bundle exec fastlane mac upload_app_store_metadata app_version:1.1.0
 ```
 
 上传商店元数据与截图，但不提交审核
@@ -50,7 +50,7 @@ rbenv exec bundle exec fastlane mac upload_app_store_metadata app_version:1.0.6
 ### mac upload_app_store_screenshots
 
 ```sh
-rbenv exec bundle exec fastlane mac upload_app_store_screenshots app_version:1.0.6
+rbenv exec bundle exec fastlane mac upload_app_store_screenshots app_version:1.1.0
 ```
 
 只上传商店截图，不修改元数据或提交审核
@@ -58,7 +58,7 @@ rbenv exec bundle exec fastlane mac upload_app_store_screenshots app_version:1.0
 ### mac submit_xcode_cloud_build
 
 ```sh
-rbenv exec bundle exec fastlane mac submit_xcode_cloud_build app_version:1.0.6 build_number:42
+rbenv exec bundle exec fastlane mac submit_xcode_cloud_build app_version:1.1.0 build_number:42
 ```
 
 等待指定 Xcode Cloud 构建，上传资料并提交 App Review
