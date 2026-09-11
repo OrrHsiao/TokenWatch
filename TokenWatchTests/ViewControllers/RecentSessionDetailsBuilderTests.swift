@@ -387,7 +387,7 @@ struct RecentSessionDetailsBuilderTests {
             makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t1, input: 5_000, output: 2_500),
             makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t2, input: 5_000, output: 2_500),
         ]
-        // 总 token = 15,000，持续时间 300 秒 = 5 分钟，平均速率 = 15,000 / 5 = 3,000 tok/min
+        // 总 token = 15,000，持续时间 300 秒，平均速率 = 15,000 / 300 = 50 tok/s
         let snapshot = RecentSessionDetailsBuilder.build(
             states: [.claude: .init(stats: nil, entries: entries, isLoading: false, errorMessage: nil, needsAuthorization: false)],
             period: .recent7Days,
@@ -396,8 +396,8 @@ struct RecentSessionDetailsBuilderTests {
         )
         let row = try #require(snapshot.rows.first { $0.sessionID == "speed-session" })
         #expect(row.duration == 300.0)
-        #expect(row.tokensPerMinute == 3000.0)
-        #expect(row.speedFormatted == "3.0k /min")
+        #expect(row.tokensPerSecond == 50.0)
+        #expect(row.speedFormatted == "50 /s")
     }
 
     @Test("会话时长小于 10 秒时速率为 nil 且显示破折号")
@@ -419,7 +419,7 @@ struct RecentSessionDetailsBuilderTests {
         )
         let row = try #require(snapshot.rows.first { $0.sessionID == "short-session" })
         #expect(row.duration == 5.0)
-        #expect(row.tokensPerMinute == nil)
+        #expect(row.tokensPerSecond == nil)
         #expect(row.speedFormatted == "—")
     }
 

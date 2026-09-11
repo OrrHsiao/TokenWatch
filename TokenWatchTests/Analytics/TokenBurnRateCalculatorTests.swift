@@ -23,27 +23,27 @@ struct TokenBurnRateCalculatorTests {
         #expect(rate == 0.0)
     }
 
-    @Test("15 分钟窗口内的活跃记录正确计算每分钟消耗速率")
+    @Test("15 分钟窗口内的活跃记录正确计算每秒消耗速率")
     func activeRateCalculationWithinWindow() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let entries = [
-            // 5 分钟前：15,000 tokens
-            makeEntry(timestamp: now.addingTimeInterval(-5 * 60), totalTokens: 15_000),
-            // 10 分钟前：15,000 tokens
-            makeEntry(timestamp: now.addingTimeInterval(-10 * 60), totalTokens: 15_000),
+            // 5 分钟前：18,000 tokens
+            makeEntry(timestamp: now.addingTimeInterval(-5 * 60), totalTokens: 18_000),
+            // 10 分钟前：27,000 tokens
+            makeEntry(timestamp: now.addingTimeInterval(-10 * 60), totalTokens: 27_000),
             // 16 分钟前：50,000 tokens（超出 15 分钟窗口，不计入）
             makeEntry(timestamp: now.addingTimeInterval(-16 * 60), totalTokens: 50_000),
         ]
-        // 窗口内总量 30,000 tokens / 15 分钟 = 2,000 tok/min
+        // 窗口内总量 45,000 tokens / 900 秒 (15 分钟) = 50 tok/s
         let rate = TokenBurnRateCalculator.calculate(entries: entries, now: now)
-        #expect(rate == 2000.0)
+        #expect(rate == 50.0)
     }
 
     @Test("多 Provider 聚合状态下计算燃烧速率")
     func multiProviderStatesCalculation() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let claudeEntries = [
-            makeEntry(provider: .claude, timestamp: now.addingTimeInterval(-2 * 60), totalTokens: 6_000)
+            makeEntry(provider: .claude, timestamp: now.addingTimeInterval(-2 * 60), totalTokens: 18_000)
         ]
         let codexEntries = [
             makeEntry(provider: .codex, timestamp: now.addingTimeInterval(-4 * 60), totalTokens: 9_000)
@@ -52,21 +52,26 @@ struct TokenBurnRateCalculatorTests {
             .claude: .init(stats: nil, entries: claudeEntries, isLoading: false, errorMessage: nil, needsAuthorization: false),
             .codex: .init(stats: nil, entries: codexEntries, isLoading: false, errorMessage: nil, needsAuthorization: false),
         ]
-        // 窗口内总量 15,000 tokens / 15 分钟 = 1,000 tok/min
+        // 窗口内总量 27,000 tokens / 900 秒 = 30 tok/s
         let rate = TokenBurnRateCalculator.calculate(states: states, now: now)
-        #expect(rate == 1000.0)
+        #expect(rate == 30.0)
     }
 
-    @Test("速率格式化支持零、百位、千位与百万位")
+    @Test("速率格式化支持零、小数、十位、百位、千位与百万位")
     func formatRateSupportsVariousMagnitudes() {
-        #expect(TokenBurnRateCalculator.formatRate(0.0) == "0 /min")
-        #expect(TokenBurnRateCalculator.formatRate(-5.0) == "0 /min")
-        #expect(TokenBurnRateCalculator.formatRate(450.4) == "450 /min")
-        #expect(TokenBurnRateCalculator.formatRate(999.0) == "999 /min")
-        #expect(TokenBurnRateCalculator.formatRate(1_000.0) == "1.0k /min")
-        #expect(TokenBurnRateCalculator.formatRate(1_520.0) == "1.5k /min")
-        #expect(TokenBurnRateCalculator.formatRate(23_400.0) == "23.4k /min")
-        #expect(TokenBurnRateCalculator.formatRate(2_500_000.0) == "2.5M /min")
+        #expect(TokenBurnRateCalculator.formatRate(0.0) == "0 /s")
+        #expect(TokenBurnRateCalculator.formatRate(-5.0) == "0 /s")
+        #expect(TokenBurnRateCalculator.formatRate(0.02) == "<0.1 /s")
+        #expect(TokenBurnRateCalculator.formatRate(0.54) == "0.5 /s")
+        #expect(TokenBurnRateCalculator.formatRate(2.0) == "2 /s")
+        #expect(TokenBurnRateCalculator.formatRate(8.4) == "8.4 /s")
+        #expect(TokenBurnRateCalculator.formatRate(45.4) == "45 /s")
+        #expect(TokenBurnRateCalculator.formatRate(450.4) == "450 /s")
+        #expect(TokenBurnRateCalculator.formatRate(999.0) == "999 /s")
+        #expect(TokenBurnRateCalculator.formatRate(1_000.0) == "1.0k /s")
+        #expect(TokenBurnRateCalculator.formatRate(1_520.0) == "1.5k /s")
+        #expect(TokenBurnRateCalculator.formatRate(23_400.0) == "23.4k /s")
+        #expect(TokenBurnRateCalculator.formatRate(2_500_000.0) == "2.5M /s")
     }
 
     @Test("描述文案在今日无消耗时保持原有文案不追加空闲状态")
@@ -87,10 +92,10 @@ struct TokenBurnRateCalculatorTests {
         let activeZh = TokenBurnRateCalculator.descriptionText(
             baseText: baseZh,
             todayTokens: 50_000,
-            burnRate: 1500.0,
+            burnRate: 25.0,
             language: .zhHans
         )
-        #expect(activeZh == "本日 token 消耗很克制～ · 🔥 1.5k /min")
+        #expect(activeZh == "本日 token 消耗很克制～ · 🔥 25 /s")
 
         let idleZh = TokenBurnRateCalculator.descriptionText(
             baseText: baseZh,
@@ -104,10 +109,10 @@ struct TokenBurnRateCalculatorTests {
         let activeEn = TokenBurnRateCalculator.descriptionText(
             baseText: baseEn,
             todayTokens: 50_000,
-            burnRate: 1500.0,
+            burnRate: 25.0,
             language: .en
         )
-        #expect(activeEn == "Today's token usage is light · 🔥 1.5k /min")
+        #expect(activeEn == "Today's token usage is light · 🔥 25 /s")
 
         let idleEn = TokenBurnRateCalculator.descriptionText(
             baseText: baseEn,

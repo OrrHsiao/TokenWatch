@@ -34,12 +34,12 @@ struct RecentSessionRow: Sendable, Equatable, Identifiable {
     let upstreamProviderIDs: [String]
     let isSubagentIncluded: Bool
     let duration: TimeInterval?
-    let tokensPerMinute: Double?
+    let tokensPerSecond: Double?
 
-    /// 会话平均速率展示文案（如 "1.2k /min" 或 "—"）
+    /// 会话平均速率展示文案（如 "50 /s" 或 "—"）
     var speedFormatted: String {
-        guard let tokensPerMinute else { return "—" }
-        return TokenBurnRateCalculator.formatRate(tokensPerMinute)
+        guard let tokensPerSecond else { return "—" }
+        return TokenBurnRateCalculator.formatRate(tokensPerSecond)
     }
 
     static func == (lhs: RecentSessionRow, rhs: RecentSessionRow) -> Bool {
@@ -63,7 +63,7 @@ struct RecentSessionRow: Sendable, Equatable, Identifiable {
             && lhs.upstreamProviderIDs == rhs.upstreamProviderIDs
             && lhs.isSubagentIncluded == rhs.isSubagentIncluded
             && lhs.duration == rhs.duration
-            && lhs.tokensPerMinute == rhs.tokensPerMinute
+            && lhs.tokensPerSecond == rhs.tokensPerSecond
     }
 
     private static func summariesEqual(
@@ -250,18 +250,18 @@ private struct RecentSessionAccumulator {
             .key ?? ""
 
         let duration: TimeInterval?
-        let tokensPerMinute: Double?
+        let tokensPerSecond: Double?
         if let first = firstActiveAt, let last = lastActiveAt, last >= first {
             let interval = last.timeIntervalSince(first)
             duration = interval
             if interval >= 10.0 && usage.totalTokens > 0 {
-                tokensPerMinute = Double(usage.totalTokens) / (interval / 60.0)
+                tokensPerSecond = Double(usage.totalTokens) / interval
             } else {
-                tokensPerMinute = nil
+                tokensPerSecond = nil
             }
         } else {
             duration = nil
-            tokensPerMinute = nil
+            tokensPerSecond = nil
         }
 
         return RecentSessionRow(
@@ -285,7 +285,7 @@ private struct RecentSessionAccumulator {
             upstreamProviderIDs: upstreamProviderIDs.sorted(),
             isSubagentIncluded: isSubagentIncluded,
             duration: duration,
-            tokensPerMinute: tokensPerMinute
+            tokensPerSecond: tokensPerSecond
         )
     }
 }

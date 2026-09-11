@@ -3,9 +3,9 @@ import Foundation
 /// 近时 Token 燃烧速率与格式化计算器
 ///
 /// 核心职责：
-/// 1. 计算滑动时间窗口（默认 15 分钟）内的 Token 消耗速率（tok/min）。
+/// 1. 计算滑动时间窗口（默认 15 分钟）内的 Token 消耗速率（tok/s）。
 /// 2. 判定空闲状态（Idle）：若最新一条记录距当前时间超过 15 分钟，说明当前无活跃消耗，判定为 0。
-/// 3. 提供状态栏弹窗与仪表盘统一的速率格式化（如 "0 /min", "450 /min", "1.2k /min"）。
+/// 3. 提供状态栏弹窗与仪表盘统一的速率格式化（如 "0 /s", "0.5 /s", "45 /s", "1.2k /s"）。
 enum TokenBurnRateCalculator {
 
     /// 默认滑动窗口：15 分钟（平滑单次请求的波动突刺，同时保持交互敏锐度）
@@ -13,12 +13,12 @@ enum TokenBurnRateCalculator {
     /// 空闲判定阈值：若最新一条记录距当前时间超过 15 分钟，视为空闲
     static let idleThresholdSeconds: TimeInterval = 15 * 60
 
-    /// 计算多 Provider 状态下的整体近时燃烧速率（Token/min）
+    /// 计算多 Provider 状态下的整体近时燃烧速率（Token/s）
     /// - Parameters:
     ///   - states: ViewModel 当前所有 Provider 的状态快照
     ///   - now: 当前时刻
     ///   - windowSeconds: 滑动窗口长度（秒），默认 15 分钟
-    /// - Returns: 每分钟消耗的 Token 数（tok/min）
+    /// - Returns: 每秒消耗的 Token 数（tok/s）
     static func calculate(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         now: Date,
@@ -28,12 +28,12 @@ enum TokenBurnRateCalculator {
         return calculate(entries: entries, now: now, windowSeconds: windowSeconds)
     }
 
-    /// 计算指定用量条目列表在给定时刻的近时燃烧速率（Token/min）
+    /// 计算指定用量条目列表在给定时刻的近时燃烧速率（Token/s）
     /// - Parameters:
     ///   - entries: 已去重的用量条目列表
     ///   - now: 当前时刻
     ///   - windowSeconds: 滑动窗口长度（秒），默认 15 分钟
-    /// - Returns: 每分钟消耗的 Token 数（tok/min）
+    /// - Returns: 每秒消耗的 Token 数（tok/s）
     static func calculate(
         entries: [ParsedUsageEntry],
         now: Date,
@@ -67,23 +67,32 @@ enum TokenBurnRateCalculator {
 
         guard windowTokens > 0 else { return 0.0 }
 
-        // 4. 计算速率 (tok/min)
-        let minutes = windowSeconds / 60.0
-        return Double(windowTokens) / minutes
+        // 4. 计算速率 (tok/s)
+        return Double(windowTokens) / windowSeconds
     }
 
-    /// 把每分钟速率格式化为紧凑字符串（例如 "0 /min", "450 /min", "1.2k /min"）
-    /// - Parameter tokensPerMinute: 每分钟 Token 数
+    /// 把每秒速率格式化为紧凑字符串（例如 "0 /s", "0.5 /s", "45 /s", "1.2k /s"）
+    /// - Parameter tokensPerSecond: 每秒 Token 数
     /// - Returns: 紧凑格式化文本
-    static func formatRate(_ tokensPerMinute: Double) -> String {
-        guard tokensPerMinute.isFinite, tokensPerMinute > 0 else {
-            return "0 /min"
+    static func formatRate(_ tokensPerSecond: Double) -> String {
+        guard tokensPerSecond.isFinite, tokensPerSecond > 0 else {
+            return "0 /s"
         }
-        let rounded = Int(tokensPerMinute.rounded())
+        if tokensPerSecond < 10 {
+            let roundedOneDecimal = (tokensPerSecond * 10).rounded() / 10
+            if roundedOneDecimal < 0.1 {
+                return "<0.1 /s"
+            }
+            if roundedOneDecimal.truncatingRemainder(dividingBy: 1) == 0 {
+                return "\(Int(roundedOneDecimal)) /s"
+            }
+            return "\(roundedOneDecimal) /s"
+        }
+        let rounded = Int(tokensPerSecond.rounded())
         if rounded < 1_000 {
-            return "\(rounded) /min"
+            return "\(rounded) /s"
         }
-        return "\(CompactNumberFormatter.format(rounded)) /min"
+        return "\(CompactNumberFormatter.format(rounded)) /s"
     }
 
     /// 生成状态栏弹窗顶部描述行组合文案
