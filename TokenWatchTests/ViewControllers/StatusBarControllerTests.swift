@@ -323,4 +323,27 @@ struct StatusBarControllerTests {
         ])
         #expect(controller.debugTitlePlainString == "—\nTokens")
     }
+
+    /// 状态栏按钮 ToolTip 包含今日总量并在有近时消耗时包含燃烧速率
+    @MainActor
+    @Test func statusButtonToolTipShowsTodayTokensAndBurnRate() throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["zh-Hans"] }
+        )
+        languageSettings.selectedPreference = .language(.zhHans)
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings
+        )
+        defer { controller.stop() }
+
+        #expect(controller.debugStatusButtonToolTip == "TokenWatch · — Tokens")
+    }
 }

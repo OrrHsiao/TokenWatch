@@ -33,6 +33,14 @@ struct RecentSessionRow: Sendable, Equatable, Identifiable {
     let modelBreakdown: [String: UsageSummary]
     let upstreamProviderIDs: [String]
     let isSubagentIncluded: Bool
+    let duration: TimeInterval?
+    let tokensPerMinute: Double?
+
+    /// 会话平均速率展示文案（如 "1.2k /min" 或 "—"）
+    var speedFormatted: String {
+        guard let tokensPerMinute else { return "—" }
+        return TokenBurnRateCalculator.formatRate(tokensPerMinute)
+    }
 
     static func == (lhs: RecentSessionRow, rhs: RecentSessionRow) -> Bool {
         lhs.id == rhs.id
@@ -54,6 +62,8 @@ struct RecentSessionRow: Sendable, Equatable, Identifiable {
             && summariesEqual(lhs.modelBreakdown, rhs.modelBreakdown)
             && lhs.upstreamProviderIDs == rhs.upstreamProviderIDs
             && lhs.isSubagentIncluded == rhs.isSubagentIncluded
+            && lhs.duration == rhs.duration
+            && lhs.tokensPerMinute == rhs.tokensPerMinute
     }
 
     private static func summariesEqual(
@@ -239,6 +249,21 @@ private struct RecentSessionAccumulator {
             .first?
             .key ?? ""
 
+        let duration: TimeInterval?
+        let tokensPerMinute: Double?
+        if let first = firstActiveAt, let last = lastActiveAt, last >= first {
+            let interval = last.timeIntervalSince(first)
+            duration = interval
+            if interval >= 10.0 && usage.totalTokens > 0 {
+                tokensPerMinute = Double(usage.totalTokens) / (interval / 60.0)
+            } else {
+                tokensPerMinute = nil
+            }
+        } else {
+            duration = nil
+            tokensPerMinute = nil
+        }
+
         return RecentSessionRow(
             id: "\(provider.rawValue):\(sessionID)",
             provider: provider,
@@ -258,7 +283,9 @@ private struct RecentSessionAccumulator {
             entryCount: usage.entryCount,
             modelBreakdown: modelBreakdown,
             upstreamProviderIDs: upstreamProviderIDs.sorted(),
-            isSubagentIncluded: isSubagentIncluded
+            isSubagentIncluded: isSubagentIncluded,
+            duration: duration,
+            tokensPerMinute: tokensPerMinute
         )
     }
 }
