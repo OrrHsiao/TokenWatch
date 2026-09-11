@@ -376,6 +376,53 @@ struct RecentSessionDetailsBuilderTests {
         #expect(snapshot.totalTokens == 180)
     }
 
+    @Test("会话时长大于等于 10 秒时正确计算平均速率与格式化")
+    func sessionDurationAndRateCalculationWhenSufficientDuration() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar)
+        let t1 = dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar)
+        let t2 = t1.addingTimeInterval(300) // 5 分钟后 (300 秒)
+
+        let entries = [
+            makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t1, input: 5_000, output: 2_500),
+            makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t2, input: 5_000, output: 2_500),
+        ]
+        // 总 token = 15,000，持续时间 300 秒 = 5 分钟，平均速率 = 15,000 / 5 = 3,000 tok/min
+        let snapshot = RecentSessionDetailsBuilder.build(
+            states: [.claude: .init(stats: nil, entries: entries, isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            period: .recent7Days,
+            now: now,
+            calendar: calendar
+        )
+        let row = try #require(snapshot.rows.first { $0.sessionID == "speed-session" })
+        #expect(row.duration == 300.0)
+        #expect(row.tokensPerMinute == 3000.0)
+        #expect(row.speedFormatted == "3.0k /min")
+    }
+
+    @Test("会话时长小于 10 秒时速率为 nil 且显示破折号")
+    func sessionRateIsNilWhenDurationUnderTenSeconds() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar)
+        let t1 = dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar)
+        let t2 = t1.addingTimeInterval(5) // 仅 5 秒
+
+        let entries = [
+            makeEntry(provider: .codex, sessionID: "short-session", timestamp: t1, input: 1_000, output: 500),
+            makeEntry(provider: .codex, sessionID: "short-session", timestamp: t2, input: 1_000, output: 500),
+        ]
+        let snapshot = RecentSessionDetailsBuilder.build(
+            states: [.codex: .init(stats: nil, entries: entries, isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            period: .recent7Days,
+            now: now,
+            calendar: calendar
+        )
+        let row = try #require(snapshot.rows.first { $0.sessionID == "short-session" })
+        #expect(row.duration == 5.0)
+        #expect(row.tokensPerMinute == nil)
+        #expect(row.speedFormatted == "—")
+    }
+
     private func makeEntry(
         provider: ProviderID,
         sessionID: String,

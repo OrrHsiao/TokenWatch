@@ -52,6 +52,9 @@ final class StatusBarController {
     var debugTitlePlainString: String {
         statusItem.button?.attributedTitle.string ?? ""
     }
+    var debugStatusButtonToolTip: String? {
+        statusItem.button?.toolTip
+    }
     var debugStatusButtonCustomSubviewCount: Int {
         statusItem.button?.subviews.filter {
             $0 is NSStackView || $0 is NSTextField || $0 is NSImageView
@@ -406,6 +409,15 @@ final class StatusBarController {
         // 仅在档位变化时换图,减少 image 赋值引发的状态栏重新布局
         if symbolName != lastRenderedSymbolName {
             setIcon(symbolName: symbolName)
+        }
+
+        let burnRate = TokenBurnRateCalculator.calculate(states: viewModel.states, now: Date())
+        let isChinese = languageSettings.resolvedLanguage.baseLanguageCode == "zh"
+        if burnRate > 0 {
+            let rateLabel = isChinese ? "燃烧速率" : "Burn Rate"
+            statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens\n\(rateLabel): \(TokenBurnRateCalculator.formatRate(burnRate))"
+        } else {
+            statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens"
         }
 
         lastRenderedDayKey = todayKey

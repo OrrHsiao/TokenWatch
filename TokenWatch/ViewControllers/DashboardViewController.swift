@@ -58,7 +58,7 @@ final class DashboardViewController: NSViewController {
     private static let sessionVerticalInset: CGFloat = 20
     private static let sessionRowGap: CGFloat = 14
     private static let minimumContentWidth: CGFloat = 860
-    private static let sessionTableColumnWidths: [CGFloat] = [120, 150, 84, 132, 116, 86, 76, 68]
+    private static let sessionTableColumnWidths: [CGFloat] = [118, 150, 76, 112, 98, 76, 72, 68, 58]
     private static let sessionTableMinimumWidth: CGFloat = 880
     private static let sessionTableColumnSpacing: CGFloat = 4
     private static let sessionTableHorizontalPadding: CGFloat = 10
@@ -1363,30 +1363,68 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeSessionTableHeader() -> NSView {
-        makeSessionTableRowContainer(
+        let speedTitle = language.baseLanguageCode == "zh" ? "速率" : "Speed"
+        let allHeaderCells = [
+            makeSessionLocalizedTextCell(
+                key: .dashboardLatestTime,
+                width: Self.sessionTableColumnWidths[0],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .dashboardSessionID,
+                width: Self.sessionTableColumnWidths[1],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .recentDetailsTool,
+                width: Self.sessionTableColumnWidths[2],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .recentDetailsProject,
+                width: Self.sessionTableColumnWidths[3],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .dashboardPrimaryModel,
+                width: Self.sessionTableColumnWidths[4],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .dashboardMetricTotalTokens,
+                width: Self.sessionTableColumnWidths[5],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionTextCell(
+                text: speedTitle,
+                width: Self.sessionTableColumnWidths[6],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .recentDetailsCost,
+                width: Self.sessionTableColumnWidths[7],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+            makeSessionLocalizedTextCell(
+                key: .dashboardMetricRecords,
+                width: Self.sessionTableColumnWidths[8],
+                font: .systemFont(ofSize: 11, weight: .bold),
+                color: DashboardPalette.secondaryText
+            ),
+        ]
+        return makeSessionTableRowContainer(
             identifier: "DashboardSessionsTableHeader",
             backgroundColor: DashboardPalette.sessionTableHeaderBackground,
             height: Self.sessionTableHeaderHeight,
-            cells: zip(
-                [
-                    .dashboardLatestTime,
-                    .dashboardSessionID,
-                    .recentDetailsTool,
-                    .recentDetailsProject,
-                    .dashboardPrimaryModel,
-                    .dashboardMetricTotalTokens,
-                    .recentDetailsCost,
-                    .dashboardMetricRecords,
-                ],
-                Self.sessionTableColumnWidths
-            ).map { key, width in
-                makeSessionLocalizedTextCell(
-                    key: key,
-                    width: width,
-                    font: .systemFont(ofSize: 11, weight: .bold),
-                    color: DashboardPalette.secondaryText
-                )
-            }
+            cells: allHeaderCells
         )
     }
 
@@ -1425,14 +1463,20 @@ final class DashboardViewController: NSViewController {
                     color: DashboardPalette.secondaryText
                 ),
                 makeSessionTextCell(
-                    text: formatCurrency(row.cost),
+                    text: row.speedFormatted,
                     width: Self.sessionTableColumnWidths[6],
                     font: .monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
                     color: DashboardPalette.secondaryText
                 ),
                 makeSessionTextCell(
-                    text: formatInt(row.entryCount),
+                    text: formatCurrency(row.cost),
                     width: Self.sessionTableColumnWidths[7],
+                    font: .monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
+                    color: DashboardPalette.secondaryText
+                ),
+                makeSessionTextCell(
+                    text: formatInt(row.entryCount),
+                    width: Self.sessionTableColumnWidths[8],
                     font: .monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
                     color: DashboardPalette.secondaryText
                 ),
@@ -1446,7 +1490,7 @@ final class DashboardViewController: NSViewController {
             backgroundColor: sessionTableRowBackground(at: 0),
             height: Self.sessionTableRowHeight,
             cells: zip(
-                [localized(.dashboardNoSessions), "-", "-", "-", "-", "-", "-", "-"],
+                [localized(.dashboardNoSessions), "-", "-", "-", "-", "-", "-", "-", "-"],
                 Self.sessionTableColumnWidths
             ).map { value, width in
                 makeSessionTextCell(

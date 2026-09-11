@@ -71,6 +71,11 @@ final class TokenWatchUITests: XCTestCase {
         let tableScrollView = app.scrollViews["DashboardSessionsTableScrollView"]
         XCTAssertTrue(tableScrollView.waitForExistence(timeout: 5))
 
+        let window = app.windows.firstMatch
+        let rightEdge = window.coordinate(withNormalizedOffset: CGVector(dx: 1.0, dy: 0.5))
+        let target = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5))
+        rightEdge.press(forDuration: 0.1, thenDragTo: target)
+
         let nextButton = app.buttons["DashboardSessionsPagination.next"]
         XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
         let initialMinX = nextButton.frame.minX
