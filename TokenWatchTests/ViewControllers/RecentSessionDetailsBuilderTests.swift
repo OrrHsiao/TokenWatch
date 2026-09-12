@@ -376,7 +376,7 @@ struct RecentSessionDetailsBuilderTests {
         #expect(snapshot.totalTokens == 180)
     }
 
-    @Test("会话时长大于等于 10 秒时正确计算平均速率与格式化")
+    @Test("会话平均生成速率按持续时间与输出 token 计算")
     func sessionDurationAndRateCalculationWhenSufficientDuration() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar)
@@ -384,10 +384,10 @@ struct RecentSessionDetailsBuilderTests {
         let t2 = t1.addingTimeInterval(300) // 5 分钟后 (300 秒)
 
         let entries = [
-            makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t1, input: 5_000, output: 2_500),
-            makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t2, input: 5_000, output: 2_500),
+            makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t1, input: 50_000, output: 7_500),
+            makeEntry(provider: .claude, sessionID: "speed-session", timestamp: t2, input: 50_000, output: 7_500),
         ]
-        // 总 token = 15,000，持续时间 300 秒，平均速率 = 15,000 / 300 = 50 tok/s
+        // 持续时间 300 秒，总输出 token = 15,000，平均生成速率 = 15,000 / 300 = 50 tok/s
         let snapshot = RecentSessionDetailsBuilder.build(
             states: [.claude: .init(stats: nil, entries: entries, isLoading: false, errorMessage: nil, needsAuthorization: false)],
             period: .recent7Days,
@@ -398,6 +398,29 @@ struct RecentSessionDetailsBuilderTests {
         #expect(row.duration == 300.0)
         #expect(row.tokensPerSecond == 50.0)
         #expect(row.speedFormatted == "50 /s")
+    }
+
+    @Test("会话输出 token 为 0 时速率为 nil 且显示破折号")
+    func sessionRateIsNilWhenOutputTokensIsZero() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 12, minute: 0, calendar: calendar)
+        let t1 = dateTime(2026, 6, 20, hour: 10, minute: 0, calendar: calendar)
+        let t2 = t1.addingTimeInterval(300)
+
+        let entries = [
+            makeEntry(provider: .claude, sessionID: "zero-output-session", timestamp: t1, input: 50_000, output: 0),
+            makeEntry(provider: .claude, sessionID: "zero-output-session", timestamp: t2, input: 50_000, output: 0),
+        ]
+        let snapshot = RecentSessionDetailsBuilder.build(
+            states: [.claude: .init(stats: nil, entries: entries, isLoading: false, errorMessage: nil, needsAuthorization: false)],
+            period: .recent7Days,
+            now: now,
+            calendar: calendar
+        )
+        let row = try #require(snapshot.rows.first { $0.sessionID == "zero-output-session" })
+        #expect(row.duration == 300.0)
+        #expect(row.tokensPerSecond == nil)
+        #expect(row.speedFormatted == "—")
     }
 
     @Test("会话时长小于 10 秒时速率为 nil 且显示破折号")
