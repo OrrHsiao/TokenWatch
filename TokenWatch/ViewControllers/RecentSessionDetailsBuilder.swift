@@ -254,8 +254,8 @@ private struct RecentSessionAccumulator {
         if let first = firstActiveAt, let last = lastActiveAt, last >= first {
             let interval = last.timeIntervalSince(first)
             duration = interval
-            if interval >= 10.0 && usage.totalTokens > 0 {
-                tokensPerSecond = Double(usage.totalTokens) / interval
+            if interval >= 10.0 && usage.outputTokens > 0 {
+                tokensPerSecond = Double(usage.outputTokens) / interval
             } else {
                 tokensPerSecond = nil
             }
