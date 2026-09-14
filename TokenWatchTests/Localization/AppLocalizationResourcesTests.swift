@@ -196,8 +196,8 @@ struct AppLocalizationResourcesTests {
             ),
             (
                 .antigravityDataDirectoryOpenPanelMessage,
-                "~/.gemini/antigravity",
-                "echo \"$HOME/.gemini/antigravity\""
+                "~/.gemini",
+                "echo \"$HOME/.gemini\""
             ),
         ]
         let removedStructureTerms = ["projects", "sessions", "archived_sessions", "opencode.db"]
@@ -624,8 +624,8 @@ private let fixedTerms = [
     "echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"", "CLAUDE_CONFIG_DIR",
     "echo \"${CODEX_HOME:-$HOME/.codex}\"", "CODEX_HOME",
     "echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\"", "XDG_DATA_HOME",
-    "echo \"$HOME/.gemini/antigravity\"",
-    "~/.claude", "~/.codex", "~/.local/share/opencode", "~/.gemini/antigravity", ".claude", ".codex",
+    "echo \"$HOME/.gemini\"",
+    "~/.claude", "~/.codex", "~/.local/share/opencode", "~/.gemini", ".claude", ".codex",
 ]
 
 // 目录中的固定子路径可能因语言而显示为原名或译名；仅在英文短语复用扫描时忽略它们。

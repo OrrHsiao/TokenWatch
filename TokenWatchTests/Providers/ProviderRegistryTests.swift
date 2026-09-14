@@ -40,7 +40,7 @@ struct ProviderRegistryTests {
             "Choose the Claude Code data folder; it is usually ~/.claude.\nRun echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\" to find it.",
             "Choose the Codex data folder; it is usually ~/.codex.\nRun echo \"${CODEX_HOME:-$HOME/.codex}\" to find it.",
             "Choose the opencode data folder; it is usually ~/.local/share/opencode.\nRun echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" to find it.",
-            "Choose the Antigravity data folder; it is usually ~/.gemini/antigravity.\nRun echo \"$HOME/.gemini/antigravity\" to find it.",
+            "Choose the Antigravity data folder; it is usually ~/.gemini.\nRun echo \"$HOME/.gemini\" to find it.",
         ])
         #expect(messages.allSatisfy {
             !$0.localizedCaseInsensitiveContains("home folder")
