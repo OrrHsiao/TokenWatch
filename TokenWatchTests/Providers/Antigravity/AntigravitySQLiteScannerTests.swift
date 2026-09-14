@@ -78,16 +78,22 @@ struct AntigravitySQLiteScannerTests {
     @Test("若本地存在真实的 Antigravity 目录，能成功无损扫描且无报错")
     func scansRealLocalAntigravityIfPresent() throws {
         let home = FileManager.default.homeDirectoryForCurrentUser
+        let localGemini = home.appendingPathComponent(".gemini")
         let localAntigravity = home.appendingPathComponent(".gemini/antigravity")
         var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: localAntigravity.path, isDirectory: &isDir), isDir.boolValue else {
+        let targetURL: URL
+        if FileManager.default.fileExists(atPath: localGemini.path, isDirectory: &isDir), isDir.boolValue {
+            targetURL = localGemini
+        } else if FileManager.default.fileExists(atPath: localAntigravity.path, isDirectory: &isDir), isDir.boolValue {
+            targetURL = localAntigravity
+        } else {
             return
         }
 
         let provider = AntigravityProvider()
-        #expect(provider.validateDataRoot(localAntigravity) == .valid)
+        #expect(provider.validateDataRoot(targetURL) == .valid)
 
-        let entries = try provider.loadEntries(from: localAntigravity)
+        let entries = try provider.loadEntries(from: targetURL)
         print("DEBUG_ANTIGRAVITY: total entries count = \(entries.count)")
         let withTimestamp = entries.filter { $0.timestamp != nil }
         print("DEBUG_ANTIGRAVITY: entries with timestamp = \(withTimestamp.count), without = \(entries.count - withTimestamp.count)")

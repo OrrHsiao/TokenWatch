@@ -39,7 +39,7 @@ final class AntigravitySQLiteScanner: Sendable {
     }
 
     /// 在指定数据根目录下发现所有 conversations 数据库文件
-    /// - Parameter rootURL: 用户授权的数据根目录（如 `~/.gemini/antigravity` 或 `~/.gemini`）
+    /// - Parameter rootURL: 用户授权的数据根目录（推荐 `~/.gemini`，亦支持 `~/.gemini/antigravity` 或 `~/.gemini/antigravity-cli`）
     /// - Returns: 匹配的 `.db` 文件 URL 列表
     func locateDatabaseFiles(in rootURL: URL) -> [URL] {
         var candidateDirs: [URL] = []
@@ -49,15 +49,15 @@ final class AntigravitySQLiteScanner: Sendable {
             candidateDirs.append(rootURL)
         }
 
-        // 2. rootURL 下包含 conversations 目录（如 ~/.gemini/antigravity）
+        // 2. rootURL 下包含 conversations 目录（如 ~/.gemini/antigravity 或 ~/.gemini/antigravity-cli）
         let directConversations = rootURL.appendingPathComponent("conversations", isDirectory: true)
         var isDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: directConversations.path, isDirectory: &isDir), isDir.boolValue {
             candidateDirs.append(directConversations)
         }
 
-        // 3. rootURL 为 ~/.gemini，可能包含 antigravity/conversations 与 antigravity-cli/conversations
-        for sub in ["antigravity", "antigravity-cli"] {
+        // 3. rootURL 为 ~/.gemini，可能包含 antigravity/conversations、antigravity-cli/conversations 与 antigravity-ide/conversations
+        for sub in ["antigravity", "antigravity-cli", "antigravity-ide"] {
             let nested = rootURL.appendingPathComponent(sub, isDirectory: true)
                 .appendingPathComponent("conversations", isDirectory: true)
             var nestedIsDir: ObjCBool = false
