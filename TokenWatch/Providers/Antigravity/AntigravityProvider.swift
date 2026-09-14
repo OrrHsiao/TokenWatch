@@ -24,7 +24,7 @@ struct AntigravityProvider: UsageProvider {
     }
 
     /// 扫描 Antigravity 数据根下所有会话数据库并解析为统一条目
-    /// - Parameter dataRootURL: 已授权的 Antigravity 数据根（如 `~/.gemini/antigravity`）
+    /// - Parameter dataRootURL: 已授权的 Antigravity 数据根（推荐 `~/.gemini`，亦支持 `~/.gemini/antigravity` 或 `~/.gemini/antigravity-cli`）
     /// - Returns: 去重后的 ParsedUsageEntry 列表
     func loadEntries(from dataRootURL: URL) throws -> [ParsedUsageEntry] {
         let scanResults = try scanner.scanAll(in: dataRootURL)
@@ -35,7 +35,7 @@ struct AntigravityProvider: UsageProvider {
     ///
     /// 接受以下几种有效形态：
     /// 1. 包含 `conversations/` 目录（桌面端或 CLI 根）
-    /// 2. 包含 `antigravity/conversations` 或 `antigravity-cli/conversations`（`~/.gemini` 根）
+    /// 2. 包含 `antigravity/conversations`、`antigravity-cli/conversations` 或 `antigravity-ide/conversations`（`~/.gemini` 根）
     /// 3. 直接选择包含 `*.db` 数据库文件的目录
     func validateDataRoot(_ dataRootURL: URL) -> ProviderDataRootValidationResult {
         let dbFiles = scanner.locateDatabaseFiles(in: dataRootURL)
@@ -50,7 +50,7 @@ struct AntigravityProvider: UsageProvider {
             return .valid
         }
 
-        for sub in ["antigravity", "antigravity-cli"] {
+        for sub in ["antigravity", "antigravity-cli", "antigravity-ide"] {
             let nested = dataRootURL.appendingPathComponent(sub, isDirectory: true)
                 .appendingPathComponent("conversations", isDirectory: true)
             var nestedIsDir: ObjCBool = false
