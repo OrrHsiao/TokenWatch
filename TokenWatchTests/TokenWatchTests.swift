@@ -989,6 +989,75 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardAllPagesHeaderAlignWithSidebarLogoAndContentSitsBelowSubtitle() throws {
+        let windowController = MainWindowFactory.makeWindowController(
+            languageSettings: zhHansLanguageSettings()
+        )
+        let window = try #require(windowController.window)
+        defer { window.close() }
+        let rootView = try #require(window.contentViewController?.view)
+        windowController.showWindow(nil)
+        rootView.layoutSubtreeIfNeeded()
+
+        let logo = try #require(rootView.firstDescendant(identifier: "DashboardBrandIcon.\(AppLogoImage.identifier)"))
+        let logoFrame = logo.convert(logo.bounds, to: rootView)
+
+        // 1. Sessions page
+        let sessionsButton = try #require(rootView.button(identifier: "DashboardNav.sessions"))
+        _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
+        rootView.layoutSubtreeIfNeeded()
+
+        let sessionsPage = try #require(rootView.firstDescendant(identifier: "DashboardSessionsPage"))
+        let sessionTitle = try #require(sessionsPage.textField(stringValue: "会话"))
+        let sessionSubtitle = try #require(sessionsPage.textField(stringValue: "按最近时间倒序查看会话聚合、成本与使用记录"))
+        let sessionMetricTitle = try #require(sessionsPage.textField(stringValue: "会话数"))
+        let sessionMetricCard = try #require(sessionMetricTitle.superview?.superview)
+        let sessionTitleFrame = sessionTitle.convert(sessionTitle.bounds, to: rootView)
+        let sessionSubtitleFrame = sessionSubtitle.convert(sessionSubtitle.bounds, to: rootView)
+        let sessionMetricFrame = sessionMetricCard.convert(sessionMetricCard.bounds, to: rootView)
+        // 验证会话页大标题与 Logo 顶部上对齐（<= 2pt），内容卡片紧随副标题下方（20~35pt）
+        #expect(abs(sessionTitleFrame.maxY - logoFrame.maxY) <= 2.0)
+        let sessionGap = sessionSubtitleFrame.minY - sessionMetricFrame.maxY
+        #expect(sessionGap >= 20.0 && sessionGap <= 35.0)
+
+        // 2. Widgets page
+        let widgetsButton = try #require(rootView.button(identifier: "DashboardNav.widgets"))
+        _ = widgetsButton.sendAction(widgetsButton.action, to: widgetsButton.target)
+        rootView.layoutSubtreeIfNeeded()
+
+        let widgetsPage = try #require(rootView.firstDescendant(identifier: "DashboardWidgetsPage"))
+        let widgetsTitle = try #require(widgetsPage.textField(stringValue: "小组件"))
+        let widgetsSubtitle = try #require(widgetsPage.textField(stringValue: "查看 TokenWatch 当前支持的小组件示例样式。"))
+        let firstWidgetSection = try #require(widgetsPage.firstDescendant(identifier: "DashboardWidgetSection.heatmap"))
+        let widgetsTitleFrame = widgetsTitle.convert(widgetsTitle.bounds, to: rootView)
+        let widgetsSubtitleFrame = widgetsSubtitle.convert(widgetsSubtitle.bounds, to: rootView)
+        let firstSectionFrame = firstWidgetSection.convert(firstWidgetSection.bounds, to: rootView)
+
+        // 验证小组件页大标题与 Logo 顶部上对齐（<= 2pt），首个小组件区块紧随副标题下方（15~25pt）
+        #expect(abs(widgetsTitleFrame.maxY - logoFrame.maxY) <= 2.0)
+        let widgetsGap = widgetsSubtitleFrame.minY - firstSectionFrame.maxY
+        #expect(widgetsGap >= 15.0 && widgetsGap <= 25.0)
+
+        // 3. Settings page
+        let settingsButton = try #require(rootView.button(identifier: "DashboardNav.settings"))
+        _ = settingsButton.sendAction(settingsButton.action, to: settingsButton.target)
+        rootView.layoutSubtreeIfNeeded()
+
+        let settingsPanel = try #require(rootView.firstDescendant(identifier: "SettingsPanel"))
+        let settingsTitle = try #require(settingsPanel.textField(stringValue: "设置"))
+        let settingsSubtitle = try #require(settingsPanel.textField(stringValue: "选择各数据源的数据文件夹并管理数据刷新。"))
+        let dataFoldersSection = try #require(settingsPanel.firstDescendant(identifier: "SettingsDataFoldersSection"))
+        let settingsTitleFrame = settingsTitle.convert(settingsTitle.bounds, to: rootView)
+        let settingsSubtitleFrame = settingsSubtitle.convert(settingsSubtitle.bounds, to: rootView)
+        let dataFoldersFrame = dataFoldersSection.convert(dataFoldersSection.bounds, to: rootView)
+
+        // 验证设置页大标题与 Logo 顶部上对齐（<= 2pt），首个设置区块紧随副标题下方（20~30pt）
+        #expect(abs(settingsTitleFrame.maxY - logoFrame.maxY) <= 2.0)
+        let settingsGap = settingsSubtitleFrame.minY - dataFoldersFrame.maxY
+        #expect(settingsGap >= 20.0 && settingsGap <= 30.0)
+    }
+
+    @MainActor
     @Test func dashboardNavigationItemsUsePencilIconSpacing() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
