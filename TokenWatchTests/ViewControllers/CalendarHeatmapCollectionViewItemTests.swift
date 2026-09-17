@@ -179,6 +179,8 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.configure(with: .day(day))
 
         #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.082, 0.106, 0.137, 1.0])
+        #expect(item.view.layer?.borderWidth == 0.5)
+        #expect(item.view.layer?.borderColor?.roundedRGBAComponents == [1.0, 1.0, 1.0, 0.08])
         #expect(item.view.toolTip == "2026-06-10 · 0.0M")
     }
 
@@ -203,6 +205,8 @@ struct CalendarHeatmapCollectionViewItemTests {
         item.configure(with: .day(day))
 
         #expect(item.view.layer?.backgroundColor?.roundedRGBAComponents == [0.937, 0.949, 0.961, 1.0])
+        #expect(item.view.layer?.borderWidth == 0.5)
+        #expect(item.view.layer?.borderColor?.roundedRGBAComponents == [0.0, 0.0, 0.0, 0.06])
         #expect(item.view.toolTip == "2026-06-10 · 0.0M")
     }
 

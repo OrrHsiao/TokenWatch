@@ -1046,17 +1046,24 @@ private struct WidgetGalleryPreviewSurface<Content: View>: View {
             .padding(WidgetGalleryPreviewAppearance.contentInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                .background,
+                Color(nsColor: DashboardPalette.panelBackground),
                 in: RoundedRectangle(
                     cornerRadius: WidgetGalleryPreviewAppearance.cornerRadius,
                     style: .continuous
                 )
             )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: WidgetGalleryPreviewAppearance.cornerRadius,
+                    style: .continuous
+                )
+                .strokeBorder(Color(nsColor: DashboardPalette.border), lineWidth: 1)
+            )
     }
 }
 
 private enum WidgetGalleryPreviewAppearance {
-    static let contentInset: CGFloat = 16
+    static let contentInset: CGFloat = 12
     static let cornerRadius: CGFloat = 20
 }
 
@@ -1125,14 +1132,31 @@ private struct WidgetGalleryHeatmapPreview: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 6) {
-            WidgetGalleryPreviewHeader(
-                title: presentation.title,
-                subtitle: presentation.subtitle,
-                total: presentation.totalText
-            )
-            if presentation.message == nil {
-                WidgetGalleryMetricStrip(items: metricItems)
+        VStack(spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(presentation.title)
+                            .font(.headline)
+                            .lineLimit(1)
+                        if let subtitle = presentation.subtitle {
+                            Text(subtitle)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    if presentation.message == nil {
+                        WidgetGalleryMetricStrip(items: metricItems)
+                    }
+                }
+                Spacer(minLength: 8)
+                Text(presentation.totalText)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             ZStack {
                 GeometryReader { proxy in
@@ -1151,8 +1175,18 @@ private struct WidgetGalleryHeatmapPreview: View {
                                         column: column,
                                         row: row
                                     )
+                                    let cell = presentation.cells[index]
                                     RoundedRectangle(cornerRadius: radius)
-                                        .fill(color(for: presentation.cells[index]))
+                                        .fill(color(for: cell))
+                                        .overlay {
+                                            if cell.isVisible {
+                                                RoundedRectangle(cornerRadius: radius)
+                                                    .strokeBorder(
+                                                        tileBorderColor(isDark: colorScheme == .dark),
+                                                        lineWidth: CGFloat(WidgetChartVisualStyle.heatmapTileBorderWidth)
+                                                    )
+                                            }
+                                        }
                                         .frame(width: side, height: side)
                                 }
                             }
@@ -1161,7 +1195,7 @@ private struct WidgetGalleryHeatmapPreview: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
@@ -1198,6 +1232,17 @@ private struct WidgetGalleryHeatmapPreview: View {
             opacity: rgba.alpha
         )
     }
+
+    private func tileBorderColor(isDark: Bool) -> Color {
+        let borderRGBA = WidgetChartVisualStyle.heatmapTileBorderRGBA(isDark: isDark)
+        return Color(
+            .sRGB,
+            red: borderRGBA.red,
+            green: borderRGBA.green,
+            blue: borderRGBA.blue,
+            opacity: borderRGBA.alpha
+        )
+    }
 }
 
 private struct WidgetGalleryHourlyLinePreview: View {
@@ -1230,7 +1275,7 @@ private struct WidgetGalleryHourlyLinePreview: View {
                         y: .value(tokenAxisValueName, point.totalTokens)
                     )
                     .interpolationMethod(.catmullRom)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(lineColor)
                     .lineStyle(StrokeStyle(
                         lineWidth: CGFloat(WidgetChartVisualStyle.lineWidth),
                         lineCap: .round,
@@ -1242,7 +1287,7 @@ private struct WidgetGalleryHourlyLinePreview: View {
                         x: .value(hourAxisValueName, point.hour),
                         y: .value(tokenAxisValueName, point.totalTokens)
                     )
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(lineColor)
                     .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
                 }
             }
@@ -1260,14 +1305,28 @@ private struct WidgetGalleryHourlyLinePreview: View {
                 }
             }
             .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine()
-                        .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
-                    AxisTick()
-                    AxisValueLabel {
-                        if let tokens = value.as(Double.self) {
-                            Text(WidgetChartNumberFormatter.axis(tokens))
-                                .font(.system(size: 8))
+                if hasAnyTokens {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                        AxisGridLine()
+                            .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
+                        AxisTick()
+                        AxisValueLabel {
+                            if let tokens = value.as(Double.self) {
+                                Text(WidgetChartNumberFormatter.axis(tokens))
+                                    .font(.system(size: 8))
+                            }
+                        }
+                    }
+                } else {
+                    AxisMarks(position: .leading, values: [0.0]) { value in
+                        AxisGridLine()
+                            .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
+                        AxisTick()
+                        AxisValueLabel {
+                            if let tokens = value.as(Double.self) {
+                                Text(WidgetChartNumberFormatter.axis(tokens))
+                                    .font(.system(size: 8))
+                            }
                         }
                     }
                 }
@@ -1276,6 +1335,24 @@ private struct WidgetGalleryHourlyLinePreview: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private var hasAnyTokens: Bool {
+        presentation.points.contains { $0.totalTokens > 0 }
+    }
+
+    private var lineColor: Color {
+        let rgba = WidgetChartVisualStyle.heatmapRGBA(
+            intensity: WidgetChartVisualStyle.heatmapMaximumIntensity,
+            isDark: colorScheme == .dark
+        )
+        return Color(
+            .sRGB,
+            red: rgba.red,
+            green: rgba.green,
+            blue: rgba.blue,
+            opacity: rgba.alpha
+        )
     }
 
     private var metricItems: [WidgetGalleryMetricItem] {
@@ -1296,17 +1373,7 @@ private struct WidgetGalleryHourlyLinePreview: View {
     }
 
     private var areaGradient: LinearGradient {
-        let rgba = WidgetChartVisualStyle.heatmapRGBA(
-            intensity: WidgetChartVisualStyle.heatmapMaximumIntensity,
-            isDark: colorScheme == .dark
-        )
-        let green = Color(
-            .sRGB,
-            red: rgba.red,
-            green: rgba.green,
-            blue: rgba.blue,
-            opacity: rgba.alpha
-        )
+        let green = lineColor
         return LinearGradient(
             colors: [
                 green.opacity(WidgetChartVisualStyle.areaPeakOpacity),

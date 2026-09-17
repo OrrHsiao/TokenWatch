@@ -5,6 +5,7 @@ import WidgetKit
 struct TokenHourlyLineWidgetView: View {
     let entry: WidgetUsageEntry
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetRenderingMode) private var widgetRenderingMode
 
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.hourlyLine(for: entry.state)
@@ -53,7 +54,8 @@ struct TokenHourlyLineWidgetView: View {
     }
 
     private func chart(_ presentation: WidgetHourlyLinePresentation) -> some View {
-        Chart {
+        let hasAnyTokens = presentation.points.contains { $0.totalTokens > 0 }
+        return Chart {
             ForEach(presentation.points) { point in
                 AreaMark(
                     x: .value(hourAxisValueName, point.hour),
@@ -68,7 +70,7 @@ struct TokenHourlyLineWidgetView: View {
                     y: .value(tokenAxisValueName, point.totalTokens)
                 )
                 .interpolationMethod(lineInterpolationMethod)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(lineColor)
                 .lineStyle(StrokeStyle(
                     lineWidth: CGFloat(WidgetChartVisualStyle.lineWidth),
                     lineCap: .round,
@@ -80,7 +82,7 @@ struct TokenHourlyLineWidgetView: View {
                     x: .value(hourAxisValueName, point.hour),
                     y: .value(tokenAxisValueName, point.totalTokens)
                 )
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(lineColor)
                 .symbolSize(CGFloat(WidgetChartVisualStyle.currentPointSize))
             }
         }
@@ -98,19 +100,50 @@ struct TokenHourlyLineWidgetView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
-                AxisGridLine()
-                    .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
-                AxisTick()
-                AxisValueLabel {
-                    if let tokens = value.as(Double.self) {
-                        Text(WidgetChartNumberFormatter.axis(tokens))
-                            .font(.system(size: 8))
+            if hasAnyTokens {
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
+                    AxisTick()
+                    AxisValueLabel {
+                        if let tokens = value.as(Double.self) {
+                            Text(WidgetChartNumberFormatter.axis(tokens))
+                                .font(.system(size: 8))
+                        }
+                    }
+                }
+            } else {
+                AxisMarks(position: .leading, values: [0.0]) { value in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(WidgetChartVisualStyle.gridOpacity))
+                    AxisTick()
+                    AxisValueLabel {
+                        if let tokens = value.as(Double.self) {
+                            Text(WidgetChartNumberFormatter.axis(tokens))
+                                .font(.system(size: 8))
+                        }
                     }
                 }
             }
         }
         .padding(.top, 4)
+    }
+
+    private var lineColor: Color {
+        if widgetRenderingMode == .accented {
+            return Color.accentColor
+        }
+        let rgba = WidgetChartVisualStyle.heatmapRGBA(
+            intensity: WidgetChartVisualStyle.heatmapMaximumIntensity,
+            isDark: colorScheme == .dark
+        )
+        return Color(
+            .sRGB,
+            red: rgba.red,
+            green: rgba.green,
+            blue: rgba.blue,
+            opacity: rgba.alpha
+        )
     }
 
     private var lineInterpolationMethod: InterpolationMethod {
@@ -129,17 +162,7 @@ struct TokenHourlyLineWidgetView: View {
     }
 
     private var areaGradient: LinearGradient {
-        let rgba = WidgetChartVisualStyle.heatmapRGBA(
-            intensity: WidgetChartVisualStyle.heatmapMaximumIntensity,
-            isDark: colorScheme == .dark
-        )
-        let green = Color(
-            .sRGB,
-            red: rgba.red,
-            green: rgba.green,
-            blue: rgba.blue,
-            opacity: rgba.alpha
-        )
+        let green = lineColor
         return LinearGradient(
             colors: [
                 green.opacity(WidgetChartVisualStyle.areaPeakOpacity),

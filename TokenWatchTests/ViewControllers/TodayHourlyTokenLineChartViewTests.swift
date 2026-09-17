@@ -95,7 +95,7 @@ struct TodayHourlyTokenLineChartViewTests {
         #expect(view.debugHoverText == "8时 · 0.1M")
     }
 
-    @Test("hover label 对齐到折线图右上角")
+    @Test("hover label 对齐到折线图右上角并避开卡片圆角")
     func hoverLabelAlignsWithLineChartTopTrailingCorner() {
         let view = TodayHourlyTokenLineChartView()
         let snapshot = makeSnapshot(tokens: Array(repeating: 0, count: 24))
@@ -104,6 +104,7 @@ struct TodayHourlyTokenLineChartViewTests {
 
         #expect(view.debugHoverLabelTopAlignsWithChartView)
         #expect(view.debugHoverLabelTrailingAlignsWithChartView)
+        #expect(view.debugHoverLabelTrailingInset == 8)
     }
 
     @Test("hover label 不覆盖 Charts 宿主绘制区域")

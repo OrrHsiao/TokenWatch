@@ -336,6 +336,22 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugHourlyLineChartHoverText == "")
     }
 
+    @Test("折线图 hover 用量视图与热力图用量视图右对齐")
+    func hourlyLineChartHoverLabelRightAlignsWithHeatmapHoverLabel() throws {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+        controller.view.layoutSubtreeIfNeeded()
+
+        let heatmapHoverLabel = try label(named: "hoverLabel", in: controller)
+        let hourlyLineChartView = try #require(controller.debugHourlyLineChartView)
+        let chartHoverLabel = try label(named: "hoverLabel", in: hourlyLineChartView)
+
+        let heatmapTrailingInRoot = heatmapHoverLabel.convert(heatmapHoverLabel.bounds, to: controller.view).maxX
+        let chartTrailingInRoot = chartHoverLabel.convert(chartHoverLabel.bounds, to: controller.view).maxX
+
+        #expect(abs(heatmapTrailingInRoot - chartTrailingInRoot) < 0.001)
+    }
+
     @Test("cell 访问对越界索引做保护")
     func cellAccessChecksItemBounds() {
         let controller = makeController()
@@ -375,8 +391,8 @@ struct StatusPopoverViewControllerTests {
         fixedCalendar().date(from: DateComponents(year: 2026, month: 6, day: 17))!
     }
 
-    private func label(named name: String, in controller: StatusPopoverViewController) throws -> NSTextField {
-        let child = Mirror(reflecting: controller).children.first { $0.label == name }
+    private func label(named name: String, in target: Any) throws -> NSTextField {
+        let child = Mirror(reflecting: target).children.first { $0.label == name }
         return try #require(child?.value as? NSTextField)
     }
 

@@ -25,6 +25,9 @@ enum WidgetChartVisualStyle {
     static let heatmapMaximumIntensity = 4
     static let heatmapSpacing = 3.0
     static let heatmapCornerRadius = 2.0
+    static let heatmapTileBorderWidth = 0.5
+    static let heatmapTileBorderDarkOpacity = 0.08
+    static let heatmapTileBorderLightOpacity = 0.06
     static let hourAxisValues = [0, 6, 12, 18, 23]
     static let lineWidth = 2.0
     static let currentPointSize = 22.0
@@ -48,6 +51,15 @@ enum WidgetChartVisualStyle {
     static func heatmapRGBA(intensity: Int, isDark: Bool) -> WidgetChartRGBA {
         let clamped = min(max(intensity, 0), heatmapMaximumIntensity)
         return (isDark ? darkPalette : lightPalette)[clamped]
+    }
+
+    /// 热力图小方格微光轮廓线颜色，保持暗色与浅色模式下小方格轮廓规整。
+    static func heatmapTileBorderRGBA(isDark: Bool) -> WidgetChartRGBA {
+        if isDark {
+            return WidgetChartRGBA(red: 1, green: 1, blue: 1, alpha: heatmapTileBorderDarkOpacity)
+        } else {
+            return WidgetChartRGBA(red: 0, green: 0, blue: 0, alpha: heatmapTileBorderLightOpacity)
+        }
     }
 
     /// Returns the alpha level that preserves intensity when WidgetKit replaces RGB colors.
