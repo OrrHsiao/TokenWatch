@@ -33,6 +33,8 @@ private final class WidgetPurchaseStatusTextField: NSTextField {
 @MainActor
 final class WidgetGalleryViewController: NSViewController {
     private static let pageInset: CGFloat = 28
+    /// 页面内容区顶部边距，使小组件图库标题与左侧品牌 Logo 上边缘水平对齐。
+    private static let pageTopInset: CGFloat = 52
     private static let rowGap: CGFloat = 18
     private static let minimumContentWidth: CGFloat = 860
 
@@ -321,7 +323,7 @@ final class WidgetGalleryViewController: NSViewController {
             contentView.heightAnchor.constraint(greaterThanOrEqualTo: scrollView.contentView.heightAnchor),
             contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Self.pageInset),
             contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Self.pageInset),
-            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: Self.pageInset),
+            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: Self.pageTopInset),
             contentStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -Self.pageInset),
             contentStack.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumContentWidth),
         ])
@@ -337,9 +339,7 @@ final class WidgetGalleryViewController: NSViewController {
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 1
-        NSLayoutConstraint.activate([
-            stack.heightAnchor.constraint(greaterThanOrEqualToConstant: 64),
-        ])
+        stack.setContentHuggingPriority(.required, for: .vertical)
         return stack
     }
 
