@@ -205,11 +205,12 @@ final class DashboardBackgroundView: NSView, DashboardAppearanceRefreshable {
 
 /// 主窗口的大面积背景，在 macOS 26+ 使用标准 Liquid Glass（Regular 样式），并为旧系统保留系统材质回退。
 /// 大面积背景必须使用 Regular 标准磨砂样式以提供深层模糊与遮蔽，避免在 macOS 27 等系统上因 Clear 样式而彻底击穿透底。
-final class DashboardGlassBackgroundView: NSView {
+final class DashboardGlassBackgroundView: NSView, DashboardAppearanceRefreshable {
     private let allowsFirstResponder: Bool
     private let contentContainer = NSView()
     private var usesNativeLiquidGlass = false
     private var usesRegularGlassStyle = false
+    private var nativeGlassView: NSView?
 
     var debugUsesNativeLiquidGlass: Bool { usesNativeLiquidGlass }
     var debugUsesRegularGlassStyle: Bool { usesRegularGlassStyle }
@@ -227,8 +228,18 @@ final class DashboardGlassBackgroundView: NSView {
         fatalError("DashboardGlassBackgroundView 必须用 init(frame:material:) 构造")
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+        DashboardAppearanceRefresh.refresh(in: self)
+    }
+
     override var acceptsFirstResponder: Bool {
         allowsFirstResponder
+    }
+
+    func refreshDashboardAppearance() {
+        nativeGlassView?.setValue(DashboardPalette.glassOverlayBackground, forKey: "tintColor")
     }
 
     /// 将界面内容放入玻璃容器，确保 AppKit 按原生玻璃层级绘制。
@@ -251,6 +262,7 @@ final class DashboardGlassBackgroundView: NSView {
                 glassView.topAnchor.constraint(equalTo: topAnchor),
                 glassView.bottomAnchor.constraint(equalTo: bottomAnchor),
             ])
+            nativeGlassView = glassView
             usesNativeLiquidGlass = true
             usesRegularGlassStyle = true
             return

@@ -217,12 +217,56 @@ struct StatusPopoverViewControllerTests {
         controller.view.appearance = aquaAppearance
         refreshEffectiveAppearance(in: controller.view)
 
-        let summaryCard = try #require(summaryCardViews(in: controller).first)
-        #expect(rgbHex(try #require(summaryCard.layer?.backgroundColor)) == 0xFFFFFF)
-        #expect(summaryCard.layer?.borderWidth == 1)
-        #expect(rgbHex(try #require(summaryCard.layer?.borderColor)) == 0xD8DEE8)
+        let cards = summaryCardViews(in: controller)
+        #expect(cards.count == 4)
+        for card in cards {
+            #expect(rgbHex(try #require(card.layer?.backgroundColor)) == 0xFFFFFF)
+            #expect(card.layer?.borderWidth == 1)
+            #expect(rgbHex(try #require(card.layer?.borderColor)) == 0xD8DEE8)
+        }
+
+        let heatmapCard = try #require(controller.debugHeatmapCard)
+        #expect(rgbHex(try #require(heatmapCard.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(heatmapCard.layer?.borderWidth == 1)
+        #expect(rgbHex(try #require(heatmapCard.layer?.borderColor)) == 0xD8DEE8)
+
+        let hourlyLineChart = try #require(controller.debugHourlyLineChartView)
+        #expect(rgbHex(try #require(hourlyLineChart.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(hourlyLineChart.layer?.borderWidth == 1)
+        #expect(rgbHex(try #require(hourlyLineChart.layer?.borderColor)) == 0xD8DEE8)
+
         #expect(try rgbHex(try #require(label(named: "todayDescriptionLabel", in: controller).textColor), appearance: .aqua) == 0x111827)
         #expect(try rgbHex(try #require(label(named: "hoverLabel", in: controller).textColor), appearance: .aqua) == 0x6B7280)
+    }
+
+    @Test("外观变化或弹窗展现时自动刷新摘要卡片、热力图和折线图背景色")
+    func appearanceChangeRefreshesSummaryCardsHeatmapAndHourlyChart() throws {
+        let controller = makeController()
+        let aquaAppearance = try #require(NSAppearance(named: .aqua))
+        let darkAppearance = try #require(NSAppearance(named: .darkAqua))
+
+        darkAppearance.performAsCurrentDrawingAppearance {
+            controller.loadViewIfNeeded()
+        }
+        controller.view.appearance = aquaAppearance
+        controller.view.viewDidChangeEffectiveAppearance()
+
+        let cards = summaryCardViews(in: controller)
+        #expect(cards.count == 4)
+        for card in cards {
+            #expect(rgbHex(try #require(card.layer?.backgroundColor)) == 0xFFFFFF)
+        }
+        #expect(rgbHex(try #require(controller.debugHeatmapCard?.layer?.backgroundColor)) == 0xFFFFFF)
+        #expect(rgbHex(try #require(controller.debugHourlyLineChartView?.layer?.backgroundColor)) == 0xFFFFFF)
+
+        controller.view.appearance = darkAppearance
+        controller.view.viewDidChangeEffectiveAppearance()
+
+        for card in cards {
+            #expect(rgbHex(try #require(card.layer?.backgroundColor)) == 0x151B23)
+        }
+        #expect(rgbHex(try #require(controller.debugHeatmapCard?.layer?.backgroundColor)) == 0x151B23)
+        #expect(rgbHex(try #require(controller.debugHourlyLineChartView?.layer?.backgroundColor)) == 0x151B23)
     }
 
     @Test("collection view 使用固定 7 行网格高度")

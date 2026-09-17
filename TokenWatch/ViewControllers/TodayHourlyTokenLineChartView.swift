@@ -3,7 +3,7 @@ import Charts
 import SwiftUI
 
 /// 状态栏 popover 专用的本日小时 token 折线图。
-final class TodayHourlyTokenLineChartView: NSView {
+final class TodayHourlyTokenLineChartView: NSView, DashboardAppearanceRefreshable {
     private static let visibleAxisHourIndexes = WidgetChartVisualStyle.hourAxisValues
     private static let hoverLabelToChartSpacing: CGFloat = 1
     /// 用量 hover 文本距右边界的内边距，保持与热力图用量视图右对齐并避开卡片 8pt 圆角。
@@ -93,6 +93,10 @@ final class TodayHourlyTokenLineChartView: NSView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    func refreshDashboardAppearance() {
         updateCardColors()
     }
 
