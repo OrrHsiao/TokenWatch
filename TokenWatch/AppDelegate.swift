@@ -305,9 +305,10 @@ enum MainWindowFactory {
         languageSettings: AppLanguageSettings = .shared,
         widgetPurchaseController: WidgetPurchaseController? = nil
     ) -> NSWindowController {
+        // 使用 .fullSizeContentView 与透明无分割线标题栏实现 macOS 原生沉浸式毛玻璃窗口
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: contentSize),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -317,6 +318,11 @@ enum MainWindowFactory {
         )
         window.title = "TokenWatch"
         window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        if #available(macOS 11.0, *) {
+            window.titlebarSeparatorStyle = .none
+        }
+        window.isMovableByWindowBackground = true
         // 调度中心为透明窗口生成缩略图时，`.clear` 玻璃会采样桌面背景，
         // 从而在浅色模式下显示为深色。使用淡白半透明底色以保留透视感并稳定缩略图颜色。
         window.isOpaque = false
