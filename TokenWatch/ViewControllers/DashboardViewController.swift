@@ -56,6 +56,8 @@ final class DashboardViewController: NSViewController {
     private static let pageInset: CGFloat = 28
     /// 沉浸式窗口下为左上角红黄绿控制按钮预留舒适间距，避免品牌区与控制按钮产生视觉粘连。
     private static let sidebarTopInset: CGFloat = 52
+    /// 总览页面顶部边距，使总览标题及头部控制区与左侧品牌 Logo 上边缘水平对齐。
+    private static let overviewTopInset: CGFloat = 52
     private static let rowGap: CGFloat = 18
     private static let sessionVerticalInset: CGFloat = 20
     private static let sessionRowGap: CGFloat = 14
@@ -368,7 +370,7 @@ final class DashboardViewController: NSViewController {
             overviewContentView.heightAnchor.constraint(greaterThanOrEqualTo: overviewScrollView.contentView.heightAnchor),
             overviewStack.leadingAnchor.constraint(equalTo: overviewContentView.leadingAnchor, constant: Self.pageInset),
             overviewStack.trailingAnchor.constraint(equalTo: overviewContentView.trailingAnchor, constant: -Self.pageInset),
-            overviewStack.topAnchor.constraint(equalTo: overviewContentView.topAnchor, constant: Self.pageInset),
+            overviewStack.topAnchor.constraint(equalTo: overviewContentView.topAnchor, constant: Self.overviewTopInset),
             overviewStack.bottomAnchor.constraint(lessThanOrEqualTo: overviewContentView.bottomAnchor, constant: -Self.pageInset),
             overviewStack.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumContentWidth),
         ])
@@ -569,7 +571,7 @@ final class DashboardViewController: NSViewController {
         let titleStack = NSStackView(views: [titleLabel, subtitleLabel])
         titleStack.orientation = .vertical
         titleStack.alignment = .leading
-        titleStack.spacing = 1
+        titleStack.spacing = 2
 
         let controlsStack = NSStackView()
         controlsStack.orientation = .horizontal
@@ -587,18 +589,18 @@ final class DashboardViewController: NSViewController {
 
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
+        header.setContentHuggingPriority(.required, for: .vertical)
         header.addSubview(titleStack)
         header.addSubview(controlsStack)
         titleStack.translatesAutoresizingMaskIntoConstraints = false
         controlsStack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            header.heightAnchor.constraint(greaterThanOrEqualToConstant: 64),
             titleStack.leadingAnchor.constraint(equalTo: header.leadingAnchor),
-            titleStack.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            titleStack.topAnchor.constraint(greaterThanOrEqualTo: header.topAnchor),
-            titleStack.bottomAnchor.constraint(lessThanOrEqualTo: header.bottomAnchor),
+            titleStack.topAnchor.constraint(equalTo: header.topAnchor),
+            titleStack.bottomAnchor.constraint(equalTo: header.bottomAnchor),
             controlsStack.trailingAnchor.constraint(equalTo: header.trailingAnchor),
-            controlsStack.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            controlsStack.topAnchor.constraint(equalTo: header.topAnchor),
+            controlsStack.bottomAnchor.constraint(lessThanOrEqualTo: header.bottomAnchor),
             controlsStack.leadingAnchor.constraint(greaterThanOrEqualTo: titleStack.trailingAnchor, constant: 18),
         ])
         return header
