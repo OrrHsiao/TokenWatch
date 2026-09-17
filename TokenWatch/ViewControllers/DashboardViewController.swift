@@ -58,7 +58,7 @@ final class DashboardViewController: NSViewController {
     private static let sessionVerticalInset: CGFloat = 20
     private static let sessionRowGap: CGFloat = 14
     private static let minimumContentWidth: CGFloat = 860
-    private static let sessionTableColumnWidths: [CGFloat] = [118, 150, 76, 112, 98, 76, 72, 68, 58]
+    private static let sessionTableColumnWidths: [CGFloat] = [118, 146, 76, 110, 96, 76, 84, 68, 54]
     private static let sessionTableMinimumWidth: CGFloat = 880
     private static let sessionTableColumnSpacing: CGFloat = 4
     private static let sessionTableHorizontalPadding: CGFloat = 10
@@ -1363,7 +1363,11 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeSessionTableHeader() -> NSView {
-        let speedTitle = language.baseLanguageCode == "zh" ? "速率" : "Speed"
+        let isChinese = language.baseLanguageCode == "zh"
+        let speedTitle = isChinese ? "输出速率" : "Output Speed"
+        let speedToolTip = isChinese
+            ? "基于会话跨度内的输出 Token 计算（生成吞吐）"
+            : "Output tokens per second across active session span"
         let allHeaderCells = [
             makeSessionLocalizedTextCell(
                 key: .dashboardLatestTime,
@@ -1405,7 +1409,8 @@ final class DashboardViewController: NSViewController {
                 text: speedTitle,
                 width: Self.sessionTableColumnWidths[6],
                 font: .systemFont(ofSize: 11, weight: .bold),
-                color: DashboardPalette.secondaryText
+                color: DashboardPalette.secondaryText,
+                toolTip: speedToolTip
             ),
             makeSessionLocalizedTextCell(
                 key: .recentDetailsCost,
@@ -1429,7 +1434,18 @@ final class DashboardViewController: NSViewController {
     }
 
     private func makeSessionTableRow(_ row: RecentSessionRow, index: Int) -> NSView {
-        makeSessionTableRowContainer(
+        let isChinese = language.baseLanguageCode == "zh"
+        let speedToolTip: String?
+        if let duration = row.duration, duration >= 10.0, row.tokensPerSecond != nil {
+            let formattedDuration = String(format: "%.0fs", duration)
+            speedToolTip = isChinese
+                ? "会话持续 \(formattedDuration)，输出 \(CompactNumberFormatter.format(row.outputTokens)) tokens（\(row.speedFormatted)）"
+                : "Session span \(formattedDuration), output \(CompactNumberFormatter.format(row.outputTokens)) tokens (\(row.speedFormatted))"
+        } else {
+            speedToolTip = isChinese ? "持续时间小于 10 秒或无输出，未统计有效生成速率" : "Session duration under 10s or zero output"
+        }
+
+        return makeSessionTableRowContainer(
             identifier: "DashboardSessionsRow.\(index)",
             backgroundColor: sessionTableRowBackground(at: index),
             height: Self.sessionTableRowHeight,
@@ -1466,7 +1482,8 @@ final class DashboardViewController: NSViewController {
                     text: row.speedFormatted,
                     width: Self.sessionTableColumnWidths[6],
                     font: .monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
-                    color: DashboardPalette.secondaryText
+                    color: DashboardPalette.secondaryText,
+                    toolTip: speedToolTip
                 ),
                 makeSessionTextCell(
                     text: formatCurrency(row.cost),
@@ -1534,12 +1551,21 @@ final class DashboardViewController: NSViewController {
         return row
     }
 
-    private func makeSessionTextCell(text: String, width: CGFloat, font: NSFont, color: NSColor) -> NSView {
+    private func makeSessionTextCell(
+        text: String,
+        width: CGFloat,
+        font: NSFont,
+        color: NSColor,
+        toolTip: String? = nil
+    ) -> NSView {
         let label = NSTextField(labelWithString: text)
         label.font = font
         label.textColor = color
         label.lineBreakMode = .byTruncatingMiddle
         label.maximumNumberOfLines = 1
+        if let toolTip {
+            label.toolTip = toolTip
+        }
 
         let cell = NSView()
         cell.translatesAutoresizingMaskIntoConstraints = false
