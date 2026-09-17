@@ -168,6 +168,7 @@ struct StatusPopoverViewControllerTests {
         let rootView = try #require(controller.view as? DashboardGlassBackgroundView)
         if #available(macOS 26.0, *) {
             #expect(rootView.debugUsesNativeLiquidGlass)
+            #expect(rootView.debugUsesRegularGlassStyle)
         }
     }
 

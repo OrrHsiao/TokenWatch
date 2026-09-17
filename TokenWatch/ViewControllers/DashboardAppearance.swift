@@ -14,6 +14,13 @@ enum DashboardPalette {
         lightAlpha: 0.1,
         darkAlpha: 0.1
     )
+    /// 85% 高清透半透明覆盖底色，保留 85% 漫反射透光与 15% 微实色衬底，提供通透轻盈的液态玻璃质感。
+    static let glassOverlayBackground = dynamicColor(
+        light: 0xF4F6FA,
+        dark: 0x0B0F14,
+        lightAlpha: 0.15,
+        darkAlpha: 0.15
+    )
     static let sidebarBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
     static let panelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x151B23)
     static let deepPanelBackground = dynamicColor(light: 0xFFFFFF, dark: 0x05070A)
@@ -196,13 +203,16 @@ final class DashboardBackgroundView: NSView, DashboardAppearanceRefreshable {
     }
 }
 
-/// 主窗口的大面积背景，在 macOS 26 使用原生 Liquid Glass，并为旧系统保留系统材质回退。
+/// 主窗口的大面积背景，在 macOS 26+ 使用标准 Liquid Glass（Regular 样式），并为旧系统保留系统材质回退。
+/// 大面积背景必须使用 Regular 标准磨砂样式以提供深层模糊与遮蔽，避免在 macOS 27 等系统上因 Clear 样式而彻底击穿透底。
 final class DashboardGlassBackgroundView: NSView {
     private let allowsFirstResponder: Bool
     private let contentContainer = NSView()
     private var usesNativeLiquidGlass = false
+    private var usesRegularGlassStyle = false
 
     var debugUsesNativeLiquidGlass: Bool { usesNativeLiquidGlass }
+    var debugUsesRegularGlassStyle: Bool { usesRegularGlassStyle }
 
     init(
         frame frameRect: NSRect = .zero,
@@ -229,8 +239,9 @@ final class DashboardGlassBackgroundView: NSView {
     private func installGlassEffect() {
         if #available(macOS 26.0, *), let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
             let glassView = glassClass.init(frame: .zero)
-            glassView.setValue(NativeGlassEffectStyle.clear, forKey: "style")
+            glassView.setValue(NativeGlassEffectStyle.regular, forKey: "style")
             glassView.setValue(CGFloat(0), forKey: "cornerRadius")
+            glassView.setValue(DashboardPalette.glassOverlayBackground, forKey: "tintColor")
             glassView.translatesAutoresizingMaskIntoConstraints = false
             glassView.setValue(contentContainer, forKey: "contentView")
             addSubview(glassView)
@@ -241,6 +252,7 @@ final class DashboardGlassBackgroundView: NSView {
                 glassView.bottomAnchor.constraint(equalTo: bottomAnchor),
             ])
             usesNativeLiquidGlass = true
+            usesRegularGlassStyle = true
             return
         }
 
