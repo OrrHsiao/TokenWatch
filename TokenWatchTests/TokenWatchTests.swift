@@ -958,6 +958,37 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardOverviewHeaderAlignsWithSidebarLogoAndMetricRowSitsBelowSubtitle() throws {
+        let windowController = MainWindowFactory.makeWindowController(
+            languageSettings: zhHansLanguageSettings()
+        )
+        let window = try #require(windowController.window)
+        defer { window.close() }
+        let rootView = try #require(window.contentViewController?.view)
+        windowController.showWindow(nil)
+        rootView.layoutSubtreeIfNeeded()
+
+        let logo = try #require(rootView.firstDescendant(identifier: "DashboardBrandIcon.\(AppLogoImage.identifier)"))
+        let overviewTitle = try #require(rootView.textField(stringValue: "用量总览"))
+        let overviewSubtitle = try #require(rootView.textField(stringValue: "汇总 Claude Code、Codex rollout 与 opencode SQLite 的本地记录"))
+        let totalTokenValue = try #require(rootView.firstDescendant(identifier: "DashboardTotalTokenValue"))
+        let metricCard = try #require(totalTokenValue.superview?.superview?.superview)
+
+        let logoFrame = logo.convert(logo.bounds, to: rootView)
+        let titleFrame = overviewTitle.convert(overviewTitle.bounds, to: rootView)
+        let subtitleFrame = overviewSubtitle.convert(overviewSubtitle.bounds, to: rootView)
+        let cardFrame = metricCard.convert(metricCard.bounds, to: rootView)
+
+        // 验证总览大标题与左侧品牌区 Logo 顶部上对齐（误差控制在 2pt 以内）
+        #expect(abs(titleFrame.maxY - logoFrame.maxY) <= 2.0)
+
+        // 验证第一排卡片紧随副标题下方，间距紧凑自然（在 20~35pt 之间，杜绝此前被纵向拉伸产生的近 90pt 空白）
+        let gapBetweenSubtitleAndCard = subtitleFrame.minY - cardFrame.maxY
+        #expect(gapBetweenSubtitleAndCard >= 20.0)
+        #expect(gapBetweenSubtitleAndCard <= 35.0)
+    }
+
+    @MainActor
     @Test func dashboardNavigationItemsUsePencilIconSpacing() throws {
         let viewController = ViewController(languageSettings: zhHansLanguageSettings())
         viewController.loadViewIfNeeded()
