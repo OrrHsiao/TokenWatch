@@ -9,14 +9,31 @@ struct TokenHeatmapWidgetView: View {
     var body: some View {
         let presentation = WidgetChartPresentationBuilder.heatmap(for: entry.state)
 
-        VStack(spacing: 6) {
-            WidgetChartHeader(
-                title: presentation.title,
-                subtitle: presentation.subtitle,
-                total: presentation.totalText
-            )
-            if presentation.message == nil {
-                WidgetMetricStrip(items: metricItems(presentation))
+        VStack(spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(presentation.title)
+                            .font(.headline)
+                            .lineLimit(1)
+                        if let subtitle = presentation.subtitle {
+                            Text(subtitle)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    if presentation.message == nil {
+                        WidgetMetricStrip(items: metricItems(presentation))
+                    }
+                }
+                Spacer(minLength: 8)
+                Text(presentation.totalText)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             ZStack {
                 heatmapGrid(presentation)
@@ -28,6 +45,7 @@ struct TokenHeatmapWidgetView: View {
                         .lineLimit(2)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
@@ -72,6 +90,15 @@ struct TokenHeatmapWidgetView: View {
                             let cell = presentation.cells[index]
                             RoundedRectangle(cornerRadius: radius)
                                 .fill(color(for: cell))
+                                .overlay {
+                                    if cell.isVisible {
+                                        RoundedRectangle(cornerRadius: radius)
+                                            .strokeBorder(
+                                                tileBorderColor(isDark: colorScheme == .dark),
+                                                lineWidth: CGFloat(WidgetChartVisualStyle.heatmapTileBorderWidth)
+                                            )
+                                    }
+                                }
                                 .frame(width: side, height: side)
                         }
                     }
@@ -116,6 +143,24 @@ struct TokenHeatmapWidgetView: View {
             opacity: rgba.alpha
         )
     }
+
+    private func tileBorderColor(isDark: Bool) -> Color {
+        if widgetRenderingMode == .accented {
+            return .primary.opacity(
+                isDark
+                    ? WidgetChartVisualStyle.heatmapTileBorderDarkOpacity
+                    : WidgetChartVisualStyle.heatmapTileBorderLightOpacity
+            )
+        }
+        let borderRGBA = WidgetChartVisualStyle.heatmapTileBorderRGBA(isDark: isDark)
+        return Color(
+            .sRGB,
+            red: borderRGBA.red,
+            green: borderRGBA.green,
+            blue: borderRGBA.blue,
+            opacity: borderRGBA.alpha
+        )
+    }
 }
 
 struct TokenHeatmapWidget: Widget {
@@ -125,10 +170,13 @@ struct TokenHeatmapWidget: Widget {
             provider: WidgetTimelineProvider()
         ) { entry in
             TokenHeatmapWidgetView(entry: entry)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
                 .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName(LocalizedStringKey("widget.heatmap.name"))
         .description(LocalizedStringKey("widget.heatmap.description"))
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }

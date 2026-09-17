@@ -6,6 +6,8 @@ import SwiftUI
 final class TodayHourlyTokenLineChartView: NSView {
     private static let visibleAxisHourIndexes = WidgetChartVisualStyle.hourAxisValues
     private static let hoverLabelToChartSpacing: CGFloat = 1
+    /// 用量 hover 文本距右边界的内边距，保持与热力图用量视图右对齐并避开卡片 8pt 圆角。
+    private static let hoverLabelTrailingInset: CGFloat = 8
 
     private let chartHost = NSHostingView(rootView: AnyView(TodayHourlyTokenLineChartContent(
         buckets: [],
@@ -34,13 +36,16 @@ final class TodayHourlyTokenLineChartView: NSView {
         TodayHourlyLineChartRendering.areaGradientRoundedRGBAComponents(for: .aqua)
     }
     var debugHoverText: String { hoverLabel.stringValue }
+    var debugHoverLabelTrailingInset: CGFloat {
+        -(hoverLabelTrailingConstraint?.constant ?? 0)
+    }
     var debugHoverLabelTopAlignsWithChartView: Bool {
         hoverLabelTopConstraint?.isActive == true
             && hoverLabelTopConstraint?.constant == 0
     }
     var debugHoverLabelTrailingAlignsWithChartView: Bool {
         hoverLabelTrailingConstraint?.isActive == true
-            && hoverLabelTrailingConstraint?.constant == 0
+            && hoverLabelTrailingConstraint?.constant == -Self.hoverLabelTrailingInset
     }
 
     override init(frame frameRect: NSRect) {
@@ -106,7 +111,10 @@ final class TodayHourlyTokenLineChartView: NSView {
         addSubview(hoverLabel)
 
         let hoverLabelTopConstraint = hoverLabel.topAnchor.constraint(equalTo: topAnchor)
-        let hoverLabelTrailingConstraint = hoverLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        let hoverLabelTrailingConstraint = hoverLabel.trailingAnchor.constraint(
+            equalTo: trailingAnchor,
+            constant: -Self.hoverLabelTrailingInset
+        )
         self.hoverLabelTopConstraint = hoverLabelTopConstraint
         self.hoverLabelTrailingConstraint = hoverLabelTrailingConstraint
 
@@ -117,7 +125,10 @@ final class TodayHourlyTokenLineChartView: NSView {
             chartHost.bottomAnchor.constraint(equalTo: bottomAnchor),
             hoverLabelTopConstraint,
             hoverLabelTrailingConstraint,
-            hoverLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
+            hoverLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: leadingAnchor,
+                constant: Self.hoverLabelTrailingInset
+            ),
         ])
     }
 
@@ -235,7 +246,9 @@ private struct TodayHourlyTokenLineChartContent: View {
         .chartXAxis {
             AxisMarks(values: axisKeys) { value in
                 AxisTick()
-                AxisValueLabel {
+                // 24 小时离散分类轴在单个 bucket 宽度较小时，Swift Charts 默认会将双位数标签（如 12、18、23）
+                // 使用省略号截断（...）；此处禁用冲突裁剪，确保 0、6、12、18、23 小时标签完整展示。
+                AxisValueLabel(collisionResolution: .disabled) {
                     if let monthKey = value.as(String.self) {
                         Text(MonthlyBarChartStyle.monthAxisLabel(for: monthKey, language: language))
                             .font(.system(size: 9, weight: .medium))
