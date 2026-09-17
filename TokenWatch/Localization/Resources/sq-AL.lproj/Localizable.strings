@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Fshih të tjerat";
 "mainMenuShowAll" = "Shfaq të gjitha";
 "mainMenuWindow" = "Dritarja";
+"mainMenuCloseWindow" = "Mbyll dritaren";
 "mainMenuMinimize" = "Minimizo";
 "mainMenuZoom" = "Zmadho";
 "mainMenuBringAllToFront" = "Sill të gjitha përpara";

@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Skjul andre";
 "mainMenuShowAll" = "Vis alle";
 "mainMenuWindow" = "Vindue";
+"mainMenuCloseWindow" = "Luk vindue";
 "mainMenuMinimize" = "Minimer";
 "mainMenuZoom" = "Zoom";
 "mainMenuBringAllToFront" = "Anbring alle forrest";

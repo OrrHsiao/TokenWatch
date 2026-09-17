@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Qari Kuwa Kale";
 "mainMenuShowAll" = "Muuji Dhammaan";
 "mainMenuWindow" = "Daaqad";
+"mainMenuCloseWindow" = "Xidh Daaqadda";
 "mainMenuMinimize" = "Yaree";
 "mainMenuZoom" = "Weynee";
 "mainMenuBringAllToFront" = "Dhammaan Keen Hore";

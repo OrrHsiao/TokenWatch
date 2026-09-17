@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "மற்றவற்றை மறைக்கவும்";
 "mainMenuShowAll" = "அனைத்தையும் காட்டவும்";
 "mainMenuWindow" = "சாளரம்";
+"mainMenuCloseWindow" = "சாளரத்தை மூடு";
 "mainMenuMinimize" = "சிறிதாக்கவும்";
 "mainMenuZoom" = "பெரிதாக்கவும்";
 "mainMenuBringAllToFront" = "அனைத்தையும் முன்னுக்குக் கொண்டுவரவும்";

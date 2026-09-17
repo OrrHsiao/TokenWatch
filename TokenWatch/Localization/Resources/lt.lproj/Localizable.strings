@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Slėpti kitus";
 "mainMenuShowAll" = "Rodyti visus";
 "mainMenuWindow" = "Langas";
+"mainMenuCloseWindow" = "Uždaryti langą";
 "mainMenuMinimize" = "Sumažinti";
 "mainMenuZoom" = "Keisti mastelį";
 "mainMenuBringAllToFront" = "Perkelti visus į priekį";

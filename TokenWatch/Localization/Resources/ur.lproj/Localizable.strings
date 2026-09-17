@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "دیگر چھپائیں";
 "mainMenuShowAll" = "سب دکھائیں";
 "mainMenuWindow" = "ونڈو";
+"mainMenuCloseWindow" = "ونڈو بند کریں";
 "mainMenuMinimize" = "چھوٹا کریں";
 "mainMenuZoom" = "زوم";
 "mainMenuBringAllToFront" = "سب کو سامنے لائیں";

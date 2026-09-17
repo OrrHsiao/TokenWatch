@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Скрыть остальные";
 "mainMenuShowAll" = "Показать все";
 "mainMenuWindow" = "Окно";
+"mainMenuCloseWindow" = "Закрыть окно";
 "mainMenuMinimize" = "Свернуть";
 "mainMenuZoom" = "Масштабировать";
 "mainMenuBringAllToFront" = "Все окна — на передний план";

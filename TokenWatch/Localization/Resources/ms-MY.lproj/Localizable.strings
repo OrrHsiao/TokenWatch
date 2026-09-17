@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Sembunyikan Yang Lain";
 "mainMenuShowAll" = "Tunjukkan Semua";
 "mainMenuWindow" = "Tetingkap";
+"mainMenuCloseWindow" = "Tutup Tetingkap";
 "mainMenuMinimize" = "Minimumkan";
 "mainMenuZoom" = "Zum";
 "mainMenuBringAllToFront" = "Bawa Semua ke Hadapan";

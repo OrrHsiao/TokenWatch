@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Göm övriga";
 "mainMenuShowAll" = "Visa alla";
 "mainMenuWindow" = "Fönster";
+"mainMenuCloseWindow" = "Stäng fönster";
 "mainMenuMinimize" = "Minimera";
 "mainMenuZoom" = "Zooma";
 "mainMenuBringAllToFront" = "Lägg alla överst";

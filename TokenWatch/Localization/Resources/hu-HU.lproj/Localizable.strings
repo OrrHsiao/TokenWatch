@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Más alkalmazások elrejtése";
 "mainMenuShowAll" = "Összes megjelenítése";
 "mainMenuWindow" = "Ablak";
+"mainMenuCloseWindow" = "Ablak bezárása";
 "mainMenuMinimize" = "Kicsinyítés";
 "mainMenuZoom" = "Nagyítás";
 "mainMenuBringAllToFront" = "Minden ablak előrehozása";

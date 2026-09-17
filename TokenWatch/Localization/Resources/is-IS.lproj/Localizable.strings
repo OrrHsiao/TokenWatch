@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Fela önnur";
 "mainMenuShowAll" = "Sýna allt";
 "mainMenuWindow" = "Gluggi";
+"mainMenuCloseWindow" = "Loka glugga";
 "mainMenuMinimize" = "Smækka";
 "mainMenuZoom" = "Aðdráttur";
 "mainMenuBringAllToFront" = "Færa alla fremst";

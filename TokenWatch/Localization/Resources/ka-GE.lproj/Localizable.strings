@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "სხვების დამალვა";
 "mainMenuShowAll" = "ყველას ჩვენება";
 "mainMenuWindow" = "ფანჯარა";
+"mainMenuCloseWindow" = "ფანჯრის დახურვა";
 "mainMenuMinimize" = "მინიმიზაცია";
 "mainMenuZoom" = "მასშტაბირება";
 "mainMenuBringAllToFront" = "ყველა ფანჯრის წინ გამოტანა";

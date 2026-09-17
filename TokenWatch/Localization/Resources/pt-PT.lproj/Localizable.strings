@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Ocultar outras aplicações";
 "mainMenuShowAll" = "Mostrar tudo";
 "mainMenuWindow" = "Janela";
+"mainMenuCloseWindow" = "Fechar Janela";
 "mainMenuMinimize" = "Minimizar";
 "mainMenuZoom" = "Zoom";
 "mainMenuBringAllToFront" = "Trazer tudo para a frente";

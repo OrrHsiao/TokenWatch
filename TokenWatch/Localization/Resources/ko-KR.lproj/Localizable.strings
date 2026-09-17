@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "다른 항목 숨기기";
 "mainMenuShowAll" = "모두 보기";
 "mainMenuWindow" = "윈도우";
+"mainMenuCloseWindow" = "윈도우 닫기";
 "mainMenuMinimize" = "최소화";
 "mainMenuZoom" = "확대/축소";
 "mainMenuBringAllToFront" = "모두 앞으로 가져오기";

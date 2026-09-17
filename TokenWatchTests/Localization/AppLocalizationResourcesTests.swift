@@ -114,42 +114,42 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 190 个 key")
+    @Test("迁移的十二份资源均直接定义全部 191 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 190)
+        #expect(AppStringKey.allCases.count == 191)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
-    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 190 个 key")
+    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 191 个 key")
     func westernAndRegionalResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 190)
+        #expect(AppStringKey.allCases.count == 191)
         try assertCompleteResources([
             "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
             "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
         ])
     }
 
-    @Test("中东欧拉丁文字的十一份资源均直接定义全部 190 个 key")
+    @Test("中东欧拉丁文字的十一份资源均直接定义全部 191 个 key")
     func centralEuropeanLatinResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 190)
+        #expect(AppStringKey.allCases.count == 191)
         try assertCompleteResources(centralEuropeanLatinLocaleIdentifiers)
     }
 
-    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 190 个 key")
+    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 191 个 key")
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 190)
+        #expect(AppStringKey.allCases.count == 191)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
     }
 
-    @Test("中东与南亚文字的十二份资源均直接定义全部 190 个 key")
+    @Test("中东与南亚文字的十二份资源均直接定义全部 191 个 key")
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 190)
+        #expect(AppStringKey.allCases.count == 191)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
-    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 190 个 key")
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 191 个 key")
     func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 190)
+        #expect(AppStringKey.allCases.count == 191)
         try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
     }
 

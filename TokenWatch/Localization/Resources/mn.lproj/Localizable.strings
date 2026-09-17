@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Бусдыг нуух";
 "mainMenuShowAll" = "Бүгдийг харуулах";
 "mainMenuWindow" = "Цонх";
+"mainMenuCloseWindow" = "Цонх хаах";
 "mainMenuMinimize" = "Жижигрүүлэх";
 "mainMenuZoom" = "Томруулах";
 "mainMenuBringAllToFront" = "Бүх цонхыг урд гаргах";

@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "پنهان کردن دیگران";
 "mainMenuShowAll" = "نمایش همه";
 "mainMenuWindow" = "پنجره";
+"mainMenuCloseWindow" = "بستن پنجره";
 "mainMenuMinimize" = "کوچک‌نمایی";
 "mainMenuZoom" = "بزرگ‌نمایی";
 "mainMenuBringAllToFront" = "آوردن همه به جلو";

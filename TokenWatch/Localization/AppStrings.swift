@@ -127,6 +127,7 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case mainMenuHideOthers
     case mainMenuShowAll
     case mainMenuWindow
+    case mainMenuCloseWindow
     case mainMenuMinimize
     case mainMenuZoom
     case mainMenuBringAllToFront

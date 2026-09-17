@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Diğerlerini Gizle";
 "mainMenuShowAll" = "Tümünü Göster";
 "mainMenuWindow" = "Pencere";
+"mainMenuCloseWindow" = "Pencereyi Kapat";
 "mainMenuMinimize" = "Küçült";
 "mainMenuZoom" = "Büyüt";
 "mainMenuBringAllToFront" = "Tümünü Öne Getir";

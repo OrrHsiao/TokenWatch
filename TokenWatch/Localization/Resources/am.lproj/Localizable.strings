@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "ሌሎቹን ደብቅ";
 "mainMenuShowAll" = "ሁሉንም አሳይ";
 "mainMenuWindow" = "መስኮት";
+"mainMenuCloseWindow" = "መስኮት ዝጋ";
 "mainMenuMinimize" = "አሳንስ";
 "mainMenuZoom" = "አጉላ";
 "mainMenuBringAllToFront" = "ሁሉንም ወደ ፊት አምጣ";

@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Paslēpt citus";
 "mainMenuShowAll" = "Rādīt visus";
 "mainMenuWindow" = "Logs";
+"mainMenuCloseWindow" = "Aizvērt logu";
 "mainMenuMinimize" = "Minimizēt";
 "mainMenuZoom" = "Mērogot";
 "mainMenuBringAllToFront" = "Novietot visus priekšplānā";

@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "隱藏其他";
 "mainMenuShowAll" = "全部顯示";
 "mainMenuWindow" = "視窗";
+"mainMenuCloseWindow" = "關閉視窗";
 "mainMenuMinimize" = "最小化";
 "mainMenuZoom" = "縮放";
 "mainMenuBringAllToFront" = "全部移到最前";

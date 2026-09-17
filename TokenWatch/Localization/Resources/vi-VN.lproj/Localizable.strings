@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Ẩn ứng dụng khác";
 "mainMenuShowAll" = "Hiện tất cả";
 "mainMenuWindow" = "Cửa sổ";
+"mainMenuCloseWindow" = "Đóng cửa sổ";
 "mainMenuMinimize" = "Thu nhỏ";
 "mainMenuZoom" = "Phóng to";
 "mainMenuBringAllToFront" = "Đưa tất cả ra trước";

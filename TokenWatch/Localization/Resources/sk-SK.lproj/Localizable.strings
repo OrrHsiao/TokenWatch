@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Skryť ostatné";
 "mainMenuShowAll" = "Zobraziť všetko";
 "mainMenuWindow" = "Okno";
+"mainMenuCloseWindow" = "Zatvoriť okno";
 "mainMenuMinimize" = "Minimalizovať";
 "mainMenuZoom" = "Zväčšiť";
 "mainMenuBringAllToFront" = "Presunúť všetko do popredia";

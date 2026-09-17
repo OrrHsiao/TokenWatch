@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Απόκρυψη άλλων";
 "mainMenuShowAll" = "Εμφάνιση όλων";
 "mainMenuWindow" = "Παράθυρο";
+"mainMenuCloseWindow" = "Κλείσιμο παραθύρου";
 "mainMenuMinimize" = "Ελαχιστοποίηση";
 "mainMenuZoom" = "Μεγέθυνση";
 "mainMenuBringAllToFront" = "Μεταφορά όλων στο προσκήνιο";

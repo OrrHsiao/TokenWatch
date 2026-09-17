@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "इतर लपवा";
 "mainMenuShowAll" = "सर्व दाखवा";
 "mainMenuWindow" = "विंडो";
+"mainMenuCloseWindow" = "विंडो बंद करा";
 "mainMenuMinimize" = "लहान करा";
 "mainMenuZoom" = "झूम";
 "mainMenuBringAllToFront" = "सर्व समोर आणा";

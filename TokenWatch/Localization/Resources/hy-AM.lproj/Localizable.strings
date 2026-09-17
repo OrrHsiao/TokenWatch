@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Թաքցնել մյուսները";
 "mainMenuShowAll" = "Ցուցադրել բոլորը";
 "mainMenuWindow" = "Պատուհան";
+"mainMenuCloseWindow" = "Փակել պատուհանը";
 "mainMenuMinimize" = "Փոքրացնել";
 "mainMenuZoom" = "Խոշորացնել";
 "mainMenuBringAllToFront" = "Բոլոր պատուհանները բերել առաջ";

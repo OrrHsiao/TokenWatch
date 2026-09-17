@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Ascunde celelalte aplicații";
 "mainMenuShowAll" = "Afișează tot";
 "mainMenuWindow" = "Fereastră";
+"mainMenuCloseWindow" = "Închide fereastra";
 "mainMenuMinimize" = "Minimizează";
 "mainMenuZoom" = "Zoom";
 "mainMenuBringAllToFront" = "Adu toate ferestrele în față";

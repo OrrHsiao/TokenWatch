@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "ਹੋਰ ਲੁਕਾਓ";
 "mainMenuShowAll" = "ਸਭ ਦਿਖਾਓ";
 "mainMenuWindow" = "ਵਿੰਡੋ";
+"mainMenuCloseWindow" = "ਵਿੰਡੋ ਬੰਦ ਕਰੋ";
 "mainMenuMinimize" = "ਛੋਟਾ ਕਰੋ";
 "mainMenuZoom" = "ਜ਼ੂਮ";
 "mainMenuBringAllToFront" = "ਸਭ ਨੂੰ ਅੱਗੇ ਲਿਆਓ";

@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "മറ്റുള്ളവ മറയ്ക്കുക";
 "mainMenuShowAll" = "എല്ലാം കാണിക്കുക";
 "mainMenuWindow" = "വിൻഡോ";
+"mainMenuCloseWindow" = "വിൻഡോ അടയ്ക്കുക";
 "mainMenuMinimize" = "ചെറുതാക്കുക";
 "mainMenuZoom" = "സൂം";
 "mainMenuBringAllToFront" = "എല്ലാം മുന്നിലെത്തിക്കുക";

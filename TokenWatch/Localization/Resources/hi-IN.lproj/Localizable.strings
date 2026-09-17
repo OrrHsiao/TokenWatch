@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "अन्य को छिपाएँ";
 "mainMenuShowAll" = "सभी दिखाएँ";
 "mainMenuWindow" = "विंडो";
+"mainMenuCloseWindow" = "विंडो बंद करें";
 "mainMenuMinimize" = "मिनिमाइज़ करें";
 "mainMenuZoom" = "ज़ूम";
 "mainMenuBringAllToFront" = "सभी को सामने लाएँ";

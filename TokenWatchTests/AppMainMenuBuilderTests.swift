@@ -106,6 +106,7 @@ struct AppMainMenuBuilderTests {
             "退出 AI Token Watch",
         ])
         #expect(windowMenu.items.filter { !$0.isSeparatorItem }.map(\.title) == [
+            "关闭窗口",
             "最小化",
             "缩放",
             "全部置于前面",
@@ -185,15 +186,20 @@ struct AppMainMenuBuilderTests {
         let items = windowMenu.items.filter { !$0.isSeparatorItem }
 
         #expect(items.map(\.title) == [
+            "Close Window",
             "Minimize",
             "Zoom",
             "Bring All to Front",
         ])
         #expect(items.map { $0.action.map(NSStringFromSelector) } == [
+            "performClose:",
             "performMiniaturize:",
             "performZoom:",
             "arrangeInFront:",
         ])
+        #expect(items[0].keyEquivalent == "w")
+        #expect(items[0].keyEquivalentModifierMask == .command)
+        #expect(items[0].target == nil)
     }
 
     private func allDescendants<T: NSView>(in view: NSView, ofType type: T.Type) -> [T] {

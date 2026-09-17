@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "অন্যগুলো লুকান";
 "mainMenuShowAll" = "সব দেখান";
 "mainMenuWindow" = "উইন্ডো";
+"mainMenuCloseWindow" = "উইন্ডো বন্ধ করুন";
 "mainMenuMinimize" = "ছোট করুন";
 "mainMenuZoom" = "জুম";
 "mainMenuBringAllToFront" = "সব সামনে আনুন";
