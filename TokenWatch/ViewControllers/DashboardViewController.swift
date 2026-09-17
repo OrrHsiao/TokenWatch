@@ -54,6 +54,8 @@ final class DashboardSessionDatePicker: NSDatePicker {
 final class DashboardViewController: NSViewController {
     private static let sidebarWidth: CGFloat = 244
     private static let pageInset: CGFloat = 28
+    /// 沉浸式窗口下为左上角红黄绿控制按钮预留舒适间距，避免品牌区与控制按钮产生视觉粘连。
+    private static let sidebarTopInset: CGFloat = 52
     private static let rowGap: CGFloat = 18
     private static let sessionVerticalInset: CGFloat = 20
     private static let sessionRowGap: CGFloat = 14
@@ -320,7 +322,7 @@ final class DashboardViewController: NSViewController {
         NSLayoutConstraint.activate([
             rootStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: 20),
             rootStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -20),
-            rootStack.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: Self.pageInset),
+            rootStack.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: Self.sidebarTopInset),
             rootStack.bottomAnchor.constraint(lessThanOrEqualTo: privacyPolicyButton.topAnchor, constant: -20),
             privacyPolicyButton.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: 20),
             privacyPolicyButton.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -20),

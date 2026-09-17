@@ -112,7 +112,11 @@ struct TokenWatchTests {
 
         #expect(window.title == "TokenWatch")
         #expect(window.titleVisibility == .hidden)
-        #expect(window.titlebarAppearsTransparent == false)
+        #expect(window.titlebarAppearsTransparent == true)
+        #expect(window.isMovableByWindowBackground == true)
+        if #available(macOS 11.0, *) {
+            #expect(window.titlebarSeparatorStyle == .none)
+        }
         #expect(window.isOpaque == false)
         #expect(try rgbHex(window.backgroundColor, appearance: .aqua) == 0xF4F6FA)
         #expect(abs(window.backgroundColor.alphaComponent - 0.1) < 0.001)
@@ -120,6 +124,7 @@ struct TokenWatchTests {
         #expect(window.styleMask.contains(.closable))
         #expect(window.styleMask.contains(.miniaturizable))
         #expect(window.styleMask.contains(.resizable))
+        #expect(window.styleMask.contains(.fullSizeContentView))
         #expect(window.isReleasedWhenClosed == false)
         #expect(window.contentViewController is ViewController)
         #expect(window.contentView?.frame.size == MainWindowFactory.contentSize)
