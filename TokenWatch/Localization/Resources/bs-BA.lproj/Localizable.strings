@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Sakrij ostale";
 "mainMenuShowAll" = "Prikaži sve";
 "mainMenuWindow" = "Prozor";
+"mainMenuCloseWindow" = "Zatvori prozor";
 "mainMenuMinimize" = "Minimiziraj";
 "mainMenuZoom" = "Povećaj";
 "mainMenuBringAllToFront" = "Postavi sve u prvi plan";

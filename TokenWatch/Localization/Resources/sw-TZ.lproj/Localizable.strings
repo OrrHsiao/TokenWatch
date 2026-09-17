@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Ficha Zingine";
 "mainMenuShowAll" = "Onyesha Zote";
 "mainMenuWindow" = "Dirisha";
+"mainMenuCloseWindow" = "Funga Dirisha";
 "mainMenuMinimize" = "Punguza";
 "mainMenuZoom" = "Kuza";
 "mainMenuBringAllToFront" = "Leta Zote Mbele";

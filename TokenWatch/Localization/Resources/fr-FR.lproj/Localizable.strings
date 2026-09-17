@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Masquer les autres";
 "mainMenuShowAll" = "Tout afficher";
 "mainMenuWindow" = "Fenêtre";
+"mainMenuCloseWindow" = "Fermer la fenêtre";
 "mainMenuMinimize" = "Réduire";
 "mainMenuZoom" = "Zoom";
 "mainMenuBringAllToFront" = "Tout ramener au premier plan";

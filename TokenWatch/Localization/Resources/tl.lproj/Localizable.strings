@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Itago ang Iba";
 "mainMenuShowAll" = "Ipakita Lahat";
 "mainMenuWindow" = "Bintana";
+"mainMenuCloseWindow" = "Isara ang Bintana";
 "mainMenuMinimize" = "Paliitin";
 "mainMenuZoom" = "Palakihin";
 "mainMenuBringAllToFront" = "Dalhin Lahat sa Harap";

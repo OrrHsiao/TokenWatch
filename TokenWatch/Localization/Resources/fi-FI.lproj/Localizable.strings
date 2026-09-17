@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Kätke muut";
 "mainMenuShowAll" = "Näytä kaikki";
 "mainMenuWindow" = "Ikkuna";
+"mainMenuCloseWindow" = "Sulje ikkuna";
 "mainMenuMinimize" = "Pienennä";
 "mainMenuZoom" = "Zoomaa";
 "mainMenuBringAllToFront" = "Tuo kaikki eteen";

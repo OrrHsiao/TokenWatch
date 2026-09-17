@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "အခြားအရာများကို ဖျောက်ပါ";
 "mainMenuShowAll" = "အားလုံးကို ပြပါ";
 "mainMenuWindow" = "ဝင်းဒိုး";
+"mainMenuCloseWindow" = "ဝင်းဒိုးပိတ်ပါ";
 "mainMenuMinimize" = "အငယ်ချုံ့ပါ";
 "mainMenuZoom" = "ချဲ့ပါ";
 "mainMenuBringAllToFront" = "အားလုံးကို ရှေ့သို့ ယူပါ";

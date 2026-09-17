@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "إخفاء الآخرين";
 "mainMenuShowAll" = "إظهار الكل";
 "mainMenuWindow" = "نافذة";
+"mainMenuCloseWindow" = "إغلاق النافذة";
 "mainMenuMinimize" = "تصغير";
 "mainMenuZoom" = "تكبير";
 "mainMenuBringAllToFront" = "إحضار الكل إلى المقدمة";

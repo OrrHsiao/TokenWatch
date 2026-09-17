@@ -83,6 +83,11 @@ enum AppMainMenuBuilder {
         let windowMenu = NSMenu(title: windowMenuTitle)
         windowMenu.userInterfaceLayoutDirection = .leftToRight
         windowMenu.addItem(makeApplicationItem(
+            title: text(.mainMenuCloseWindow, language: language),
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
+        ))
+        windowMenu.addItem(makeApplicationItem(
             title: text(.mainMenuMinimize, language: language),
             action: #selector(NSWindow.performMiniaturize(_:)),
             keyEquivalent: "m"

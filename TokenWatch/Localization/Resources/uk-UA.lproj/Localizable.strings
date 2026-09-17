@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Сховати інші";
 "mainMenuShowAll" = "Показати всі";
 "mainMenuWindow" = "Вікно";
+"mainMenuCloseWindow" = "Закрити вікно";
 "mainMenuMinimize" = "Згорнути";
 "mainMenuZoom" = "Змінити масштаб";
 "mainMenuBringAllToFront" = "Усі вікна — на передній план";

@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "ほかを隠す";
 "mainMenuShowAll" = "すべてを表示";
 "mainMenuWindow" = "ウインドウ";
+"mainMenuCloseWindow" = "ウインドウを閉じる";
 "mainMenuMinimize" = "しまう";
 "mainMenuZoom" = "拡大/縮小";
 "mainMenuBringAllToFront" = "すべてを手前に移動";

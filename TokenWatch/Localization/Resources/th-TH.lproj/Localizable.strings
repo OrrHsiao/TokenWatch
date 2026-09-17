@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "ซ่อนรายการอื่น";
 "mainMenuShowAll" = "แสดงทั้งหมด";
 "mainMenuWindow" = "หน้าต่าง";
+"mainMenuCloseWindow" = "ปิดหน้าต่าง";
 "mainMenuMinimize" = "ย่อ";
 "mainMenuZoom" = "ซูม";
 "mainMenuBringAllToFront" = "นำทั้งหมดมาไว้ด้านหน้า";

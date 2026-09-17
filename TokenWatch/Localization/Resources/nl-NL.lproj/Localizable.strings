@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Verberg andere";
 "mainMenuShowAll" = "Toon alles";
 "mainMenuWindow" = "Venster";
+"mainMenuCloseWindow" = "Sluit venster";
 "mainMenuMinimize" = "Minimaliseer";
 "mainMenuZoom" = "Zoom";
 "mainMenuBringAllToFront" = "Breng alles naar voren";

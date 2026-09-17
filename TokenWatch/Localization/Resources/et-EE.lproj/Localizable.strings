@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Peida teised";
 "mainMenuShowAll" = "Kuva kõik";
 "mainMenuWindow" = "Aken";
+"mainMenuCloseWindow" = "Sule aken";
 "mainMenuMinimize" = "Minimeeri";
 "mainMenuZoom" = "Suumi";
 "mainMenuBringAllToFront" = "Too kõik ette";

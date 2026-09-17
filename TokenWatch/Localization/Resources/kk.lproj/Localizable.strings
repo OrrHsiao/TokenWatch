@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Басқаларын жасыру";
 "mainMenuShowAll" = "Барлығын көрсету";
 "mainMenuWindow" = "Терезе";
+"mainMenuCloseWindow" = "Терезені жабу";
 "mainMenuMinimize" = "Кішірейту";
 "mainMenuZoom" = "Масштабтау";
 "mainMenuBringAllToFront" = "Барлығын алдыңғы қатарға шығару";

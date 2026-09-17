@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Sembunyikan Lainnya";
 "mainMenuShowAll" = "Tampilkan Semua";
 "mainMenuWindow" = "Jendela";
+"mainMenuCloseWindow" = "Tutup Jendela";
 "mainMenuMinimize" = "Minimalkan";
 "mainMenuZoom" = "Perbesar";
 "mainMenuBringAllToFront" = "Bawa Semua ke Depan";

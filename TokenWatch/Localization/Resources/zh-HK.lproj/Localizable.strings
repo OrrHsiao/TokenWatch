@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "隱藏其他程式";
 "mainMenuShowAll" = "顯示全部";
 "mainMenuWindow" = "視窗";
+"mainMenuCloseWindow" = "關閉視窗";
 "mainMenuMinimize" = "最小化";
 "mainMenuZoom" = "縮放";
 "mainMenuBringAllToFront" = "將全部視窗置於最前";

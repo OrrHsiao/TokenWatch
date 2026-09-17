@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Скриј ги другите";
 "mainMenuShowAll" = "Прикажи ги сите";
 "mainMenuWindow" = "Прозорец";
+"mainMenuCloseWindow" = "Затвори прозорец";
 "mainMenuMinimize" = "Минимизирај";
 "mainMenuZoom" = "Зумирај";
 "mainMenuBringAllToFront" = "Донеси ги сите напред";

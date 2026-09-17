@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "Amaga les altres aplicacions";
 "mainMenuShowAll" = "Mostra-ho tot";
 "mainMenuWindow" = "Finestra";
+"mainMenuCloseWindow" = "Tanca la finestra";
 "mainMenuMinimize" = "Minimitza";
 "mainMenuZoom" = "Zoom";
 "mainMenuBringAllToFront" = "Porta-ho tot al davant";

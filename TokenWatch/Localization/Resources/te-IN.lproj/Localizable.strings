@@ -118,6 +118,7 @@
 "mainMenuHideOthers" = "ఇతర వాటిని దాచండి";
 "mainMenuShowAll" = "అన్నీ చూపండి";
 "mainMenuWindow" = "విండో";
+"mainMenuCloseWindow" = "విండోను మూసివేయి";
 "mainMenuMinimize" = "చిన్నదిగా చేయండి";
 "mainMenuZoom" = "జూమ్";
 "mainMenuBringAllToFront" = "అన్నింటినీ ముందుకు తీసుకురండి";
