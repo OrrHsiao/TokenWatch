@@ -96,6 +96,7 @@ final class StatusPopoverViewController: NSViewController {
     var debugRefreshButtonIsEnabled: Bool { todayRefreshButton.isEnabled }
     var debugHoverText: String { hoverLabel.stringValue }
     var debugCollectionView: NSCollectionView? { collectionView }
+    var debugHeatmapCard: NSView? { heatmapCard }
     var debugHourlyLineChartView: TodayHourlyTokenLineChartView? { hourlyLineChartView }
     var debugHourlyLineChartPointCount: Int { hourlyLineChartView.debugPointCount }
     var debugHourlyLineChartXAxisLabels: [String] { hourlyLineChartView.debugXAxisLabels }
@@ -353,6 +354,11 @@ final class StatusPopoverViewController: NSViewController {
         }
     }
 
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        DashboardAppearanceRefresh.refresh(in: view)
+    }
+
     deinit {
         MainActor.assumeIsolated {
             if let observerToken {
@@ -589,6 +595,7 @@ final class StatusPopoverViewController: NSViewController {
         applyHoverText()
         applyRefreshButtonLoadingState()
         loadingOverlay.setLoading(viewModel.states.values.contains { $0.isLoading })
+        DashboardAppearanceRefresh.refresh(in: view)
         collectionView.reloadData()
     }
 
@@ -697,7 +704,7 @@ private struct SummaryMetricCardStyle {
     )
 }
 
-private final class SummaryMetricCardView: NSView {
+private final class SummaryMetricCardView: NSView, DashboardAppearanceRefreshable {
     private let titleLabel = NSTextField(labelWithString: "")
     private let valueLabel = NSTextField(labelWithString: "")
     private let style: SummaryMetricCardStyle
@@ -751,6 +758,10 @@ private final class SummaryMetricCardView: NSView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    func refreshDashboardAppearance() {
         updateCardColors()
     }
 

@@ -24,6 +24,7 @@ final class StatusBarController {
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var popoverCloseObserver: NSObjectProtocol?
     private var applicationResignActiveObserver: NSObjectProtocol?
+    private var appAppearanceObserver: NSKeyValueObservation?
     private var popoverLocalEventMonitor: Any?
     private var popoverKeyEventMonitor: Any?
     private var popoverGlobalEventMonitor: Any?
@@ -78,6 +79,7 @@ final class StatusBarController {
         }
         return offsets
     }
+    var debugPopoverAppearance: NSAppearance? { popover.appearance }
 
     init(
         viewModel: TokenStatsViewModel,
@@ -152,6 +154,10 @@ final class StatusBarController {
             NotificationCenter.default.removeObserver(token)
             applicationResignActiveObserver = nil
         }
+        if let token = appAppearanceObserver {
+            token.invalidate()
+            appAppearanceObserver = nil
+        }
         popoverLifecycle.reset()
         isStatusMenuPresented = false
         removePopoverDismissMonitors()
@@ -192,6 +198,12 @@ final class StatusBarController {
         popover.behavior = StatusBarPopoverPolicy.behavior
         popover.contentSize = StatusBarPopoverLayout.contentSize
         popover.contentViewController = contentViewController
+        syncPopoverAppearance()
+        appAppearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                self?.syncPopoverAppearance()
+            }
+        }
         popoverCloseObserver = NotificationCenter.default.addObserver(
             forName: NSPopover.didCloseNotification,
             object: popover,
@@ -506,6 +518,7 @@ final class StatusBarController {
         // 每一轮 presentation 都重新绑定 monitor；上一轮已排队的异步回调会被
         // generation guard 拒绝，不能关闭或改亮新弹窗。
         removePopoverDismissMonitors()
+        syncPopoverAppearance()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         guard popover.isShown else {
             popoverLifecycle.showFailed(generation: generation)
@@ -587,6 +600,17 @@ final class StatusBarController {
                     _ = popoverWindow?.makeFirstResponder(contentView)
                 }
             }
+        }
+    }
+
+    /// 将 popover 外观与系统/应用当前 effectiveAppearance 保持同步。
+    ///
+    /// 解决在非暗黑模式下，因 status item 所在状态栏窗口默认具有 vibrantDark 外观，
+    /// 导致 NSPopover 默认继承暗色外观并使内部卡片、热力图和折线图错误显示为暗黑背景的问题。
+    private func syncPopoverAppearance() {
+        popover.appearance = NSApp.effectiveAppearance
+        if let view = popover.contentViewController?.view {
+            DashboardAppearanceRefresh.refresh(in: view)
         }
     }
 

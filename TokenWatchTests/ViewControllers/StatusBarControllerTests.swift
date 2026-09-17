@@ -246,6 +246,15 @@ struct StatusBarControllerTests {
         ])
     }
 
+    /// Popover 外观应与应用当前有效外观同步，避免默认继承状态栏暗色外观。
+    @MainActor
+    @Test func popoverAppearanceSynchronizesWithAppAppearance() {
+        let controller = StatusBarController(viewModel: TokenStatsViewModel())
+        defer { controller.stop() }
+
+        #expect(controller.debugPopoverAppearance?.name == NSApp.effectiveAppearance.name)
+    }
+
     /// 从状态栏菜单打开主窗口时,应等菜单 action 结束后再激活并强制置前已有窗口。
     @Test func mainWindowOpenFromStatusMenuDefersAndOrdersWindowFrontRegardless() {
         #expect(StatusMainWindowPresentation.timing() == .afterCurrentEvent)
