@@ -628,7 +628,7 @@ final class StatusPopoverViewController: NSViewController {
     }
 
     private func applyTodayDescription(todayTokens: Int, language: AppLanguage) {
-        let burnRate = TokenBurnRateCalculator.calculate(
+        let rate = TokenBurnRateCalculator.calculateRate(
             states: viewModel.states,
             now: nowProvider()
         )
@@ -639,7 +639,7 @@ final class StatusPopoverViewController: NSViewController {
         todayDescriptionLabel.stringValue = TokenBurnRateCalculator.descriptionText(
             baseText: baseText,
             todayTokens: todayTokens,
-            burnRate: burnRate,
+            rate: rate,
             language: language
         )
     }

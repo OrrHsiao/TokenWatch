@@ -411,11 +411,17 @@ final class StatusBarController {
             setIcon(symbolName: symbolName)
         }
 
-        let burnRate = TokenBurnRateCalculator.calculate(states: viewModel.states, now: Date())
+        let rate = TokenBurnRateCalculator.calculateRate(states: viewModel.states, now: Date())
         let isChinese = languageSettings.resolvedLanguage.baseLanguageCode == "zh"
-        if burnRate > 0 {
+        if rate.activeTokensPerSecond > 0 {
             let rateLabel = isChinese ? "燃烧速率" : "Burn Rate"
-            statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens\n\(rateLabel): \(TokenBurnRateCalculator.formatRate(burnRate))"
+            let rateText = TokenBurnRateCalculator.formatRate(rate.activeTokensPerSecond)
+            if rate.costPerHour >= 0.01 {
+                let costText = TokenBurnRateCalculator.formatCostPerHour(rate.costPerHour)
+                statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens\n\(rateLabel): \(rateText) (\(costText))"
+            } else {
+                statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens\n\(rateLabel): \(rateText)"
+            }
         } else {
             statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens"
         }
