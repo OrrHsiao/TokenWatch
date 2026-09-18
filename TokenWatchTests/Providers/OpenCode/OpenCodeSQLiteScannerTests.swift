@@ -12,7 +12,7 @@ private let SQLITE_TRANSIENT_DESTRUCTOR = unsafeBitCast(
 
 /// OpenCodeSQLiteScanner 单元测试
 /// 在临时目录用 sqlite3 C API 构造 mini opencode.db,验证 Scanner 读取行为
-@Suite("OpenCodeSQLiteScanner")
+@Suite("OpenCodeSQLiteScanner", .serialized)
 struct OpenCodeSQLiteScannerTests {
 
     let scanner = OpenCodeSQLiteScanner()
@@ -123,7 +123,10 @@ struct OpenCodeSQLiteScannerTests {
         // 写连接以 EXCLUSIVE 锁短暂占用（journal 模式下会阻塞其他连接的读锁）
         let writer = try openWriterHoldingExclusiveLock(at: dir.appendingPathComponent("opencode.db"))
 
-        let scanTask = Task { try scanner.scanAll(in: dir) }
+        // CI 虚拟机在并发执行与 CPU 抢占下，写锁释放调度可能存在轻微延时；
+        // 使用充足的 10 秒超时窗口避免偶发超时。
+        let patientScanner = OpenCodeSQLiteScanner(busyTimeoutMs: 10_000)
+        let scanTask = Task { try patientScanner.scanAll(in: dir) }
         try await Task.sleep(nanoseconds: 100_000_000)
         try commitAndClose(writer)
 
