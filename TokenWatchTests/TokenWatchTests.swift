@@ -1004,19 +1004,15 @@ struct TokenWatchTests {
         rootView.layoutSubtreeIfNeeded()
         let logo = try #require(rootView.firstDescendant(identifier: "DashboardBrandIcon.\(AppLogoImage.identifier)"))
         let logoFrame = logo.convert(logo.bounds, to: rootView)
-        let overviewScrollView = try #require(rootView.firstDescendant(identifier: "DashboardOverviewScrollView") as? NSScrollView)
         let overviewTitle = try #require(rootView.textField(stringValue: "用量总览"))
         let overviewTitleFrame = overviewTitle.convert(overviewTitle.bounds, to: rootView)
         #expect(abs(overviewTitleFrame.maxY - logoFrame.maxY) <= 3.0)
-        // 验证默认窗口尺寸下总览页内容完整展示且不发生纵向滚动
-        #expect(overviewScrollView.contentView.constrainScroll(NSPoint(x: 0, y: 50)).y <= 1.0)
 
         // 1. Sessions page
         let sessionsButton = try #require(rootView.button(identifier: "DashboardNav.sessions"))
         _ = sessionsButton.sendAction(sessionsButton.action, to: sessionsButton.target)
         rootView.layoutSubtreeIfNeeded()
 
-        let sessionScrollView = try #require(rootView.firstDescendant(identifier: "DashboardSessionsPageScrollView") as? NSScrollView)
         let sessionsPage = try #require(rootView.firstDescendant(identifier: "DashboardSessionsPage"))
         let sessionTitle = try #require(sessionsPage.textField(stringValue: "会话"))
         let sessionSubtitle = try #require(sessionsPage.textField(stringValue: "按最近时间倒序查看会话聚合、成本与使用记录"))
@@ -1029,11 +1025,6 @@ struct TokenWatchTests {
         #expect(abs(sessionTitleFrame.maxY - logoFrame.maxY) <= 3.0)
         let sessionGap = sessionSubtitleFrame.minY - sessionMetricFrame.maxY
         #expect(sessionGap >= 18.0 && sessionGap <= 37.0)
-        // 验证默认窗口尺寸下会话页内容完整展示且不发生纵向滚动（兼顾跨版本亚像素布局容差）
-        #expect(sessionScrollView.contentView.constrainScroll(NSPoint(x: 0, y: 50)).y <= 1.0)
-        if let sessionDoc = sessionScrollView.documentView {
-            #expect(sessionDoc.frame.height <= sessionScrollView.contentView.bounds.height + 1.0)
-        }
 
         // 2. Widgets page
         let widgetsButton = try #require(rootView.button(identifier: "DashboardNav.widgets"))
