@@ -235,6 +235,8 @@ final class WidgetGalleryViewController: NSViewController {
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
+        scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.contentInsets = NSEdgeInsetsZero
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.documentView = contentView
 

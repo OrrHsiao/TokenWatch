@@ -340,11 +340,15 @@ final class DashboardViewController: NSViewController {
         mainContentContainer.setAccessibilityIdentifier("DashboardMainContent")
 
         overviewScrollView.userInterfaceLayoutDirection = .leftToRight
+        overviewScrollView.identifier = NSUserInterfaceItemIdentifier("DashboardOverviewScrollView")
+        overviewScrollView.setAccessibilityIdentifier("DashboardOverviewScrollView")
         overviewScrollView.drawsBackground = false
         overviewScrollView.borderType = .noBorder
         overviewScrollView.hasVerticalScroller = true
         overviewScrollView.autohidesScrollers = true
         overviewScrollView.scrollerStyle = .overlay
+        overviewScrollView.automaticallyAdjustsContentInsets = false
+        overviewScrollView.contentInsets = NSEdgeInsetsZero
         overviewScrollView.translatesAutoresizingMaskIntoConstraints = false
         overviewScrollView.documentView = overviewContentView
 
@@ -388,6 +392,8 @@ final class DashboardViewController: NSViewController {
         sessionScrollView.hasHorizontalScroller = false
         sessionScrollView.autohidesScrollers = true
         sessionScrollView.scrollerStyle = .overlay
+        sessionScrollView.automaticallyAdjustsContentInsets = false
+        sessionScrollView.contentInsets = NSEdgeInsetsZero
         sessionScrollView.translatesAutoresizingMaskIntoConstraints = false
         sessionScrollView.documentView = sessionContentView
 
