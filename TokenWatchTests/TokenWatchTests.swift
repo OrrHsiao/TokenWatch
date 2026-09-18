@@ -994,14 +994,11 @@ struct TokenWatchTests {
 
     @MainActor
     @Test func dashboardAllPagesHeaderAlignWithSidebarLogoAndContentSitsBelowSubtitle() throws {
-        let windowController = MainWindowFactory.makeWindowController(
-            languageSettings: zhHansLanguageSettings()
-        )
-        let window = try #require(windowController.window)
-        defer { window.close() }
-        let rootView = try #require(window.contentViewController?.view)
-        windowController.showWindow(nil)
-        rootView.layoutSubtreeIfNeeded()
+        let viewController = ViewController(languageSettings: zhHansLanguageSettings())
+        viewController.loadViewIfNeeded()
+        viewController.view.setFrameSize(MainWindowFactory.contentSize)
+        viewController.view.layoutSubtreeIfNeeded()
+        let rootView = viewController.view
         let logo = try #require(rootView.firstDescendant(identifier: "DashboardBrandIcon.\(AppLogoImage.identifier)"))
         let logoFrame = logo.convert(logo.bounds, to: rootView)
         let overviewTitle = try #require(rootView.textField(stringValue: "用量总览"))
