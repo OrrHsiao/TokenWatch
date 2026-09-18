@@ -67,6 +67,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test
 
+      - name: Print Test Failures
+        if: failure()
+        run: |
+          RESULT_PATH=$(find "$RUNNER_TEMP/TokenWatchDerivedData/Logs/Test" -name "*.xcresult" | head -n 1)
+          if [ -n "$RESULT_PATH" ]; then
+            echo "=== Test Failure Summary ==="
+            xcrun xcresulttool get test-results summary --path "$RESULT_PATH" || true
+          fi
+
   ui-tests:
     name: macOS UI Tests
     # macOS 26 的原生 Liquid Glass 会让 XCTest 将卡片内按钮误判为不可点击；
