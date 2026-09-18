@@ -1,3 +1,4 @@
 - Adds Token usage analytics and project attribution support for Antigravity.
-- Enhances menu bar popover card layout and color contrast.
-- Improves widget snapshot publishing and refresh stability.
+- Adds session output Token speed (TPS) and recent burn rate analytics.
+- Adapts main window with immersive frosted glass and native liquid glass styling, optimizing layout for zero scroll by default.
+- Refines desktop widget and menu bar popover visual styles, and adds Command+W shortcut to close the window.
