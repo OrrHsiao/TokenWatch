@@ -1001,10 +1001,10 @@ struct TokenWatchTests {
         defer { window.close() }
         let rootView = try #require(window.contentViewController?.view)
         windowController.showWindow(nil)
+        rootView.layoutSubtreeIfNeeded()
         let logo = try #require(rootView.firstDescendant(identifier: "DashboardBrandIcon.\(AppLogoImage.identifier)"))
         let logoFrame = logo.convert(logo.bounds, to: rootView)
         let overviewScrollView = try #require(rootView.firstDescendant(identifier: "DashboardOverviewScrollView") as? NSScrollView)
-        rootView.layoutSubtreeIfNeeded()
         let overviewTitle = try #require(rootView.textField(stringValue: "用量总览"))
         let overviewTitleFrame = overviewTitle.convert(overviewTitle.bounds, to: rootView)
         #expect(abs(overviewTitleFrame.maxY - logoFrame.maxY) <= 2.0)
