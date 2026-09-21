@@ -15,7 +15,7 @@ struct TodayHourlyTokenLineChartViewTests {
         view.configure(with: snapshot)
 
         #expect(view.debugPointCount == 24)
-        #expect(view.debugXAxisLabels == ["0", "6", "12", "18", "23"])
+        #expect(view.debugXAxisLabels == ["0", "6", "12", "18"])
         #expect(view.debugNormalizedHeights.first == 0)
         #expect(view.debugNormalizedHeights.last == 1.0)
         #expect(view.debugLineInterpolationMethodName == "catmullRom")

@@ -28,7 +28,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugCollectionItemCount == 154)
         #expect(controller.debugHourlyLineChartView != nil)
         #expect(controller.debugHourlyLineChartPointCount == 24)
-        #expect(controller.debugHourlyLineChartXAxisLabels == ["0", "6", "12", "18", "23"])
+        #expect(controller.debugHourlyLineChartXAxisLabels == ["0", "6", "12", "18"])
     }
 
     @Test("本日 token 文案右侧展示 SF Symbols 刷新按钮")

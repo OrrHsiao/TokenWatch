@@ -28,7 +28,8 @@ enum WidgetChartVisualStyle {
     static let heatmapTileBorderWidth = 0.5
     static let heatmapTileBorderDarkOpacity = 0.08
     static let heatmapTileBorderLightOpacity = 0.06
-    static let hourAxisValues = [0, 6, 12, 18, 23]
+    /// 24 小时图表采用每 6 小时等分刻度（0、6、12、18），保持间隔均匀并避免 23 点在右边界引发拥挤与截断。
+    static let hourAxisValues = [0, 6, 12, 18]
     static let lineWidth = 2.0
     static let currentPointSize = 22.0
     static let areaPeakOpacity = 0.8
