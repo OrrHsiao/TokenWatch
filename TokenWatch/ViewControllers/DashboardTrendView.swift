@@ -292,7 +292,7 @@ final class DashboardTrendView: NSView {
         case 7:
             preferredIndexes = [0, 3, 6]
         case 24:
-            preferredIndexes = [0, 6, 12, 18, 23]
+            preferredIndexes = WidgetChartVisualStyle.hourAxisValues
         case 30:
             preferredIndexes = [0, 6, 13, 20, 29]
         default:
@@ -328,6 +328,10 @@ private struct DashboardTrendChartContent: View {
     let language: AppLanguage
     let axisKeys: [String]
     let onHoverBucketKeyChange: (String?) -> Void
+
+    private var axisKeySet: Set<String> {
+        Set(axisKeys)
+    }
 
     private var maxTokens: Double {
         max(1, Double(buckets.map(\.totalTokens).max() ?? 0))
@@ -420,12 +424,13 @@ private struct DashboardTrendChartContent: View {
         .chartLegend(.hidden)
         .chartYScale(domain: 0...DashboardTrendRendering.chartYScaleUpperBound(maxTokens: maxTokens))
         .chartXAxis {
-            AxisMarks(values: axisKeys) { value in
-                AxisTick()
-                AxisValueLabel {
-                    if let key = value.as(String.self) {
+            AxisMarks { value in
+                if let key = value.as(String.self), axisKeySet.contains(key) {
+                    AxisTick()
+                    AxisValueLabel {
                         Text(MonthlyBarChartStyle.monthAxisLabel(for: key, language: language))
                             .font(.system(size: 8))
+                            .fixedSize()
                     }
                 }
             }

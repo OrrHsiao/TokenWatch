@@ -199,6 +199,10 @@ private struct TodayHourlyTokenLineChartContent: View {
     let accessibilityLabelText: String
     let onHoverMonthKeyChange: (String?) -> Void
 
+    private var axisKeySet: Set<String> {
+        Set(axisKeys)
+    }
+
     private var hasAnyTokens: Bool {
         (buckets.map(\.totalTokens).max() ?? 0) > 0
     }
@@ -248,14 +252,17 @@ private struct TodayHourlyTokenLineChartContent: View {
         .chartLegend(.hidden)
         .chartYScale(domain: 0...maxTokens)
         .chartXAxis {
-            AxisMarks(values: axisKeys) { value in
-                AxisTick()
-                // 24 小时离散分类轴在单个 bucket 宽度较小时，Swift Charts 默认会将双位数标签（如 12、18、23）
-                // 使用省略号截断（...）；此处禁用冲突裁剪，确保 0、6、12、18、23 小时标签完整展示。
-                AxisValueLabel(collisionResolution: .disabled) {
-                    if let monthKey = value.as(String.self) {
+            AxisMarks { value in
+                if let monthKey = value.as(String.self), axisKeySet.contains(monthKey) {
+                    AxisTick()
+                    // 24 小时离散分类轴在单个 bucket 宽度较小时（~11.5pt），Swift Charts 默认向 AxisValueLabel 建议槽位宽度，
+                    // 导致双位数标签（如 12、18）在渲染时触发 SwiftUI Text 省略号截断（...）；
+                    // 此外，Swift Charts 的 AxisMarks(values: [String]) 在离散分类轴上不会自动跳过未指定的类别闭包调用，
+                    // 因此此处通过 axisKeySet 进行显式过滤（仅展示 0、6、12、18），并配合 .fixedSize() 确保以自然尺寸完整展示。
+                    AxisValueLabel(collisionResolution: .disabled) {
                         Text(MonthlyBarChartStyle.monthAxisLabel(for: monthKey, language: language))
                             .font(.system(size: 9, weight: .medium))
+                            .fixedSize()
                     }
                 }
             }

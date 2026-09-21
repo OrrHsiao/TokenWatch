@@ -15,7 +15,7 @@ struct WidgetChartVisualStyleTests {
         #expect(WidgetChartVisualStyle.heatmapTileBorderLightOpacity == 0.06)
         #expect(WidgetChartVisualStyle.heatmapTileBorderRGBA(isDark: true) == WidgetChartRGBA(red: 1, green: 1, blue: 1, alpha: 0.08))
         #expect(WidgetChartVisualStyle.heatmapTileBorderRGBA(isDark: false) == WidgetChartRGBA(red: 0, green: 0, blue: 0, alpha: 0.06))
-        #expect(WidgetChartVisualStyle.hourAxisValues == [0, 6, 12, 18, 23])
+        #expect(WidgetChartVisualStyle.hourAxisValues == [0, 6, 12, 18])
         #expect(WidgetChartVisualStyle.lineWidth == 2)
         #expect(WidgetChartVisualStyle.currentPointSize == 22)
         #expect(WidgetChartVisualStyle.areaPeakOpacity == 0.8)

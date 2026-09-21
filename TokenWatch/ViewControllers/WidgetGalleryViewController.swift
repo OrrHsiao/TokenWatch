@@ -1301,7 +1301,9 @@ private struct WidgetGalleryHourlyLinePreview: View {
                     AxisTick()
                     AxisValueLabel {
                         if let hour = value.as(Int.self) {
-                            Text(verbatim: "\(hour)").font(.system(size: 8))
+                            Text(verbatim: "\(hour)")
+                                .font(.system(size: 8))
+                                .fixedSize()
                         }
                     }
                 }
