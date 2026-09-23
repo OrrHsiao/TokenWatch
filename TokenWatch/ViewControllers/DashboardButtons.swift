@@ -303,3 +303,425 @@ final class DashboardSessionButton: NSButton, DashboardAppearanceRefreshable {
         }
     }
 }
+
+final class DashboardDataSourceRowButton: NSButton, DashboardAppearanceRefreshable {
+    let providerID: ProviderID
+    let isAuthorized: Bool
+    private let dotView: DashboardDotView
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let metricLabel = NSTextField(labelWithString: "")
+    private var trackingAreaRef: NSTrackingArea?
+    private var isHovered: Bool = false
+    private(set) var isSelectedSource: Bool = false
+
+    init(
+        providerID: ProviderID,
+        title: String,
+        isAuthorized: Bool,
+        metricText: String = "",
+        statusText: String,
+        target: AnyObject?,
+        action: Selector?
+    ) {
+        self.providerID = providerID
+        self.isAuthorized = isAuthorized
+        self.dotView = DashboardDotView(
+            color: isAuthorized ? DashboardPalette.green : DashboardPalette.statusInactive,
+            accessibilityIdentifier: "DashboardDataSourceStatus.\(providerID.rawValue)",
+            accessibilityValue: statusText
+        )
+        super.init(frame: .zero)
+        self.target = target
+        self.action = action
+        self.title = ""
+        self.toolTip = statusText
+        self.identifier = NSUserInterfaceItemIdentifier("DashboardDataSourceRow.\(providerID.rawValue)")
+        setAccessibilityIdentifier("DashboardDataSourceRow.\(providerID.rawValue)")
+        setAccessibilityLabel(title)
+        setAccessibilityValue(statusText)
+
+        isBordered = false
+        bezelStyle = .regularSquare
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.masksToBounds = true
+        translatesAutoresizingMaskIntoConstraints = false
+
+        setupContent(title: title, metricText: metricText, statusText: statusText)
+        updateAppearanceColors()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardDataSourceRowButton 必须用指定初始化方法构造")
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingAreaRef {
+            removeTrackingArea(trackingAreaRef)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        isHovered = true
+        updateAppearanceColors()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        isHovered = false
+        updateAppearanceColors()
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if action != nil {
+            addCursorRect(bounds, cursor: .pointingHand)
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {}
+
+    override var focusRingMaskBounds: NSRect {
+        bounds
+    }
+
+    override func drawFocusRingMask() {
+        let cornerRadius = layer?.cornerRadius ?? 0
+        NSBezierPath(
+            roundedRect: bounds,
+            xRadius: cornerRadius,
+            yRadius: cornerRadius
+        ).fill()
+    }
+
+    func setSelectedSource(_ isSelected: Bool) {
+        isSelectedSource = isSelected
+        updateAppearanceColors()
+    }
+
+    func refreshDashboardAppearance() {
+        updateAppearanceColors()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    private func updateAppearanceColors() {
+        if isSelectedSource {
+            layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.rangeSelectedBackground, for: self)
+            layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.rangeSelectedBorder, for: self)
+            layer?.borderWidth = 1
+            let textColor = DashboardLayerColor.nsColor(DashboardPalette.rangeSelectedText, for: self)
+            titleLabel.textColor = textColor
+            metricLabel.textColor = textColor
+        } else if isHovered && action != nil {
+            layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.navigationSelectedBackground, for: self)
+            layer?.borderColor = DashboardLayerColor.cgColor(NSColor.clear, for: self)
+            layer?.borderWidth = 0
+            titleLabel.textColor = DashboardLayerColor.nsColor(DashboardPalette.primaryText, for: self)
+            metricLabel.textColor = DashboardLayerColor.nsColor(DashboardPalette.secondaryText, for: self)
+        } else {
+            layer?.backgroundColor = DashboardLayerColor.cgColor(NSColor.clear, for: self)
+            layer?.borderColor = DashboardLayerColor.cgColor(NSColor.clear, for: self)
+            layer?.borderWidth = 0
+            titleLabel.textColor = DashboardLayerColor.nsColor(
+                isAuthorized ? DashboardPalette.secondaryText : DashboardPalette.mutedText,
+                for: self
+            )
+            metricLabel.textColor = DashboardLayerColor.nsColor(DashboardPalette.mutedText, for: self)
+        }
+    }
+
+    private func setupContent(title: String, metricText: String, statusText: String) {
+        titleLabel.stringValue = title
+        titleLabel.font = .systemFont(ofSize: 12)
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.toolTip = statusText
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        metricLabel.stringValue = metricText
+        metricLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        metricLabel.lineBreakMode = .byClipping
+        metricLabel.alignment = .right
+        metricLabel.toolTip = statusText
+        metricLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        dotView.toolTip = statusText
+
+        addSubview(dotView)
+        addSubview(titleLabel)
+        addSubview(metricLabel)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 26),
+            dotView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            dotView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: dotView.trailingAnchor, constant: 8),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            metricLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 4),
+            metricLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            metricLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+}
+
+final class DashboardDisclosureHeaderButton: NSButton, DashboardAppearanceRefreshable {
+    private let chevronImageView = NSImageView()
+    private let titleLabel = NSTextField(labelWithString: "")
+    private var trackingAreaRef: NSTrackingArea?
+    private var isHovered: Bool = false
+    private(set) var isExpanded: Bool = false
+
+    init(title: String, isExpanded: Bool, target: AnyObject?, action: Selector?) {
+        self.isExpanded = isExpanded
+        super.init(frame: .zero)
+        self.target = target
+        self.action = action
+        self.title = ""
+        self.identifier = NSUserInterfaceItemIdentifier("DashboardDataSourceOtherToggle")
+        setAccessibilityIdentifier("DashboardDataSourceOtherToggle")
+        setAccessibilityLabel(title)
+
+        isBordered = false
+        bezelStyle = .regularSquare
+        wantsLayer = true
+        layer?.cornerRadius = 4
+        translatesAutoresizingMaskIntoConstraints = false
+
+        setupContent(title: title, isExpanded: isExpanded)
+        updateAppearanceColors()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardDisclosureHeaderButton 必须用指定初始化方法构造")
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingAreaRef {
+            removeTrackingArea(trackingAreaRef)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        isHovered = true
+        updateAppearanceColors()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        isHovered = false
+        updateAppearanceColors()
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {}
+
+    func setExpanded(_ expanded: Bool, title: String) {
+        isExpanded = expanded
+        titleLabel.stringValue = title
+        setAccessibilityLabel(title)
+        let symbolName = expanded ? "chevron.down" : "chevron.right"
+        let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
+        chevronImageView.image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: title
+        )?.withSymbolConfiguration(config)
+        chevronImageView.image?.isTemplate = true
+        updateAppearanceColors()
+    }
+
+    func refreshDashboardAppearance() {
+        updateAppearanceColors()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    private func updateAppearanceColors() {
+        let color = isHovered ? DashboardPalette.secondaryText : DashboardPalette.mutedText
+        let resolvedColor = DashboardLayerColor.nsColor(color, for: self)
+        titleLabel.textColor = resolvedColor
+        chevronImageView.contentTintColor = resolvedColor
+        layer?.backgroundColor = isHovered
+            ? DashboardLayerColor.cgColor(DashboardPalette.navigationSelectedBackground, for: self)
+            : DashboardLayerColor.cgColor(NSColor.clear, for: self)
+    }
+
+    private func setupContent(title: String, isExpanded: Bool) {
+        let symbolName = isExpanded ? "chevron.down" : "chevron.right"
+        let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
+        chevronImageView.image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: title
+        )?.withSymbolConfiguration(config)
+        chevronImageView.image?.isTemplate = true
+        chevronImageView.imageScaling = .scaleProportionallyDown
+        chevronImageView.translatesAutoresizingMaskIntoConstraints = false
+
+        titleLabel.stringValue = title
+        titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(chevronImageView)
+        addSubview(titleLabel)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 22),
+            chevronImageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            chevronImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevronImageView.widthAnchor.constraint(equalToConstant: 10),
+            chevronImageView.heightAnchor.constraint(equalToConstant: 10),
+            titleLabel.leadingAnchor.constraint(equalTo: chevronImageView.trailingAnchor, constant: 6),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -6),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+}
+
+final class DashboardSourcePopUpButton: NSPopUpButton, DashboardAppearanceRefreshable {
+    private var isFilterActive: Bool = false
+    private var trackingAreaRef: NSTrackingArea?
+    private var isHovered: Bool = false
+
+    init(target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero, pullsDown: false)
+        self.target = target
+        self.action = action
+        self.identifier = NSUserInterfaceItemIdentifier("DashboardDataSourcePopUp")
+        setAccessibilityIdentifier("DashboardDataSourcePopUp")
+        userInterfaceLayoutDirection = .leftToRight
+        menu?.userInterfaceLayoutDirection = .leftToRight
+
+        bezelStyle = .regularSquare
+        isBordered = false
+        focusRingType = .none
+        font = .systemFont(ofSize: 12, weight: .semibold)
+        alignment = .left
+
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.borderWidth = 1
+        translatesAutoresizingMaskIntoConstraints = false
+
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 35),
+            widthAnchor.constraint(greaterThanOrEqualToConstant: 96),
+        ])
+
+        updateAppearance()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DashboardSourcePopUpButton 必须用指定初始化方法构造")
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingAreaRef {
+            removeTrackingArea(trackingAreaRef)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        isHovered = true
+        updateAppearance()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        isHovered = false
+        updateAppearance()
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override var focusRingMaskBounds: NSRect {
+        bounds
+    }
+
+    override func drawFocusRingMask() {
+        let cornerRadius = layer?.cornerRadius ?? 0
+        NSBezierPath(
+            roundedRect: bounds,
+            xRadius: cornerRadius,
+            yRadius: cornerRadius
+        ).fill()
+    }
+
+    func setFilterActive(_ active: Bool) {
+        isFilterActive = active
+        updateAppearance()
+    }
+
+    func refreshDashboardAppearance() {
+        updateAppearance()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshDashboardAppearance()
+    }
+
+    private func updateAppearance() {
+        if isFilterActive {
+            layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.rangeSelectedBackground, for: self)
+            layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.rangeSelectedBorder, for: self)
+            let textColor = DashboardLayerColor.nsColor(DashboardPalette.rangeSelectedText, for: self)
+            contentTintColor = textColor
+        } else if isHovered {
+            layer?.backgroundColor = DashboardLayerColor.cgColor(DashboardPalette.navigationSelectedBackground, for: self)
+            layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.glassControlBorder, for: self)
+            let textColor = DashboardLayerColor.nsColor(DashboardPalette.primaryText, for: self)
+            contentTintColor = textColor
+        } else {
+            layer?.backgroundColor = DashboardLayerColor.cgColor(NSColor.clear, for: self)
+            layer?.borderColor = DashboardLayerColor.cgColor(DashboardPalette.glassControlBorder, for: self)
+            let textColor = DashboardLayerColor.nsColor(DashboardPalette.primaryText, for: self)
+            contentTintColor = textColor
+        }
+    }
+}

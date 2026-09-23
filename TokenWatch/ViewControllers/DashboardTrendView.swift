@@ -578,7 +578,10 @@ final class DashboardDonutView: NSView {
                 clockwise: true
             )
             path.close()
-            DashboardColors.modelColor(at: index).setFill()
+            let fillColor = (slice.id == "__other__")
+                ? DashboardPalette.mutedText
+                : DashboardColors.modelColor(at: index)
+            fillColor.setFill()
             path.fill()
             startAngle -= sweep
         }
