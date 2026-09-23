@@ -406,6 +406,28 @@ struct DashboardRangeSnapshot {
             }
     }
 
+    /// 将过多的数据源切片聚合成 Top N-1 + 1 个汇总的“其他”切片，
+    /// 确保图例和环形图项数固定在 maxVisible 内且百分比守恒。
+    static func aggregateToolShareSlices(
+        _ slices: [UsageShareSlice],
+        maxVisible: Int = 4,
+        otherLabel: String
+    ) -> [UsageShareSlice] {
+        guard slices.count > maxVisible else { return slices }
+        let topCount = max(1, maxVisible - 1)
+        let top = Array(slices.prefix(topCount))
+        let remaining = Array(slices.dropFirst(topCount))
+        let remainingTokens = remaining.reduce(0) { $0 + $1.totalTokens }
+        let remainingPercentage = remaining.reduce(0.0) { $0 + $1.percentage }
+        let otherSlice = UsageShareSlice(
+            id: "__other__",
+            label: otherLabel,
+            totalTokens: remainingTokens,
+            percentage: remainingPercentage
+        )
+        return top + [otherSlice]
+    }
+
     static func displayProjectName(_ path: String, language: AppLanguage) -> String {
         DashboardProjectRows.displayName(for: path)
             ?? AppStrings.text(.commonUnknown, language: language)

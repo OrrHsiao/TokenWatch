@@ -107,6 +107,13 @@ final class DashboardViewController: NSViewController {
     private let sessionStack = NSStackView()
     private let navButtonsStack = NSStackView()
     private let dataSourceRowsStack = NSStackView()
+    private let dataSourceActiveStack = NSStackView()
+    private let dataSourceOtherContainer = NSStackView()
+    private let dataSourceOtherStack = NSStackView()
+    private let dataSourceCountLabel = NSTextField(labelWithString: "")
+    private var overviewSourcePopUpButton: DashboardSourcePopUpButton?
+    private var sessionSourcePopUpButton: DashboardSourcePopUpButton?
+    private var dataSourceOtherToggleButton: DashboardDisclosureHeaderButton?
     private let scanLoadingIndicator = NSProgressIndicator()
     private let scanStatusBodyLabel = NSTextField(labelWithString: "")
     private let initialLoadingOverlay = LoadingOverlayView()
@@ -153,6 +160,8 @@ final class DashboardViewController: NSViewController {
     private var privacyPolicyButton: DashboardNavigationButton?
     private var selectedRange: DashboardRange = .sevenDays
     private var selectedNavigationItem: DashboardNavigationItem = .overview
+    private var selectedProviderFilter: ProviderID?
+    private var isOtherSourcesExpanded: Bool = false
     private var selectedSessionDate: Date
     private var currentSessionPage = 1
     private var currentSettingsController: NSViewController?
@@ -497,17 +506,55 @@ final class DashboardViewController: NSViewController {
         title.font = .systemFont(ofSize: 11, weight: .bold)
         title.textColor = DashboardPalette.mutedText
 
+        dataSourceCountLabel.font = .systemFont(ofSize: 10, weight: .semibold)
+        dataSourceCountLabel.textColor = DashboardPalette.mutedText
+        dataSourceCountLabel.alignment = .right
+
+        let headerRow = NSStackView(views: [title, NSView(), dataSourceCountLabel])
+        headerRow.orientation = .horizontal
+        headerRow.alignment = .centerY
+        headerRow.spacing = 6
+
+        dataSourceActiveStack.orientation = .vertical
+        dataSourceActiveStack.alignment = .leading
+        dataSourceActiveStack.spacing = 3
+
+        let otherToggle = DashboardDisclosureHeaderButton(
+            title: "",
+            isExpanded: isOtherSourcesExpanded,
+            target: self,
+            action: #selector(toggleOtherSourcesClicked(_:))
+        )
+        self.dataSourceOtherToggleButton = otherToggle
+
+        dataSourceOtherStack.orientation = .vertical
+        dataSourceOtherStack.alignment = .leading
+        dataSourceOtherStack.spacing = 3
+        dataSourceOtherStack.isHidden = !isOtherSourcesExpanded
+
+        dataSourceOtherContainer.orientation = .vertical
+        dataSourceOtherContainer.alignment = .leading
+        dataSourceOtherContainer.spacing = 3
+        dataSourceOtherContainer.addArrangedSubview(otherToggle)
+        dataSourceOtherContainer.addArrangedSubview(dataSourceOtherStack)
+
         dataSourceRowsStack.orientation = .vertical
         dataSourceRowsStack.alignment = .leading
-        dataSourceRowsStack.spacing = 10
+        dataSourceRowsStack.spacing = 4
+        dataSourceRowsStack.addArrangedSubview(dataSourceActiveStack)
+        dataSourceRowsStack.addArrangedSubview(dataSourceOtherContainer)
 
-        let stack = NSStackView(views: [title, dataSourceRowsStack])
+        let stack = NSStackView(views: [headerRow, dataSourceRowsStack])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 10
+        stack.spacing = 8
         NSLayoutConstraint.activate([
-            title.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            headerRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
             dataSourceRowsStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            dataSourceActiveStack.widthAnchor.constraint(equalTo: dataSourceRowsStack.widthAnchor),
+            dataSourceOtherContainer.widthAnchor.constraint(equalTo: dataSourceRowsStack.widthAnchor),
+            otherToggle.widthAnchor.constraint(equalTo: dataSourceOtherContainer.widthAnchor),
+            dataSourceOtherStack.widthAnchor.constraint(equalTo: dataSourceOtherContainer.widthAnchor),
         ])
         return stack
     }
@@ -580,12 +627,21 @@ final class DashboardViewController: NSViewController {
         titleStack.alignment = .leading
         titleStack.spacing = 2
 
+        let popUp = DashboardSourcePopUpButton(
+            target: self,
+            action: #selector(dataSourcePopUpChanged(_:))
+        )
+        popUp.identifier = NSUserInterfaceItemIdentifier("DashboardOverviewSourcePopUp")
+        popUp.setAccessibilityIdentifier("DashboardOverviewSourcePopUp")
+        self.overviewSourcePopUpButton = popUp
+
         let controlsStack = NSStackView()
         controlsStack.orientation = .horizontal
         controlsStack.alignment = .centerY
         controlsStack.spacing = 10
         controlsStack.identifier = NSUserInterfaceItemIdentifier("DashboardHeaderControls")
         controlsStack.setAccessibilityIdentifier("DashboardHeaderControls")
+        controlsStack.addArrangedSubview(popUp)
         for range in DashboardRange.allCases {
             let button = makeRangeButton(range)
             rangeButtons[range] = button
@@ -626,21 +682,36 @@ final class DashboardViewController: NSViewController {
         titleStack.alignment = .leading
         titleStack.spacing = 1
 
+        let sessionPopUp = DashboardSourcePopUpButton(
+            target: self,
+            action: #selector(dataSourcePopUpChanged(_:))
+        )
+        sessionPopUp.identifier = NSUserInterfaceItemIdentifier("DashboardSessionSourcePopUp")
+        sessionPopUp.setAccessibilityIdentifier("DashboardSessionSourcePopUp")
+        self.sessionSourcePopUpButton = sessionPopUp
+
         let header = NSView()
         header.setContentHuggingPriority(.required, for: .vertical)
         let dateBadge = makeSessionDateBadge()
+        let controlsStack = NSStackView()
+        controlsStack.orientation = .horizontal
+        controlsStack.alignment = .centerY
+        controlsStack.spacing = 10
+        controlsStack.addArrangedSubview(sessionPopUp)
+        controlsStack.addArrangedSubview(dateBadge)
+
         header.addSubview(titleStack)
-        header.addSubview(dateBadge)
+        header.addSubview(controlsStack)
         titleStack.translatesAutoresizingMaskIntoConstraints = false
-        dateBadge.translatesAutoresizingMaskIntoConstraints = false
+        controlsStack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             titleStack.leadingAnchor.constraint(equalTo: header.leadingAnchor),
             titleStack.topAnchor.constraint(equalTo: header.topAnchor),
             titleStack.bottomAnchor.constraint(equalTo: header.bottomAnchor),
-            dateBadge.trailingAnchor.constraint(equalTo: header.trailingAnchor),
-            dateBadge.topAnchor.constraint(equalTo: header.topAnchor),
-            dateBadge.bottomAnchor.constraint(lessThanOrEqualTo: header.bottomAnchor),
-            dateBadge.leadingAnchor.constraint(greaterThanOrEqualTo: titleStack.trailingAnchor, constant: 18),
+            controlsStack.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            controlsStack.topAnchor.constraint(equalTo: header.topAnchor),
+            controlsStack.bottomAnchor.constraint(lessThanOrEqualTo: header.bottomAnchor),
+            controlsStack.leadingAnchor.constraint(greaterThanOrEqualTo: titleStack.trailingAnchor, constant: 18),
         ])
         return header
     }
@@ -1889,7 +1960,18 @@ final class DashboardViewController: NSViewController {
         initialLoadingOverlay.update(language: language)
         applyLocalizedText()
 
-        let states = stateProvider()
+        let allStates = stateProvider()
+        let states: [ProviderID: TokenStatsViewModel.ProviderState]
+        if let filter = selectedProviderFilter {
+            if let filtered = allStates[filter] {
+                states = [filter: filtered]
+            } else {
+                states = [:]
+            }
+        } else {
+            states = allStates
+        }
+
         let totalSnapshot = TotalStatsBuilder.build(states: states)
         let rangeSnapshot = DashboardRangeSnapshot.build(
             states: states,
@@ -1911,19 +1993,25 @@ final class DashboardViewController: NSViewController {
             totalSnapshot.loadedProviderCount,
             summary.projectCount
         )
-        scanStatusBodyLabel.stringValue = scanStatusText(states: states)
+        scanStatusBodyLabel.stringValue = scanStatusText(states: allStates)
 
         updateRangeButtons()
         updateNavigationSelection()
-        updateLoadingFeedback(states: states)
-        rebuildDataSourceRows(states: states)
+        updateLoadingFeedback(states: allStates)
+        rebuildDataSourceRows(states: allStates)
+        updateDataSourcePopUpMenus(selectedFilter: selectedProviderFilter, states: allStates)
         trendView.configure(
             buckets: rangeSnapshot.trendBuckets,
             language: languageSettings.resolvedLanguage
         )
         rebuildModelRows(totalSnapshot.modelRows)
-        rebuildSourceLegend(rangeSnapshot.toolShareSlices)
-        sourceDonutView.configure(slices: rangeSnapshot.toolShareSlices)
+        let aggregatedSlices = DashboardRangeSnapshot.aggregateToolShareSlices(
+            rangeSnapshot.toolShareSlices,
+            maxVisible: 4,
+            otherLabel: localized(.shareOther)
+        )
+        rebuildSourceLegend(aggregatedSlices)
+        sourceDonutView.configure(slices: aggregatedSlices)
         rebuildProjectRows(summary.projects)
         statusLabel.stringValue = statusText(
             totalSnapshot: totalSnapshot,
@@ -2099,38 +2187,182 @@ final class DashboardViewController: NSViewController {
     }
 
     private func rebuildDataSourceRows(states: [ProviderID: TokenStatsViewModel.ProviderState]) {
-        clearStack(dataSourceRowsStack)
+        clearStack(dataSourceActiveStack)
+        clearStack(dataSourceOtherStack)
+
+        var activeCount = 0
+        var otherCount = 0
+
         for provider in ProviderRegistry.allProviders {
             let state = states[provider.id]
             let isAuthorized = state?.needsAuthorization == false
-            addFullWidthArrangedSubview(makeSourceStatusRow(
+            let tokens = state?.stats?.overall.totalTokens ?? 0
+            let metricText = tokens > 0 ? CompactNumberFormatter.format(tokens) : ""
+            let statusText = isAuthorized ? localized(.settingsAuthorized) : localized(.dashboardUnauthorized)
+
+            let rowButton = DashboardDataSourceRowButton(
                 providerID: provider.id,
                 title: provider.displayName,
-                isAuthorized: isAuthorized
-            ), to: dataSourceRowsStack)
+                isAuthorized: isAuthorized,
+                metricText: metricText,
+                statusText: statusText,
+                target: isAuthorized ? nil : self,
+                action: isAuthorized ? nil : #selector(unauthorizedDataSourceRowClicked(_:))
+            )
+
+            if isAuthorized {
+                activeCount += 1
+                addFullWidthArrangedSubview(rowButton, to: dataSourceActiveStack)
+            } else {
+                otherCount += 1
+                addFullWidthArrangedSubview(rowButton, to: dataSourceOtherStack)
+            }
+        }
+
+        let totalCount = ProviderRegistry.allProviders.count
+        dataSourceCountLabel.stringValue = "\(activeCount)/\(totalCount)"
+        dataSourceCountLabel.isHidden = false
+
+        if otherCount > 0 {
+            dataSourceOtherContainer.isHidden = false
+            let otherTitle = "\(localized(.shareOther)) (\(otherCount))"
+            dataSourceOtherToggleButton?.setExpanded(isOtherSourcesExpanded, title: otherTitle)
+            dataSourceOtherStack.isHidden = !isOtherSourcesExpanded
+        } else {
+            dataSourceOtherContainer.isHidden = true
         }
     }
 
-    private func makeSourceStatusRow(providerID: ProviderID, title: String, isAuthorized: Bool) -> NSView {
-        let statusText = isAuthorized ? localized(.settingsAuthorized) : localized(.dashboardUnauthorized)
-        let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: 12)
-        label.textColor = DashboardPalette.secondaryText
-        label.toolTip = statusText
-        let dot = DashboardDotView(
-            color: isAuthorized ? DashboardPalette.green : DashboardPalette.statusInactive,
-            accessibilityIdentifier: "DashboardDataSourceStatus.\(providerID.rawValue)",
-            accessibilityValue: statusText
+    @objc private func unauthorizedDataSourceRowClicked(_ sender: DashboardDataSourceRowButton) {
+        showSettings()
+    }
+
+    @objc private func toggleOtherSourcesClicked(_ sender: DashboardDisclosureHeaderButton) {
+        isOtherSourcesExpanded.toggle()
+        let otherCount = ProviderRegistry.allProviders.filter { stateProvider()[$0.id]?.needsAuthorization != false }.count
+        let otherTitle = "\(localized(.shareOther)) (\(otherCount))"
+        sender.setExpanded(isOtherSourcesExpanded, title: otherTitle)
+        dataSourceOtherStack.isHidden = !isOtherSourcesExpanded
+    }
+
+    private func updateDataSourcePopUpMenus(
+        selectedFilter: ProviderID?,
+        states: [ProviderID: TokenStatsViewModel.ProviderState]
+    ) {
+        if let overviewSourcePopUpButton {
+            configureSourcePopUpMenu(button: overviewSourcePopUpButton, selectedFilter: selectedFilter, states: states)
+        }
+        if let sessionSourcePopUpButton {
+            configureSourcePopUpMenu(button: sessionSourcePopUpButton, selectedFilter: selectedFilter, states: states)
+        }
+    }
+
+    private func configureSourcePopUpMenu(
+        button: DashboardSourcePopUpButton,
+        selectedFilter: ProviderID?,
+        states: [ProviderID: TokenStatsViewModel.ProviderState]
+    ) {
+        button.menu?.removeAllItems()
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        // 1. 全部 (All)
+        let allItem = NSMenuItem(
+            title: localized(.dashboardRangeAll),
+            action: #selector(dataSourcePopUpChanged(_:)),
+            keyEquivalent: ""
         )
-        dot.toolTip = statusText
-        let row = NSStackView(views: [label, NSView(), dot])
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 6
-        row.identifier = NSUserInterfaceItemIdentifier("DashboardDataSourceRow.\(providerID.rawValue)")
-        row.setAccessibilityIdentifier("DashboardDataSourceRow.\(providerID.rawValue)")
-        row.toolTip = statusText
-        return row
+        allItem.target = self
+        let allIconConfig = NSImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+        allItem.image = NSImage(
+            systemSymbolName: "circle.grid.2x2",
+            accessibilityDescription: localized(.dashboardRangeAll)
+        )?.withSymbolConfiguration(allIconConfig)
+        allItem.representedObject = nil
+        menu.addItem(allItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // 2. Providers
+        let dotConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        for provider in ProviderRegistry.allProviders {
+            let state = states[provider.id]
+            let isAuthorized = state?.needsAuthorization == false
+            let tokens = state?.stats?.overall.totalTokens ?? 0
+
+            let item = NSMenuItem(
+                title: provider.displayName,
+                action: #selector(dataSourcePopUpChanged(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            let symbolName = isAuthorized ? "circle.fill" : "circle"
+            item.image = NSImage(
+                systemSymbolName: symbolName,
+                accessibilityDescription: provider.displayName
+            )?.withSymbolConfiguration(dotConfig)
+            item.representedObject = provider.id
+            if tokens > 0 {
+                item.toolTip = "\(provider.displayName) (\(CompactNumberFormatter.format(tokens)))"
+            } else if !isAuthorized {
+                item.toolTip = "\(provider.displayName) (\(localized(.dashboardUnauthorized)))"
+            }
+            menu.addItem(item)
+        }
+
+        menu.addItem(NSMenuItem.separator())
+
+        // 3. 设置... (Settings...)
+        let settingsTitle = "\(localized(.sidebarSettings))..."
+        let settingsItem = NSMenuItem(
+            title: settingsTitle,
+            action: #selector(dataSourcePopUpChanged(_:)),
+            keyEquivalent: ""
+        )
+        settingsItem.target = self
+        let gearConfig = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
+        settingsItem.image = NSImage(
+            systemSymbolName: "gearshape",
+            accessibilityDescription: settingsTitle
+        )?.withSymbolConfiguration(gearConfig)
+        settingsItem.representedObject = "settings"
+        menu.addItem(settingsItem)
+
+        button.menu = menu
+
+        if let selectedFilter,
+           let index = menu.items.firstIndex(where: { ($0.representedObject as? ProviderID) == selectedFilter }) {
+            button.selectItem(at: index)
+            button.setFilterActive(true)
+        } else {
+            button.selectItem(at: 0)
+            button.setFilterActive(false)
+        }
+    }
+
+    @objc private func dataSourcePopUpChanged(_ sender: AnyObject) {
+        let selectedItem: NSMenuItem?
+        if let popUp = sender as? NSPopUpButton {
+            selectedItem = popUp.selectedItem
+        } else if let item = sender as? NSMenuItem {
+            selectedItem = item
+        } else {
+            selectedItem = nil
+        }
+        guard let item = selectedItem else { return }
+
+        if let obj = item.representedObject as? String, obj == "settings" {
+            updateDataSourcePopUpMenus(selectedFilter: selectedProviderFilter, states: stateProvider())
+            showSettings()
+            return
+        }
+
+        if let providerID = item.representedObject as? ProviderID {
+            selectedProviderFilter = providerID
+        } else {
+            selectedProviderFilter = nil
+        }
+        render()
     }
 
     private func rebuildModelRows(_ rows: [TotalStatsModelRow]) {
@@ -2152,19 +2384,21 @@ final class DashboardViewController: NSViewController {
 
     private func rebuildSourceLegend(_ slices: [UsageShareSlice]) {
         clearStack(sourceLegendStack)
-        let visible = Array(slices.prefix(4))
-        if visible.isEmpty {
+        if slices.isEmpty {
             let label = NSTextField(labelWithString: localized(.shareEmpty))
             label.font = .systemFont(ofSize: 12)
             label.textColor = DashboardPalette.secondaryText
             addFullWidthArrangedSubview(label, to: sourceLegendStack)
             return
         }
-        for (index, slice) in visible.enumerated() {
+        for (index, slice) in slices.enumerated() {
+            let color = (slice.id == "__other__")
+                ? DashboardPalette.mutedText
+                : DashboardColors.modelColor(at: index)
             addFullWidthArrangedSubview(makeLegendRow(
                 title: slice.label,
                 value: formatPercentage(slice.percentage),
-                color: DashboardColors.modelColor(at: index),
+                color: color,
                 dotIdentifier: "DashboardSourceLegendDot.\(index)"
             ), to: sourceLegendStack)
         }
