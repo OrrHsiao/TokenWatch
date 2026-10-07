@@ -59,8 +59,12 @@ final class TokenWatchUITests: XCTestCase {
         XCTAssertTrue(app.buttons["DashboardNav.settings"].exists)
     }
 
+    /// 会话表宽度不小于视口：默认窗口下两者相等（内容恰好铺满），窗口更窄时内容溢出。
+    /// 这里只断言默认窗口下的两条不变量——分页控件贴着表格右缘且完整可见（等价于
+    /// 「表格铺满视口、没有把分页顶到滚动区外」），以及不存在无法观察的「假滚动」。
+    /// 表格恰好铺满视口时横向滚动范围为零，因此不能再要求「滚动必须移动内容」。
     @MainActor
-    func testSessionTableScrollsHorizontally() throws {
+    func testSessionTableFitsViewportWithoutHorizontalScroll() throws {
         let app = XCUIApplication()
         app.launchForUITesting()
 
@@ -73,16 +77,29 @@ final class TokenWatchUITests: XCTestCase {
 
         let nextButton = app.buttons["DashboardSessionsPagination.next"]
         XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
-        let initialMinX = nextButton.frame.minX
 
-        // 优先按一个方向滚动；若已在该方向的边界则反向滚动，必须观察到内容位置改变。
+        let viewportFrame = tableScrollView.frame
+        // 分页控件右对齐并距表格右缘 16pt：按钮右缘贴住视口右缘，说明表格宽度与视口一致。
+        XCTAssertLessThanOrEqual(
+            nextButton.frame.maxX,
+            viewportFrame.maxX + 1,
+            "分页按钮超出可见区，说明表格比视口宽"
+        )
+        XCTAssertGreaterThan(
+            nextButton.frame.maxX,
+            viewportFrame.maxX - 40,
+            "分页按钮离视口右缘过远，说明表格比视口窄"
+        )
+
+        // 横向滚动不应移动内容：内容恰好铺满视口时没有可观察的滚动范围。
+        let initialMinX = nextButton.frame.minX
         tableScrollView.scroll(byDeltaX: -400, deltaY: 0)
         var shiftedMinX = nextButton.frame.minX
         if shiftedMinX >= initialMinX - 1 {
             tableScrollView.scroll(byDeltaX: 400, deltaY: 0)
             shiftedMinX = nextButton.frame.minX
         }
-        XCTAssertLessThan(shiftedMinX, initialMinX - 1)
+        XCTAssertEqual(shiftedMinX, initialMinX, accuracy: 1)
     }
 
     @MainActor
