@@ -946,8 +946,10 @@ final class SettingsViewController: NSViewController {
             row.setAccessibilityIdentifier(
                 "ProviderDirectoryRow.\(provider.id.rawValue)"
             )
+            // 行高与数据源数量共同决定设置页总高度；5 个数据源时 60pt 会超出最小内容高度，
+            // 因此固定为 48pt：仍高于按钮(32.5pt)与两行文案(≈37pt)，但不至于顶出可视区域。
             row.heightAnchor.constraint(
-                greaterThanOrEqualToConstant: 60
+                greaterThanOrEqualToConstant: 48
             ).isActive = true
 
             providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(

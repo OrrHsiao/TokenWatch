@@ -23,6 +23,7 @@ struct ProviderRegistryTests {
             .codex: "CodexDataDirectoryBookmark",
             .opencode: "OpenCodeDataDirectoryBookmark",
             .antigravity: "AntigravityDataDirectoryBookmark",
+            .deepSeekHarness: "DeepSeekHarnessDataDirectoryBookmark",
         ]
 
         #expect(Dictionary(uniqueKeysWithValues: ProviderRegistry.allProviders.map {
@@ -41,6 +42,7 @@ struct ProviderRegistryTests {
             "Choose the Codex data folder; it is usually ~/.codex.\nRun echo \"${CODEX_HOME:-$HOME/.codex}\" to find it.",
             "Choose the opencode data folder; it is usually ~/.local/share/opencode.\nRun echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" to find it.",
             "Choose the Antigravity data folder; it is usually ~/.gemini.\nRun echo \"$HOME/.gemini\" to find it.",
+            "Choose the DeepSeek Harness data folder; it is usually ~/.dsh.\nRun echo \"$HOME/.dsh\" to find it.",
         ])
         #expect(messages.allSatisfy {
             !$0.localizedCaseInsensitiveContains("home folder")
@@ -56,27 +58,31 @@ struct ProviderRegistryTests {
         #expect(antigravity?.id == .antigravity)
     }
 
-    @Test("allProviders 含 .opencode 与 .antigravity")
+    @Test("allProviders 含 .opencode、.antigravity 与 .deepSeekHarness")
     func containsOpenCodeAndAntigravity() {
         let ids = ProviderRegistry.allProviders.map(\.id)
         #expect(ids.contains(.opencode))
         #expect(ids.contains(.antigravity))
+        #expect(ids.contains(.deepSeekHarness))
     }
 
-    @Test("hasReasoningDimension:opencode与antigravity=true,Claude/Codex=false")
+    @Test("hasReasoningDimension:opencode/antigravity/deepSeekHarness=true,Claude/Codex=false")
     func reasoningDimensionFlags() {
         #expect(ProviderRegistry.provider(for: .claude)?.hasReasoningDimension == false)
         #expect(ProviderRegistry.provider(for: .codex)?.hasReasoningDimension == false)
         #expect(ProviderRegistry.provider(for: .opencode)?.hasReasoningDimension == true)
         #expect(ProviderRegistry.provider(for: .antigravity)?.hasReasoningDimension == true)
+        #expect(ProviderRegistry.provider(for: .deepSeekHarness)?.hasReasoningDimension == true)
     }
 
-    @Test("hasCacheWriteDimension:仅 Claude 声明支持")
+    @Test("hasCacheWriteDimension:仅 Claude 与 DeepSeek Harness 声明支持")
     func cacheWriteDimensionFlags() {
         #expect(ProviderRegistry.provider(for: .claude)?.hasCacheWriteDimension == true)
         #expect(ProviderRegistry.provider(for: .codex)?.hasCacheWriteDimension == false)
         #expect(ProviderRegistry.provider(for: .opencode)?.hasCacheWriteDimension == false)
         #expect(ProviderRegistry.provider(for: .antigravity)?.hasCacheWriteDimension == false)
+        // DSH 的 wire 字段是 Anthropic 风格（DeepSeek route 下恰好恒为 0）。
+        #expect(ProviderRegistry.provider(for: .deepSeekHarness)?.hasCacheWriteDimension == true)
     }
 
     @Test("能力并集:全部数据源同时暴露两个可选维度")
@@ -100,6 +106,11 @@ struct ProviderRegistryTests {
         let codexAndAntigravity = ProviderRegistry.capabilities(for: [.codex, .antigravity])
         #expect(!codexAndAntigravity.hasCacheWrite)
         #expect(codexAndAntigravity.hasReasoning)
+
+        // DeepSeek Harness 同时声明 cache write 与 reasoning 两个可选维度。
+        let deepSeekHarness = ProviderRegistry.capabilities(for: [.deepSeekHarness])
+        #expect(deepSeekHarness.hasCacheWrite)
+        #expect(deepSeekHarness.hasReasoning)
     }
 
     @Test("能力并集:无数据源时不声明任何可选维度")
@@ -113,6 +124,25 @@ struct ProviderRegistryTests {
         #expect(CodexProvider.compatibleDiskCacheVersions == [2, 3])
         #expect(ClaudeProvider.currentDiskCacheVersion == 3)
         #expect(ClaudeProvider.compatibleDiskCacheVersions.isEmpty)
+        #expect(DeepSeekHarnessProvider.currentDiskCacheVersion == 1)
+        #expect(DeepSeekHarnessProvider.compatibleDiskCacheVersions.isEmpty)
+    }
+
+    @Test("DeepSeek Harness provider 从用户选择的数据根读取会话日志")
+    func deepSeekHarnessLoadsFromSelectedDataRoot() throws {
+        let root = try makeTempDataRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try DeepSeekHarnessTestSupport.writeSessionLog(
+            root: root,
+            sessionDirectory: "session-registry",
+            fileName: "session.v4.jsonl.zstd",
+            contents: DeepSeekHarnessTestFixtures.multiFrameV4Log
+        )
+
+        let entries = try DeepSeekHarnessProvider(diskStore: nil).loadEntries(from: root)
+
+        #expect(entries.count == DeepSeekHarnessTestFixtures.multiFrameV4Totals.recordCount)
+        #expect(entries.first?.provider == .deepSeekHarness)
     }
 
     @Test("Claude provider 从用户选择的数据根读取 projects")
@@ -261,6 +291,29 @@ struct ProviderRegistryTests {
         )
         #expect(AntigravityProvider().validateDataRoot(antigravityRoot) == .valid)
 
+        let deepSeekHarnessRoot = root.appendingPathComponent(
+            "dsh",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: deepSeekHarnessRoot,
+            withIntermediateDirectories: true
+        )
+        #expect(
+            DeepSeekHarnessProvider().validateDataRoot(deepSeekHarnessRoot)
+                == .missingExpectedStructure
+        )
+        let sessionsRoot = deepSeekHarnessRoot.appendingPathComponent(
+            "sessions",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: sessionsRoot,
+            withIntermediateDirectories: true
+        )
+        // `~/.dsh` 与 `~/.dsh/sessions` 都应被接受。
+        #expect(DeepSeekHarnessProvider().validateDataRoot(deepSeekHarnessRoot) == .valid)
+        #expect(DeepSeekHarnessProvider().validateDataRoot(sessionsRoot) == .valid)
     }
 
     private var claudeUsageLine: String {

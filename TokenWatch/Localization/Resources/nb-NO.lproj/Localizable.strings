@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Velg datamappen for Codex; den ligger vanligvis i ~/.codex.\nKjør echo \"${CODEX_HOME:-$HOME/.codex}\" for å finne den.";
 "openCodeDataDirectoryOpenPanelMessage" = "Velg datamappen for opencode; den ligger vanligvis i ~/.local/share/opencode.\nKjør echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" for å finne den.";
 "antigravityDataDirectoryOpenPanelMessage" = "Velg datamappen for Antigravity; den ligger vanligvis i ~/.gemini.\nKjør echo \"$HOME/.gemini\" for å finne den.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Velg datamappen for DeepSeek Harness; den ligger vanligvis i ~/.dsh.\nKjør echo \"$HOME/.dsh\" for å finne den.";
 "chooseDirectoryPrompt" = "Velg";
 "errorCannotAccessProviderDirectoryFormat" = "Kan ikke få tilgang til datamappen for %@. Velg den på nytt.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Kunne ikke lagre tilgang til datamappen for %@. Velg på nytt.";

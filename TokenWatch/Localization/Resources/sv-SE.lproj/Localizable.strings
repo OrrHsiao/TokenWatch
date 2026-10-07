@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Välj datamappen för Codex; den finns vanligtvis i ~/.codex.\nKör echo \"${CODEX_HOME:-$HOME/.codex}\" för att hitta den.";
 "openCodeDataDirectoryOpenPanelMessage" = "Välj datamappen för opencode; den finns vanligtvis i ~/.local/share/opencode.\nKör echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" för att hitta den.";
 "antigravityDataDirectoryOpenPanelMessage" = "Välj datamappen för Antigravity; den finns vanligtvis i ~/.gemini.\nKör echo \"$HOME/.gemini\" för att hitta den.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Välj datamappen för DeepSeek Harness; den finns vanligtvis i ~/.dsh.\nKör echo \"$HOME/.dsh\" för att hitta den.";
 "chooseDirectoryPrompt" = "Välj";
 "errorCannotAccessProviderDirectoryFormat" = "Det går inte att komma åt datamappen för %@. Välj den igen.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Det gick inte att spara åtkomsten till datamappen för %@. Välj igen.";

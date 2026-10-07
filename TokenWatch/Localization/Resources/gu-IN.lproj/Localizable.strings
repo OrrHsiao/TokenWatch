@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Codex ડેટા ફોલ્ડર પસંદ કરો; તે સામાન્ય રીતે ~/.codex પર હોય છે.\nતેને echo \"${CODEX_HOME:-$HOME/.codex}\" આદેશ દ્વારા શોધી શકાય છે.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode ડેટા ફોલ્ડર પસંદ કરો; તે સામાન્ય રીતે ~/.local/share/opencode પર હોય છે.\nતેને echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" આદેશ દ્વારા શોધી શકાય છે.";
 "antigravityDataDirectoryOpenPanelMessage" = "Antigravity ડેટા ફોલ્ડર પસંદ કરો; તે સામાન્ય રીતે ~/.gemini પર હોય છે.\nતેને echo \"$HOME/.gemini\" આદેશ દ્વારા શોધી શકાય છે.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "DeepSeek Harness ડેટા ફોલ્ડર પસંદ કરો; તે સામાન્ય રીતે ~/.dsh પર હોય છે.\nતેને echo \"$HOME/.dsh\" આદેશ દ્વારા શોધી શકાય છે.";
 "chooseDirectoryPrompt" = "પસંદ કરો";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ડેટા ફોલ્ડરને ઍક્સેસ કરી શકાતું નથી. કૃપા કરીને તેને ફરીથી પસંદ કરો.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ડેટા ફોલ્ડરની ઍક્સેસ સાચવી શકાઈ નથી. કૃપા કરીને ફરીથી પસંદ કરો.";

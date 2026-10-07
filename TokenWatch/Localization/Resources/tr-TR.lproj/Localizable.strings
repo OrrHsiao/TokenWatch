@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Codex veri klasörünü seçin. Genellikle ~/.codex konumundadır.\necho \"${CODEX_HOME:-$HOME/.codex}\" komutuyla bulabilirsiniz.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode veri klasörünü seçin. Genellikle ~/.local/share/opencode konumundadır.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" komutuyla bulabilirsiniz.";
 "antigravityDataDirectoryOpenPanelMessage" = "Antigravity veri klasörünü seçin. Genellikle ~/.gemini konumundadır.\necho \"$HOME/.gemini\" komutuyla bulabilirsiniz.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "DeepSeek Harness veri klasörünü seçin. Genellikle ~/.dsh konumundadır.\necho \"$HOME/.dsh\" komutuyla bulabilirsiniz.";
 "chooseDirectoryPrompt" = "Seç";
 "errorCannotAccessProviderDirectoryFormat" = "%@ veri klasörüne erişilemiyor. Lütfen yeniden seçin.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ veri klasörüne erişim kaydedilemedi. Lütfen tekrar seçin.";

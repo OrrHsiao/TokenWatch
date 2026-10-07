@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Valitse Codexin datakansio; se on yleensä polussa ~/.codex.\nLöydät sen komennolla echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Valitse opencoden datakansio; se on yleensä polussa ~/.local/share/opencode.\nLöydät sen komennolla echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Valitse Antigravityn datakansio; se on yleensä polussa ~/.gemini.\nLöydät sen komennolla echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Valitse DeepSeek Harnessn datakansio; se on yleensä polussa ~/.dsh.\nLöydät sen komennolla echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Valitse";
 "errorCannotAccessProviderDirectoryFormat" = "Kohteen %@ datakansiota ei voi käyttää. Valitse se uudelleen.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Kohteen %@ datakansion käyttöoikeutta ei voitu tallentaa. Valitse se uudelleen.";

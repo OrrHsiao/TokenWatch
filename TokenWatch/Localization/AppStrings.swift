@@ -188,6 +188,7 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case codexDataDirectoryOpenPanelMessage
     case openCodeDataDirectoryOpenPanelMessage
     case antigravityDataDirectoryOpenPanelMessage
+    case deepSeekHarnessDataDirectoryOpenPanelMessage
     case chooseDirectoryPrompt
     case errorCannotAccessProviderDirectoryFormat
     case errorProviderDirectoryAuthorizationFailedFormat

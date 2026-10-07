@@ -38,6 +38,7 @@ AI Token Watch 是一个原生 macOS 应用，用于从本地 coding agent 数�
 - 本地解析 Claude Code JSONL、Codex rollout JSONL 和 opencode SQLite 数据
 - 使用 security-scoped bookmark 适配沙盒环境下的本地文件授权
 - 内置 LiteLLM 价格快照，并对常用模型做了手动价格修正
+- DeepSeek Harness 日志默认是多帧 zstd，App 内置解码器，无需安装额外工具或依赖系统库
 
 ## 支持的数据源
 
@@ -48,6 +49,8 @@ AI Token Watch 启动时绝不会自动打开文件选择器。请在**设置**�
 | Claude Code | Claude Code 数据文件夹 | `projects/**/*.jsonl` |
 | Codex | Codex 数据文件夹 | `sessions/**/rollout-*.jsonl`、`archived_sessions/**` 和可选的 `config.toml` |
 | opencode | opencode 数据文件夹 | `opencode.db` |
+| Antigravity | Antigravity 数据文件夹 | `conversations/**/*.db` |
+| DeepSeek Harness | DeepSeek Harness 数据文件夹 | `sessions/**/session[.vN].jsonl[.zstd]`（每个会话只取最高世代） |
 
 每个数据源分别保存一个只读 security-scoped bookmark。某个数据源未选择，不会阻止其他已选择的数据源工作。
 
@@ -141,7 +144,7 @@ TokenWatch/
   Analytics/       汇总逻辑
   Models/          共享的用量和价格模型
   Pricing/         价格表、LiteLLM catalog 和费用计算
-  Providers/       Claude Code、Codex 和 opencode 适配器
+  Providers/       Claude Code、Codex、opencode、Antigravity 与 DeepSeek Harness 适配器
   Services/        Security-scoped bookmark 管理
   ViewControllers/ AppKit UI
   ViewModels/      Provider 状态协调
@@ -152,7 +155,7 @@ TokenWatchUITests/ XCTest UI 测试
 
 ## 价格数据
 
-AI Token Watch 使用内置价格数据预估费用。价格可能和上游 provider 的实际账单存在差异，因此应用里的总额应视为估算值，而不是正式账单。未知模型会优先使用数据源自带的上游费用；如果源数据没有费用，费用可能会显示为零，直到价格数据被更新。
+AI Token Watch 使用内置价格数据预估费用。价格可能和上游 provider 的实际账单存在差异，因此应用里的总额应视为估算值，而不是正式账单。未知模型会优先使用数据源自带的上游费用；如果源数据没有费用，费用可能会显示为零，直到价格数据被更新。DeepSeek Harness 的日志不记录费用，因此优先使用 DSH 自带 pi-ai 定价目录（可读时），其次使用内置的 DeepSeek 价格快照；两者都没有的模型按 `$0.00` 展示并记录日志。
 
 ## 贡献
 

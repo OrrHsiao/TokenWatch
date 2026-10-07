@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Codex. Συνήθως βρίσκεται στο ~/.codex.\nΜπορείτε να τον βρείτε με την εντολή echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του opencode. Συνήθως βρίσκεται στο ~/.local/share/opencode.\nΜπορείτε να τον βρείτε με την εντολή echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του Antigravity. Συνήθως βρίσκεται στο ~/.gemini.\nΜπορείτε να τον βρείτε με την εντολή echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Επιλέξτε τον φάκελο δεδομένων του DeepSeek Harness. Συνήθως βρίσκεται στο ~/.dsh.\nΜπορείτε να τον βρείτε με την εντολή echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Επιλογή";
 "errorCannotAccessProviderDirectoryFormat" = "Δεν είναι δυνατή η πρόσβαση στον φάκελο δεδομένων %@. Επιλέξτε τον ξανά.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Δεν ήταν δυνατή η αποθήκευση της πρόσβασης στον φάκελο δεδομένων %@. Επιλέξτε ξανά.";

@@ -24,7 +24,8 @@ enum ProviderRegistry {
         ClaudeProvider(),
         CodexProvider(),
         OpenCodeProvider(),
-        AntigravityProvider()
+        AntigravityProvider(),
+        DeepSeekHarnessProvider()
     ]
 
     /// 按 id 查找已注册的 provider 实例

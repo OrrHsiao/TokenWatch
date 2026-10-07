@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Codex ဒေတာဖိုင်တွဲကို ရွေးချယ်ပါ။ ပုံမှန်အားဖြင့် ~/.codex တွင် ရှိပါသည်။\n၎င်းကို ရှာရန် echo \"${CODEX_HOME:-$HOME/.codex}\" အမိန့်ကို လုပ်ဆောင်ပါ။";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode ဒေတာဖိုင်တွဲကို ရွေးချယ်ပါ။ ပုံမှန်အားဖြင့် ~/.local/share/opencode တွင် ရှိပါသည်။\n၎င်းကို ရှာရန် echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" အမိန့်ကို လုပ်ဆောင်ပါ။";
 "antigravityDataDirectoryOpenPanelMessage" = "Antigravity ဒေတာဖိုင်တွဲကို ရွေးချယ်ပါ။ ပုံမှန်အားဖြင့် ~/.gemini တွင် ရှိပါသည်။\n၎င်းကို ရှာရန် echo \"$HOME/.gemini\" အမိန့်ကို လုပ်ဆောင်ပါ။";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "DeepSeek Harness ဒေတာဖိုင်တွဲကို ရွေးချယ်ပါ။ ပုံမှန်အားဖြင့် ~/.dsh တွင် ရှိပါသည်။\n၎င်းကို ရှာရန် echo \"$HOME/.dsh\" အမိန့်ကို လုပ်ဆောင်ပါ။";
 "chooseDirectoryPrompt" = "ရွေးချယ်ပါ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ဒေတာဖိုင်တွဲကို ဝင်ရောက်၍မရပါ။ ကျေးဇူးပြု၍ ထပ်ရွေးချယ်ပါ။";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ဒေတာဖိုင်တွဲသို့ ဝင်ရောက်ခွင့်ကို သိမ်းဆည်း၍မရပါ။ ကျေးဇူးပြု၍ ထပ်ရွေးချယ်ပါ။";

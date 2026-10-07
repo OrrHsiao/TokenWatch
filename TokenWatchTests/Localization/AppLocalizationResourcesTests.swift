@@ -114,42 +114,42 @@ private let frozenCodexLocaleIdentifiers = [
 
 @Suite("AppLocalizationResources")
 struct AppLocalizationResourcesTests {
-    @Test("迁移的十二份资源均直接定义全部 192 个 key")
+    @Test("迁移的十二份资源均直接定义全部 193 个 key")
     func migratedResourcesDefineAllKeys() throws {
-        #expect(AppStringKey.allCases.count == 192)
+        #expect(AppStringKey.allCases.count == 193)
         try assertCompleteResources(migratedLocaleIdentifiers)
     }
 
-    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 192 个 key")
+    @Test("西欧、北欧与地区变体的十份资源均直接定义全部 193 个 key")
     func westernAndRegionalResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 192)
+        #expect(AppStringKey.allCases.count == 193)
         try assertCompleteResources([
             "ca-ES", "da-DK", "es-419", "fi-FI", "fr-CA",
             "is-IS", "nb-NO", "pt-PT", "ro-RO", "sv-SE",
         ])
     }
 
-    @Test("中东欧拉丁文字的十一份资源均直接定义全部 192 个 key")
+    @Test("中东欧拉丁文字的十一份资源均直接定义全部 193 个 key")
     func centralEuropeanLatinResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 192)
+        #expect(AppStringKey.allCases.count == 193)
         try assertCompleteResources(centralEuropeanLatinLocaleIdentifiers)
     }
 
-    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 192 个 key")
+    @Test("东欧、高加索与中亚文字的十份资源均直接定义全部 193 个 key")
     func easternEuropeanAndCentralAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 192)
+        #expect(AppStringKey.allCases.count == 193)
         try assertCompleteResources(easternEuropeanAndCentralAsianLocaleIdentifiers)
     }
 
-    @Test("中东与南亚文字的十二份资源均直接定义全部 192 个 key")
+    @Test("中东与南亚文字的十二份资源均直接定义全部 193 个 key")
     func middleEasternAndSouthAsianResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 192)
+        #expect(AppStringKey.allCases.count == 193)
         try assertCompleteResources(middleEasternAndSouthAsianLocaleIdentifiers)
     }
 
-    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 192 个 key")
+    @Test("非洲、东南亚与香港中文的十份资源均直接定义全部 193 个 key")
     func africanSoutheastAsianAndHongKongResourcesAreComplete() throws {
-        #expect(AppStringKey.allCases.count == 192)
+        #expect(AppStringKey.allCases.count == 193)
         try assertCompleteResources(africanSoutheastAsianAndHongKongLocaleIdentifiers)
     }
 
@@ -176,7 +176,7 @@ struct AppLocalizationResourcesTests {
         try assertCompleteResources(frozenCodexLocaleIdentifiers)
     }
 
-    @Test("四条授权面板文案在全部语言中均为选择与通常路径、命令定位两行")
+    @Test("五条授权面板文案在全部语言中均为选择与通常路径、命令定位两行")
     func providerOpenPanelMessagesAreExactlyTwoLines() throws {
         let expectedDetails: [(key: AppStringKey, usualPath: String, command: String)] = [
             (
@@ -198,6 +198,11 @@ struct AppLocalizationResourcesTests {
                 .antigravityDataDirectoryOpenPanelMessage,
                 "~/.gemini",
                 "echo \"$HOME/.gemini\""
+            ),
+            (
+                .deepSeekHarnessDataDirectoryOpenPanelMessage,
+                "~/.dsh",
+                "echo \"$HOME/.dsh\""
             ),
         ]
         let removedStructureTerms = ["projects", "sessions", "archived_sessions", "opencode.db"]
@@ -620,12 +625,13 @@ private let expectedFormatSignatures: [AppStringKey: [FormatArgument]] = [
 ]
 
 private let fixedTerms = [
-    "AI Token Watch", "App Store", "Claude Code", "opencode.db", "Codex", "SQLite", "opencode", "Antigravity", "Tokens", "Token",
+    "AI Token Watch", "App Store", "Claude Code", "opencode.db", "Codex", "SQLite", "opencode", "Antigravity", "DeepSeek Harness", "Tokens", "Token",
     "echo \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"", "CLAUDE_CONFIG_DIR",
     "echo \"${CODEX_HOME:-$HOME/.codex}\"", "CODEX_HOME",
     "echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\"", "XDG_DATA_HOME",
     "echo \"$HOME/.gemini\"",
-    "~/.claude", "~/.codex", "~/.local/share/opencode", "~/.gemini", ".claude", ".codex",
+    "echo \"$HOME/.dsh\"",
+    "~/.claude", "~/.codex", "~/.local/share/opencode", "~/.gemini", "~/.dsh", ".claude", ".codex",
 ]
 
 // 目录中的固定子路径可能因语言而显示为原名或译名；仅在英文短语复用扫描时忽略它们。

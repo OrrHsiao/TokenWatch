@@ -2430,7 +2430,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test("四个目录按钮均把正确 provider 传给授权动作并可等待完成")
+    @Test("五个目录按钮均把正确 provider 传给授权动作并可等待完成")
     func settingsDirectoryButtonsRouteProviderID() async throws {
         let providers = ProviderRegistry.allProviders
         let expectedResults: [ProviderID: Bool] = [
@@ -2438,6 +2438,7 @@ struct TokenWatchTests {
             .codex: false,
             .opencode: true,
             .antigravity: true,
+            .deepSeekHarness: true,
         ]
         var requested: [ProviderID] = []
         let controller = SettingsViewController(
@@ -2464,7 +2465,7 @@ struct TokenWatchTests {
         }
 
         #expect(requested == providers.map { $0.id })
-        #expect(completedResults == [true, false, true, true])
+        #expect(completedResults == [true, false, true, true, true])
 
         #expect(!(await controller.performDirectoryAuthorization(forButtonTag: -1)))
         #expect(requested == providers.map { $0.id })
@@ -2588,7 +2589,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test("设置四行目录控件和既有设置项在最小高度内不裁切")
+    @Test("设置五行目录控件和既有设置项在最小高度内不裁切")
     func settingsProviderRowsFitMinimumHeight() throws {
         #expect(SettingsViewController.minimumContentHeight == 810)
 
@@ -2617,10 +2618,12 @@ struct TokenWatchTests {
                 "ProviderDirectoryStatus.codex",
                 "ProviderDirectoryStatus.opencode",
                 "ProviderDirectoryStatus.antigravity",
+                "ProviderDirectoryStatus.deepSeekHarness",
                 "ProviderDirectoryAction.claude",
                 "ProviderDirectoryAction.codex",
                 "ProviderDirectoryAction.opencode",
                 "ProviderDirectoryAction.antigravity",
+                "ProviderDirectoryAction.deepSeekHarness",
                 "AutoRefreshIntervalPopUpButton",
                 "LaunchAtLoginSwitch",
                 "LanguagePreferencePopUpButton",

@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Codex ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.codex എന്നിടത്താണ്.\necho \"${CODEX_HOME:-$HOME/.codex}\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.local/share/opencode എന്നിടത്താണ്.\necho \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
 "antigravityDataDirectoryOpenPanelMessage" = "Antigravity ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.gemini എന്നിടത്താണ്.\necho \"$HOME/.gemini\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "DeepSeek Harness ഡാറ്റാ ഫോൾഡർ തിരഞ്ഞെടുക്കുക; ഇത് സാധാരണയായി ~/.dsh എന്നിടത്താണ്.\necho \"$HOME/.dsh\" കമാൻഡ് ഉപയോഗിച്ച് ഇത് കണ്ടെത്താം.";
 "chooseDirectoryPrompt" = "തിരഞ്ഞെടുക്കുക";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ഡാറ്റാ ഫോൾഡർ ആക്‌സസ് ചെയ്യാനായില്ല. ദയവായി അത് വീണ്ടും തിരഞ്ഞെടുക്കുക.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ഡാറ്റാ ഫോൾഡറിലേക്കുള്ള ആക്‌സസ് സംരക്ഷിക്കാനായില്ല. ദയവായി വീണ്ടും തിരഞ്ഞെടുക്കുക.";

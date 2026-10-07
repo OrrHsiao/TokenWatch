@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "აირჩიეთ Codex-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.codex.\nმისი პოვნა შეგიძლიათ echo \"${CODEX_HOME:-$HOME/.codex}\" ბრძანებით.";
 "openCodeDataDirectoryOpenPanelMessage" = "აირჩიეთ opencode-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.local/share/opencode.\nმისი პოვნა შეგიძლიათ echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ბრძანებით.";
 "antigravityDataDirectoryOpenPanelMessage" = "აირჩიეთ Antigravity-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.gemini.\nმისი პოვნა შეგიძლიათ echo \"$HOME/.gemini\" ბრძანებით.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "აირჩიეთ DeepSeek Harness-ის მონაცემთა საქაღალდე. ჩვეულებრივ, ეს არის ~/.dsh.\nმისი პოვნა შეგიძლიათ echo \"$HOME/.dsh\" ბრძანებით.";
 "chooseDirectoryPrompt" = "არჩევა";
 "errorCannotAccessProviderDirectoryFormat" = "ვერ მოხერხდა %@ მონაცემთა საქაღალდეზე წვდომა. გთხოვთ, ხელახლა აირჩიოთ.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ვერ მოხერხდა %@ მონაცემთა საქაღალდეზე წვდომის შენახვა. გთხოვთ, ხელახლა აირჩიოთ.";

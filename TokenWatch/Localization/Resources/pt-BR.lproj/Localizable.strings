@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do Codex; normalmente ela fica em ~/.codex.\nExecute echo \"${CODEX_HOME:-$HOME/.codex}\" para encontrá-la.";
 "openCodeDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do opencode; normalmente ela fica em ~/.local/share/opencode.\nExecute echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" para encontrá-la.";
 "antigravityDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do Antigravity; normalmente ela fica em ~/.gemini.\nExecute echo \"$HOME/.gemini\" para encontrá-la.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Escolha a pasta de dados do DeepSeek Harness; normalmente ela fica em ~/.dsh.\nExecute echo \"$HOME/.dsh\" para encontrá-la.";
 "chooseDirectoryPrompt" = "Escolher";
 "errorCannotAccessProviderDirectoryFormat" = "Não foi possível acessar a pasta de dados selecionada para %@. Escolha-a novamente";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Não foi possível salvar o acesso à pasta de dados de %@. Tente novamente";

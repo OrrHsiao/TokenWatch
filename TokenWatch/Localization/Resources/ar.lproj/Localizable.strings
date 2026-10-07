@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Codex؛ يكون عادةً في ~/.codex.\nيمكن العثور عليه باستخدام الأمر echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات opencode؛ يكون عادةً في ~/.local/share/opencode.\nيمكن العثور عليه باستخدام الأمر echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات Antigravity؛ يكون عادةً في ~/.gemini.\nيمكن العثور عليه باستخدام الأمر echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "اختر مجلد بيانات DeepSeek Harness؛ يكون عادةً في ~/.dsh.\nيمكن العثور عليه باستخدام الأمر echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "اختيار";
 "errorCannotAccessProviderDirectoryFormat" = "يتعذر الوصول إلى مجلد البيانات %@. يرجى اختياره مجددًا.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "تعذر حفظ الوصول إلى مجلد البيانات %@. يرجى الاختيار مجددًا.";
