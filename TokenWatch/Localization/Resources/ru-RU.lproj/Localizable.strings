@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Скопировать полный ID";
 "dashboardInput" = "Входные данные";
 "dashboardOutput" = "Выходные данные";
-"dashboardCache" = "Кэш";
+"dashboardCacheRead" = "Чтение кэша";
+"dashboardCacheWrite" = "Запись кэша";
 "dashboardCacheHitRate" = "Доля попаданий в кэш";
 "dashboardReasoning" = "Рассуждение";
 "dashboardSessionsEmptyToday" = "Сегодня нет записей сеансов";

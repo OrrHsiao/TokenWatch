@@ -588,7 +588,9 @@ struct TokenWatchTests {
             settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
             stateProvider: {
                 [
-                    .claude: .init(
+                    // opencode 声明 reasoning 维度，因此费用拆分保留「推理」一项；
+                    // 不具备该维度的数据源由 dashboardCostDetailOmitsReasoningWithoutCapability 覆盖。
+                    .opencode: .init(
                         stats: makeDashboardStats(
                             byDay: [
                                 "2026-06-20": makeDashboardSummary(
@@ -626,7 +628,8 @@ struct TokenWatchTests {
             settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
             stateProvider: {
                 [
-                    .claude: .init(
+                    // reasoning 维度决定费用是否拆出第三项，因此这里同样使用 opencode。
+                    .opencode: .init(
                         stats: makeDashboardStats(
                             byDay: [
                                 "2026-06-20": makeDashboardSummary(
@@ -696,7 +699,7 @@ struct TokenWatchTests {
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
         #expect(labels.contains("1.9M"))
-        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存 0.7M / 推理 0.3M"))
+        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存读取 0.6M / 缓存写入 0.1M"))
         let totalTokenValue = try #require(
             viewController.view.firstDescendant(identifier: "DashboardTotalTokenValue") as? NSTextField
         )
@@ -728,7 +731,97 @@ struct TokenWatchTests {
         viewController.loadViewIfNeeded()
 
         let labels = viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
-        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存 0.0M"))
+        #expect(labels.contains("输入 0.0M / 输出 0.0M / 缓存读取 0.0M"))
+    }
+
+    /// 构造单个数据源的 Dashboard 并返回其全部文本标签。
+    @MainActor
+    private func dashboardLabels(
+        provider: ProviderID,
+        summary: UsageSummary
+    ) -> [String] {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [
+                    provider: .init(
+                        stats: makeDashboardStats(byDay: ["2026-06-20": summary]),
+                        isLoading: false,
+                        errorMessage: nil,
+                        needsAuthorization: false
+                    ),
+                ]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+        return viewController.view.allDescendants(ofType: NSTextField.self).map(\.stringValue)
+    }
+
+    @MainActor
+    @Test func dashboardShowsCacheWriteOnlyForProvidersDeclaringTheDimension() throws {
+        let summary = makeDashboardSummary(
+            input: 500_000,
+            output: 400_000,
+            cacheRead: 600_000,
+            cacheCreation: 100_000
+        )
+
+        // Claude 声明 cache write 维度，非零时单独成项，不再与缓存读取合并成一个数字。
+        let claudeLabels = dashboardLabels(provider: .claude, summary: summary)
+        #expect(claudeLabels.contains("输入 0.5M / 输出 0.4M / 缓存读取 0.6M / 缓存写入 0.1M"))
+
+        // Codex 不声明该维度：即便上游数据带 cacheCreation 也不展示，避免为协议外维度造行。
+        let codexLabels = dashboardLabels(provider: .codex, summary: summary)
+        #expect(codexLabels.contains("输入 0.5M / 输出 0.4M / 缓存读取 0.6M"))
+        #expect(!codexLabels.contains { $0.contains("缓存写入") })
+    }
+
+    @MainActor
+    @Test func dashboardOmitsCacheWriteWhenValueIsZero() throws {
+        // 能力位为 true 但区间内没有缓存写入时不渲染，避免恒为 0 的空行。
+        let labels = dashboardLabels(
+            provider: .claude,
+            summary: makeDashboardSummary(input: 500_000, output: 400_000, cacheRead: 600_000)
+        )
+        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存读取 0.6M"))
+        #expect(!labels.contains { $0.contains("缓存写入") })
+    }
+
+    @MainActor
+    @Test func dashboardOmitsReasoningWithoutCapability() throws {
+        // Claude 无 reasoning 字段：即便数据里出现该维度，token 与费用两项都不展示。
+        let labels = dashboardLabels(
+            provider: .claude,
+            summary: makeDashboardSummary(
+                input: 500_000,
+                output: 400_000,
+                reasoning: 300_000,
+                cacheRead: 600_000,
+                cost: 120
+            )
+        )
+        #expect(labels.contains("输入 0.5M / 输出 0.4M / 缓存读取 0.6M"))
+        #expect(!labels.contains { $0.contains("推理") })
+
+        // opencode 声明该维度，token 与费用两项都应出现。
+        let openCodeLabels = dashboardLabels(
+            provider: .opencode,
+            summary: makeDashboardSummary(
+                input: 500_000,
+                output: 400_000,
+                reasoning: 300_000,
+                cacheRead: 600_000,
+                cost: 120
+            )
+        )
+        #expect(openCodeLabels.contains("输入 0.5M / 输出 0.4M / 缓存读取 0.6M / 推理 0.3M"))
+        #expect(openCodeLabels.contains { $0.contains("推理 $") })
     }
 
     @MainActor

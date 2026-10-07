@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "คัดลอก ID แบบเต็ม";
 "dashboardInput" = "ข้อมูลเข้า";
 "dashboardOutput" = "ข้อมูลออก";
-"dashboardCache" = "แคช";
+"dashboardCacheRead" = "อ่านแคช";
+"dashboardCacheWrite" = "เขียนแคช";
 "dashboardCacheHitRate" = "อัตราการใช้แคช";
 "dashboardReasoning" = "การให้เหตุผล";
 "dashboardSessionsEmptyToday" = "วันนี้ไม่มีระเบียนเซสชัน";

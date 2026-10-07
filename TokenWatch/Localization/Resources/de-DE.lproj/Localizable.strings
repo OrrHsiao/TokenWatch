@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Vollständige ID kopieren";
 "dashboardInput" = "Eingabe";
 "dashboardOutput" = "Ausgabe";
-"dashboardCache" = "Cache";
+"dashboardCacheRead" = "Cache-Lesen";
+"dashboardCacheWrite" = "Cache-Schreiben";
 "dashboardCacheHitRate" = "Cache-Trefferrate";
 "dashboardReasoning" = "Reasoning";
 "dashboardSessionsEmptyToday" = "Heute keine Sitzungsaufzeichnungen";

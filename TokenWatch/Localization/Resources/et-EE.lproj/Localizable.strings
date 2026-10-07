@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopeeri täielik ID";
 "dashboardInput" = "Sisend";
 "dashboardOutput" = "Väljund";
-"dashboardCache" = "Vahemälu";
+"dashboardCacheRead" = "Vahemälu lugemine";
+"dashboardCacheWrite" = "Vahemälu kirjutamine";
 "dashboardCacheHitRate" = "Vahemälu tabamuste määr";
 "dashboardReasoning" = "Põhjenduskäik";
 "dashboardSessionsEmptyToday" = "Täna pole seansikirjeid";

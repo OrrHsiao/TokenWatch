@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Nuqul ka samee aqoonsiga oo dhan";
 "dashboardInput" = "Gelin";
 "dashboardOutput" = "Soo-saar";
-"dashboardCache" = "Kayd";
+"dashboardCacheRead" = "Akhrinta kaydka";
+"dashboardCacheWrite" = "Qorista kaydka";
 "dashboardCacheHitRate" = "Heerka helitaanka kaydka";
 "dashboardReasoning" = "Sababaynta";
 "dashboardSessionsEmptyToday" = "Maanta diiwaan fadhiyo ma jiro";

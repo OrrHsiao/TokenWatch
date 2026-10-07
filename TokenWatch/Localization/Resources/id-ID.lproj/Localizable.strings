@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Salin ID lengkap";
 "dashboardInput" = "Masukan";
 "dashboardOutput" = "Keluaran";
-"dashboardCache" = "Tembolok";
+"dashboardCacheRead" = "Pembacaan tembolok";
+"dashboardCacheWrite" = "Penulisan tembolok";
 "dashboardCacheHitRate" = "Tingkat Hit Tembolok";
 "dashboardReasoning" = "Penalaran";
 "dashboardSessionsEmptyToday" = "Tidak ada catatan sesi hari ini";

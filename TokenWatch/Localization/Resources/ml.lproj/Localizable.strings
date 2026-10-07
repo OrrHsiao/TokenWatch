@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "പൂർണ്ണ ID പകർത്തുക";
 "dashboardInput" = "ഇൻപുട്ട്";
 "dashboardOutput" = "ഔട്ട്പുട്ട്";
-"dashboardCache" = "കാഷെ";
+"dashboardCacheRead" = "കാഷെ വായന";
+"dashboardCacheWrite" = "കാഷെ എഴുത്ത്";
 "dashboardCacheHitRate" = "കാഷെ ഹിറ്റ് നിരക്ക്";
 "dashboardReasoning" = "യുക്തിചിന്ത";
 "dashboardSessionsEmptyToday" = "ഇന്ന് സെഷൻ രേഖകളില്ല";

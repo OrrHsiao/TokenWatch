@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Tam kimliği kopyala";
 "dashboardInput" = "Girdi";
 "dashboardOutput" = "Çıktı";
-"dashboardCache" = "Önbellek";
+"dashboardCacheRead" = "Önbellek okuma";
+"dashboardCacheWrite" = "Önbellek yazma";
 "dashboardCacheHitRate" = "Önbellek isabet oranı";
 "dashboardReasoning" = "Akıl Yürütme";
 "dashboardSessionsEmptyToday" = "Bugün oturum kaydı yok";

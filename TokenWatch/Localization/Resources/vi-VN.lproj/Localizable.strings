@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Sao chép đầy đủ ID";
 "dashboardInput" = "Đầu vào";
 "dashboardOutput" = "Đầu ra";
-"dashboardCache" = "Bộ nhớ đệm";
+"dashboardCacheRead" = "Đọc bộ nhớ đệm";
+"dashboardCacheWrite" = "Ghi bộ nhớ đệm";
 "dashboardCacheHitRate" = "Tỷ lệ trúng bộ nhớ đệm";
 "dashboardReasoning" = "Suy luận";
 "dashboardSessionsEmptyToday" = "Hôm nay không có bản ghi phiên";

@@ -29,11 +29,15 @@ protocol UsageProvider: Sendable {
     var bookmarkKey: String { get }
     /// NSOpenPanel 顶部说明文案的本地化键
     var openPanelMessageKey: AppStringKey { get }
-    /// 该 provider 是否产出 cache write tokens（决定 UI 是否展示该行）
-    /// Claude=true，Codex=false
+    /// 该 provider 是否产出 cache write tokens。
+    ///
+    /// 决定聚合视图是否**有资格**展示「缓存写入」维度（Claude=true，Codex/OpenCode/Antigravity=false）。
+    /// 与数值是否大于 0 共同决定最终渲染：能力位为 false 时永不展示，
+    /// 为 true 且当前区间数值为 0 时同样不展示，避免恒 0 的空行。
+    /// 聚合多个数据源时按 `ProviderRegistry.capabilities(for:)` 求并集。
     var hasCacheWriteDimension: Bool { get }
-    /// 该 provider 是否暴露 reasoning token 维度(决定 UI 是否展示该行)
-    /// Claude=false(无该字段)、Codex=false(reasoning 已并入 output)、opencode=true
+    /// 该 provider 是否暴露 reasoning token 维度，语义同上。
+    /// Claude=false（无该字段）、Codex=false（reasoning 已并入 output）、OpenCode/Antigravity=true
     var hasReasoningDimension: Bool { get }
 
     /// 从用户直接选择的 provider 数据根目录读取用量。

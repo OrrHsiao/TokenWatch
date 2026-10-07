@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "முழு ID ஐ நகலெடுக்கவும்";
 "dashboardInput" = "உள்ளீடு";
 "dashboardOutput" = "வெளியீடு";
-"dashboardCache" = "தற்காலிகச் சேமிப்பு";
+"dashboardCacheRead" = "தற்காலிகச் சேமிப்பு படித்தல்";
+"dashboardCacheWrite" = "தற்காலிகச் சேமிப்பு எழுதுதல்";
 "dashboardCacheHitRate" = "கேச் ஹிட் விகிதம்";
 "dashboardReasoning" = "காரணவியல்";
 "dashboardSessionsEmptyToday" = "இன்று அமர்வுப் பதிவுகள் இல்லை";

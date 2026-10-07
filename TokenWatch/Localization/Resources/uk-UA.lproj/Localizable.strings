@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Скопіювати повний ID";
 "dashboardInput" = "Вхідні дані";
 "dashboardOutput" = "Вихідні дані";
-"dashboardCache" = "Кеш";
+"dashboardCacheRead" = "Читання кешу";
+"dashboardCacheWrite" = "Запис у кеш";
 "dashboardCacheHitRate" = "Частота влучань у кеш";
 "dashboardReasoning" = "Міркування";
 "dashboardSessionsEmptyToday" = "Сьогодні немає записів сеансів";

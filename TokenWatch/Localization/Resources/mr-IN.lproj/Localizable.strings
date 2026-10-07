@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "संपूर्ण ID कॉपी करा";
 "dashboardInput" = "इनपुट";
 "dashboardOutput" = "आउटपुट";
-"dashboardCache" = "कॅश";
+"dashboardCacheRead" = "कॅश वाचन";
+"dashboardCacheWrite" = "कॅश लेखन";
 "dashboardCacheHitRate" = "कॅश हिट दर";
 "dashboardReasoning" = "तर्क";
 "dashboardSessionsEmptyToday" = "आज सत्र नोंदी नाहीत";

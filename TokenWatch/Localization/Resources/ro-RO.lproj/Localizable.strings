@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Copiază ID-ul complet";
 "dashboardInput" = "Intrare";
 "dashboardOutput" = "Ieșire";
-"dashboardCache" = "Memorie cache";
+"dashboardCacheRead" = "Citire cache";
+"dashboardCacheWrite" = "Scriere cache";
 "dashboardCacheHitRate" = "Rata de reușită a memoriei cache";
 "dashboardReasoning" = "Raționament";
 "dashboardSessionsEmptyToday" = "Nicio înregistrare de sesiune astăzi";

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "সম্পূর্ণ ID কপি করুন";
 "dashboardInput" = "ইনপুট";
 "dashboardOutput" = "আউটপুট";
-"dashboardCache" = "ক্যাশে";
+"dashboardCacheRead" = "ক্যাশে পড়া";
+"dashboardCacheWrite" = "ক্যাশে লেখা";
 "dashboardCacheHitRate" = "ক্যাশ হিটের হার";
 "dashboardReasoning" = "যুক্তি";
 "dashboardSessionsEmptyToday" = "আজ কোনো সেশন রেকর্ড নেই";

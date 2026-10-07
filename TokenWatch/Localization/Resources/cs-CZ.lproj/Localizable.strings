@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopírovat celé ID";
 "dashboardInput" = "Vstup";
 "dashboardOutput" = "Výstup";
-"dashboardCache" = "Mezipaměť";
+"dashboardCacheRead" = "Čtení z mezipaměti";
+"dashboardCacheWrite" = "Zápis do mezipaměti";
 "dashboardCacheHitRate" = "Míra zásahů mezipaměti";
 "dashboardReasoning" = "Uvažování";
 "dashboardSessionsEmptyToday" = "Dnes nejsou žádné záznamy relací";

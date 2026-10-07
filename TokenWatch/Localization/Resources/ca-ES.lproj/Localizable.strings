@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Copia l'ID complet";
 "dashboardInput" = "Entrada";
 "dashboardOutput" = "Sortida";
-"dashboardCache" = "Memòria cau";
+"dashboardCacheRead" = "Lectura de memòria cau";
+"dashboardCacheWrite" = "Escriptura de memòria cau";
 "dashboardCacheHitRate" = "Taxa d'encerts de la memòria cau";
 "dashboardReasoning" = "Raonament";
 "dashboardSessionsEmptyToday" = "Avui no hi ha registres de sessions";

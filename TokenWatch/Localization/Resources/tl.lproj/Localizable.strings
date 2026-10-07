@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopyahin ang buong ID";
 "dashboardInput" = "Papasok";
 "dashboardOutput" = "Papalabas";
-"dashboardCache" = "Pansamantalang Imbakan";
+"dashboardCacheRead" = "Pagbasa ng imbakan";
+"dashboardCacheWrite" = "Pagsulat sa imbakan";
 "dashboardCacheHitRate" = "Antas ng tagumpay ng cache";
 "dashboardReasoning" = "Pangatwiran";
 "dashboardSessionsEmptyToday" = "Walang tala ng sesyon ngayon";

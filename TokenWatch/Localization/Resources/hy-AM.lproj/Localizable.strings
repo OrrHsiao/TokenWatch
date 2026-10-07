@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Պատճենել ամբողջական նույնացուցիչը";
 "dashboardInput" = "Մուտք";
 "dashboardOutput" = "Ելք";
-"dashboardCache" = "Քեշ";
+"dashboardCacheRead" = "Քեշի ընթերցում";
+"dashboardCacheWrite" = "Քեշի գրառում";
 "dashboardCacheHitRate" = "Քեշի հարվածների տոկոսը";
 "dashboardReasoning" = "Դատողություն";
 "dashboardSessionsEmptyToday" = "Այսօր աշխատաշրջանների գրառումներ չկան";

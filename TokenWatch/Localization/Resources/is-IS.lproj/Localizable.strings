@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Afrita allt auðkennið";
 "dashboardInput" = "Inntak";
 "dashboardOutput" = "Úttak";
-"dashboardCache" = "Skyndiminni";
+"dashboardCacheRead" = "Lestur skyndiminnis";
+"dashboardCacheWrite" = "Skrif í skyndiminni";
 "dashboardCacheHitRate" = "Hittihlutfall skyndiminnis";
 "dashboardReasoning" = "Rökhugsun";
 "dashboardSessionsEmptyToday" = "Engar setufærslur í dag";

@@ -71,6 +71,42 @@ struct ProviderRegistryTests {
         #expect(ProviderRegistry.provider(for: .antigravity)?.hasReasoningDimension == true)
     }
 
+    @Test("hasCacheWriteDimension:仅 Claude 声明支持")
+    func cacheWriteDimensionFlags() {
+        #expect(ProviderRegistry.provider(for: .claude)?.hasCacheWriteDimension == true)
+        #expect(ProviderRegistry.provider(for: .codex)?.hasCacheWriteDimension == false)
+        #expect(ProviderRegistry.provider(for: .opencode)?.hasCacheWriteDimension == false)
+        #expect(ProviderRegistry.provider(for: .antigravity)?.hasCacheWriteDimension == false)
+    }
+
+    @Test("能力并集:全部数据源同时暴露两个可选维度")
+    func capabilitiesUnionAcrossAllProviders() {
+        let capabilities = ProviderRegistry.capabilities(for: ProviderRegistry.allProviders.map(\.id))
+        #expect(capabilities.hasCacheWrite)
+        #expect(capabilities.hasReasoning)
+    }
+
+    @Test("能力并集:单选数据源时按该 provider 的能力位收窄")
+    func capabilitiesNarrowToSingleProvider() {
+        let claude = ProviderRegistry.capabilities(for: [.claude])
+        #expect(claude.hasCacheWrite)
+        #expect(!claude.hasReasoning)
+
+        let opencode = ProviderRegistry.capabilities(for: [.opencode])
+        #expect(!opencode.hasCacheWrite)
+        #expect(opencode.hasReasoning)
+
+        // Codex 与 Antigravity 都不带 cache write；Antigravity 带 reasoning。
+        let codexAndAntigravity = ProviderRegistry.capabilities(for: [.codex, .antigravity])
+        #expect(!codexAndAntigravity.hasCacheWrite)
+        #expect(codexAndAntigravity.hasReasoning)
+    }
+
+    @Test("能力并集:无数据源时不声明任何可选维度")
+    func capabilitiesAreEmptyWithoutProviders() {
+        #expect(ProviderRegistry.capabilities(for: [ProviderID]()) == .none)
+    }
+
     @Test("JSONL provider 使用各自声明的磁盘缓存兼容策略")
     func diskCacheCompatibilityIsProviderSpecific() {
         #expect(CodexProvider.currentDiskCacheVersion == 4)
@@ -224,6 +260,7 @@ struct ProviderRegistryTests {
             withIntermediateDirectories: true
         )
         #expect(AntigravityProvider().validateDataRoot(antigravityRoot) == .valid)
+
     }
 
     private var claudeUsageLine: String {

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopjo identifikuesin e plotë";
 "dashboardInput" = "Hyrja";
 "dashboardOutput" = "Dalja";
-"dashboardCache" = "Memoria e përkohshme";
+"dashboardCacheRead" = "Lexim i memories së përkohshme";
+"dashboardCacheWrite" = "Shkrim në memorien e përkohshme";
 "dashboardCacheHitRate" = "Shkalla e goditjeve të memories së përkohshme";
 "dashboardReasoning" = "Arsyetimi";
 "dashboardSessionsEmptyToday" = "Sot nuk ka regjistrime sesionesh";

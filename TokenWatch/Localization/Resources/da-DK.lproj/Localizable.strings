@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopiér hele id'et";
 "dashboardInput" = "Inddata";
 "dashboardOutput" = "Uddata";
-"dashboardCache" = "Cache";
+"dashboardCacheRead" = "Cache-læsning";
+"dashboardCacheWrite" = "Cache-skrivning";
 "dashboardCacheHitRate" = "Cache-træfsikkerhed";
 "dashboardReasoning" = "Ræsonnering";
 "dashboardSessionsEmptyToday" = "Ingen sessionsposter i dag";

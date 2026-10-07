@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Толық идентификаторды көшіру";
 "dashboardInput" = "Кіріс";
 "dashboardOutput" = "Шығыс";
-"dashboardCache" = "Кэш";
+"dashboardCacheRead" = "Кэшті оқу";
+"dashboardCacheWrite" = "Кэшке жазу";
 "dashboardCacheHitRate" = "Кэшке түсу көрсеткіші";
 "dashboardReasoning" = "Ой қорыту";
 "dashboardSessionsEmptyToday" = "Бүгін сеанс жазбалары жоқ";

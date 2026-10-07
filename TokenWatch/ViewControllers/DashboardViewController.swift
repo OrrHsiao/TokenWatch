@@ -1981,12 +1981,15 @@ final class DashboardViewController: NSViewController {
             language: languageSettings.resolvedLanguage
         )
         let summary = rangeSnapshot.summary
+        // 可选维度按当前选中数据源求并集：收窄到单个 provider 时会随之收窄，
+        // 因此 Claude 独有 cache write、opencode 独有 reasoning 都能正确呈现。
+        let capabilities = ProviderRegistry.capabilities(for: states.keys)
 
         totalTokenValueLabel.stringValue = CompactNumberFormatter.formatMillions(summary.totalTokens)
         cacheHitRateValueLabel.stringValue = formatCacheHitRate(summary)
-        totalTokenDetailLabel.stringValue = formatTokenBreakdown(summary)
+        totalTokenDetailLabel.stringValue = formatTokenBreakdown(summary, capabilities: capabilities)
         totalCostValueLabel.stringValue = formatCurrency(summary.cost)
-        totalCostDetailLabel.stringValue = formatCostBreakdown(summary)
+        totalCostDetailLabel.stringValue = formatCostBreakdown(summary, capabilities: capabilities)
         sessionValueLabel.stringValue = formatInt(summary.entryCount)
         sessionDetailLabel.stringValue = String(
             format: localized(.dashboardTotalSourcesProjectsFormat),
@@ -2519,16 +2522,33 @@ final class DashboardViewController: NSViewController {
         return Swift.max(0.04, min(1, CGFloat(value) / CGFloat(maxValue)))
     }
 
-    private func formatTokenBreakdown(_ summary: DashboardUsageSummary) -> String {
+    /// 组装 token 明细行。
+    ///
+    /// 可选维度（缓存写入、思考）需同时满足两个条件才渲染：选中数据源的能力位声明该
+    /// 维度存在，且当前区间的数值大于 0。前者避免为不支持该维度的数据源凭空造出一行，
+    /// 后者避免出现恒为 0 的空行。缓存读取是各数据源的通用维度，始终展示。
+    /// - Parameters:
+    ///   - summary: 当前选中数据源与时间区间的聚合汇总。
+    ///   - capabilities: 选中数据源的可选维度能力并集。
+    /// - Returns: 以 " / " 连接的明细文本。
+    private func formatTokenBreakdown(
+        _ summary: DashboardUsageSummary,
+        capabilities: UsageDimensionCapabilities
+    ) -> String {
         var parts = [
             "\(localized(.dashboardInput)) \(CompactNumberFormatter.formatMillions(summary.inputTokens))",
             "\(localized(.dashboardOutput)) \(CompactNumberFormatter.formatMillions(summary.outputTokens))",
+            "\(localized(.dashboardCacheRead)) \(CompactNumberFormatter.formatMillions(summary.cacheReadTokens))",
         ]
-        let cacheTokens = summary.cacheReadTokens.addingSaturated(summary.cacheCreationTokens)
-        let cacheText = CompactNumberFormatter.formatMillions(cacheTokens)
-        parts.append("\(localized(.dashboardCache)) \(cacheText)")
-        if summary.reasoningTokens > 0 {
-            parts.append("\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))")
+        if capabilities.hasCacheWrite, summary.cacheCreationTokens > 0 {
+            parts.append(
+                "\(localized(.dashboardCacheWrite)) \(CompactNumberFormatter.formatMillions(summary.cacheCreationTokens))"
+            )
+        }
+        if capabilities.hasReasoning, summary.reasoningTokens > 0 {
+            parts.append(
+                "\(localized(.dashboardReasoning)) \(CompactNumberFormatter.formatMillions(summary.reasoningTokens))"
+            )
         }
         return parts.joined(separator: " / ")
     }
@@ -2544,21 +2564,46 @@ final class DashboardViewController: NSViewController {
         return formatPercentage(cacheTokens / base)
     }
 
-    private func formatCostBreakdown(_ summary: DashboardUsageSummary) -> String {
+    /// 按 token 占比拆分费用明细，并与 token 明细行保持同一套维度可见性规则。
+    /// - Parameters:
+    ///   - summary: 当前选中数据源与时间区间的聚合汇总。
+    ///   - capabilities: 选中数据源的可选维度能力并集。
+    /// - Returns: 以 " / " 连接的费用拆分文本。
+    private func formatCostBreakdown(
+        _ summary: DashboardUsageSummary,
+        capabilities: UsageDimensionCapabilities
+    ) -> String {
         let inputBillableTokens = Double(summary.inputTokens)
             + Double(summary.cacheReadTokens)
             + Double(summary.cacheCreationTokens)
         let outputTokens = Double(summary.outputTokens)
-        let reasoningTokens = Double(summary.reasoningTokens)
+        // reasoning 已并入 output 的数据源不再单列一项；数值为 0 时同样省略。
+        let reasoningTokens = capabilities.hasReasoning
+            ? Double(summary.reasoningTokens)
+            : 0
         let billableTokens = inputBillableTokens + outputTokens + reasoningTokens
-        guard billableTokens > 0, summary.cost > 0 else {
-            return "\(localized(.dashboardInput)) $0.00 / \(localized(.dashboardOutput)) $0.00 / \(localized(.dashboardReasoning)) $0.00"
+
+        let inputCost: Double
+        let outputCost: Double
+        let reasoningCost: Double
+        if billableTokens > 0, summary.cost > 0 {
+            inputCost = summary.cost * (inputBillableTokens / billableTokens)
+            outputCost = summary.cost * (outputTokens / billableTokens)
+            reasoningCost = summary.cost * (reasoningTokens / billableTokens)
+        } else {
+            inputCost = 0
+            outputCost = 0
+            reasoningCost = 0
         }
 
-        let inputCost = summary.cost * (inputBillableTokens / billableTokens)
-        let outputCost = summary.cost * (outputTokens / billableTokens)
-        let reasoningCost = summary.cost * (reasoningTokens / billableTokens)
-        return "\(localized(.dashboardInput)) \(formatCurrency(inputCost)) / \(localized(.dashboardOutput)) \(formatCurrency(outputCost)) / \(localized(.dashboardReasoning)) \(formatCurrency(reasoningCost))"
+        var parts = [
+            "\(localized(.dashboardInput)) \(formatCurrency(inputCost))",
+            "\(localized(.dashboardOutput)) \(formatCurrency(outputCost))",
+        ]
+        if reasoningTokens > 0 {
+            parts.append("\(localized(.dashboardReasoning)) \(formatCurrency(reasoningCost))")
+        }
+        return parts.joined(separator: " / ")
     }
 
     private func formatPercentage(_ value: Double) -> String {
