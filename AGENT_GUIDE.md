@@ -42,6 +42,13 @@ ci(actions): 优化构建缓存策略
 1. 设计文档优先使用中文。
 2. 优先使用 Xcode MCP 进行构建、测试和调试。
 
+### Xcode MCP（已接入）
+- DSH 通过 `xcrun mcpbridge` 接入 Xcode Tools，配置位于 `~/.dsh/profiles/desktop/cordis.patch.yml` 的 `mcp-xcode` 条目。
+- 工具名为 `mcp__xcode__<Tool>`，例如 `mcp__xcode__BuildProject`、`mcp__xcode__RunAllTests`、`mcp__xcode__GetBuildLog`、`mcp__xcode__RenderPreview`。
+- 使用前需在 Xcode 中打开工程；若提示 agent 未获批准，先调用 `mcp__xcode__XcodeOpenWorkspace`，Xcode 会弹出授权提示。
+- 多数工具需要显式传入 `workspaceIdentifier`，可用 `mcp__xcode__XcodeListWorkspaces` 查询当前值。
+- 单次调用超时已放宽至 15 分钟，以覆盖完整构建与测试；`xcrun mcp-server status` 可查看授权状态与已打开的 workspace。
+
 ### macOS 测试运行说明
 - 在 Codex/agent 沙盒内，`xcodebuild` 默认写入 `~/Library/Developer/Xcode/DerivedData` 可能触发权限错误；运行构建或测试时优先指定 `-derivedDataPath .build/DerivedData`，必要时把 `.xcresult` 写到 `.build/TestResults/`。
 - macOS app-hosted tests 需要连接系统测试服务 `com.apple.testmanagerd.control`。沙盒内执行 `xcodebuild test` 可能失败并出现 `Sandbox restriction`；完整测试应在沙盒外运行，或在 Codex 中对测试命令申请提升权限。
