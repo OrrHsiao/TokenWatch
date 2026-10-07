@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu Codex; hún er venjulega í ~/.codex.\nKeyrðu echo \"${CODEX_HOME:-$HOME/.codex}\" til að finna hana.";
 "openCodeDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu opencode; hún er venjulega í ~/.local/share/opencode.\nKeyrðu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" til að finna hana.";
 "antigravityDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu Antigravity; hún er venjulega í ~/.gemini.\nKeyrðu echo \"$HOME/.gemini\" til að finna hana.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Veldu gagnamöppu DeepSeek Harness; hún er venjulega í ~/.dsh.\nKeyrðu echo \"$HOME/.dsh\" til að finna hana.";
 "chooseDirectoryPrompt" = "Velja";
 "errorCannotAccessProviderDirectoryFormat" = "Ekki er hægt að fá aðgang að gagnamöppu %@. Veldu hana aftur.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Ekki tókst að vista aðgang að gagnamöppu %@. Veldu aftur.";

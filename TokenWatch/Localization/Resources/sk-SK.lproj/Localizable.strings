@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok Codex. Zvyčajne je to ~/.codex.\nNájdete ho pomocou príkazu echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok opencode. Zvyčajne je to ~/.local/share/opencode.\nNájdete ho pomocou príkazu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok Antigravity. Zvyčajne je to ~/.gemini.\nNájdete ho pomocou príkazu echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Vyberte dátový priečinok DeepSeek Harness. Zvyčajne je to ~/.dsh.\nNájdete ho pomocou príkazu echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Vybrať";
 "errorCannotAccessProviderDirectoryFormat" = "K dátovému priečinku %@ sa nedá pristupovať. Vyberte ho znova.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Prístup k dátovému priečinku %@ sa nepodarilo uložiť. Vyberte ho znova.";

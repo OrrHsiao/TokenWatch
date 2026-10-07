@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Wähle den Datenordner von Codex; normalerweise liegt er unter ~/.codex.\nFühre echo \"${CODEX_HOME:-$HOME/.codex}\" aus, um ihn zu finden.";
 "openCodeDataDirectoryOpenPanelMessage" = "Wähle den Datenordner von opencode; normalerweise liegt er unter ~/.local/share/opencode.\nFühre echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" aus, um ihn zu finden.";
 "antigravityDataDirectoryOpenPanelMessage" = "Wähle den Datenordner von Antigravity; normalerweise liegt er unter ~/.gemini.\nFühre echo \"$HOME/.gemini\" aus, um ihn zu finden.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Wähle den Datenordner von DeepSeek Harness; normalerweise liegt er unter ~/.dsh.\nFühre echo \"$HOME/.dsh\" aus, um ihn zu finden.";
 "chooseDirectoryPrompt" = "Auswählen";
 "errorCannotAccessProviderDirectoryFormat" = "Auf den ausgewählten Datenordner von %@ kann nicht zugegriffen werden. Wähle ihn erneut aus";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Der Zugriff auf den Datenordner von %@ konnte nicht gespeichert werden. Versuche es erneut";

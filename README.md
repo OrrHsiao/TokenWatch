@@ -10,7 +10,7 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-AI Token Watch is a native macOS app for tracking token usage and estimated cost from local coding-agent data. It reads local usage records from Claude Code, Codex, and opencode, then summarizes totals by day, month, model, project, and provider.
+AI Token Watch is a native macOS app for tracking token usage and estimated cost from local coding-agent data. It reads local usage records from Claude Code, Codex, opencode, Antigravity, and DeepSeek Harness, then summarizes totals by day, month, model, project, and provider.
 
 The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch does not send your usage data anywhere.
 
@@ -35,7 +35,7 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch d
 - Token and cost breakdowns by provider and model
 - Calendar heatmap and chart views for trend scanning
 - Session-level review with model, project, token, cost, and record counts
-- Local parsing for Claude Code JSONL, Codex rollout JSONL, and opencode SQLite data
+- Local parsing for Claude Code JSONL, Codex rollout JSONL, opencode SQLite, Antigravity SQLite, and DeepSeek Harness session logs (multi-frame zstd JSONL, decoded in-app)
 - Security-scoped bookmark access for sandbox-friendly local file permissions
 - Embedded LiteLLM pricing snapshot with hand-tuned pricing overrides for common models
 
@@ -48,6 +48,8 @@ AI Token Watch never opens a file picker automatically at launch. In **Settings*
 | Claude Code | Claude Code data folder | `projects/**/*.jsonl` |
 | Codex | Codex data folder | `sessions/**/rollout-*.jsonl`, `archived_sessions/**`, and optional `config.toml` |
 | opencode | opencode data folder | `opencode.db` |
+| Antigravity | Antigravity data folder | `conversations/**/*.db` |
+| DeepSeek Harness | DeepSeek Harness data folder | `sessions/**/session[.vN].jsonl[.zstd]` (highest generation per session) |
 
 Each provider stores an independent read-only security-scoped bookmark. Leaving one provider unselected does not block selected providers.
 
@@ -141,7 +143,7 @@ TokenWatch/
   Analytics/       Aggregation logic
   Models/          Shared usage and pricing models
   Pricing/         Pricing table, LiteLLM catalog, cost engine
-  Providers/       Claude Code, Codex, and opencode adapters
+  Providers/       Claude Code, Codex, opencode, Antigravity, and DeepSeek Harness adapters
   Services/        Security-scoped bookmark management
   ViewControllers/ AppKit UI
   ViewModels/      Provider state coordination
@@ -152,7 +154,7 @@ TokenWatchUITests/ XCTest UI tests
 
 ## Pricing Data
 
-AI Token Watch estimates cost from embedded pricing data. Prices can drift from upstream provider billing, so treat app totals as an estimate rather than an invoice. Unknown models fall back to upstream cost when the source provides it; otherwise their cost may be shown as zero until pricing data is updated.
+AI Token Watch estimates cost from embedded pricing data. Prices can drift from upstream provider billing, so treat app totals as an estimate rather than an invoice. Unknown models fall back to upstream cost when the source provides it; otherwise their cost may be shown as zero until pricing data is updated. DeepSeek Harness records carry no cost, so they are priced from the pi-ai catalog bundled with DeepSeek Harness when it is readable, then from an embedded DeepSeek price snapshot; a model outside both tables is shown as `$0.00` and logged.
 
 ## Contributing
 

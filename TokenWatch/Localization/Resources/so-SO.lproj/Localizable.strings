@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Dooro galka xogta Codex. Badanaa wuxuu ku yaal ~/.codex.\nWaxaad ku heli kartaa amarka echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Dooro galka xogta opencode. Badanaa wuxuu ku yaal ~/.local/share/opencode.\nWaxaad ku heli kartaa amarka echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Dooro galka xogta Antigravity. Badanaa wuxuu ku yaal ~/.gemini.\nWaxaad ku heli kartaa amarka echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Dooro galka xogta DeepSeek Harness. Badanaa wuxuu ku yaal ~/.dsh.\nWaxaad ku heli kartaa amarka echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Dooro";
 "errorCannotAccessProviderDirectoryFormat" = "Lama geli karo galka xogta %@. Fadlan mar kale dooro.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Lama kaydin karo gelitaanka galka xogta %@. Fadlan mar kale dooro.";

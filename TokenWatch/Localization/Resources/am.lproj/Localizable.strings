@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "የCodex ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.codex ውስጥ ይገኛል።\nለማግኘት echo \"${CODEX_HOME:-$HOME/.codex}\" ትዕዛዙን ያስኪዱ።";
 "openCodeDataDirectoryOpenPanelMessage" = "የopencode ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.local/share/opencode ውስጥ ይገኛል።\nለማግኘት echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ትዕዛዙን ያስኪዱ።";
 "antigravityDataDirectoryOpenPanelMessage" = "የAntigravity ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.gemini ውስጥ ይገኛል።\nለማግኘት echo \"$HOME/.gemini\" ትዕዛዙን ያስኪዱ።";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "የDeepSeek Harness ውሂብ አቃፊ ይምረጡ፤ ብዙውን ጊዜ ~/.dsh ውስጥ ይገኛል።\nለማግኘት echo \"$HOME/.dsh\" ትዕዛዙን ያስኪዱ።";
 "chooseDirectoryPrompt" = "ይምረጡ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ የውሂብ አቃፊ መድረስ አልተቻለም። እባክዎ እንደገና ይምረጡት።";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ወደ %@ የውሂብ አቃፊ መዳረሻ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይምረጡ።";

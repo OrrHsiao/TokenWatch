@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng Codex. Karaniwan itong nasa ~/.codex.\nMahahanap ito gamit ang utos na echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng opencode. Karaniwan itong nasa ~/.local/share/opencode.\nMahahanap ito gamit ang utos na echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng Antigravity. Karaniwan itong nasa ~/.gemini.\nMahahanap ito gamit ang utos na echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Piliin ang folder ng data ng DeepSeek Harness. Karaniwan itong nasa ~/.dsh.\nMahahanap ito gamit ang utos na echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Pumili";
 "errorCannotAccessProviderDirectoryFormat" = "Hindi ma-access ang folder ng data ng %@. Pakipili itong muli.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Hindi mai-save ang access sa folder ng data ng %@. Pumili muli.";

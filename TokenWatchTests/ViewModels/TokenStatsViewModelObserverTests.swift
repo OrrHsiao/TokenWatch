@@ -1182,6 +1182,7 @@ private struct StubUsageProvider: UsageProvider {
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
         case .antigravity: .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness: .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
     let hasCacheWriteDimension = true
@@ -1202,6 +1203,7 @@ private final class MutableUsageProvider: UsageProvider, @unchecked Sendable {
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
         case .antigravity: .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness: .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
     let hasCacheWriteDimension = true
@@ -1239,6 +1241,7 @@ private final class FailingAfterFirstLoadProvider: UsageProvider, @unchecked Sen
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
         case .antigravity: .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness: .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
     let hasCacheWriteDimension = true
@@ -1343,6 +1346,7 @@ private final class CacheStatusUsageProvider:
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
         case .antigravity: .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness: .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
 
@@ -1433,6 +1437,8 @@ private final class DirectoryTestUsageProvider:
             .openCodeDataDirectoryOpenPanelMessage
         case .antigravity:
             .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness:
+            .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
 
@@ -1474,6 +1480,7 @@ private final class DirectoryTestUsageProvider:
         case .codex: "Codex"
         case .opencode: "opencode"
         case .antigravity: "Antigravity"
+        case .deepSeekHarness: "DeepSeek Harness"
         }
 
         let signal = AsyncStream<Void>.makeStream()

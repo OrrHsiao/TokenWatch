@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Izvēlieties Codex datu mapi. Parasti tā ir ~/.codex.\nTo var atrast ar komandu echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Izvēlieties opencode datu mapi. Parasti tā ir ~/.local/share/opencode.\nTo var atrast ar komandu echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Izvēlieties Antigravity datu mapi. Parasti tā ir ~/.gemini.\nTo var atrast ar komandu echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Izvēlieties DeepSeek Harness datu mapi. Parasti tā ir ~/.dsh.\nTo var atrast ar komandu echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Izvēlēties";
 "errorCannotAccessProviderDirectoryFormat" = "Nevar piekļūt %@ datu mapei. Izvēlieties to vēlreiz.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Neizdevās saglabāt piekļuvi %@ datu mapei. Izvēlieties to vēlreiz.";

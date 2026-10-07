@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Pasirinkite Codex duomenų aplanką. Paprastai tai yra ~/.codex.\nJį galite rasti naudodami komandą echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Pasirinkite opencode duomenų aplanką. Paprastai tai yra ~/.local/share/opencode.\nJį galite rasti naudodami komandą echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Pasirinkite Antigravity duomenų aplanką. Paprastai tai yra ~/.gemini.\nJį galite rasti naudodami komandą echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Pasirinkite DeepSeek Harness duomenų aplanką. Paprastai tai yra ~/.dsh.\nJį galite rasti naudodami komandą echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Pasirinkti";
 "errorCannotAccessProviderDirectoryFormat" = "Nepavyksta pasiekti %@ duomenų aplanko. Pasirinkite jį iš naujo.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nepavyko išsaugoti prieigos prie %@ duomenų aplanko. Pasirinkite jį dar kartą.";

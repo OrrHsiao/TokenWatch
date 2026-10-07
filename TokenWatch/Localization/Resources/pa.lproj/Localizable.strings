@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Codex ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.codex ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"${CODEX_HOME:-$HOME/.codex}\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
 "openCodeDataDirectoryOpenPanelMessage" = "opencode ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.local/share/opencode ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
 "antigravityDataDirectoryOpenPanelMessage" = "Antigravity ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.gemini ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"$HOME/.gemini\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "DeepSeek Harness ਡਾਟਾ ਫੋਲਡਰ ਚੁਣੋ; ਇਹ ਆਮ ਤੌਰ 'ਤੇ ~/.dsh ਵਿੱਚ ਹੁੰਦਾ ਹੈ।\nਇਸਨੂੰ echo \"$HOME/.dsh\" ਕਮਾਂਡ ਨਾਲ ਲੱਭਿਆ ਜਾ ਸਕਦਾ ਹੈ।";
 "chooseDirectoryPrompt" = "ਚੁਣੋ";
 "errorCannotAccessProviderDirectoryFormat" = "%@ ਡਾਟਾ ਫੋਲਡਰ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਇਸਨੂੰ ਮੁੜ ਚੁਣੋ।";
 "errorProviderDirectoryAuthorizationFailedFormat" = "%@ ਡਾਟਾ ਫੋਲਡਰ ਤੱਕ ਪਹੁੰਚ ਸੰਭਾਲੀ ਨਹੀਂ ਜਾ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਮੁੜ ਚੁਣੋ।";

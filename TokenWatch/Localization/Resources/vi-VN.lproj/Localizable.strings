@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Codex; thư mục này thường nằm ở ~/.codex.\nCó thể tìm thấy thư mục bằng lệnh echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu opencode; thư mục này thường nằm ở ~/.local/share/opencode.\nCó thể tìm thấy thư mục bằng lệnh echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu Antigravity; thư mục này thường nằm ở ~/.gemini.\nCó thể tìm thấy thư mục bằng lệnh echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Chọn thư mục dữ liệu DeepSeek Harness; thư mục này thường nằm ở ~/.dsh.\nCó thể tìm thấy thư mục bằng lệnh echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Chọn";
 "errorCannotAccessProviderDirectoryFormat" = "Không thể truy cập thư mục dữ liệu %@. Vui lòng chọn lại.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Không thể lưu quyền truy cập thư mục dữ liệu %@. Vui lòng chọn lại.";

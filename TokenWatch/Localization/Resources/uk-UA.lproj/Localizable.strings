@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Codex. Зазвичай це ~/.codex.\nЇї можна знайти за допомогою команди echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Виберіть папку з даними opencode. Зазвичай це ~/.local/share/opencode.\nЇї можна знайти за допомогою команди echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Виберіть папку з даними Antigravity. Зазвичай це ~/.gemini.\nЇї можна знайти за допомогою команди echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Виберіть папку з даними DeepSeek Harness. Зазвичай це ~/.dsh.\nЇї можна знайти за допомогою команди echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Вибрати";
 "errorCannotAccessProviderDirectoryFormat" = "Не вдалося отримати доступ до папки з даними %@. Виберіть її ще раз.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Не вдалося зберегти доступ до папки з даними %@. Виберіть її ще раз.";

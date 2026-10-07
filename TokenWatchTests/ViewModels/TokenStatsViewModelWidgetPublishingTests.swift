@@ -452,6 +452,7 @@ private final class MutableTestUsageProvider: UsageProvider, @unchecked Sendable
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
         case .antigravity: .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness: .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
 
@@ -515,6 +516,7 @@ private final class BlockingTestUsageProvider: UsageProvider, @unchecked Sendabl
         case .codex: .codexDataDirectoryOpenPanelMessage
         case .opencode: .openCodeDataDirectoryOpenPanelMessage
         case .antigravity: .antigravityDataDirectoryOpenPanelMessage
+        case .deepSeekHarness: .deepSeekHarnessDataDirectoryOpenPanelMessage
         }
     }
 

@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Válassza ki a Codex adatmappáját. Általában itt található: ~/.codex.\nEzzel a paranccsal találhatja meg: echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Válassza ki az opencode adatmappáját. Általában itt található: ~/.local/share/opencode.\nEzzel a paranccsal találhatja meg: echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Válassza ki az Antigravity adatmappáját. Általában itt található: ~/.gemini.\nEzzel a paranccsal találhatja meg: echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Válassza ki az DeepSeek Harness adatmappáját. Általában itt található: ~/.dsh.\nEzzel a paranccsal találhatja meg: echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Választás";
 "errorCannotAccessProviderDirectoryFormat" = "Nem lehet hozzáférni a %@ adatmappához. Válassza ki újra.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nem sikerült menteni a hozzáférést a %@ adatmappához. Válassza ki újra.";

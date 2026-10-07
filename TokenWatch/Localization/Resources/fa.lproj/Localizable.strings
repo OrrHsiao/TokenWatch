@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Codex را انتخاب کنید؛ مسیر معمول آن ~/.codex است.\nمی‌توانید آن را با دستور echo \"${CODEX_HOME:-$HOME/.codex}\" پیدا کنید.";
 "openCodeDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ opencode را انتخاب کنید؛ مسیر معمول آن ~/.local/share/opencode است.\nمی‌توانید آن را با دستور echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\" پیدا کنید.";
 "antigravityDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ Antigravity را انتخاب کنید؛ مسیر معمول آن ~/.gemini است.\nمی‌توانید آن را با دستور echo \"$HOME/.gemini\" پیدا کنید.";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "پوشهٔ دادهٔ DeepSeek Harness را انتخاب کنید؛ مسیر معمول آن ~/.dsh است.\nمی‌توانید آن را با دستور echo \"$HOME/.dsh\" پیدا کنید.";
 "chooseDirectoryPrompt" = "انتخاب";
 "errorCannotAccessProviderDirectoryFormat" = "دسترسی به پوشهٔ دادهٔ %@ ممکن نیست. لطفاً دوباره آن را انتخاب کنید.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "ذخیرهٔ دسترسی به پوشهٔ دادهٔ %@ ممکن نشد. لطفاً دوباره انتخاب کنید.";

@@ -179,6 +179,7 @@
 "codexDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za Codex. Obično je to ~/.codex.\nMožete je pronaći naredbom echo \"${CODEX_HOME:-$HOME/.codex}\".";
 "openCodeDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za opencode. Obično je to ~/.local/share/opencode.\nMožete je pronaći naredbom echo \"${XDG_DATA_HOME:-$HOME/.local/share}/opencode\".";
 "antigravityDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za Antigravity. Obično je to ~/.gemini.\nMožete je pronaći naredbom echo \"$HOME/.gemini\".";
+"deepSeekHarnessDataDirectoryOpenPanelMessage" = "Odaberite mapu s podacima za DeepSeek Harness. Obično je to ~/.dsh.\nMožete je pronaći naredbom echo \"$HOME/.dsh\".";
 "chooseDirectoryPrompt" = "Odaberi";
 "errorCannotAccessProviderDirectoryFormat" = "Nije moguće pristupiti mapi s podacima za %@. Ponovo je odaberite.";
 "errorProviderDirectoryAuthorizationFailedFormat" = "Nije bilo moguće spremiti pristup mapi s podacima za %@. Odaberite ponovo.";

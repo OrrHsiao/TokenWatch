@@ -7,4 +7,5 @@ enum ProviderID: String, Sendable, CaseIterable, Hashable, Codable {
     case codex
     case opencode
     case antigravity
+    case deepSeekHarness
 }
