@@ -2007,7 +2007,8 @@ final class DashboardViewController: NSViewController {
             buckets: rangeSnapshot.trendBuckets,
             language: languageSettings.resolvedLanguage
         )
-        rebuildModelRows(totalSnapshot.modelRows)
+        // 模型消耗排行跟随当前选中的时间范围（rangeSnapshot），不再使用全量历史（totalSnapshot）
+        rebuildModelRows(rangeSnapshot.modelRows)
         let aggregatedSlices = DashboardRangeSnapshot.aggregateToolShareSlices(
             rangeSnapshot.toolShareSlices,
             maxVisible: 4,

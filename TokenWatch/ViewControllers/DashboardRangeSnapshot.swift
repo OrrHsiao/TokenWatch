@@ -182,6 +182,11 @@ struct DashboardRangeSnapshot {
     let unauthorizedProviderCount: Int
     let errorMessages: [String]
 
+    /// 当前时间范围内的模型用量排行，按 Token 消耗降序排列。
+    var modelRows: [TotalStatsModelRow] {
+        summary.modelRows
+    }
+
     static func build(
         states: [ProviderID: TokenStatsViewModel.ProviderState],
         range: DashboardRange,
@@ -355,6 +360,7 @@ struct DashboardRangeSnapshot {
             partial.merged(with: row.summary)
         }
         let projects = DashboardProjectRows.makeRows(fromTokenTotals: projectTotals)
+        let modelRows = DashboardModelRows.makeRows(fromSummaries: total.modelBreakdown)
 
         return DashboardUsageSummary(
             inputTokens: total.inputTokens,
@@ -366,7 +372,8 @@ struct DashboardRangeSnapshot {
             cost: total.cost,
             entryCount: total.entryCount,
             projectCount: projects.count,
-            projects: projects
+            projects: projects,
+            modelRows: modelRows
         )
     }
 
@@ -453,6 +460,8 @@ struct DashboardUsageSummary {
     let entryCount: Int
     let projectCount: Int
     let projects: [DashboardProjectRow]
+    /// 当前时间范围内的模型用量排行，按 Token 消耗降序排列。
+    let modelRows: [TotalStatsModelRow]
 
     static func makeTotal(from states: [ProviderID: TokenStatsViewModel.ProviderState]) -> DashboardUsageSummary {
         var inputTokens = 0
@@ -464,6 +473,7 @@ struct DashboardUsageSummary {
         var cost = 0.0
         var entryCount = 0
         var projects: [String: UsageSummary] = [:]
+        var models: [String: UsageSummary] = [:]
 
         for (_, state) in states {
             guard let stats = state.stats else { continue }
@@ -480,6 +490,9 @@ struct DashboardUsageSummary {
             for (project, summary) in stats.byProject {
                 projects[project, default: .zero] = projects[project, default: .zero].merged(with: summary)
             }
+            for (model, summary) in stats.byModel {
+                models[model, default: .zero] = models[model, default: .zero].merged(with: summary)
+            }
         }
 
         return DashboardUsageSummary(
@@ -492,7 +505,8 @@ struct DashboardUsageSummary {
             cost: cost,
             entryCount: entryCount,
             projectCount: DashboardProjectRows.projectCount(fromSummaries: projects),
-            projects: makeProjectRows(projects)
+            projects: makeProjectRows(projects),
+            modelRows: DashboardModelRows.makeRows(fromSummaries: models)
         )
     }
 
@@ -500,6 +514,31 @@ struct DashboardUsageSummary {
         DashboardProjectRows.makeRows(fromSummaries: projects)
     }
 
+}
+
+private enum DashboardModelRows {
+    /// 将各模型的用量聚合结果转换为排序后的模型排行行数据。
+    /// 设计原因：仅保留 Token 消耗大于 0 的模型，优先按 Token 降序，Token 相同按模型名称不区分大小写升序，
+    /// 与总计快照的排序与展示契约保持一致。
+    /// - Parameter models: 各模型对应的用量汇总字典。
+    /// - Returns: 供 UI 直接渲染的模型行列表。
+    static func makeRows(fromSummaries models: [String: UsageSummary]) -> [TotalStatsModelRow] {
+        models
+            .filter { $0.value.totalTokens > 0 }
+            .sorted { lhs, rhs in
+                if lhs.value.totalTokens != rhs.value.totalTokens {
+                    return lhs.value.totalTokens > rhs.value.totalTokens
+                }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            .map {
+                TotalStatsModelRow(
+                    modelName: $0.key,
+                    totalTokens: $0.value.totalTokens,
+                    totalCost: $0.value.cost
+                )
+            }
+    }
 }
 
 struct DashboardProjectRow {
