@@ -117,6 +117,160 @@ struct DashboardRangeSnapshotTests {
         #expect(snapshot.totalTokens == 40)
     }
 
+    @Test("模型消耗排行跟随选中的时间范围并按 Token 降序排序")
+    func modelRowsFollowSelectedRangeAndAreOrderedByTokensDescending() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = try #require(calendar.date(from: DateComponents(
+            year: 2026, month: 6, day: 20, hour: 12
+        )))
+
+        let todaySummary = summary(models: [
+            "claude-3-5-sonnet": (tokens: 1_000, cost: 1.5),
+            "gpt-4o": (tokens: 500, cost: 1.0),
+            "zero-token-model": (tokens: 0, cost: 0.0),
+        ])
+        let threeDaysAgoSummary = summary(models: [
+            "claude-3-opus": (tokens: 2_000, cost: 10.0),
+        ])
+        let twentyDaysAgoSummary = summary(models: [
+            "gemini-pro": (tokens: 3_000, cost: 3.0),
+        ])
+        let oldMonthSummary = summary(models: [
+            "legacy-model": (tokens: 8_000, cost: 8.0),
+        ])
+
+        var byDay: [String: UsageSummary] = [:]
+        byDay["2026-06-20"] = todaySummary
+        byDay["2026-06-17"] = threeDaysAgoSummary
+        byDay["2026-06-01"] = twentyDaysAgoSummary
+
+        var byHour: [String: UsageSummary] = [:]
+        byHour["2026-06-20T12"] = todaySummary
+
+        let allModels = [
+            "claude-3-5-sonnet": modelSummary(tokens: 1_000, cost: 1.5),
+            "gpt-4o": modelSummary(tokens: 500, cost: 1.0),
+            "zero-token-model": modelSummary(tokens: 0, cost: 0.0),
+            "claude-3-opus": modelSummary(tokens: 2_000, cost: 10.0),
+            "gemini-pro": modelSummary(tokens: 3_000, cost: 3.0),
+            "legacy-model": modelSummary(tokens: 8_000, cost: 8.0),
+        ]
+
+        let stats = AggregatedStats(
+            overall: UsageSummary(
+                inputTokens: 14_500,
+                outputTokens: 0,
+                cacheReadTokens: 0,
+                cacheCreationTokens: 0,
+                reasoningTokens: 0,
+                totalTokens: 14_500,
+                cost: 23.5,
+                entryCount: 5,
+                modelBreakdown: allModels
+            ),
+            byHour: byHour,
+            byDay: byDay,
+            byWeek: [:],
+            byMonth: [
+                "2026-06": summary(models: [
+                    "claude-3-5-sonnet": (tokens: 1_000, cost: 1.5),
+                    "gpt-4o": (tokens: 500, cost: 1.0),
+                    "claude-3-opus": (tokens: 2_000, cost: 10.0),
+                    "gemini-pro": (tokens: 3_000, cost: 3.0),
+                ]),
+                "2026-04": oldMonthSummary,
+            ],
+            bySession: [:],
+            byModel: allModels,
+            byProject: [:],
+            dataSourceCount: 1
+        )
+
+        let providerStates: [ProviderID: TokenStatsViewModel.ProviderState] = [
+            .claude: .init(
+                stats: stats,
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            )
+        ]
+
+        let daySnapshot = DashboardRangeSnapshot.build(
+            states: providerStates,
+            range: .day,
+            now: now,
+            calendar: calendar,
+            language: .zhHans
+        )
+        #expect(daySnapshot.modelRows.map(\.modelName) == ["claude-3-5-sonnet", "gpt-4o"])
+        #expect(daySnapshot.modelRows.first?.totalTokens == 1_000)
+        #expect(daySnapshot.modelRows.first?.totalCost == 1.5)
+
+        let sevenDaySnapshot = DashboardRangeSnapshot.build(
+            states: providerStates,
+            range: .sevenDays,
+            now: now,
+            calendar: calendar,
+            language: .zhHans
+        )
+        #expect(sevenDaySnapshot.modelRows.map(\.modelName) == ["claude-3-opus", "claude-3-5-sonnet", "gpt-4o"])
+
+        let monthSnapshot = DashboardRangeSnapshot.build(
+            states: providerStates,
+            range: .month,
+            now: now,
+            calendar: calendar,
+            language: .zhHans
+        )
+        #expect(monthSnapshot.modelRows.map(\.modelName) == ["gemini-pro", "claude-3-opus", "claude-3-5-sonnet", "gpt-4o"])
+
+        let allSnapshot = DashboardRangeSnapshot.build(
+            states: providerStates,
+            range: .all,
+            now: now,
+            calendar: calendar,
+            language: .zhHans
+        )
+        #expect(allSnapshot.modelRows.map(\.modelName) == ["legacy-model", "gemini-pro", "claude-3-opus", "claude-3-5-sonnet", "gpt-4o"])
+    }
+
+    private func modelSummary(tokens: Int, cost: Double = 0.0) -> UsageSummary {
+        UsageSummary(
+            inputTokens: tokens,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: tokens,
+            cost: cost,
+            entryCount: 1,
+            modelBreakdown: [:]
+        )
+    }
+
+    private func summary(models: [String: (tokens: Int, cost: Double)]) -> UsageSummary {
+        var breakdown: [String: UsageSummary] = [:]
+        var totalTokens = 0
+        var totalCost = 0.0
+        for (name, data) in models {
+            breakdown[name] = modelSummary(tokens: data.tokens, cost: data.cost)
+            totalTokens += data.tokens
+            totalCost += data.cost
+        }
+        return UsageSummary(
+            inputTokens: totalTokens,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: totalTokens,
+            cost: totalCost,
+            entryCount: models.count,
+            modelBreakdown: breakdown
+        )
+    }
+
     private func losAngelesCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!

@@ -2026,6 +2026,71 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardModelPanelUsesSelectedRangeModels() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        let stats = UsageAggregator().aggregate([
+            makeDashboardEntry(
+                sessionID: "s1",
+                date: dateTime(2026, 6, 20, hour: 9, minute: 0, calendar: calendar),
+                model: "model-today",
+                input: 700,
+                cwd: "/work/alpha-app"
+            ),
+            makeDashboardEntry(
+                sessionID: "s2",
+                date: dateTime(2026, 6, 17, hour: 10, minute: 0, calendar: calendar),
+                model: "model-seven-days",
+                input: 500,
+                cwd: "/work/beta-app"
+            ),
+            makeDashboardEntry(
+                sessionID: "legacy",
+                date: dateTime(2026, 5, 1, hour: 10, minute: 0, calendar: calendar),
+                model: "model-legacy",
+                input: 9_000,
+                cwd: "/work/legacy-app"
+            ),
+        ])
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: {
+                [.claude: .init(
+                    stats: stats,
+                    isLoading: false,
+                    errorMessage: nil,
+                    needsAuthorization: false
+                )]
+            },
+            refreshAction: {},
+            nowProvider: { now },
+            calendar: calendar,
+            languageSettings: zhHansLanguageSettings()
+        )
+        viewController.loadViewIfNeeded()
+
+        // 默认选中的是 7 天（.sevenDays）
+        let sevenDayLabels = try labels(inPanelTitled: "模型消耗排行", root: viewController.view)
+        #expect(sevenDayLabels.contains("model-today"))
+        #expect(sevenDayLabels.contains("model-seven-days"))
+        #expect(!sevenDayLabels.contains("model-legacy"))
+
+        // 切换到当天（.day）
+        try clickDashboardRange("day", in: viewController)
+        let dayLabels = try labels(inPanelTitled: "模型消耗排行", root: viewController.view)
+        #expect(dayLabels.contains("model-today"))
+        #expect(!dayLabels.contains("model-seven-days"))
+        #expect(!dayLabels.contains("model-legacy"))
+
+        // 切换到全部（.all）
+        try clickDashboardRange("all", in: viewController)
+        let allLabels = try labels(inPanelTitled: "模型消耗排行", root: viewController.view)
+        #expect(allLabels.contains("model-today"))
+        #expect(allLabels.contains("model-seven-days"))
+        #expect(allLabels.contains("model-legacy"))
+    }
+
+    @MainActor
     @Test func dashboardAnalysisListsShowAllRowsInScrollablePanels() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
