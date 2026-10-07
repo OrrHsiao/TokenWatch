@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "复制完整 ID";
 "dashboardInput" = "输入";
 "dashboardOutput" = "输出";
-"dashboardCache" = "缓存";
+"dashboardCacheRead" = "缓存读取";
+"dashboardCacheWrite" = "缓存写入";
 "dashboardCacheHitRate" = "缓存命中率";
 "dashboardReasoning" = "推理";
 "dashboardSessionsEmptyToday" = "当天暂无会话记录";

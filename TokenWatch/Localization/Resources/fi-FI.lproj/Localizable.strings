@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopioi koko tunnus";
 "dashboardInput" = "Syöte";
 "dashboardOutput" = "Tuloste";
-"dashboardCache" = "Välimuisti";
+"dashboardCacheRead" = "Välimuistin luku";
+"dashboardCacheWrite" = "Välimuistin kirjoitus";
 "dashboardCacheHitRate" = "Välimuistin osumaprosentti";
 "dashboardReasoning" = "Päättely";
 "dashboardSessionsEmptyToday" = "Ei istuntotietueita tänään";

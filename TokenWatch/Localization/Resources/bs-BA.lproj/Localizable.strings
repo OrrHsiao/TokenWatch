@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopiraj puni ID";
 "dashboardInput" = "Ulaz";
 "dashboardOutput" = "Izlaz";
-"dashboardCache" = "Predmemorija";
+"dashboardCacheRead" = "Čitanje predmemorije";
+"dashboardCacheWrite" = "Upis u predmemoriju";
 "dashboardCacheHitRate" = "Stopa pogodaka predmemorije";
 "dashboardReasoning" = "Rasuđivanje";
 "dashboardSessionsEmptyToday" = "Danas nema zapisa sesija";

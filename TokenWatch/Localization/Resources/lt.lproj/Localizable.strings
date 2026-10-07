@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopijuoti visą ID";
 "dashboardInput" = "Įvestis";
 "dashboardOutput" = "Išvestis";
-"dashboardCache" = "Talpykla";
+"dashboardCacheRead" = "Talpyklos skaitymas";
+"dashboardCacheWrite" = "Talpyklos rašymas";
 "dashboardCacheHitRate" = "Talpyklos pataikymų rodiklis";
 "dashboardReasoning" = "Samprotavimas";
 "dashboardSessionsEmptyToday" = "Šiandien seansų įrašų nėra";

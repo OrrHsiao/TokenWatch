@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Nakili kitambulisho kizima";
 "dashboardInput" = "Ingizo";
 "dashboardOutput" = "Tokeo";
-"dashboardCache" = "Akiba";
+"dashboardCacheRead" = "Usomaji wa akiba";
+"dashboardCacheWrite" = "Uandishi wa akiba";
 "dashboardCacheHitRate" = "Kiwango cha Kupatikana kwa Akiba";
 "dashboardReasoning" = "Uchanganuzi";
 "dashboardSessionsEmptyToday" = "Hakuna rekodi za vikao leo";

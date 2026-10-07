@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "نسخ المعرف كاملًا";
 "dashboardInput" = "الإدخال";
 "dashboardOutput" = "الإخراج";
-"dashboardCache" = "ذاكرة التخزين المؤقت";
+"dashboardCacheRead" = "قراءة الذاكرة المؤقتة";
+"dashboardCacheWrite" = "كتابة الذاكرة المؤقتة";
 "dashboardCacheHitRate" = "معدل إصابات الذاكرة المؤقتة";
 "dashboardReasoning" = "الاستدلال";
 "dashboardSessionsEmptyToday" = "لا توجد سجلات جلسات اليوم";

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "ሙሉውን መለያ ቅዳ";
 "dashboardInput" = "ግቤት";
 "dashboardOutput" = "ውጤት";
-"dashboardCache" = "መሸጎጫ";
+"dashboardCacheRead" = "መሸጎጫ ንባብ";
+"dashboardCacheWrite" = "መሸጎጫ ጽሑፍ";
 "dashboardCacheHitRate" = "የመሸጎጫ መገኘት መጠን";
 "dashboardReasoning" = "ምክንያታዊ ትንተና";
 "dashboardSessionsEmptyToday" = "ዛሬ የክፍለ ጊዜ መዝገብ የለም";

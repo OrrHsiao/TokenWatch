@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Бүтэн танигчийг хуулах";
 "dashboardInput" = "Оролт";
 "dashboardOutput" = "Гаралт";
-"dashboardCache" = "Кэш";
+"dashboardCacheRead" = "Кэш унших";
+"dashboardCacheWrite" = "Кэш бичих";
 "dashboardCacheHitRate" = "Кэшийн онолтын хувь";
 "dashboardReasoning" = "Үндэслэл";
 "dashboardSessionsEmptyToday" = "Өнөөдөр сешний бүртгэл алга";

@@ -62,7 +62,8 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case dashboardCopyIDAccessibilityDescription
     case dashboardInput
     case dashboardOutput
-    case dashboardCache
+    case dashboardCacheRead
+    case dashboardCacheWrite
     case dashboardCacheHitRate
     case dashboardReasoning
     case dashboardSessionsEmptyToday

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Salin ID penuh";
 "dashboardInput" = "Input";
 "dashboardOutput" = "Output";
-"dashboardCache" = "Cache";
+"dashboardCacheRead" = "Bacaan cache";
+"dashboardCacheWrite" = "Tulisan cache";
 "dashboardCacheHitRate" = "Kadar Hit Cache";
 "dashboardReasoning" = "Penaakulan";
 "dashboardSessionsEmptyToday" = "Tiada rekod sesi hari ini";

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Αντιγραφή πλήρους αναγνωριστικού";
 "dashboardInput" = "Είσοδος";
 "dashboardOutput" = "Έξοδος";
-"dashboardCache" = "Κρυφή μνήμη";
+"dashboardCacheRead" = "Ανάγνωση κρυφής μνήμης";
+"dashboardCacheWrite" = "Εγγραφή κρυφής μνήμης";
 "dashboardCacheHitRate" = "Ποσοστό επιτυχιών κρυφής μνήμης";
 "dashboardReasoning" = "Συλλογισμός";
 "dashboardSessionsEmptyToday" = "Δεν υπάρχουν εγγραφές συνεδριών σήμερα";

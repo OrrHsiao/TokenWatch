@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "အမှတ်အပြည့်အစုံကို ကူးယူပါ";
 "dashboardInput" = "သွင်းချက်";
 "dashboardOutput" = "ထုတ်ချက်";
-"dashboardCache" = "ယာယီသိမ်းဆည်းမှု";
+"dashboardCacheRead" = "ယာယီသိမ်းဆည်းမှု ဖတ်ခြင်း";
+"dashboardCacheWrite" = "ယာယီသိမ်းဆည်းမှု ရေးခြင်း";
 "dashboardCacheHitRate" = "ယာယီသိမ်းဆည်းမှု ရရှိနှုန်း";
 "dashboardReasoning" = "ဆင်ခြင်မှု";
 "dashboardSessionsEmptyToday" = "ယနေ့ လုပ်ဆောင်မှုကာလ မှတ်တမ်းမရှိပါ";

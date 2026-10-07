@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "کپی شناسه کامل";
 "dashboardInput" = "ورودی";
 "dashboardOutput" = "خروجی";
-"dashboardCache" = "حافظه پنهان";
+"dashboardCacheRead" = "خواندن حافظه پنهان";
+"dashboardCacheWrite" = "نوشتن حافظه پنهان";
 "dashboardCacheHitRate" = "نرخ برخورد کش";
 "dashboardReasoning" = "استدلال";
 "dashboardSessionsEmptyToday" = "امروز هیچ سابقه نشستی وجود ندارد";

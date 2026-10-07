@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopier hele ID-en";
 "dashboardInput" = "Inndata";
 "dashboardOutput" = "Utdata";
-"dashboardCache" = "Hurtiglager";
+"dashboardCacheRead" = "Lesing fra hurtiglager";
+"dashboardCacheWrite" = "Skriving til hurtiglager";
 "dashboardCacheHitRate" = "Treffrate for hurtiglager";
 "dashboardReasoning" = "Resonnering";
 "dashboardSessionsEmptyToday" = "Ingen øktoppføringer i dag";

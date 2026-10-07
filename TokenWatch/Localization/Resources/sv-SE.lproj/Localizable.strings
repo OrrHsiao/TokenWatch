@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopiera fullständigt ID";
 "dashboardInput" = "Indata";
 "dashboardOutput" = "Utdata";
-"dashboardCache" = "Cache";
+"dashboardCacheRead" = "Cache-läsning";
+"dashboardCacheWrite" = "Cache-skrivning";
 "dashboardCacheHitRate" = "Cacheträffrekvens";
 "dashboardReasoning" = "Resonemang";
 "dashboardSessionsEmptyToday" = "Inga sessionsposter i dag";

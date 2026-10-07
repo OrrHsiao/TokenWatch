@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Копирај цео ID";
 "dashboardInput" = "Улаз";
 "dashboardOutput" = "Излаз";
-"dashboardCache" = "Кеш";
+"dashboardCacheRead" = "Читање кеша";
+"dashboardCacheWrite" = "Упис у кеш";
 "dashboardCacheHitRate" = "Стопа погодака кеша";
 "dashboardReasoning" = "Расуђивање";
 "dashboardSessionsEmptyToday" = "Данас нема записа о сесијама";

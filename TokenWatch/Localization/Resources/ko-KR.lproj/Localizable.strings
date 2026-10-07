@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "전체 ID 복사";
 "dashboardInput" = "입력";
 "dashboardOutput" = "출력";
-"dashboardCache" = "캐시";
+"dashboardCacheRead" = "캐시 읽기";
+"dashboardCacheWrite" = "캐시 쓰기";
 "dashboardCacheHitRate" = "캐시 적중률";
 "dashboardReasoning" = "추론";
 "dashboardSessionsEmptyToday" = "오늘 세션 기록이 없습니다";

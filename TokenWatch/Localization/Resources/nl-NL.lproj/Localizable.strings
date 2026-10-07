@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Volledige ID kopiëren";
 "dashboardInput" = "Invoer";
 "dashboardOutput" = "Uitvoer";
-"dashboardCache" = "Cache";
+"dashboardCacheRead" = "Cache-lezen";
+"dashboardCacheWrite" = "Cache-schrijven";
 "dashboardCacheHitRate" = "Cache-hitpercentage";
 "dashboardReasoning" = "Redenering";
 "dashboardSessionsEmptyToday" = "Vandaag geen sessierecords";

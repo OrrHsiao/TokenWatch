@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopēt pilnu ID";
 "dashboardInput" = "Ievade";
 "dashboardOutput" = "Izvade";
-"dashboardCache" = "Kešatmiņa";
+"dashboardCacheRead" = "Kešatmiņas lasīšana";
+"dashboardCacheWrite" = "Kešatmiņas rakstīšana";
 "dashboardCacheHitRate" = "Kešatmiņas trāpījumu rādītājs";
 "dashboardReasoning" = "Spriešana";
 "dashboardSessionsEmptyToday" = "Šodien nav sesiju ierakstu";

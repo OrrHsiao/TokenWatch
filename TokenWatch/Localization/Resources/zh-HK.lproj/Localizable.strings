@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "複製完整 ID";
 "dashboardInput" = "輸入";
 "dashboardOutput" = "輸出";
-"dashboardCache" = "快取";
+"dashboardCacheRead" = "快取讀取";
+"dashboardCacheWrite" = "快取寫入";
 "dashboardCacheHitRate" = "快取命中率";
 "dashboardReasoning" = "推理";
 "dashboardSessionsEmptyToday" = "今日沒有工作階段記錄";

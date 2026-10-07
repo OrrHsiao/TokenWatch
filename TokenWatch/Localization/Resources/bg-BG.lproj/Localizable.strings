@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Копиране на пълния ID";
 "dashboardInput" = "Вход";
 "dashboardOutput" = "Изход";
-"dashboardCache" = "Кеш";
+"dashboardCacheRead" = "Четене от кеша";
+"dashboardCacheWrite" = "Запис в кеша";
 "dashboardCacheHitRate" = "Процент попадения в кеша";
 "dashboardReasoning" = "Разсъждение";
 "dashboardSessionsEmptyToday" = "Днес няма записи за сесии";

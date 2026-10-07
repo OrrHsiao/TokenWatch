@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "పూర్తి ID ని కాపీ చేయండి";
 "dashboardInput" = "ఇన్‌పుట్";
 "dashboardOutput" = "అవుట్‌పుట్";
-"dashboardCache" = "కాష్";
+"dashboardCacheRead" = "కాష్ పఠనం";
+"dashboardCacheWrite" = "కాష్ రచన";
 "dashboardCacheHitRate" = "క్యాష్ హిట్ రేటు";
 "dashboardReasoning" = "తార్కికత";
 "dashboardSessionsEmptyToday" = "నేడు సెషన్ రికార్డులు లేవు";

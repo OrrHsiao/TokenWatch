@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "Kopírovať celé ID";
 "dashboardInput" = "Vstup";
 "dashboardOutput" = "Výstup";
-"dashboardCache" = "Vyrovnávacia pamäť";
+"dashboardCacheRead" = "Čítanie z vyrovnávacej pamäte";
+"dashboardCacheWrite" = "Zápis do vyrovnávacej pamäte";
 "dashboardCacheHitRate" = "Miera zásahov vyrovnávacej pamäte";
 "dashboardReasoning" = "Uvažovanie";
 "dashboardSessionsEmptyToday" = "Dnes nie sú žiadne záznamy relácií";

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "完全な ID をコピー";
 "dashboardInput" = "入力";
 "dashboardOutput" = "出力";
-"dashboardCache" = "キャッシュ";
+"dashboardCacheRead" = "キャッシュ読取";
+"dashboardCacheWrite" = "キャッシュ書込";
 "dashboardCacheHitRate" = "キャッシュヒット率";
 "dashboardReasoning" = "推論";
 "dashboardSessionsEmptyToday" = "当日のセッション記録はありません";

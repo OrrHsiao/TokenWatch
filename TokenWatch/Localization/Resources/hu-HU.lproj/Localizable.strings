@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "A teljes azonosító másolása";
 "dashboardInput" = "Bemenet";
 "dashboardOutput" = "Kimenet";
-"dashboardCache" = "Gyorsítótár";
+"dashboardCacheRead" = "Gyorsítótár olvasása";
+"dashboardCacheWrite" = "Gyorsítótár írása";
 "dashboardCacheHitRate" = "Gyorsítótár-találati arány";
 "dashboardReasoning" = "Következtetés";
 "dashboardSessionsEmptyToday" = "Ma nincsenek munkamenet-rekordok";

@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "სრული იდენტიფიკატორის კოპირება";
 "dashboardInput" = "შეყვანა";
 "dashboardOutput" = "გამოტანა";
-"dashboardCache" = "ქეში";
+"dashboardCacheRead" = "ქეშის წაკითხვა";
+"dashboardCacheWrite" = "ქეშში ჩაწერა";
 "dashboardCacheHitRate" = "ქეშის მოხვედრის მაჩვენებელი";
 "dashboardReasoning" = "მსჯელობა";
 "dashboardSessionsEmptyToday" = "დღეს სესიების ჩანაწერები არ არის";

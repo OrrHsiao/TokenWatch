@@ -53,7 +53,8 @@
 "dashboardCopyIDAccessibilityDescription" = "مکمل ID کاپی کریں";
 "dashboardInput" = "ان پٹ";
 "dashboardOutput" = "آؤٹ پٹ";
-"dashboardCache" = "کیش";
+"dashboardCacheRead" = "کیش پڑھنا";
+"dashboardCacheWrite" = "کیش لکھنا";
 "dashboardCacheHitRate" = "کیش ہٹ کی شرح";
 "dashboardReasoning" = "استدلال";
 "dashboardSessionsEmptyToday" = "آج کوئی سیشن ریکارڈ نہیں";
