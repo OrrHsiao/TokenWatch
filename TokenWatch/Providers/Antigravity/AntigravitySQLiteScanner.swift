@@ -29,6 +29,9 @@ enum AntigravityScannerError: AppLocalizedError, CustomStringConvertible {
 /// 1. Antigravity 每个会话独立一个 `<uuid>.db`，存储在 `conversations/` 下。
 /// 2. 使用 `file:<path>?mode=ro` 只读打开。若遇到没有 `-shm` 的已归档数据库，自动回退到 `immutable=1` 避免 `CANTOPEN`。
 /// 3. 设置 `sqlite3_busy_timeout`，避免与运行中的 Antigravity 写入发生排他锁冲突。
+/// 4. 对「WAL 模式且已 checkpoint（无 `-wal`/`-shm`）」的归档库直接走 `immutable=1`：
+///    这类库的只读连接无法建立 WAL 索引，`mode=ro` 首次查询必然失败，
+///    先试一次只会让每轮扫描白白多出一倍的打开次数。
 final class AntigravitySQLiteScanner: Sendable {
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "AntigravitySQLiteScanner")
@@ -145,45 +148,101 @@ final class AntigravitySQLiteScanner: Sendable {
         )
     }
 
-    /// 打开单个数据库连接：
-    /// 1. 优先以 mode=ro 打开（支持读取活跃 WAL 中的最新写入）。
-    /// 2. 执行 SELECT 1 探针测试；若因缺少 -shm 或只读沙盒环境导致 CANTOPEN，安全回退到 immutable=1。
-    /// 3. 若 immutable=1 亦无法打开，记录告警并跳过。
+    /// 打开单个数据库连接。
+    ///
+    /// 先按库的物理状态决定两种打开模式的尝试顺序（见 `prefersImmutableOpen`），
+    /// 再逐个用 `SELECT 1;` 探针确认连接真的可用；两种模式都失败时记录告警并跳过该库。
+    /// - Parameter dbURL: 会话数据库文件。
+    /// - Returns: 可用的只读连接；两种模式均无法打开时返回 `nil`。
     private func openDatabase(at dbURL: URL) -> OpaquePointer? {
-        var db: OpaquePointer?
+        let readOnlyURI = "file:\(dbURL.path)?mode=ro"
+        let immutableURI = "file:\(dbURL.path)?immutable=1"
+        let candidates = prefersImmutableOpen(at: dbURL)
+            ? [immutableURI, readOnlyURI]
+            : [readOnlyURI, immutableURI]
 
-        let uriRo = "file:\(dbURL.path)?mode=ro"
-        if sqlite3_open_v2(uriRo, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK, let database = db {
-            sqlite3_busy_timeout(database, busyTimeoutMs)
-            var testStmt: OpaquePointer?
-            let prep = sqlite3_prepare_v2(database, "SELECT 1;", -1, &testStmt, nil)
-            sqlite3_finalize(testStmt)
-            if prep == SQLITE_OK {
+        for uri in candidates {
+            if let database = openAndProbe(uri: uri) {
                 return database
             }
-            sqlite3_close(database)
-            db = nil
-        } else if let database = db {
-            sqlite3_close(database)
-            db = nil
-        }
-
-        let uriImm = "file:\(dbURL.path)?immutable=1"
-        if sqlite3_open_v2(uriImm, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK, let database = db {
-            sqlite3_busy_timeout(database, busyTimeoutMs)
-            var testStmt: OpaquePointer?
-            let prep = sqlite3_prepare_v2(database, "SELECT 1;", -1, &testStmt, nil)
-            sqlite3_finalize(testStmt)
-            if prep == SQLITE_OK {
-                return database
-            }
-            sqlite3_close(database)
-        } else if let database = db {
-            sqlite3_close(database)
         }
 
         logger.warning("无法以只读或不可变模式打开会话数据库: \(dbURL.lastPathComponent)")
         return nil
+    }
+
+    /// 以指定 URI 打开数据库并执行 `SELECT 1;` 探针。
+    ///
+    /// 只读沙盒或缺少 `-shm` 时 `sqlite3_open_v2` 可能返回成功、但首次查询才报 `CANTOPEN`，
+    /// 因此必须用真实查询而非仅看 open 的返回码判断连接是否可用。
+    /// - Parameter uri: 带 `mode=ro` 或 `immutable=1` 的 SQLite URI。
+    /// - Returns: 探针通过时的连接；open 或探针失败时返回 `nil`（连接已关闭）。
+    private func openAndProbe(uri: String) -> OpaquePointer? {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(uri, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK,
+              let database = db else {
+            if let database = db {
+                sqlite3_close(database)
+            }
+            return nil
+        }
+
+        sqlite3_busy_timeout(database, busyTimeoutMs)
+
+        var testStmt: OpaquePointer?
+        let prep = sqlite3_prepare_v2(database, "SELECT 1;", -1, &testStmt, nil)
+        sqlite3_finalize(testStmt)
+        guard prep == SQLITE_OK else {
+            sqlite3_close(database)
+            return nil
+        }
+        return database
+    }
+
+    /// 判断是否应优先用 `immutable=1` 打开。
+    ///
+    /// WAL 模式的库需要 `-shm` 索引才能被只读连接读取；Antigravity 归档后 `-wal` 与 `-shm`
+    /// 会随 checkpoint 一起消失，此时 `mode=ro` 的连接虽然在 `sqlite3_open_v2` 阶段返回成功，
+    /// 但首次查询必然以 `CANTOPEN` 失败。实测本机 55 个会话库全部处于该状态，
+    /// 因此先探测一次注定失败的连接，会让每轮扫描多做一倍的打开。
+    /// `immutable=1` 跳过 WAL 机制，对这类已归档文件既正确又更快。
+    ///
+    /// 只要 `-wal` 或 `-shm` 仍存在，就说明该库可能仍有活跃写入或未合并的 WAL，
+    /// 此时保持原顺序（`mode=ro` 优先），以便读到 WAL 中的最新内容。
+    /// - Parameter dbURL: 会话数据库文件。
+    /// - Returns: 库声明为 WAL 模式且 `-wal`/`-shm` 均不存在时返回 `true`。
+    private func prefersImmutableOpen(at dbURL: URL) -> Bool {
+        guard Self.declaresWALMode(at: dbURL) else { return false }
+
+        let fileManager = FileManager.default
+        guard !fileManager.fileExists(atPath: dbURL.path + "-wal"),
+              !fileManager.fileExists(atPath: dbURL.path + "-shm") else {
+            return false
+        }
+        return true
+    }
+
+    /// 读取 SQLite 文件头判断日志模式。
+    ///
+    /// 头两个版本字节（偏移 18/19）同时为 2 表示 WAL，为 1 表示传统 rollback journal。
+    /// 读取失败或文件过短时返回 `false`，让调用方退回原有的两段式尝试。
+    /// - Parameter dbURL: 会话数据库文件。
+    /// - Returns: 头部声明为 WAL 模式时返回 `true`。
+    private static func declaresWALMode(at dbURL: URL) -> Bool {
+        let headerMinimumLength = 20
+        let journalModeOffset = 18
+        let walVersion: UInt8 = 2
+
+        guard let handle = try? FileHandle(forReadingFrom: dbURL) else { return false }
+        defer { try? handle.close() }
+        guard let header = try? handle.read(upToCount: headerMinimumLength),
+              header.count >= headerMinimumLength else {
+            return false
+        }
+
+        let base = header.startIndex
+        return header[base + journalModeOffset] == walVersion
+            && header[base + journalModeOffset + 1] == walVersion
     }
 
     private func readTrajectoryID(from database: OpaquePointer) -> String? {
