@@ -87,7 +87,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 在启动加载前快照首次安装条件，避免失效 bookmark 清理后被误判为新安装。
         let shouldPresentInitialDirectoryAuthorizationGuide =
-            initialDirectoryAuthorizationGuide.shouldPresent()
+            !DemoStatsFixture.isDemoModeEnabled && initialDirectoryAuthorizationGuide.shouldPresent()
 
         // 首次未授权时，必须优先让用户选择目录；若与本地扫描并行，扫描门禁会使
         // 设置页的目录操作暂时不可用，造成“去授权”按钮无法点击的错觉。
@@ -266,6 +266,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 构建生产 StoreKit 控制器；DEBUG 审核模式只能通过显式依赖替换进入。
     private static func makeWidgetPurchaseController() -> WidgetPurchaseController? {
 #if DEBUG
+        if DemoStatsFixture.isDemoModeEnabled && UserDefaults.standard.string(forKey: widgetPurchaseReviewModeKey) == nil {
+            purchaseLogger.info("Using unlocked widget purchase controller for demo mode")
+            return WidgetPurchaseReviewFixtures.makeUnlockedController()
+        }
+
         switch UserDefaults.standard.string(forKey: widgetPurchaseReviewModeKey) {
         case "locked":
             purchaseLogger.info("Using locked widget purchase review fixture")

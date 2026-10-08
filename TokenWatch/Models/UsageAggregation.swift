@@ -49,6 +49,22 @@ struct UsageSummary: Codable, Equatable, Sendable {
             projectBreakdown: [:]
         )
     }
+
+    /// 合并两个用量汇总，数值字段采用饱和加法
+    func merged(with other: UsageSummary) -> UsageSummary {
+        UsageSummary(
+            inputTokens: inputTokens.addingSaturated(other.inputTokens),
+            outputTokens: outputTokens.addingSaturated(other.outputTokens),
+            cacheReadTokens: cacheReadTokens.addingSaturated(other.cacheReadTokens),
+            cacheCreationTokens: cacheCreationTokens.addingSaturated(other.cacheCreationTokens),
+            reasoningTokens: reasoningTokens.addingSaturated(other.reasoningTokens),
+            totalTokens: totalTokens.addingSaturated(other.totalTokens),
+            cost: cost + other.cost,
+            entryCount: entryCount + other.entryCount,
+            modelBreakdown: modelBreakdown.merging(other.modelBreakdown) { $0.merged(with: $1) },
+            projectBreakdown: projectBreakdown.merging(other.projectBreakdown) { $0.merged(with: $1) }
+        )
+    }
 }
 
 /// 按多维度聚合的完整统计结果
