@@ -1083,6 +1083,7 @@ final class DashboardViewController: NSViewController {
         setLocalizedKey(.totalEmptyModels, for: emptyModelLabel)
         emptyModelLabel.font = .systemFont(ofSize: 12)
         emptyModelLabel.textColor = DashboardPalette.secondaryText
+        emptyModelLabel.alignment = .left
 
         let rowsScrollView = makeScrollableRowsView(
             rowsStack: modelRowsStack,
@@ -1090,14 +1091,12 @@ final class DashboardViewController: NSViewController {
             identifier: "DashboardModelRowsScrollView",
             viewportHeight: Self.analysisRowsViewportHeight
         )
-        let stack = NSStackView(views: [rowsScrollView, emptyModelLabel])
-        stack.orientation = .vertical
-        stack.alignment = .width
-        stack.spacing = 8
+        // 空数据状态由 rebuildModelRows 将 emptyModelLabel 直接放入 modelRowsStack 内，
+        // 保持 content 为单一 rowsScrollView，避免额外嵌套 stack 撑高卡片内容导致标题被压缩裁切。
         let panel = makePanel(
             titleKey: .dashboardModelRankTitle,
             subtitleKey: nil,
-            content: stack,
+            content: rowsScrollView,
             minimumHeight: Self.analysisRowsPanelMinimumHeight
         )
         panel.heightAnchor.constraint(equalToConstant: Self.analysisRowsPanelMinimumHeight).isActive = true
@@ -1187,6 +1186,7 @@ final class DashboardViewController: NSViewController {
         titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
         titleLabel.textColor = DashboardPalette.primaryText
         titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
         var headerViews: [NSView] = [titleLabel]
         var trailingAlignmentView: NSView = titleLabel
@@ -1195,6 +1195,7 @@ final class DashboardViewController: NSViewController {
             subtitleLabel.font = .systemFont(ofSize: 12)
             subtitleLabel.textColor = DashboardPalette.secondaryText
             subtitleLabel.lineBreakMode = .byTruncatingTail
+            subtitleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
             headerViews.append(subtitleLabel)
             trailingAlignmentView = subtitleLabel
         }
@@ -1202,6 +1203,7 @@ final class DashboardViewController: NSViewController {
         headerStack.orientation = .vertical
         headerStack.alignment = .leading
         headerStack.spacing = 3
+        headerStack.setContentCompressionResistancePriority(.required, for: .vertical)
 
         let headerView: NSView
         if let trailingHeaderContent {
@@ -2371,7 +2373,14 @@ final class DashboardViewController: NSViewController {
 
     private func rebuildModelRows(_ rows: [TotalStatsModelRow]) {
         clearStack(modelRowsStack)
-        emptyModelLabel.isHidden = !rows.isEmpty
+        if rows.isEmpty {
+            setLocalizedKey(.totalEmptyModels, for: emptyModelLabel)
+            emptyModelLabel.isHidden = false
+            // 无数据时将空状态文案置于 modelRowsStack 顶端，位置与项目消耗等卡片的空状态对齐
+            addFullWidthArrangedSubview(emptyModelLabel, to: modelRowsStack)
+            return
+        }
+        emptyModelLabel.isHidden = true
         let maxTokens = rows.map(\.totalTokens).max() ?? 0
         for (index, row) in rows.enumerated() {
             addFullWidthArrangedSubview(DashboardBarRowView(

@@ -2165,6 +2165,77 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test func dashboardModelRankPanelEmptyStateDisplaysTitleAndAlignsEmptyState() throws {
+        let calendar = utcCalendar()
+        let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
+        var mockStates: [ProviderID: TokenStatsViewModel.ProviderState] = [:]
+        let viewController = DashboardViewController(
+            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            stateProvider: { mockStates },
+            nowProvider: { now },
+            calendar: calendar
+        )
+        viewController.loadViewIfNeeded()
+        viewController.view.frame = NSRect(x: 0, y: 0, width: 1000, height: 800)
+        viewController.view.layoutSubtreeIfNeeded()
+
+        // 1. 空数据状态检查：卡片标题可见且高度正常，空状态文案与项目消耗卡片对齐
+        let modelPanel = try panelTitled("模型消耗排行", root: viewController.view)
+        let titleLabel = try #require(modelPanel.textField(stringValue: "模型消耗排行"))
+        #expect(titleLabel.frame.height > 0)
+
+        let projectPanel = try panelTitled("项目消耗", root: viewController.view)
+        let projectTitleLabel = try #require(projectPanel.textField(stringValue: "项目消耗"))
+        #expect(projectTitleLabel.frame.height > 0)
+
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: viewController.view)
+        let projectTitleFrame = projectTitleLabel.convert(projectTitleLabel.bounds, to: viewController.view)
+        #expect(abs(titleFrame.minY - projectTitleFrame.minY) < 1.0)
+
+        let emptyModelLabel = try #require(modelPanel.textField(stringValue: "暂无模型数据"))
+        let emptyProjectLabel = try #require(projectPanel.textField(stringValue: "暂无项目数据"))
+
+        let emptyModelFrame = emptyModelLabel.convert(emptyModelLabel.bounds, to: viewController.view)
+        let emptyProjectFrame = emptyProjectLabel.convert(emptyProjectLabel.bounds, to: viewController.view)
+        #expect(abs(emptyModelFrame.minY - emptyProjectFrame.minY) < 1.0)
+        #expect(abs(modelPanel.frame.height - 232) < 0.5)
+
+        // 2. 状态切换测试：空数据 -> 有数据 -> 再次切回空数据
+        mockStates = [
+            .claude: .init(
+                stats: UsageAggregator().aggregate([
+                    makeDashboardEntry(
+                        sessionID: "s1",
+                        date: dateTime(2026, 6, 20, hour: 9, minute: 0, calendar: calendar),
+                        model: "claude-3-7-sonnet",
+                        input: 500,
+                        cwd: "/work/demo"
+                    )
+                ]),
+                isLoading: false,
+                errorMessage: nil,
+                needsAuthorization: false
+            )
+        ]
+        NotificationCenter.default.post(name: .providerStateDidChange, object: nil)
+        viewController.view.layoutSubtreeIfNeeded()
+        #expect(modelPanel.textField(stringValue: "暂无模型数据") == nil)
+        #expect(modelPanel.textField(stringValue: "claude-3-7-sonnet") != nil)
+
+        // 再次切回空数据，确认标题与空状态布局恢复正常
+        mockStates = [:]
+        NotificationCenter.default.post(name: .providerStateDidChange, object: nil)
+        viewController.view.layoutSubtreeIfNeeded()
+        let emptyModelAfter = try #require(modelPanel.textField(stringValue: "暂无模型数据"))
+        let titleAfter = try #require(modelPanel.textField(stringValue: "模型消耗排行"))
+        #expect(titleAfter.frame.height > 0)
+        let emptyModelAfterFrame = emptyModelAfter.convert(emptyModelAfter.bounds, to: viewController.view)
+        let emptyProjectAfter = try #require(projectPanel.textField(stringValue: "暂无项目数据"))
+        let emptyProjectAfterFrame = emptyProjectAfter.convert(emptyProjectAfter.bounds, to: viewController.view)
+        #expect(abs(emptyModelAfterFrame.minY - emptyProjectAfterFrame.minY) < 1.0)
+    }
+
+    @MainActor
     @Test func dashboardProjectPanelMergesProjectsWithSameDisplayName() throws {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
