@@ -308,6 +308,13 @@ final class ScreenshotCompositor {
             return rep
         }
 
+        // 若原图不存在，尝试直接从编译产物中自动渲染最新原图
+        if exportPopoverSnapshotsFromBinary(),
+           let data = try? Data(contentsOf: rawURL),
+           let rep = NSBitmapImageRep(data: data) {
+            return rep
+        }
+
         let langSuffix = (locale == "zh-Hans") ? "zh" : "en"
         let fallbackURL = rootDir.appendingPathComponent("snapshots/status_popview-\(langSuffix).png")
         if let data = try? Data(contentsOf: fallbackURL), let rep = NSBitmapImageRep(data: data) {
@@ -315,6 +322,60 @@ final class ScreenshotCompositor {
         }
 
         return nil
+    }
+
+    private func exportPopoverSnapshotsFromBinary() -> Bool {
+        let candidatePaths = [
+            rootDir.appendingPathComponent(".build/DerivedData/Build/Products/Debug/AI Token Watch.app/Contents/MacOS/AI Token Watch"),
+            rootDir.appendingPathComponent("build/Debug/AI Token Watch.app/Contents/MacOS/AI Token Watch")
+        ]
+        guard let binaryURL = candidatePaths.first(where: { FileManager.default.fileExists(atPath: $0.path) }) else {
+            return false
+        }
+
+        let process = Process()
+        process.executableURL = binaryURL
+        process.arguments = ["--export-popover-snapshots"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0,
+                  let output = String(data: data, encoding: .utf8) else {
+                return false
+            }
+
+            let lines = output.components(separatedBy: .newlines)
+            var currentLocale: String?
+            var base64Lines: [String] = []
+
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("TOKENWATCH_SNAPSHOT_START:") {
+                    currentLocale = String(trimmed.dropFirst("TOKENWATCH_SNAPSHOT_START:".count))
+                    base64Lines.removeAll()
+                } else if trimmed.hasPrefix("TOKENWATCH_SNAPSHOT_END:") {
+                    if let locale = currentLocale,
+                       let pngData = Data(base64Encoded: base64Lines.joined()) {
+                        let targetDir = rootDir.appendingPathComponent("snapshots/raw/\(locale)")
+                        try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
+                        let fileURL = targetDir.appendingPathComponent("01-menu-bar-popover.png")
+                        try? pngData.write(to: fileURL)
+                        print("  ✓ 自动从 App 二进制生成了 \(locale) 的 01-menu-bar-popover.png")
+                    }
+                    currentLocale = nil
+                } else if currentLocale != nil {
+                    base64Lines.append(trimmed)
+                }
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 }
 

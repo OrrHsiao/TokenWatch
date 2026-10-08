@@ -12,6 +12,7 @@ import os.log
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let openMainWindowOnLaunchKey = "TokenWatch.openMainWindowOnLaunch"
+    private static let showPopoverForScreenshotsKey = "TokenWatch.showPopoverForScreenshots"
     private static let widgetPurchaseReviewModeKey = "TokenWatch.widgetPurchaseReviewMode"
     private static let purchaseLogger = Logger(
         subsystem: "com.xiaoao.TokenWatch",
@@ -34,6 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
     private var mainMenuController: AppMainMenuController?
     private var mainWindowController: NSWindowController?
+    private var popoverScreenshotWindow: NSWindow?
 
     private let languageSettings: AppLanguageSettings
     private let externalURLOpener: (URL) -> Bool
@@ -72,6 +74,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        if CommandLine.arguments.contains("--export-popover-snapshots") {
+            exportPopoverSnapshotsAndExit()
+            return
+        }
+
+        // 避免非 demo 启动遗留持久化测试开关污染单元测试环境
+        if !CommandLine.arguments.contains(DemoStatsFixture.argumentKey)
+            && !CommandLine.arguments.contains("--demo-mode")
+            && !UserDefaults.standard.bool(forKey: "TokenWatch.useDemoDataForced") {
+            UserDefaults.standard.removeObject(forKey: DemoStatsFixture.userDefaultsKey)
+        }
+
         // StoreKit 建议在应用启动时建立长期 Transaction.updates 监听，避免遗漏延迟交易。
         widgetPurchaseController?.start()
 
@@ -83,6 +97,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if Self.shouldOpenMainWindowOnLaunch() {
             _ = presentMainWindow()
+        }
+
+        if UserDefaults.standard.bool(forKey: Self.showPopoverForScreenshotsKey) {
+            presentPopoverScreenshotWindow()
         }
 
         // 在启动加载前快照首次安装条件，避免失效 bookmark 清理后被误判为新安装。
@@ -292,6 +310,135 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// 在 UI 测试或截图自动化时，展示承载状态栏 Popover 的测试窗口。
+    private func presentPopoverScreenshotWindow() {
+        let contentSize = StatusPopoverViewController.contentSize
+        let popoverVC = StatusPopoverViewController(
+            viewModel: viewModel,
+            languageSettings: languageSettings
+        )
+        let window = StatusPopoverScreenshotWindow(
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.identifier = NSUserInterfaceItemIdentifier("StatusPopoverWindow")
+        window.setAccessibilityIdentifier("StatusPopoverWindow")
+        window.title = "StatusPopoverWindow"
+        window.isOpaque = false
+        window.backgroundColor = DashboardPalette.panelBackground
+        window.hasShadow = false
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.contentViewController = popoverVC
+        window.setContentSize(contentSize)
+        window.center()
+        window.orderFrontRegardless()
+        self.popoverScreenshotWindow = window
+    }
+
+    /// 命令行快捷模式：导出状态栏 Popover 最新 2x 截图至标准输出并退出进程。
+    private func exportPopoverSnapshotsAndExit() {
+        UserDefaults.standard.set(true, forKey: DemoStatsFixture.userDefaultsKey)
+
+        let targets: [(AppLanguage, String)] = [
+            (.zhHans, "zh-Hans"),
+            (.en, "en-US")
+        ]
+
+        for (language, localeDir) in targets {
+            let suiteName = "TokenWatchPopoverExport.\(localeDir)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            defaults.removePersistentDomain(forName: suiteName)
+            let langSettings = AppLanguageSettings(
+                defaults: defaults,
+                preferredLanguagesProvider: { [language.rawValue] }
+            )
+            langSettings.selectedPreference = .language(language)
+
+            let testViewModel = TokenStatsViewModel(languageSettings: langSettings)
+            Task { @MainActor in
+                await testViewModel.loadAllStats()
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+
+            let controller = StatusPopoverViewController(
+                viewModel: testViewModel,
+                languageSettings: langSettings
+            )
+
+            let contentSize = StatusPopoverViewController.contentSize
+            let window = NSWindow(
+                contentRect: NSRect(origin: .zero, size: contentSize),
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false
+            )
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = DashboardPalette.panelBackground
+            window.isOpaque = true
+            window.contentViewController = controller
+            window.setContentSize(contentSize)
+
+            controller.loadViewIfNeeded()
+            controller.view.layoutSubtreeIfNeeded()
+
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            controller.view.layoutSubtreeIfNeeded()
+
+            let scale: CGFloat = 2.0
+            let pixelWidth = Int(contentSize.width * scale)   // 740
+            let pixelHeight = Int(contentSize.height * scale) // 710
+
+            guard let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: pixelWidth,
+                pixelsHigh: pixelHeight,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: pixelWidth * 4,
+                bitsPerPixel: 32
+            ) else {
+                continue
+            }
+            rep.size = contentSize
+
+            controller.view.cacheDisplay(in: controller.view.bounds, to: rep)
+
+            guard let pngData = rep.representation(using: .png, properties: [:]) else {
+                continue
+            }
+
+            let base64 = pngData.base64EncodedString()
+            print("TOKENWATCH_SNAPSHOT_START:\(localeDir)")
+            print(base64)
+            print("TOKENWATCH_SNAPSHOT_END:\(localeDir)")
+            fflush(stdout)
+
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        UserDefaults.standard.removeObject(forKey: DemoStatsFixture.userDefaultsKey)
+        exit(0)
+    }
+
+}
+
+@MainActor
+private final class StatusPopoverScreenshotWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "w" {
+            orderOut(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 }
 
 /// 将持久化的启动偏好转换为窗口展示决策；未保存过偏好时保持默认打开。
@@ -322,6 +469,8 @@ enum MainWindowFactory {
             widgetPurchaseController: widgetPurchaseController
         )
         window.title = "TokenWatch"
+        window.identifier = NSUserInterfaceItemIdentifier("TokenWatchMainWindow")
+        window.setAccessibilityIdentifier("TokenWatchMainWindow")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         if #available(macOS 11.0, *) {
