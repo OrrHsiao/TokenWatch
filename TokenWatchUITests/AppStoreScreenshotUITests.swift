@@ -43,21 +43,31 @@ final class AppStoreScreenshotUITests: XCTestCase {
             skipInitialDirectoryAuthorizationGuide: true,
             systemLanguage: systemLanguage,
             widgetPurchaseReviewMode: "unlocked",
-            useDemoData: true
+            useDemoData: true,
+            showPopoverForScreenshots: true
         )
-
-        let window = app.windows.firstMatch
-        XCTAssertTrue(window.waitForExistence(timeout: 10))
 
         let targetDir = outputDirectory(for: localeDir)
         try FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
+
+        // 0. Status Popover
+        let popoverWindow = app.windows["StatusPopoverWindow"]
+        if popoverWindow.waitForExistence(timeout: 8) {
+            Thread.sleep(forTimeInterval: 0.8)
+            try saveWindowScreenshot(popoverWindow, named: "01-menu-bar-popover.png", in: targetDir)
+            popoverWindow.typeKey("w", modifierFlags: .command)
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+
+        let mainWindow = app.windows["TokenWatchMainWindow"].exists ? app.windows["TokenWatchMainWindow"] : app.windows.firstMatch
+        XCTAssertTrue(mainWindow.waitForExistence(timeout: 10))
 
         // 1. Overview Tab
         let overviewButton = app.buttons["DashboardNav.overview"]
         if overviewButton.waitForExistence(timeout: 5) {
             overviewButton.click()
             Thread.sleep(forTimeInterval: 0.5)
-            try saveWindowScreenshot(window, named: "02-overview.png", in: targetDir)
+            try saveWindowScreenshot(mainWindow, named: "02-overview.png", in: targetDir)
         }
 
         // 2. Sessions Tab
@@ -65,7 +75,7 @@ final class AppStoreScreenshotUITests: XCTestCase {
         if sessionsButton.waitForExistence(timeout: 5) {
             sessionsButton.click()
             Thread.sleep(forTimeInterval: 0.5)
-            try saveWindowScreenshot(window, named: "03-sessions.png", in: targetDir)
+            try saveWindowScreenshot(mainWindow, named: "03-sessions.png", in: targetDir)
         }
 
         // 3. Widgets Tab
@@ -73,7 +83,7 @@ final class AppStoreScreenshotUITests: XCTestCase {
         if widgetsButton.waitForExistence(timeout: 5) {
             widgetsButton.click()
             Thread.sleep(forTimeInterval: 0.5)
-            try saveWindowScreenshot(window, named: "04-widgets.png", in: targetDir)
+            try saveWindowScreenshot(mainWindow, named: "04-widgets.png", in: targetDir)
         }
     }
 

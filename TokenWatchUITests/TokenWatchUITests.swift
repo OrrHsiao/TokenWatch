@@ -247,7 +247,8 @@ extension XCUIApplication {
         skipInitialDirectoryAuthorizationGuide: Bool = true,
         systemLanguage: String? = nil,
         widgetPurchaseReviewMode: String? = nil,
-        useDemoData: Bool = false
+        useDemoData: Bool = false,
+        showPopoverForScreenshots: Bool = false
     ) {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
@@ -268,6 +269,11 @@ extension XCUIApplication {
         if useDemoData {
             launchArguments += [
                 "-TokenWatch.useDemoData", "YES",
+            ]
+        }
+        if showPopoverForScreenshots {
+            launchArguments += [
+                "-TokenWatch.showPopoverForScreenshots", "YES",
             ]
         }
         if skipInitialDirectoryAuthorizationGuide {
