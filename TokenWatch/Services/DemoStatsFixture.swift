@@ -100,7 +100,16 @@ enum DemoStatsFixture {
             totalCost: totalCost,
             now: now,
             calendar: calendar,
-            weight: 0.66
+            weight: 0.66,
+            modelWeights: [
+                "claude-3-5-sonnet-20241022": 24.1 / 28.4,
+                "claude-3-5-haiku-20241022": 4.3 / 28.4,
+            ],
+            projectWeights: [
+                "TokenWatch": 16.2 / 28.4,
+                "CoreEngine": 8.4 / 28.4,
+                "DevTools": 3.8 / 28.4,
+            ]
         )
 
         let overall = UsageSummary(
@@ -210,7 +219,14 @@ enum DemoStatsFixture {
             totalCost: totalCost,
             now: now,
             calendar: calendar,
-            weight: 0.23
+            weight: 0.23,
+            modelWeights: [
+                "gpt-4o": 1.0,
+            ],
+            projectWeights: [
+                "TokenWatch": 6.2 / 9.6,
+                "AgentFlow": 3.4 / 9.6,
+            ]
         )
 
         let overall = UsageSummary(
@@ -299,7 +315,13 @@ enum DemoStatsFixture {
             totalCost: totalCost,
             now: now,
             calendar: calendar,
-            weight: 0.11
+            weight: 0.11,
+            modelWeights: [
+                "deepseek-coder": 1.0,
+            ],
+            projectWeights: [
+                "CoreEngine": 1.0,
+            ]
         )
 
         let overall = UsageSummary(
@@ -358,7 +380,9 @@ enum DemoStatsFixture {
         totalCost: Double,
         now: Date,
         calendar: Calendar,
-        weight: Double
+        weight: Double,
+        modelWeights: [String: Double] = [:],
+        projectWeights: [String: Double] = [:]
     ) -> ([String: UsageSummary], [String: UsageSummary], [String: UsageSummary]) {
         var byDay: [String: UsageSummary] = [:]
         var byHour: [String: UsageSummary] = [:]
@@ -388,11 +412,37 @@ enum DemoStatsFixture {
             let baseTokens = isWeekend ? 60_000 : 380_000
             let dayTokens = Int(Double(baseTokens) * cycle * weight * 1.5)
             let dayCost = (Double(dayTokens) / Double(totalTokens)) * totalCost * 1.2
+            let effectiveTokens = max(dayTokens, 15_000)
+            let entries = max(effectiveTokens / 40_000, 1)
+
+            var dayModelBreakdown: [String: UsageSummary] = [:]
+            for (model, ratio) in modelWeights {
+                let mTokens = Int(Double(effectiveTokens) * ratio)
+                let mCost = dayCost * ratio
+                dayModelBreakdown[model] = makeSummary(
+                    total: mTokens,
+                    cost: mCost,
+                    entries: max(1, Int(Double(entries) * ratio))
+                )
+            }
+
+            var dayProjectBreakdown: [String: UsageSummary] = [:]
+            for (project, ratio) in projectWeights {
+                let pTokens = Int(Double(effectiveTokens) * ratio)
+                let pCost = dayCost * ratio
+                dayProjectBreakdown[project] = makeSummary(
+                    total: pTokens,
+                    cost: pCost,
+                    entries: max(1, Int(Double(entries) * ratio))
+                )
+            }
 
             byDay[dayKey] = makeSummary(
-                total: max(dayTokens, 15_000),
+                total: effectiveTokens,
                 cost: dayCost,
-                entries: max(dayTokens / 40_000, 1)
+                entries: entries,
+                modelBreakdown: dayModelBreakdown,
+                projectBreakdown: dayProjectBreakdown
             )
 
             // 按月聚合
@@ -419,10 +469,36 @@ enum DemoStatsFixture {
 
             let hourTokens = Int(Double(totalTokens) / 600.0 * hourFactor * weight)
             let hourCost = (Double(hourTokens) / Double(totalTokens)) * totalCost
+            let entries = max(hourTokens / 35_000, 1)
+
+            var hourModelBreakdown: [String: UsageSummary] = [:]
+            for (model, ratio) in modelWeights {
+                let mTokens = Int(Double(hourTokens) * ratio)
+                let mCost = hourCost * ratio
+                hourModelBreakdown[model] = makeSummary(
+                    total: mTokens,
+                    cost: mCost,
+                    entries: max(1, Int(Double(entries) * ratio))
+                )
+            }
+
+            var hourProjectBreakdown: [String: UsageSummary] = [:]
+            for (project, ratio) in projectWeights {
+                let pTokens = Int(Double(hourTokens) * ratio)
+                let pCost = hourCost * ratio
+                hourProjectBreakdown[project] = makeSummary(
+                    total: pTokens,
+                    cost: pCost,
+                    entries: max(1, Int(Double(entries) * ratio))
+                )
+            }
+
             byHour[hourKey] = makeSummary(
                 total: hourTokens,
                 cost: hourCost,
-                entries: max(hourTokens / 35_000, 1)
+                entries: entries,
+                modelBreakdown: hourModelBreakdown,
+                projectBreakdown: hourProjectBreakdown
             )
         }
 
@@ -439,8 +515,8 @@ enum DemoStatsFixture {
         UsageSummary(
             inputTokens: total * 3 / 4,
             outputTokens: total / 4,
-            cacheReadTokens: total / 3,
-            cacheCreationTokens: 0,
+            cacheReadTokens: total * 2 / 5,
+            cacheCreationTokens: total / 10,
             reasoningTokens: 0,
             totalTokens: total,
             cost: cost,
