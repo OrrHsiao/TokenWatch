@@ -55,6 +55,24 @@ rbenv exec bundle exec fastlane mac upload_app_store_screenshots app_version:1.2
 
 只上传商店截图，不修改元数据或提交审核
 
+### mac generate_app_store_screenshots
+
+```sh
+rbenv exec bundle exec fastlane mac generate_app_store_screenshots
+# 或同时跑 UI 测试抓取最新界面：
+rbenv exec bundle exec fastlane mac generate_app_store_screenshots run_ui_tests:true
+```
+
+自动重新装裱双语 App Store 宣传图并执行本地规范校验
+
+### mac update_and_upload_screenshots
+
+```sh
+rbenv exec bundle exec fastlane mac update_and_upload_screenshots app_version:1.2.0
+```
+
+一键自动化：重新生成商店宣传图，并通过审核前校验后同步上传至 App Store Connect
+
 ### mac submit_xcode_cloud_build
 
 ```sh
