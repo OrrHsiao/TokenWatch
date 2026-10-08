@@ -279,6 +279,28 @@ platform :mac do
     )
   end
 
+  desc "自动化重新装裱所有 App Store 商店截图并进行本地合规校验"
+  lane :generate_app_store_screenshots do |options|
+    if options[:run_ui_tests].to_s == "true"
+      UI.message("正在运行 UI 截屏自动化测试抓取最新原图...")
+      sh("xcodebuild -project #{PROJECT_PATH} -scheme TokenWatch -destination 'platform=macOS,arch=arm64' -only-testing:TokenWatchUITests/AppStoreScreenshotUITests -derivedDataPath .build/DerivedData test")
+    end
+
+    UI.message("正在自动装裱 App Store 宣传图...")
+    compose_script = File.expand_path("../scripts/compose_screenshots.swift", __dir__)
+    sh("swift #{compose_script}")
+
+    validate_screenshots!
+    UI.success("App Store 商店截图已全部就绪并通过本地规范校验！")
+  end
+
+  desc "一键重新生成并上传商店截图到 App Store Connect"
+  lane :update_and_upload_screenshots do |options|
+    version = required_option!(options, :app_version)
+    generate_app_store_screenshots(options)
+    upload_app_store_screenshots(app_version: version)
+  end
+
   desc "等待指定 Xcode Cloud 构建，上传资料并提交 App Review"
   lane :submit_xcode_cloud_build do |options|
     version = required_option!(options, :app_version)
