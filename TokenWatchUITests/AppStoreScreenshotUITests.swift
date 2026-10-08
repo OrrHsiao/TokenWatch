@@ -93,9 +93,7 @@ final class AppStoreScreenshotUITests: XCTestCase {
         if let customPath = ProcessInfo.processInfo.environment["TOKENWATCH_SCREENSHOT_DIR"] {
             return URL(fileURLWithPath: customPath).appendingPathComponent(locale)
         }
-        let projectRoot = URL(fileURLWithPath: #file)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        return projectRoot.appendingPathComponent("snapshots/raw/\(locale)")
+        let tempBase = FileManager.default.temporaryDirectory.appendingPathComponent("tokenwatch_screenshots/raw")
+        return tempBase.appendingPathComponent(locale)
     }
 }

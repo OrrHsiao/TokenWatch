@@ -268,6 +268,16 @@ final class ScreenshotCompositor {
             return rep
         }
 
+        // 检查 UI 测试 Runner 容器内生成的最新原图并自动同步
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let runnerTmpURL = homeDir
+            .appendingPathComponent("Library/Containers/com.xiaoao.TokenWatchUITests.xctrunner/Data/tmp/tokenwatch_screenshots/raw/\(locale)/\(screenID).png")
+        if let data = try? Data(contentsOf: runnerTmpURL), let rep = NSBitmapImageRep(data: data) {
+            try? FileManager.default.createDirectory(at: rawDir, withIntermediateDirectories: true)
+            try? data.write(to: rawURL)
+            return rep
+        }
+
         // 回退查找旧版/预置的原图命名
         let langSuffix = (locale == "zh-Hans") ? "zh" : "en"
         let fallbackCandidates: [String]
