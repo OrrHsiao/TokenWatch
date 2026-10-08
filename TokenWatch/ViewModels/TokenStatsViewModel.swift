@@ -179,6 +179,11 @@ final class TokenStatsViewModel: Sendable {
     /// 显式标 `@MainActor [weak self]` 时会崩(编译器内部错误);
     /// 改为 `await self.loadStats(...)` 让 main actor 自动 hop,行为等价且 self 由 AppDelegate 持有不会循环引用。
     func loadAllStats(mode: LoadMode = .interactive) async {
+        if DemoStatsFixture.isDemoModeEnabled {
+            loadDemoStats()
+            return
+        }
+
         guard !isLoadingAllStats else {
             logger.info("All-provider refresh already in progress; skipping duplicate request")
             return
@@ -212,6 +217,20 @@ final class TokenStatsViewModel: Sendable {
             needsWidgetRepublish = false
             await publishCurrentWidgetSnapshot()
         } while needsWidgetRepublish
+    }
+
+    /// 载入用于 App Store 截图与 UI 测试的确定性 Demo 状态。
+    private func loadDemoStats() {
+        let fixture = DemoStatsFixture.makeDemoStates(now: nowProvider())
+        for (providerID, state) in fixture {
+            states[providerID] = state
+            notifyStateChange(providerID)
+        }
+        hasCompletedInitialLoad = true
+        isInitialLoadInProgress = false
+        Task { @MainActor [weak self] in
+            await self?.publishCurrentWidgetSnapshot()
+        }
     }
 
     /// 发布完整内存状态；由全量刷新完成、语言变化或预算变化路径调用。

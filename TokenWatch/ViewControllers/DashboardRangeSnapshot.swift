@@ -639,20 +639,3 @@ private enum DashboardProjectRows {
         return components[codexIndex + 3]
     }
 }
-
-private extension UsageSummary {
-    func merged(with other: UsageSummary) -> UsageSummary {
-        UsageSummary(
-            inputTokens: inputTokens.addingSaturated(other.inputTokens),
-            outputTokens: outputTokens.addingSaturated(other.outputTokens),
-            cacheReadTokens: cacheReadTokens.addingSaturated(other.cacheReadTokens),
-            cacheCreationTokens: cacheCreationTokens.addingSaturated(other.cacheCreationTokens),
-            reasoningTokens: reasoningTokens.addingSaturated(other.reasoningTokens),
-            totalTokens: totalTokens.addingSaturated(other.totalTokens),
-            cost: cost + other.cost,
-            entryCount: entryCount + other.entryCount,
-            modelBreakdown: modelBreakdown.merging(other.modelBreakdown) { $0.merged(with: $1) },
-            projectBreakdown: projectBreakdown.merging(other.projectBreakdown) { $0.merged(with: $1) }
-        )
-    }
-}
