@@ -246,7 +246,8 @@ extension XCUIApplication {
         languagePreference: String = "zh-CN",
         skipInitialDirectoryAuthorizationGuide: Bool = true,
         systemLanguage: String? = nil,
-        widgetPurchaseReviewMode: String? = nil
+        widgetPurchaseReviewMode: String? = nil,
+        useDemoData: Bool = false
     ) {
         let existingApp = XCUIApplication(bundleIdentifier: "com.xiaoao.tokenwatch")
         if existingApp.state != .notRunning {
@@ -264,6 +265,11 @@ extension XCUIApplication {
             "-TokenWatch.languagePreference", languagePreference,
             "-TokenWatch.openMainWindowOnLaunch", "YES",
         ]
+        if useDemoData {
+            launchArguments += [
+                "-TokenWatch.useDemoData", "YES",
+            ]
+        }
         if skipInitialDirectoryAuthorizationGuide {
             launchArguments += [
                 "-TokenWatch.didPresentInitialDirectoryAuthorizationGuide", "YES",

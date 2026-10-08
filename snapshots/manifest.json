@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 2880,
+    "height": 1800,
+    "colorSpace": "sRGB",
+    "alpha": false
+  },
+  "locales": ["zh-Hans", "en-US"],
+  "screens": [
+    {
+      "id": "01-menu-bar-popover",
+      "type": "popover",
+      "titles": {
+        "zh-Hans": {
+          "title": "在菜单栏查看实时用量",
+          "subtitle": "今日、本周和本月消耗打开即看"
+        },
+        "en-US": {
+          "title": "Check Usage from the Menu Bar",
+          "subtitle": "See today, this week, and this month at a glance"
+        }
+      }
+    },
+    {
+      "id": "02-overview",
+      "type": "window",
+      "titles": {
+        "zh-Hans": {
+          "title": "总览 Token、费用和趋势",
+          "subtitle": "把本地 AI 编程记录汇总成清晰统计"
+        },
+        "en-US": {
+          "title": "Tokens, Cost, and Trends",
+          "subtitle": "Turn local AI coding records into clear stats"
+        }
+      }
+    },
+    {
+      "id": "03-sessions",
+      "type": "window",
+      "titles": {
+        "zh-Hans": {
+          "title": "按会话查看消耗明细",
+          "subtitle": "快速复盘每次会话的模型、成本和记录数"
+        },
+        "en-US": {
+          "title": "Review Usage by Session",
+          "subtitle": "Track each session's model, cost, and records"
+        }
+      }
+    },
+    {
+      "id": "04-widgets",
+      "type": "window",
+      "titles": {
+        "zh-Hans": {
+          "title": "AI 用量，尽在桌面",
+          "subtitle": "7 款小组件，让关键数据一目了然"
+        },
+        "en-US": {
+          "title": "AI Usage on Your Desktop",
+          "subtitle": "Choose from 7 widgets for at-a-glance insights"
+        }
+      }
+    }
+  ]
+}
