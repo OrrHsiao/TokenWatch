@@ -1,4 +1,5 @@
-- Adds Token usage analytics and project attribution support for Antigravity.
-- Adds session output Token speed (TPS) and recent burn rate analytics.
-- Adapts main window with immersive frosted glass and native liquid glass styling, optimizing layout for zero scroll by default.
-- Refines desktop widget and menu bar popover visual styles, and adds Command+W shortcut to close the window.
+- Adds local usage tracking and automated log parsing for DeepSeek Harness.
+- Refactors data source and global agent filtering with dynamic Cache Write and Reasoning token capabilities.
+- Fixes model consumption ranking layout for empty states and date range switching.
+- Refines status bar popover visual presentation with centered icon and text alignment.
+- Updates latest App Store showcase screenshots.
