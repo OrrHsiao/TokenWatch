@@ -300,7 +300,8 @@ final class ScreenshotCompositor {
                 ]
             ))
 
-            let textRect = NSRect(x: tokenX + 44, y: sbY + (sbHeight - 32) / 2 - 2, width: 72, height: 36)
+            // 垂直居中微调：补偿多行文本向上偏移的 3.5px，使文本中心与 SF Symbol 图标中心严格水平对齐
+            let textRect = NSRect(x: tokenX + 44, y: sbY + (sbHeight - 32) / 2 - 5.5, width: 72, height: 36)
             attrStr.draw(in: textRect)
 
             NSGraphicsContext.restoreGraphicsState()
