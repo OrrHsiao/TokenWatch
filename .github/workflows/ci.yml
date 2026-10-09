@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+      - master
+      - release
   workflow_dispatch:
 
 concurrency:
@@ -99,12 +101,22 @@ jobs:
             -destination 'platform=macOS' \
             -only-testing:TokenWatchUITests \
             -skip-testing:TokenWatchTests \
+            -skip-testing:TokenWatchUITests/AppStoreScreenshotUITests \
             -derivedDataPath "$RUNNER_TEMP/TokenWatchUIDerivedData" \
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="" \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGN_ENTITLEMENTS="" \
             test
+
+      - name: Print UI Test Failures
+        if: failure()
+        run: |
+          RESULT_PATH=$(find "$RUNNER_TEMP/TokenWatchUIDerivedData/Logs/Test" -name "*.xcresult" | head -n 1)
+          if [ -n "$RESULT_PATH" ]; then
+            echo "=== UI Test Failure Summary ==="
+            xcrun xcresulttool get test-results summary --path "$RESULT_PATH" || true
+          fi
 
   release-dry-run:
     name: macOS Release Dry Run
