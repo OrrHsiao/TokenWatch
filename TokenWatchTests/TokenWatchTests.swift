@@ -2169,11 +2169,13 @@ struct TokenWatchTests {
         let calendar = utcCalendar()
         let now = dateTime(2026, 6, 20, hour: 14, minute: 30, calendar: calendar)
         var mockStates: [ProviderID: TokenStatsViewModel.ProviderState] = [:]
+        let languageSettings = zhHansLanguageSettings()
         let viewController = DashboardViewController(
-            settingsViewController: SettingsViewController(languageSettings: zhHansLanguageSettings()),
+            settingsViewController: SettingsViewController(languageSettings: languageSettings),
             stateProvider: { mockStates },
             nowProvider: { now },
-            calendar: calendar
+            calendar: calendar,
+            languageSettings: languageSettings
         )
         viewController.loadViewIfNeeded()
         viewController.view.frame = NSRect(x: 0, y: 0, width: 1000, height: 800)
