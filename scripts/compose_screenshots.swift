@@ -209,22 +209,21 @@ final class ScreenshotCompositor {
         context.restoreGState()
     }
 
+    private var didExportPopoverSnapshots = false
+
     private func renderPopoverContent(
         locale: String,
         in context: CGContext,
         canvasWidth: Int,
         canvasHeight: Int
     ) throws {
-        let statusBarFile = rootDir.appendingPathComponent("snapshots/status_bar.png")
-        if let sbData = try? Data(contentsOf: statusBarFile),
-           let sbRep = NSBitmapImageRep(data: sbData),
-           let sbCGImage = sbRep.cgImage {
-            let sbHeight: CGFloat = 60
-            let sbY = CGFloat(canvasHeight) - 450 - sbHeight
-            let sbX = (CGFloat(canvasWidth) - CGFloat(sbRep.pixelsWide)) / 2
-            let sbRect = CGRect(x: sbX, y: sbY, width: CGFloat(sbRep.pixelsWide), height: sbHeight)
-            context.draw(sbCGImage, in: sbRect)
-        }
+        let sbHeight: CGFloat = 60
+        let sbY = CGFloat(canvasHeight) - 450 - sbHeight
+
+        // 1. 绘制状态栏背景 (2880 全宽纯黑 macOS 原生状态栏底色)
+        let fullSBRect = CGRect(x: 0, y: sbY, width: CGFloat(canvasWidth), height: sbHeight)
+        context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1.0))
+        context.fill(fullSBRect)
 
         guard let popoverRep = findPopoverImage(locale: locale),
               let popoverCGImage = popoverRep.cgImage else {
@@ -238,6 +237,82 @@ final class ScreenshotCompositor {
         let popY = CGFloat(canvasHeight) - 510 - popHeight
         let popRect = CGRect(x: popX, y: popY, width: popWidth, height: popHeight)
 
+        let statusBarFile = rootDir.appendingPathComponent("snapshots/status_bar.png")
+        if let sbData = try? Data(contentsOf: statusBarFile),
+           let sbRep = NSBitmapImageRep(data: sbData),
+           let sbCGImage = sbRep.cgImage {
+
+            // 2. 左侧：macOS 经典苹果图标 (从 status_bar.png 提取 x: 35..85)
+            if let appleCrop = sbCGImage.cropping(to: CGRect(x: 35, y: 0, width: 50, height: 60)) {
+                let appleRect = CGRect(x: 40, y: sbY, width: 50, height: sbHeight)
+                context.draw(appleCrop, in: appleRect)
+            }
+
+            // 3. 右侧：系统常驻控制图标 (Wi-Fi、控制中心、时间等，从 status_bar.png 提取 x: 3290..3810)
+            let sysWidth: CGFloat = 520
+            if let sysCrop = sbCGImage.cropping(to: CGRect(x: 3290, y: 0, width: Int(sysWidth), height: 60)) {
+                let sysX = CGFloat(canvasWidth) - sysWidth - 40
+                let sysRect = CGRect(x: sysX, y: sbY, width: sysWidth, height: sbHeight)
+                context.draw(sysCrop, in: sysRect)
+            }
+
+            // 4. 正对 Popover 视图上方：TokenWatch 状态栏项目 (仪表盘图标 + 342.0k Tokens，与下方面板数据精确一致)
+            let tokenWidth: CGFloat = 144
+            let tokenX = popRect.midX - tokenWidth / 2
+
+            // 绘制轻微的半透明圆角矩形，模拟该状态项被点击激活/展开的 macOS 原生外观
+            let highlightRect = CGRect(x: tokenX, y: sbY + 8, width: tokenWidth, height: sbHeight - 16)
+            let highlightPath = CGPath(roundedRect: highlightRect, cornerWidth: 6, cornerHeight: 6, transform: nil)
+            context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.16))
+            context.addPath(highlightPath)
+            context.fillPath()
+
+            NSGraphicsContext.saveGraphicsState()
+            let nsContext = NSGraphicsContext(cgContext: context, flipped: false)
+            NSGraphicsContext.current = nsContext
+
+            // 绘制仪表盘 SF Symbol
+            let config = NSImage.SymbolConfiguration(pointSize: 18, weight: .regular)
+            if let sym = NSImage(systemSymbolName: "gauge.with.dots.needle.33percent", accessibilityDescription: nil)?.withSymbolConfiguration(config) {
+                let iconRect = NSRect(x: tokenX + 12, y: sbY + (sbHeight - 36) / 2, width: 36, height: 36)
+                sym.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
+            }
+
+            // 绘制两行文本 (342.0k / Tokens)
+            let primaryParagraph = NSMutableParagraphStyle()
+            primaryParagraph.alignment = .left
+            primaryParagraph.maximumLineHeight = 18
+            primaryParagraph.minimumLineHeight = 18
+
+            let secondaryParagraph = NSMutableParagraphStyle()
+            secondaryParagraph.alignment = .left
+            secondaryParagraph.maximumLineHeight = 14
+            secondaryParagraph.minimumLineHeight = 14
+
+            let attrStr = NSMutableAttributedString(
+                string: "342.0k\n",
+                attributes: [
+                    .font: NSFont.boldSystemFont(ofSize: 18),
+                    .foregroundColor: NSColor.white,
+                    .paragraphStyle: primaryParagraph
+                ]
+            )
+            attrStr.append(NSAttributedString(
+                string: "Tokens",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 14),
+                    .foregroundColor: NSColor(white: 0.9, alpha: 1.0),
+                    .paragraphStyle: secondaryParagraph
+                ]
+            ))
+
+            let textRect = NSRect(x: tokenX + 54, y: sbY + (sbHeight - 32) / 2 - 2, width: 85, height: 36)
+            attrStr.draw(in: textRect)
+
+            NSGraphicsContext.restoreGraphicsState()
+        }
+
+        // 5. 绘制弹出视图 (Popover) 柔和投影与圆角内容
         context.saveGState()
         context.setShadow(
             offset: CGSize(width: 0, height: -14),
@@ -303,15 +378,13 @@ final class ScreenshotCompositor {
     }
 
     private func findPopoverImage(locale: String) -> NSBitmapImageRep? {
-        let rawURL = rootDir.appendingPathComponent("snapshots/raw/\(locale)/01-menu-bar-popover.png")
-        if let data = try? Data(contentsOf: rawURL), let rep = NSBitmapImageRep(data: data) {
-            return rep
+        if !didExportPopoverSnapshots {
+            _ = exportPopoverSnapshotsFromBinary()
+            didExportPopoverSnapshots = true
         }
 
-        // 若原图不存在，尝试直接从编译产物中自动渲染最新原图
-        if exportPopoverSnapshotsFromBinary(),
-           let data = try? Data(contentsOf: rawURL),
-           let rep = NSBitmapImageRep(data: data) {
+        let rawURL = rootDir.appendingPathComponent("snapshots/raw/\(locale)/01-menu-bar-popover.png")
+        if let data = try? Data(contentsOf: rawURL), let rep = NSBitmapImageRep(data: data) {
             return rep
         }
 
