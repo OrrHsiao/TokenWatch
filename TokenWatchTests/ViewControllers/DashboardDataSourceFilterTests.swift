@@ -83,10 +83,19 @@ struct DashboardDataSourceFilterTests {
     }
 
     @MainActor
+    private static func makeLanguageSettings() -> AppLanguageSettings {
+        AppLanguageSettings(
+            defaults: UserDefaults(suiteName: "TokenWatchTests.Filter.\(UUID().uuidString)")!,
+            preferredLanguagesProvider: { ["zh-Hans-US"] }
+        )
+    }
+
+    @MainActor
     @Test("侧边栏活跃数据源仅作为纯状态展示且不可点击筛选")
     func sidebarActiveRowIsNotClickableFilter() throws {
+        let languageSettings = Self.makeLanguageSettings()
         let viewController = DashboardViewController(
-            settingsViewController: SettingsViewController(languageSettings: .shared),
+            settingsViewController: SettingsViewController(languageSettings: languageSettings),
             stateProvider: {
                 [
                     .claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
@@ -94,7 +103,7 @@ struct DashboardDataSourceFilterTests {
                 ]
             },
             refreshAction: {},
-            languageSettings: .shared
+            languageSettings: languageSettings
         )
         viewController.loadViewIfNeeded()
         viewController.view.setFrameSize(MainWindowFactory.contentSize)
@@ -112,7 +121,8 @@ struct DashboardDataSourceFilterTests {
     @MainActor
     @Test("主内容区数据源下拉框可选择特定Agent或全部进行全局过滤")
     func sourcePopUpButtonFiltersDataAndSyncs() throws {
-        let settingsController = SettingsViewController(languageSettings: .shared)
+        let languageSettings = Self.makeLanguageSettings()
+        let settingsController = SettingsViewController(languageSettings: languageSettings)
         let viewController = DashboardViewController(
             settingsViewController: settingsController,
             stateProvider: {
@@ -122,7 +132,7 @@ struct DashboardDataSourceFilterTests {
                 ]
             },
             refreshAction: {},
-            languageSettings: .shared
+            languageSettings: languageSettings
         )
         viewController.loadViewIfNeeded()
         viewController.view.setFrameSize(MainWindowFactory.contentSize)
@@ -164,7 +174,8 @@ struct DashboardDataSourceFilterTests {
     @MainActor
     @Test("未授权数据源点击导航至设置页")
     func clickingUnauthorizedDataSourceNavigatesToSettings() throws {
-        let settingsController = SettingsViewController(languageSettings: .shared)
+        let languageSettings = Self.makeLanguageSettings()
+        let settingsController = SettingsViewController(languageSettings: languageSettings)
         let viewController = DashboardViewController(
             settingsViewController: settingsController,
             stateProvider: {
@@ -174,7 +185,7 @@ struct DashboardDataSourceFilterTests {
                 ]
             },
             refreshAction: {},
-            languageSettings: .shared
+            languageSettings: languageSettings
         )
         viewController.loadViewIfNeeded()
         viewController.view.setFrameSize(MainWindowFactory.contentSize)
@@ -193,8 +204,9 @@ struct DashboardDataSourceFilterTests {
     @MainActor
     @Test("折叠面板切换展开与收起")
     func disclosureToggleExpandsAndCollapsesOtherSources() throws {
+        let languageSettings = Self.makeLanguageSettings()
         let viewController = DashboardViewController(
-            settingsViewController: SettingsViewController(languageSettings: .shared),
+            settingsViewController: SettingsViewController(languageSettings: languageSettings),
             stateProvider: {
                 [
                     .claude: .init(stats: nil, isLoading: false, errorMessage: nil, needsAuthorization: false),
@@ -202,7 +214,7 @@ struct DashboardDataSourceFilterTests {
                 ]
             },
             refreshAction: {},
-            languageSettings: .shared
+            languageSettings: languageSettings
         )
         viewController.loadViewIfNeeded()
         viewController.view.setFrameSize(MainWindowFactory.contentSize)
