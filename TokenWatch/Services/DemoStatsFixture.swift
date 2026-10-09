@@ -400,50 +400,90 @@ enum DemoStatsFixture {
         monthFormatter.dateFormat = "yyyy-MM"
         monthFormatter.calendar = calendar
 
-        // 1. 生成 154 天（22 周）饱满的日历热力图数据
+        // 1. 生成 154 天（22 周）自然真实的日历热力图数据
+        // 设计说明：避免原有的全周期正弦波导致每天均有 token、全盘密集失真的问题。
+        // 通过确定性伪随机噪波分布，引入自然的工作日/周末差异与真实休息日（0 token 留白约 36%），
+        // 当日（dayOffset == 0）锁定为 342,000，使状态栏与弹出视图各项统计指标完美闭环。
         for dayOffset in 0..<154 {
             guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: now) else { continue }
             let dayKey = dayFormatter.string(from: date)
             let weekday = calendar.component(.weekday, from: date) // 1=Sun, 7=Sat
             let isWeekend = (weekday == 1 || weekday == 7)
 
-            // 具有科技波动的正弦基底 + 周期特征
-            let cycle = sin(Double(dayOffset) * 0.28) * 0.4 + 0.6
-            let baseTokens = isWeekend ? 60_000 : 380_000
-            let dayTokens = Int(Double(baseTokens) * cycle * weight * 1.5)
-            let dayCost = (Double(dayTokens) / Double(totalTokens)) * totalCost * 1.2
-            let effectiveTokens = max(dayTokens, 15_000)
-            let entries = max(effectiveTokens / 40_000, 1)
-
-            var dayModelBreakdown: [String: UsageSummary] = [:]
-            for (model, ratio) in modelWeights {
-                let mTokens = Int(Double(effectiveTokens) * ratio)
-                let mCost = dayCost * ratio
-                dayModelBreakdown[model] = makeSummary(
-                    total: mTokens,
-                    cost: mCost,
-                    entries: max(1, Int(Double(entries) * ratio))
-                )
+            let allProvidersDayTokens: Int
+            if dayOffset == 0 {
+                // 当天固定为 342.0k，与状态栏及统计卡片精确呼应
+                allProvidersDayTokens = 342_000
+            } else {
+                let r = deterministicNoise(seed: dayOffset)
+                // 模拟约 10 周前的集中休假周（dayOffset 70...76）
+                let isVacation = (dayOffset >= 70 && dayOffset <= 76)
+                if isVacation {
+                    allProvidersDayTokens = (r < 0.15) ? Int(40_000 + r * 60_000) : 0
+                } else if isWeekend {
+                    // 周末：约 75% 概率为 0 token 休息日，25% 概率为轻度使用
+                    if r > 0.75 {
+                        allProvidersDayTokens = Int(50_000 + (r - 0.75) * 4 * 120_000)
+                    } else {
+                        allProvidersDayTokens = 0
+                    }
+                } else {
+                    // 工作日：约 22% 概率为 0（无 AI 编码/会议/设计日），其余分布在轻、中、高、冲刺
+                    if r < 0.22 {
+                        allProvidersDayTokens = 0
+                    } else if r < 0.52 {
+                        // 轻度用量 (80k ~ 220k)
+                        let factor = (r - 0.22) / 0.30
+                        allProvidersDayTokens = Int(80_000 + factor * 140_000)
+                    } else if r < 0.82 {
+                        // 中度用量 (220k ~ 450k)
+                        let factor = (r - 0.52) / 0.30
+                        allProvidersDayTokens = Int(220_000 + factor * 230_000)
+                    } else {
+                        // 重度/版本冲刺日 (450k ~ 780k)
+                        let factor = (r - 0.82) / 0.18
+                        allProvidersDayTokens = Int(450_000 + factor * 330_000)
+                    }
+                }
             }
 
-            var dayProjectBreakdown: [String: UsageSummary] = [:]
-            for (project, ratio) in projectWeights {
-                let pTokens = Int(Double(effectiveTokens) * ratio)
-                let pCost = dayCost * ratio
-                dayProjectBreakdown[project] = makeSummary(
-                    total: pTokens,
-                    cost: pCost,
-                    entries: max(1, Int(Double(entries) * ratio))
-                )
-            }
+            let effectiveTokens = Int(Double(allProvidersDayTokens) * weight)
+            if effectiveTokens > 0 {
+                let dayCost = (Double(effectiveTokens) / Double(totalTokens)) * totalCost * 1.2
+                let entries = max(effectiveTokens / 40_000, 1)
 
-            byDay[dayKey] = makeSummary(
-                total: effectiveTokens,
-                cost: dayCost,
-                entries: entries,
-                modelBreakdown: dayModelBreakdown,
-                projectBreakdown: dayProjectBreakdown
-            )
+                var dayModelBreakdown: [String: UsageSummary] = [:]
+                for (model, ratio) in modelWeights {
+                    let mTokens = Int(Double(effectiveTokens) * ratio)
+                    let mCost = dayCost * ratio
+                    dayModelBreakdown[model] = makeSummary(
+                        total: mTokens,
+                        cost: mCost,
+                        entries: max(1, Int(Double(entries) * ratio))
+                    )
+                }
+
+                var dayProjectBreakdown: [String: UsageSummary] = [:]
+                for (project, ratio) in projectWeights {
+                    let pTokens = Int(Double(effectiveTokens) * ratio)
+                    let pCost = dayCost * ratio
+                    dayProjectBreakdown[project] = makeSummary(
+                        total: pTokens,
+                        cost: pCost,
+                        entries: max(1, Int(Double(entries) * ratio))
+                    )
+                }
+
+                byDay[dayKey] = makeSummary(
+                    total: effectiveTokens,
+                    cost: dayCost,
+                    entries: entries,
+                    modelBreakdown: dayModelBreakdown,
+                    projectBreakdown: dayProjectBreakdown
+                )
+            } else {
+                byDay[dayKey] = .zero
+            }
 
             // 按月聚合
             let monthKey = monthFormatter.string(from: date)
@@ -503,6 +543,15 @@ enum DemoStatsFixture {
         }
 
         return (byDay, byHour, byMonth)
+    }
+
+    /// 确定性伪随机噪波函数，为给定 seed 输出 [0.0, 1.0) 范围的浮点数，保证跨环境、跨运行的完全一致性
+    private static func deterministicNoise(seed: Int) -> Double {
+        var x = UInt64(bitPattern: Int64(seed)) &* 2654435761
+        x ^= x >> 16
+        x &*= 0x45d9f3b
+        x ^= x >> 16
+        return Double(x & 0xFFFF) / 65535.0
     }
 
     private static func makeSummary(
