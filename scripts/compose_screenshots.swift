@@ -256,25 +256,19 @@ final class ScreenshotCompositor {
                 context.draw(sysCrop, in: sysRect)
             }
 
-            // 4. 正对 Popover 视图上方：TokenWatch 状态栏项目 (仪表盘图标 + 342.0k Tokens，与下方面板数据精确一致)
-            let tokenWidth: CGFloat = 144
+            // 4. 正对 Popover 视图上方：TokenWatch 状态栏项目 (仪表盘图标 + 342.0k Tokens，原汁原味原生样式，无多余底色)
+            let tokenWidth: CGFloat = 116
             let tokenX = popRect.midX - tokenWidth / 2
-
-            // 绘制轻微的半透明圆角矩形，模拟该状态项被点击激活/展开的 macOS 原生外观
-            let highlightRect = CGRect(x: tokenX, y: sbY + 8, width: tokenWidth, height: sbHeight - 16)
-            let highlightPath = CGPath(roundedRect: highlightRect, cornerWidth: 6, cornerHeight: 6, transform: nil)
-            context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.16))
-            context.addPath(highlightPath)
-            context.fillPath()
 
             NSGraphicsContext.saveGraphicsState()
             let nsContext = NSGraphicsContext(cgContext: context, flipped: false)
             NSGraphicsContext.current = nsContext
 
-            // 绘制仪表盘 SF Symbol
+            // 绘制仪表盘 SF Symbol (以白色调色板渲染，保证在深色状态栏上清晰可见)
             let config = NSImage.SymbolConfiguration(pointSize: 18, weight: .regular)
+                .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
             if let sym = NSImage(systemSymbolName: "gauge.with.dots.needle.33percent", accessibilityDescription: nil)?.withSymbolConfiguration(config) {
-                let iconRect = NSRect(x: tokenX + 12, y: sbY + (sbHeight - 36) / 2, width: 36, height: 36)
+                let iconRect = NSRect(x: tokenX, y: sbY + (sbHeight - 34) / 2, width: 34, height: 34)
                 sym.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
             }
 
@@ -306,7 +300,7 @@ final class ScreenshotCompositor {
                 ]
             ))
 
-            let textRect = NSRect(x: tokenX + 54, y: sbY + (sbHeight - 32) / 2 - 2, width: 85, height: 36)
+            let textRect = NSRect(x: tokenX + 44, y: sbY + (sbHeight - 32) / 2 - 2, width: 72, height: 36)
             attrStr.draw(in: textRect)
 
             NSGraphicsContext.restoreGraphicsState()
