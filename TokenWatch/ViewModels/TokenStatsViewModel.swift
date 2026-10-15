@@ -441,7 +441,7 @@ final class TokenStatsViewModel: Sendable {
             states[id]?.isLoading = false
 
             logger.error(
-                "\(provider.displayName) 目录缺少预期数据结构，需要重新选择"
+                "\(provider.displayName) 目录缺少预期数据结构，需要重新选择：\(rootURL.path, privacy: .public)"
             )
 
             let shouldNotify = sendsLoadingNotifications
