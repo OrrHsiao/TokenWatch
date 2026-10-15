@@ -1,29 +1,47 @@
 import Foundation
 
-/// opencode SQLite 中 `message.data` JSON blob 的 Decodable 模型
+/// opencode SQLite 中消息 `data` JSON blob 的 Decodable 模型
 /// 仅解码 token 统计需要的子树,其余字段忽略
 ///
-/// 字段来源:opencode v1.17.5 schema(`message` 表 `data` 列,role=assistant)
+/// 字段来源(两代 schema 的模型字段位置不同,由 Parser 兼容):
+/// - 旧版 v1.17.5(`message` 表):顶层 `modelID` / `providerID` / `path`
+/// - 2.0(`session_message` 表):模型在 `model.id` / `model.providerID`,无 `path`;角色由表的 `type` 列给出
 struct OpenCodeMessageData: Decodable {
-    let role: String
     let modelID: String?
     let providerID: String?
+    let model: OpenCodeModelRef?
     let cost: Double?
     let tokens: OpenCodeTokens?
     let path: OpenCodePath?
 
     enum CodingKeys: String, CodingKey {
-        case role, modelID, providerID, cost, tokens, path
+        case modelID, providerID, model, cost, tokens, path
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        role = (try? container.decode(String.self, forKey: .role)) ?? ""
         modelID = container.nonEmptyString(forKey: .modelID)
         providerID = container.nonEmptyString(forKey: .providerID)
+        model = try? container.decode(OpenCodeModelRef.self, forKey: .model)
         cost = try? container.decode(Double.self, forKey: .cost)
         tokens = try? container.decode(OpenCodeTokens.self, forKey: .tokens)
         path = try? container.decode(OpenCodePath.self, forKey: .path)
+    }
+}
+
+/// 2.0 `data.model` 子结构:模型 ID 与上游 provider(旧版对应顶层 modelID / providerID)
+struct OpenCodeModelRef: Decodable {
+    let id: String?
+    let providerID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, providerID
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = container.nonEmptyString(forKey: .id)
+        providerID = container.nonEmptyString(forKey: .providerID)
     }
 }
 
