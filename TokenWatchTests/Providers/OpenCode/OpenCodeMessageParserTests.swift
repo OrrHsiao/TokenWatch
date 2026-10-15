@@ -293,7 +293,7 @@ struct OpenCodeMessageParserTests {
 
     // MARK: - 跳过条件
 
-    @Test("role != assistant 被跳过")
+    @Test("行角色不是 assistant 时被跳过")
     func skipsNonAssistant() {
         let row = makeRow(
             id: "u", sessionID: "s", timeMs: 0,
@@ -301,7 +301,8 @@ struct OpenCodeMessageParserTests {
             {"role":"user","modelID":"m","providerID":"p",
              "tokens":{"input":1,"output":1,"reasoning":0,"cache":{"read":0,"write":0}}}
             """,
-            directory: "/d"
+            directory: "/d",
+            role: "user"
         )
         #expect(parser.parseAll([row]).isEmpty)
     }
@@ -339,13 +340,44 @@ struct OpenCodeMessageParserTests {
         #expect(parser.parseAll([row]).isEmpty)
     }
 
+    // MARK: - 2.0 schema
+
+    @Test("2.0 行:模型取自 data.model,角色取自行类型,目录由 Scanner 提供")
+    func v2RowMapsNestedModelAndSessionDirectory() throws {
+        let row = makeRow(
+            id: "msg_v2",
+            sessionID: "ses_v2",
+            timeMs: 1_792_075_238_042,
+            json: """
+            {"agent":"build","cost":0.00089396,"finish":"tool-calls",
+             "model":{"id":"claude-haiku-5-5","providerID":"opencode-go"},
+             "tokens":{"input":4,"output":369,"reasoning":122,"cache":{"read":5331,"write":4758}},
+             "time":{"created":1792075238042}}
+            """,
+            directory: "/Users/me/proj"
+        )
+
+        let entry = try #require(parser.parseAll([row]).first)
+        #expect(entry.model == "opencode-go/claude-haiku-5-5")
+        #expect(entry.upstreamModelID == "claude-haiku-5-5")
+        #expect(entry.upstreamProviderID == "opencode-go")
+        #expect(entry.cwd == "/Users/me/proj")
+        #expect(entry.usage.inputTokens == 4)
+        #expect(entry.usage.outputTokens == 369)
+        #expect(entry.usage.reasoningTokens == 122)
+        #expect(entry.usage.cacheReadInputTokens == 5331)
+        #expect(entry.usage.cacheCreationInputTokens == 4758)
+        #expect(entry.upstreamCost == 0.00089396)
+    }
+
     // MARK: - Helper
 
     private func makeRow(id: String, sessionID: String, timeMs: Int64,
-                         json: String, directory: String) -> OpenCodeMessageRow {
+                         json: String, directory: String,
+                         role: String = "assistant") -> OpenCodeMessageRow {
         OpenCodeMessageRow(
             id: id, sessionID: sessionID, timeCreatedMs: timeMs,
-            dataJSON: json, directory: directory
+            dataJSON: json, directory: directory, role: role
         )
     }
 }
