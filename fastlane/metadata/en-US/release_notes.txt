@@ -1,5 +1,4 @@
-- Adds local usage tracking and automated log parsing for DeepSeek Harness.
-- Refactors data source and global agent filtering with dynamic Cache Write and Reasoning token capabilities.
-- Fixes model consumption ranking layout for empty states and date range switching.
-- Refines status bar popover visual presentation with centered icon and text alignment.
-- Updates latest App Store showcase screenshots.
+- Adds support for the OpenCode 2.0 database schema, so sessions, tokens, and costs are read correctly after upgrading OpenCode.
+- Deduplicates forked OpenCode sessions: copied history is no longer counted as the child session's own usage.
+- Improves error logs with the local directory path when a provider directory holds no expected data structure.
+- Updates the latest App Store showcase screenshots.
