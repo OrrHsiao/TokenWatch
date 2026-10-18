@@ -1,0 +1,1 @@
+AI,token,usage,cost,tracker,menubar,developer,LLM,Claude,Codex,OpenCode,Antigravity,local,privacy

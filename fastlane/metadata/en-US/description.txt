@@ -1,0 +1,7 @@
+AI Token Watch is a native macOS menu bar app for tracking token usage and estimated cost from local coding-agent records. It reads local usage data from Claude Code, Codex, OpenCode and Antigravity, then turns scattered session records into clear daily, monthly, model, project, and provider summaries.
+
+Use the menu bar to quickly check today, this week, and this month. Open the main window to explore recent 30-day and 12-month trends, model rankings, provider share, project usage, and recent session details. Calendar heatmaps and charts make it easier to spot high-usage days, changing habits, and cost patterns.
+
+TokenWatch works locally on your Mac. After you grant file access, parsing, aggregation, and cost estimation all happen on your device. The app does not require an account, and it includes no ads, analytics, telemetry, tracking, or third-party SDKs. It does not upload your usage records, project paths, prompts, responses, or pricing data.
+
+Cost values are estimates based on embedded pricing data and may differ from official provider billing. TokenWatch is designed for day-to-day visibility, review, and cost awareness, not as a formal billing record.
