@@ -405,6 +405,26 @@ struct ClaudeJSONLParserTests {
         #expect(entries.map(\.messageId) == ["kept", "whitespace-null"])
     }
 
+    @Test("Claude Code 2.1.266+ 的 usage.iterations.model null 不再丢弃整行用量")
+    func iterationModelNullKeepsMainUsage() throws {
+        let direct = #"{"type":"assistant","uuid":"fable-record","sessionId":"s1","timestamp":"2026-10-20T10:00:00.000Z","requestId":"req-fable","message":{"id":"msg-fable","model":"claude-fable-5-1","usage":{"input_tokens":15217,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":157,"iterations":[{"type":"message","model":null,"input_tokens":15217,"output_tokens":157}],"speed":"standard"}}}"#
+        let agentProgress = #"{"data":{"message":{"timestamp":"2026-10-20T10:00:01.000Z","requestId":"req-progress","message":{"id":"msg-progress","model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":5,"iterations":[{"type":"message","model":null,"input_tokens":10,"output_tokens":5}]}}}}}"#
+        let mainModelNull = #"{"timestamp":"2026-10-20T10:00:02.000Z","message":{"id":"msg-main-null","model":null,"usage":{"input_tokens":1,"output_tokens":1}}}"#
+        let iterationCacheNull = #"{"timestamp":"2026-10-20T10:00:03.000Z","message":{"id":"msg-cache-null","model":"claude-fable-5-1","usage":{"input_tokens":2,"output_tokens":1,"iterations":[{"type":"advisor_message","model":"m","input_tokens":1,"output_tokens":1,"cache_read_input_tokens":null}]}}}"#
+        let (file, root, cleanup) = try makeClaudeJSONL([
+            direct, agentProgress, mainModelNull, iterationCacheNull,
+        ])
+        defer { cleanup() }
+
+        let entries = try ClaudeJSONLParser().parseJSONLFile(file, claudeDataRoot: root)
+
+        #expect(entries.map(\.messageId).sorted() == ["msg-fable", "msg-progress"])
+        let fable = try #require(entries.first { $0.messageId == "msg-fable" })
+        #expect(fable.model == "claude-fable-5-1")
+        #expect(fable.usage.inputTokens == 15217)
+        #expect(fable.usage.outputTokens == 157)
+    }
+
     @Test("daily billing DTO 严格限制 token，speed 非白名单值保留原值并退化为 standard 计价")
     func dailyBillingShapeIsStrictButNarrow() throws {
         let unrelatedGarbage = #"{"timestamp":"2026-06-13T12:00:00.000Z","message":{"id":"kept","model":"claude-sonnet-4-5","role":{"bad":true},"content":42,"usage":{"input_tokens":1,"output_tokens":1,"speed":"fast"}}}"#

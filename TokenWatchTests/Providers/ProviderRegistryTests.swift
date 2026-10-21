@@ -122,7 +122,7 @@ struct ProviderRegistryTests {
     func diskCacheCompatibilityIsProviderSpecific() {
         #expect(CodexProvider.currentDiskCacheVersion == 4)
         #expect(CodexProvider.compatibleDiskCacheVersions == [2, 3])
-        #expect(ClaudeProvider.currentDiskCacheVersion == 3)
+        #expect(ClaudeProvider.currentDiskCacheVersion == 4)
         #expect(ClaudeProvider.compatibleDiskCacheVersions.isEmpty)
         #expect(DeepSeekHarnessProvider.currentDiskCacheVersion == 1)
         #expect(DeepSeekHarnessProvider.compatibleDiskCacheVersions.isEmpty)
