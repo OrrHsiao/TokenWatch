@@ -10,6 +10,7 @@ on:
   push:
     tags:
       - "v*"
+      - "[0-9]*"
   release:
     types:
       - published
@@ -75,16 +76,18 @@ jobs:
 
       - name: Resolve Release Tag
         id: release-tag
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+        if: github.event_name == 'release' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Ensure GitHub Release
-        if: github.event_name == 'workflow_dispatch' && steps.release-tag.outputs.tag != ''
+        if: github.event_name != 'release' && steps.release-tag.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
