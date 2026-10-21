@@ -3,8 +3,9 @@ import Foundation
 /// Claude Code 数据源
 /// 装配现有 ClaudeJSONLScanner + ClaudeJSONLParser，适配 UsageProvider 协议
 struct ClaudeProvider: UsageProvider {
-    /// Claude v2 可能已缓存缺行状态，因此 v3 不兼容任何旧版本。
-    static let currentDiskCacheVersion = 3
+    /// v3 及更早版本会把 `usage.iterations.model` 为 null 的 billing 行整行丢弃，
+    /// 因此 v4 不兼容任何旧缓存，强制重新解析补回漏计的用量。
+    static let currentDiskCacheVersion = 4
     static let compatibleDiskCacheVersions: Set<Int> = []
 
     let id: ProviderID = .claude

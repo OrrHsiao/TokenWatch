@@ -133,12 +133,19 @@ struct ClaudeUsageLine: Decodable, Sendable {
     }
 
     /// 在 JSON 解码前逐字节执行 pinned usage marker 与 compact null guard。
+    ///
+    /// 例外：Claude Code 2.1.266+ 会在 `usage.iterations` 的 main iteration 上写
+    /// `"model":null`（`UsageIteration.model` 本身可选，属于合法数据）。其余
+    /// unsupported null 仍立即拒绝；只有出现 compact `model:null` 时才回退到
+    /// 结构化校验，确认这些 null 都位于 `usage.iterations` 的直接元素上。
+    /// 回退只发生在旧逻辑本就会丢弃的行上，因此不会放宽任何原本通过的行。
     static func passesRawPrefilter(_ line: Data) -> Bool {
         let bytes = Array(line)
         guard firstIndex(of: usageMarker, in: bytes, startingAt: 0) != nil else {
             return false
         }
 
+        var mayAllowIterationModelNull = false
         var offset = 0
         while let nullIndex = firstIndex(of: nullMarker, in: bytes, startingAt: offset) {
             var fieldEnd = max(nullIndex - 1, 0)
@@ -155,18 +162,80 @@ struct ClaudeUsageLine: Decodable, Sendable {
                 if bytes[safe: fieldStart] == quote, fieldStart < fieldEnd {
                     let field = Array(bytes[(fieldStart + 1)..<fieldEnd])
                     if unsupportedNullFields.contains(field) {
-                        return false
+                        guard field == iterationModelField else { return false }
+                        mayAllowIterationModelNull = true
                     }
                 }
             }
             offset = nullIndex + nullMarker.count
         }
-        return true
+        guard mayAllowIterationModelNull else { return true }
+        return allowsIterationModelNullException(line)
+    }
+
+    /// 结构化确认 `"model":null` 只出现在 usage.iterations 的直接元素上。
+    /// 不能继续用逐字节扫描判断层级：该 null 允许嵌套，而 `message.model` 不允许。
+    private static func allowsIterationModelNullException(_ line: Data) -> Bool {
+        guard let root = try? JSONSerialization.jsonObject(with: line),
+              let object = root as? [String: Any] else {
+            return false
+        }
+        return !containsUnsupportedNull(
+            object,
+            at: [],
+            isIterationElement: false
+        )
+    }
+
+    /// `usage.iterations` 的两条合法路径：direct 行与 `data.message` AgentProgress 行。
+    private static let iterationArrayPaths: Set<[String]> = [
+        ["message", "usage", "iterations"],
+        ["data", "message", "message", "usage", "iterations"],
+    ]
+
+    /// 递归检查 unsupported null；`isIterationElement` 只对 iteration 数组的直接元素放行 `model`。
+    private static func containsUnsupportedNull(
+        _ value: Any,
+        at path: [String],
+        isIterationElement: Bool
+    ) -> Bool {
+        if let object = value as? [String: Any] {
+            for (key, child) in object {
+                if child is NSNull,
+                   unsupportedNullFields.contains(Array(key.utf8)),
+                   !(isIterationElement && key == "model") {
+                    return true
+                }
+                if containsUnsupportedNull(
+                    child,
+                    at: path + [key],
+                    isIterationElement: false
+                ) {
+                    return true
+                }
+            }
+            return false
+        }
+        if let array = value as? [Any] {
+            let elementsAreIteration = iterationArrayPaths.contains(path)
+            for element in array {
+                if containsUnsupportedNull(
+                    element,
+                    at: path,
+                    isIterationElement: elementsAreIteration
+                ) {
+                    return true
+                }
+            }
+            return false
+        }
+        return false
     }
 
     private static let usageMarker = Array("\"usage\":{".utf8)
     private static let nullMarker = Array(":null".utf8)
     private static let quote: UInt8 = 0x22
+    private static let iterationModelField = Array("model".utf8)
     private static let unsupportedNullFields: Set<[UInt8]> = Set([
         "id",
         "cwd",

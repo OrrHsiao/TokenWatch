@@ -145,7 +145,8 @@ final class ClaudeJSONLParser: @unchecked Sendable {
     /// 使同一文件重解析产生的 sourceRevision 与旧解析不同，聚合快照不再复用
     /// 旧统计（如 speed 白名单放宽前漏计的数据）。P0-1 的 pipelineRevision
     /// 落地后由统一机制替代。
-    static let parserSemanticsVersion: UInt64 = 1
+    /// 2：允许 `usage.iterations.model` 为 null，补回 Claude Code 2.1.266+ 的 billing 行。
+    static let parserSemanticsVersion: UInt64 = 2
 
     static func sourceRevisionComponent(
         for state: ClaudeFileState
