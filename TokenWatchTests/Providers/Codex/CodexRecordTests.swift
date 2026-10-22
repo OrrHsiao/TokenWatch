@@ -75,6 +75,23 @@ struct CodexRecordTests {
         #expect(event.info == nil)
     }
 
+    @Test("限额来源元数据缺失或损坏不影响用量解码", arguments: [
+        (#"{"limit_id":"codex"}"#, "codex"),
+        ("null", nil),
+        (#""invalid""#, nil),
+        (#"{"limit_id":123}"#, nil),
+    ] as [(String, String?)])
+    func decodesRateLimitSourceWithoutDroppingUsage(rateLimits: String, expected: String?) throws {
+        let json = #"{"timestamp":1,"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":10}},"rate_limits":\#(rateLimits)}}"#
+        let record = try decoder.decode(CodexRecord.self, from: Data(json.utf8))
+        guard case let .eventMsg(event) = record.payload else {
+            Issue.record("限额元数据不应阻断 token_count 解码")
+            return
+        }
+        #expect(event.rateLimitID == expected)
+        #expect(event.info?.lastTokenUsage?.inputTokens == 10)
+    }
+
     @Test("event payload 与 info model 均可解码")
     func decodeEventModels() throws {
         let payloadModel = #"{"timestamp":"2026-05-04T08:35:59Z","type":"event_msg","payload":{"type":"token_count","model":"gpt-payload","info":{"model":"gpt-info","last_token_usage":{"input_tokens":1,"output_tokens":1}}}}"#

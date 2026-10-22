@@ -120,8 +120,8 @@ struct ProviderRegistryTests {
 
     @Test("JSONL provider 使用各自声明的磁盘缓存兼容策略")
     func diskCacheCompatibilityIsProviderSpecific() {
-        #expect(CodexProvider.currentDiskCacheVersion == 4)
-        #expect(CodexProvider.compatibleDiskCacheVersions == [2, 3])
+        #expect(CodexProvider.currentDiskCacheVersion == 5)
+        #expect(CodexProvider.compatibleDiskCacheVersions.isEmpty)
         #expect(ClaudeProvider.currentDiskCacheVersion == 4)
         #expect(ClaudeProvider.compatibleDiskCacheVersions.isEmpty)
         #expect(DeepSeekHarnessProvider.currentDiskCacheVersion == 1)

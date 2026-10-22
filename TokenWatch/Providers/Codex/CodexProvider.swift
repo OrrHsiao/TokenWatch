@@ -3,9 +3,9 @@ import Foundation
 /// Codex CLI / Codex Desktop 数据源
 /// 装配 CodexRolloutScanner + CodexRolloutParser，适配 UsageProvider 协议
 struct CodexProvider: UsageProvider {
-    /// v4 将 candidate 改为紧凑存储；自定义 decoder 仍可迁移 v2/v3 的完整 entry。
-    static let currentDiskCacheVersion = 4
-    static let compatibleDiskCacheVersions: Set<Int> = [2, 3]
+    /// v5 新增快照去重状态；旧缓存已包含重复用量，必须从源日志重新解析。
+    static let currentDiskCacheVersion = 5
+    static let compatibleDiskCacheVersions: Set<Int> = []
 
     let id: ProviderID = .codex
     let displayName = "Codex"
