@@ -107,8 +107,8 @@ struct CodexRolloutParserTests {
         #expect(summary.totalTokens == 1_200)
     }
 
-    @Test("相同 total 仍优先发出非零 last_token_usage")
-    func repeatedTotalStillEmitsNonzeroLastUsage() throws {
+    @Test("异时间戳重发相同 total 与 last 快照只计一次")
+    func repeatedSnapshotAtDifferentTimestampIsSkipped() throws {
         let repeatedEvent = #"{"timestamp":"2026-05-04T08:36:59.868Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200,"reasoning_output_tokens":50,"total_tokens":1200},"last_token_usage":{"input_tokens":1000,"cached_input_tokens":300,"output_tokens":200,"reasoning_output_tokens":50,"total_tokens":1200}}}}"#
         let (file, cleanup) = try makeJsonlFile([
             sessionMeta,
@@ -120,9 +120,10 @@ struct CodexRolloutParserTests {
 
         let entries = try CodexRolloutParser().parseFile(file)
 
-        #expect(entries.count == 2)
+        #expect(entries.count == 1)
         #expect(entries.allSatisfy { $0.usage.inputTokens == 700 })
         #expect(entries.allSatisfy { $0.usage.cacheReadInputTokens == 300 })
+        #expect(UsageAggregator().aggregate(entries).overall.totalTokens == 1_200)
     }
 
     @Test("total 缺失时每条 last_token_usage 仍按既有 fallback 发出")
@@ -968,6 +969,77 @@ struct CodexRolloutParserTests {
         #expect(coldParser.debugContinuityAnchor(for: fixture.file.url) != nil)
     }
 
+    @Test("冷启动追加重复快照与无换行尾部的结果和全量解析一致")
+    func appendedSnapshotsRemainDeduplicatedAfterColdStart() throws {
+        let fixture = try makeRolloutFixture(lines: [sessionMeta, turnContextGpt5, normalEvent])
+        defer { fixture.cleanup() }
+        let cacheURL = fixture.file.url.deletingLastPathComponent().appendingPathComponent("codex-cache.json")
+        let store = SystemJSONLDiskCacheStore<CodexRolloutParser.CodexIncrementalState>(
+            fileURL: cacheURL,
+            cacheVersion: CodexProvider.currentDiskCacheVersion
+        )
+        #expect(try CodexRolloutParser(diskStore: store).parseAllFiles([fixture.file]).count == 1)
+        let duplicate = normalEvent.replacingOccurrences(of: "08:35:59.868Z", with: "08:36:59.868Z")
+        try appendUTF8(duplicate, to: fixture.file.url)
+        let parser = CodexRolloutParser(diskStore: store)
+        #expect(try parser.parseAllFiles([fixture.file]).count == 1)
+
+        try appendUTF8("\n", to: fixture.file.url)
+        let entries = try parser.parseAllFiles([fixture.file])
+        let fresh = try CodexRolloutParser().parseAllFiles([fixture.file])
+        #expect(entries.count == 1)
+        #expect(ParsedUsageEntryDeepSnapshot.sorted(entries) == ParsedUsageEntryDeepSnapshot.sorted(fresh))
+        #expect(UsageAggregator().aggregate(entries).overall.totalTokens == 1_200)
+    }
+
+    @Test("旧版缓存已保存的重复用量会在升级后从源日志重建")
+    func upgradeRebuildsInflatedLegacyCache() throws {
+        let duplicate = normalEvent.replacingOccurrences(of: "08:35:59.868Z", with: "08:36:59.868Z")
+        let fixture = try makeRolloutFixture(lines: [sessionMeta, turnContextGpt5, normalEvent, duplicate])
+        defer { fixture.cleanup() }
+        let cacheURL = fixture.file.url.deletingLastPathComponent().appendingPathComponent("codex-cache.json")
+        let legacyStore = SystemJSONLDiskCacheStore<CodexRolloutParser.CodexIncrementalState>(
+            fileURL: cacheURL,
+            cacheVersion: 4
+        )
+        _ = try CodexRolloutParser(diskStore: legacyStore).parseAllFiles([fixture.file])
+
+        // 模拟 v4 已把异时重发快照保存成第二条用量；源文件 metadata 保持不变。
+        var payload = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: cacheURL)) as? [String: Any])
+        var cachedEntries = try #require(payload["entries"] as? [String: [String: Any]])
+        let key = try #require(cachedEntries.keys.first)
+        var cachedEntry = try #require(cachedEntries[key])
+        var state = try #require(cachedEntry["state"] as? [String: Any])
+        var fileState = try #require(state["fileState"] as? [String: Any])
+        var candidates = try #require(fileState["stableCandidates"] as? [[String: Any]])
+        var repeatedCandidate = try #require(candidates.first)
+        var dedupKey = try #require(repeatedCandidate["dedupKey"] as? [String: Any])
+        dedupKey["timestampKey"] = "2026-05-04T08:36:59.868Z"
+        repeatedCandidate["dedupKey"] = dedupKey
+        repeatedCandidate["timestamp"] = try #require(repeatedCandidate["timestamp"] as? Double) + 60
+        candidates.append(repeatedCandidate)
+        fileState["stableCandidates"] = candidates
+        state["fileState"] = fileState
+        cachedEntry["state"] = state
+        cachedEntries[key] = cachedEntry
+        payload["entries"] = cachedEntries
+        try JSONSerialization.data(withJSONObject: payload).write(to: cacheURL)
+        #expect(try CodexRolloutParser(diskStore: legacyStore).parseAllFiles([fixture.file]).count == 2)
+
+        let upgradedStore = SystemJSONLDiskCacheStore<CodexRolloutParser.CodexIncrementalState>(
+            fileURL: cacheURL,
+            cacheVersion: CodexProvider.currentDiskCacheVersion,
+            compatibleCacheVersions: CodexProvider.compatibleDiskCacheVersions
+        )
+        let reader = RecordingJSONLFileReader()
+        let entries = try CodexRolloutParser(fileReader: reader, diskStore: upgradedStore)
+            .parseAllFiles([fixture.file])
+
+        #expect(reader.totalBytesRead > 0)
+        #expect(entries.count == 1)
+        #expect(UsageAggregator().aggregate(entries).overall.totalTokens == 1_200)
+    }
+
     @Test("Codex 仅复用显式兼容的磁盘缓存版本")
     func coldStartReusesOnlyCompatibleDiskCacheVersions() throws {
         let fixture = try makeRolloutFixture(lines: [
@@ -977,7 +1049,7 @@ struct CodexRolloutParserTests {
         ])
         defer { fixture.cleanup() }
 
-        for persistedVersion in [2, 3] {
+        for persistedVersion in [2, 3, 4, CodexProvider.currentDiskCacheVersion] {
             let cacheURL = fixture.file.url.deletingLastPathComponent()
                 .appendingPathComponent(
                     "codex-v\(persistedVersion)-cache.json"
@@ -1002,16 +1074,20 @@ struct CodexRolloutParserTests {
                 )
             )
             #expect(try currentParser.parseAllFiles([fixture.file]).count == 1)
-            #expect(compatibleReader.totalBytesRead == 0)
+            if persistedVersion == CodexProvider.currentDiskCacheVersion {
+                #expect(compatibleReader.totalBytesRead == 0)
+            } else {
+                #expect(compatibleReader.totalBytesRead > 0)
+            }
         }
 
         let incompatibleCacheURL = fixture.file.url.deletingLastPathComponent()
-            .appendingPathComponent("codex-v5-cache.json")
+            .appendingPathComponent("codex-future-cache.json")
         let futureParser = CodexRolloutParser(
             fileReader: RecordingJSONLFileReader(),
             diskStore: SystemJSONLDiskCacheStore(
                 fileURL: incompatibleCacheURL,
-                cacheVersion: 5
+                cacheVersion: CodexProvider.currentDiskCacheVersion + 1
             )
         )
         #expect(try futureParser.parseAllFiles([fixture.file]).count == 1)

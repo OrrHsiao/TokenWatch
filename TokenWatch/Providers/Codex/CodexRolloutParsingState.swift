@@ -1,5 +1,11 @@
 import Foundation
 
+/// token_count 的完整用量快照；时间戳、模型与限额桶均不代表新增用量。
+struct CodexTokenSnapshot: Codable, Equatable, Sendable {
+    let total: CodexTokenCounts?
+    let last: CodexTokenCounts?
+}
+
 /// 可跨 JSONL 批次保存并恢复的 Codex 行级解析状态。
 struct CodexParserCheckpoint: Codable, Sendable {
     var currentModel: CodexModelState?
@@ -8,6 +14,8 @@ struct CodexParserCheckpoint: Codable, Sendable {
     var previousTotals: CodexTokenCounts?
     var replaySecond: String?
     var isSkippingReplay: Bool
+    var latestSnapshotBySource: [String: CodexTokenSnapshot]
+    var previousTokenSnapshot: CodexTokenSnapshot?
 
     /// 创建文件起点 checkpoint，并按 replay 预检结果初始化跳过状态。
     static func initial(
@@ -20,7 +28,9 @@ struct CodexParserCheckpoint: Codable, Sendable {
             cwd: nil,
             previousTotals: nil,
             replaySecond: replaySecond,
-            isSkippingReplay: replaySecond != nil
+            isSkippingReplay: replaySecond != nil,
+            latestSnapshotBySource: [:],
+            previousTokenSnapshot: nil
         )
     }
 
@@ -63,6 +73,21 @@ struct CodexParserCheckpoint: Codable, Sendable {
                 return nil
             }
 
+            let snapshot = CodexTokenSnapshot(
+                total: info.totalTokenUsage,
+                last: info.lastTokenUsage
+            )
+            // 限额刷新会异时重发同一快照。同来源比较最近一次完整快照，跨来源只比较
+            // 相邻事件；不能全局记住所有快照，否则累计计数重置后会漏掉合法请求。
+            let source = event.rateLimitID ?? ""
+            let isDuplicateSnapshot = info.hasTotalSnapshot
+                && (latestSnapshotBySource[source] == snapshot
+                    || previousTokenSnapshot == snapshot)
+            if info.hasTotalSnapshot {
+                latestSnapshotBySource[source] = snapshot
+            }
+            previousTokenSnapshot = snapshot
+
             if isSkippingReplay, let replaySecond {
                 if timestamp.key.prefix(19) == replaySecond {
                     if let total = event.info?.totalTokenUsage {
@@ -78,6 +103,7 @@ struct CodexParserCheckpoint: Codable, Sendable {
             if let total = info.totalTokenUsage {
                 previousTotals = total
             }
+            guard !isDuplicateSnapshot else { return nil }
             guard let delta, !delta.isAllZero else { return nil }
 
             let model = CodexModelResolver.resolve(
