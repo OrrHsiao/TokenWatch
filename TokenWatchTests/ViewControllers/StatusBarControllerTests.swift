@@ -266,10 +266,39 @@ struct StatusBarControllerTests {
     @Test func mainWindowOpenFromStatusMenuDefersAndOrdersWindowFrontRegardless() {
         #expect(StatusMainWindowPresentation.timing() == .afterCurrentEvent)
         #expect(StatusMainWindowPresentation.actions(targetWindowExists: true) == [
+            .restoreWindow,
             .activateApplication,
             .makeWindowKeyAndOrderFront,
             .orderWindowFrontRegardless,
         ])
+    }
+
+    /// 关闭后重复打开时,应用激活回调必须能看到已恢复的窗口,否则跨 Space 激活没有目标。
+    @MainActor
+    @Test func closedMainWindowIsRestoredBeforeApplicationActivation() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.orderFront(nil)
+        var activationCount = 0
+
+        for _ in 0..<2 {
+            window.close()
+            #expect(!window.isVisible)
+
+            StatusMainWindowPresentation.present(window) {
+                #expect(window.isVisible)
+                activationCount += 1
+            }
+
+            #expect(window.isVisible)
+        }
+        #expect(activationCount == 2)
     }
 
     /// 空 popover 根视图也需要能成为 first responder,否则 makeFirstResponder 会失败。

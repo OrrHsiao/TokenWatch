@@ -1295,6 +1295,7 @@ enum StatusPopoverActivation {
 /// 状态栏菜单打开主窗口的置前策略。
 ///
 /// NSMenu action 执行时菜单仍在 tracking;延后一轮主线程再处理,避免菜单关闭流程覆盖窗口激活。
+/// 关闭后保留的窗口必须先恢复可见,再激活应用,让系统能够切换到窗口所属的 Space。
 /// 已在屏幕上的主窗口若被其它 app 盖住,仅 makeKeyAndOrderFront 不够,需要 orderFrontRegardless。
 enum StatusMainWindowPresentation {
     enum Timing: Equatable {
@@ -1302,6 +1303,7 @@ enum StatusMainWindowPresentation {
     }
 
     enum Action: Equatable {
+        case restoreWindow
         case activateApplication
         case makeWindowKeyAndOrderFront
         case orderWindowFrontRegardless
@@ -1314,10 +1316,35 @@ enum StatusMainWindowPresentation {
     static func actions(targetWindowExists: Bool) -> [Action] {
         guard targetWindowExists else { return [] }
         return [
+            .restoreWindow,
             .activateApplication,
             .makeWindowKeyAndOrderFront,
             .orderWindowFrontRegardless,
         ]
+    }
+
+    /// 恢复并置前同一个主窗口,在应用激活前确保它已重新进入窗口列表。
+    /// - Parameters:
+    ///   - window: 已有或新建的主窗口。
+    ///   - activateApplication: 窗口恢复后执行的应用激活操作。
+    @MainActor
+    static func present(_ window: NSWindow, activateApplication: () -> Void) {
+        for action in actions(targetWindowExists: true) {
+            switch action {
+            case .restoreWindow:
+                if window.isMiniaturized {
+                    window.deminiaturize(nil)
+                }
+                // 先仅恢复可见性,激活后再设置 key window,保留正常的焦点通知顺序。
+                window.orderFront(nil)
+            case .activateApplication:
+                activateApplication()
+            case .makeWindowKeyAndOrderFront:
+                window.makeKeyAndOrderFront(nil)
+            case .orderWindowFrontRegardless:
+                window.orderFrontRegardless()
+            }
+        }
     }
 }
 

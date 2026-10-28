@@ -18,6 +18,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         subsystem: "com.xiaoao.TokenWatch",
         category: "WidgetPurchaseBootstrap"
     )
+    private static let windowLogger = Logger(
+        subsystem: "com.xiaoao.TokenWatch",
+        category: "MainWindow"
+    )
 
     static let supportURL = URL(
         string: "https://orrhsiao.github.io/TokenWatch/support/"
@@ -246,16 +250,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let target = existingMainWindow() ?? instantiateMainWindow()
         guard let target else { return nil }
 
-        for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
-            switch action {
-            case .activateApplication:
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-            case .makeWindowKeyAndOrderFront:
-                target.makeKeyAndOrderFront(nil)
-            case .orderWindowFrontRegardless:
-                target.orderFrontRegardless()
-            }
+        Self.windowLogger.info(
+            "显示主窗口: visible=\(target.isVisible), miniaturized=\(target.isMiniaturized), onActiveSpace=\(target.isOnActiveSpace)"
+        )
+        NSApp.setActivationPolicy(.regular)
+        StatusMainWindowPresentation.present(target) {
+            NSApp.activate(ignoringOtherApps: true)
         }
         return target.contentViewController as? ViewController
     }
@@ -282,7 +282,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             widgetPurchaseController: widgetPurchaseController
         )
         mainWindowController = windowController
-        windowController.showWindow(nil)
         return windowController.window
     }
 
