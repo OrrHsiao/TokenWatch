@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch માં માસિક બજેટ સેટ કરો";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "બજેટ વટાવી જવાનો અંદાજ છે";
 "widgetPurchaseLockedTitle" = "તમામ 7 ડેસ્કટૉપ વિજેટ્સ અનલૉક કરો";
-"widgetPurchaseLockedDescription" = "એક જ ખરીદીમાં કાયમી ઍક્સેસ મેળવો અને ગમે ત્યારે પુનઃસ્થાપિત કરો.";
+"widgetPurchaseLockedDescription" = "એક જ ખરીદીથી બધા વિજેટ્સ અને મેનૂ બારનો સબ્સ્ક્રિપ્શન વપરાશ કાયમ માટે અનલૉક થાય છે, અને ગમે ત્યારે પુનઃસ્થાપિત કરી શકાય છે.";
 "widgetPurchaseUnlockedTitle" = "બધા વિજેટ્સ અનલૉક થઈ ગયા છે";
 "widgetPurchaseUnlockedDescription" = "તમારી ખરીદી ચકાસાઈ ગઈ છે અને હવે વિજેટ્સ વપરાશનો ડેટા બતાવી શકે છે.";
 "widgetPurchaseLockedStatus" = "લૉક કરેલું";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "મેનૂ બારમાં બતાવો";
 "statusBarDisplayQuota" = "સબ્સ્ક્રિપ્શન વપરાશ";
 "statusBarDisplayTodayTokens" = "આજના Tokens";
-"statusMenuQuotaWindows" = "વપરાશ સમયગાળા";
-"quotaWindowsBoth" = "બંને સમયગાળા";
 "statusMenuChooseClaudeQuotaFile" = "Claude વપરાશ ફાઇલ પસંદ કરો…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch ફક્ત Claude Code કન્ફિગરેશન ફાઇલમાં કૅશ થયેલો સબ્સ્ક્રિપ્શન વપરાશ વાંચે છે. ~/.claude.json પસંદ કરો.";
 "statusBarDisplayQuotaAndTodayTokens" = "સબ્સ્ક્રિપ્શન વપરાશ + આજના Tokens";
+"settingsStatusBarQuotaTitle" = "મેનૂ બારમાં સબ્સ્ક્રિપ્શન વપરાશ";
+"settingsStatusBarQuotaDescription" = "મેનૂ બારમાં Claude અને Codex ના કયા વપરાશ સમયગાળા દેખાય તે પસંદ કરો. સંક્ષિપ્ત મોડ ફક્ત રિંગ બતાવે છે, જ્યારે વિગતવાર મોડ બાકી ટકાવારી પણ બતાવે છે.";
+"settingsQuotaStyleCompact" = "સંક્ષિપ્ત";
+"settingsQuotaStyleDetailed" = "વિગતવાર";
+"quotaPremiumLockedMessage" = "સબ્સ્ક્રિપ્શન વપરાશ એ ચૂકવણીવાળી સુવિધા છે, જે ડેસ્કટૉપ વિજેટ્સ અનલૉક કરતી એક વખતની ખરીદીમાં શામેલ છે.";
+"quotaUnlockAction" = "અનલૉક કરો";

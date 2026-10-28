@@ -352,21 +352,21 @@ struct StatusBarControllerTests {
             quotaStore: inertQuotaStore(),
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
         )
         defer { controller.stop() }
 
+        // 额度周期改在主界面设置页配置，右键菜单不再提供周期子菜单。
         #expect(controller.debugStatusMenuItemTitles == [
             "打开 AI Token Watch",
             "立即刷新",
             "状态栏显示",
-            "额度周期",
             "选择 Claude 额度文件…",
             "退出 AI Token Watch",
         ])
         #expect(controller.debugDisplayModeMenuTitles == ["订阅额度 + 今日 Tokens", "订阅额度", "今日 Tokens"])
         #expect(controller.debugCheckedDisplayModeTitle == "今日 Tokens")
-        #expect(controller.debugQuotaWindowsMenuTitles == ["两个周期", "5 小时", "一周"])
         #expect(controller.debugTitlePlainString == "—\nTokens")
 
         languageSettings.selectedPreference = .language(.viVN)
@@ -425,7 +425,8 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
         )
         defer { controller.stop() }
 
@@ -443,7 +444,13 @@ struct StatusBarControllerTests {
         #expect(toolTip.contains("\n\nCodex · 记录于 刚刚\n"))
 
         let imageSize = try #require(controller.debugStatusButtonImageSize)
-        displaySettings.quotaWindows = .fiveHour
+        for provider in SubscriptionQuotaProvider.allCases {
+            displaySettings.setQuotaWindowConfiguration(
+                .init(isVisible: false, style: .detailed),
+                provider: provider,
+                kind: .sevenDay
+            )
+        }
         #expect(try #require(controller.debugLastRenderedQuotaModel).groups.map { $0.rings.count } == [1, 1])
         #expect(try #require(controller.debugStatusButtonImageSize).width < imageSize.width)
 
@@ -475,7 +482,8 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
         )
         defer { controller.stop() }
 
@@ -521,7 +529,8 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: AppLanguageSettings(defaults: defaults),
-            displaySettings: StatusBarDisplaySettings(defaults: defaults)
+            displaySettings: StatusBarDisplaySettings(defaults: defaults),
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
         )
         defer { controller.stop() }
         let statusItem = try #require(
@@ -532,6 +541,124 @@ struct StatusBarControllerTests {
         controller.debugRenderTitle()
 
         #expect(statusItem.button?.image === firstImage)
+    }
+
+    /// 额度为付费功能:未购买时即使选择含额度的模式也只显示今日 token,并隐藏额度相关菜单项。
+    @MainActor
+    @Test func lockedQuotaFallsBackToTodayTokensAndHidesQuotaMenuItems() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["zh-Hans"] }
+        )
+        languageSettings.selectedPreference = .language(.zhHans)
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .subscriptionQuota
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings,
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: false)
+        )
+        defer { controller.stop() }
+
+        #expect(displaySettings.mode == .subscriptionQuota)
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+        #expect(controller.debugStatusButtonImagePosition == .imageLeft)
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+        #expect(controller.debugLastRenderedQuotaModel == nil)
+        #expect(controller.debugQuotaPresentationTimerInterval == nil)
+        #expect(controller.debugStatusButtonToolTip == "TokenWatch · — Tokens")
+        #expect(controller.debugStatusMenuItemTitles == [
+            "打开 AI Token Watch",
+            "立即刷新",
+            "退出 AI Token Watch",
+        ])
+    }
+
+    /// 购买或恢复后立即恢复用户选择的含额度模式;撤销后再次退回今日 token。
+    @MainActor
+    @Test func unlockingQuotaRestoresSelectedModeImmediately() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
+        defer { purchaseController.stop() }
+        await purchaseController.refresh()
+        let quotaAccess = SubscriptionQuotaAccess(purchaseController: purchaseController)
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: AppLanguageSettings(defaults: defaults),
+            displaySettings: displaySettings,
+            quotaAccess: quotaAccess
+        )
+        defer { controller.stop() }
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+
+        await purchaseController.purchase(in: NSWindow())
+
+        #expect(quotaAccess.isUnlocked)
+        #expect(controller.debugRenderedDisplayMode == .quotaAndTodayTokens)
+        #expect(controller.debugLastRenderedQuotaModel?.groups.count == 2)
+        #expect(controller.debugStatusMenuItemTitles.count == 5)
+    }
+
+    /// 设置页把两个 Agent 的所有周期都关闭时,含额度模式退回今日 token,保证状态栏仍有可点击内容。
+    @MainActor
+    @Test func allQuotaWindowsHiddenFallsBackToTodayTokens() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .subscriptionQuota
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: AppLanguageSettings(defaults: defaults),
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+        )
+        defer { controller.stop() }
+
+        for provider in SubscriptionQuotaProvider.allCases {
+            for kind in SubscriptionQuotaWindowKind.allCases {
+                displaySettings.setQuotaWindowConfiguration(
+                    .init(isVisible: kind == .fiveHour && provider == .codex, style: .compact),
+                    provider: provider,
+                    kind: kind
+                )
+            }
+        }
+        let model = try #require(controller.debugLastRenderedQuotaModel)
+        #expect(model.groups.map(\.provider) == [.codex])
+        #expect(model.groups[0].rings.map(\.showsValue) == [false])
+        #expect(controller.debugRenderedDisplayMode == .subscriptionQuota)
+
+        displaySettings.setQuotaWindowConfiguration(
+            .init(isVisible: false, style: .compact),
+            provider: .codex,
+            kind: .fiveHour
+        )
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+        #expect(displaySettings.mode == .subscriptionQuota)
     }
 }
 

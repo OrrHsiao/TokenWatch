@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch қолданбасында айлық бюджетті орнатыңыз";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Бюджеттен асып кету болжанады";
 "widgetPurchaseLockedTitle" = "Жұмыс үстеліне арналған 7 виджеттің барлығын ашыңыз";
-"widgetPurchaseLockedDescription" = "Бір рет сатып алып, тұрақты қолжетімділікке ие болыңыз; сатып алуды кез келген уақытта қалпына келтіруге болады.";
+"widgetPurchaseLockedDescription" = "Бір рет сатып алу барлық виджеттер мен мәзір жолағындағы жазылымды пайдалануды біржола ашады; сатып алуды кез келген уақытта қалпына келтіруге болады.";
 "widgetPurchaseUnlockedTitle" = "Барлық виджеттің құлпы ашылды";
 "widgetPurchaseUnlockedDescription" = "Сатып алуыңыз расталды, енді виджеттер пайдалану деректерін көрсете алады.";
 "widgetPurchaseLockedStatus" = "Құлыптаулы";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Мәзір жолағы көрсетеді";
 "statusBarDisplayQuota" = "Жазылымды пайдалану";
 "statusBarDisplayTodayTokens" = "Бүгінгі Tokens";
-"statusMenuQuotaWindows" = "Пайдалану кезеңдері";
-"quotaWindowsBoth" = "Екі кезең де";
 "statusMenuChooseClaudeQuotaFile" = "Claude пайдалану файлын таңдау…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch тек Claude Code конфигурация файлында кэштелген жазылым пайдалануын оқиды. ~/.claude.json файлын таңдаңыз.";
 "statusBarDisplayQuotaAndTodayTokens" = "Жазылымды пайдалану + Бүгінгі Tokens";
+"settingsStatusBarQuotaTitle" = "Мәзір жолағындағы жазылымды пайдалану";
+"settingsStatusBarQuotaDescription" = "Мәзір жолағында Claude және Codex үшін қай пайдалану кезеңдері көрсетілетінін таңдаңыз. Ықшам режим тек сақинаны, ал толық режим қалған пайызды да көрсетеді.";
+"settingsQuotaStyleCompact" = "Ықшам";
+"settingsQuotaStyleDetailed" = "Толық";
+"quotaPremiumLockedMessage" = "Жазылымды пайдалану — ақылы функция, ол жұмыс үстелі виджеттерін ашатын бір реттік сатып алуға кіреді.";
+"quotaUnlockAction" = "Ашу";

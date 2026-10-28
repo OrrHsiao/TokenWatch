@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Tetapkan anggaran bulanan di TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Diproyeksikan melebihi anggaran";
 "widgetPurchaseLockedTitle" = "Buka kunci semua 7 widget desktop";
-"widgetPurchaseLockedDescription" = "Satu pembelian untuk akses permanen, dan dapat dipulihkan kapan saja.";
+"widgetPurchaseLockedDescription" = "Satu pembelian membuka kunci semua widget dan penggunaan langganan di bilah menu secara permanen, dan dapat dipulihkan kapan saja.";
 "widgetPurchaseUnlockedTitle" = "Semua widget telah dibuka kuncinya";
 "widgetPurchaseUnlockedDescription" = "Pembelian Anda telah diverifikasi dan widget kini dapat menampilkan data penggunaan.";
 "widgetPurchaseLockedStatus" = "Terkunci";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Tampilan Bilah Menu";
 "statusBarDisplayQuota" = "Penggunaan Langganan";
 "statusBarDisplayTodayTokens" = "Tokens Hari Ini";
-"statusMenuQuotaWindows" = "Periode Penggunaan";
-"quotaWindowsBoth" = "Kedua Periode";
 "statusMenuChooseClaudeQuotaFile" = "Pilih File Penggunaan Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch hanya membaca penggunaan langganan yang di-cache dalam file konfigurasi Claude Code. Pilih ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Penggunaan Langganan + Tokens Hari Ini";
+"settingsStatusBarQuotaTitle" = "Penggunaan Langganan di Bilah Menu";
+"settingsStatusBarQuotaDescription" = "Pilih periode penggunaan Claude dan Codex yang muncul di bilah menu. Ringkas hanya menampilkan cincin; Detail juga menampilkan persentase yang tersisa.";
+"settingsQuotaStyleCompact" = "Ringkas";
+"settingsQuotaStyleDetailed" = "Detail";
+"quotaPremiumLockedMessage" = "Penggunaan langganan adalah fitur berbayar yang termasuk dalam pembelian satu kali untuk membuka kunci widget desktop.";
+"quotaUnlockAction" = "Buka Kunci";

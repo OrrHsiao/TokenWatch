@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "ตั้งงบประมาณรายเดือนใน TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "คาดว่าจะเกินงบประมาณ";
 "widgetPurchaseLockedTitle" = "ปลดล็อกวิดเจ็ตเดสก์ท็อปทั้ง 7 รายการ";
-"widgetPurchaseLockedDescription" = "ซื้อครั้งเดียว ใช้งานได้ถาวร และกู้คืนได้ทุกเมื่อ";
+"widgetPurchaseLockedDescription" = "ซื้อครั้งเดียว ปลดล็อกวิดเจ็ตทั้งหมดและการใช้งานการสมัครสมาชิกในแถบเมนูได้ถาวร และกู้คืนได้ทุกเมื่อ";
 "widgetPurchaseUnlockedTitle" = "ปลดล็อกวิดเจ็ตทั้งหมดแล้ว";
 "widgetPurchaseUnlockedDescription" = "ยืนยันการซื้อของคุณแล้ว และวิดเจ็ตสามารถแสดงข้อมูลการใช้งานได้แล้ว";
 "widgetPurchaseLockedStatus" = "ล็อกอยู่";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "แถบเมนูแสดง";
 "statusBarDisplayQuota" = "การใช้งานการสมัครสมาชิก";
 "statusBarDisplayTodayTokens" = "Tokens วันนี้";
-"statusMenuQuotaWindows" = "ช่วงเวลาการใช้งาน";
-"quotaWindowsBoth" = "ทั้งสองช่วงเวลา";
 "statusMenuChooseClaudeQuotaFile" = "เลือกไฟล์การใช้งาน Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch อ่านเฉพาะการใช้งานการสมัครสมาชิกที่แคชไว้ในไฟล์การกำหนดค่าของ Claude Code เลือก ~/.claude.json";
 "statusBarDisplayQuotaAndTodayTokens" = "การใช้งานการสมัครสมาชิก + Tokens วันนี้";
+"settingsStatusBarQuotaTitle" = "การใช้งานการสมัครสมาชิกในแถบเมนู";
+"settingsStatusBarQuotaDescription" = "เลือกช่วงเวลาการใช้งานของ Claude และ Codex ที่จะแสดงในแถบเมนู แบบย่อแสดงเฉพาะวงแหวน ส่วนแบบละเอียดจะแสดงเปอร์เซ็นต์ที่เหลือด้วย";
+"settingsQuotaStyleCompact" = "แบบย่อ";
+"settingsQuotaStyleDetailed" = "แบบละเอียด";
+"quotaPremiumLockedMessage" = "การใช้งานการสมัครสมาชิกเป็นฟีเจอร์แบบชำระเงิน ซึ่งรวมอยู่ในการซื้อครั้งเดียวที่ปลดล็อกวิดเจ็ตเดสก์ท็อป";
+"quotaUnlockAction" = "ปลดล็อก";

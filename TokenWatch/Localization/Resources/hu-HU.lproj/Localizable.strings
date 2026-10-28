@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Állítson be havi keretet a TokenWatchban";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "A költségek várhatóan meghaladják a keretet";
 "widgetPurchaseLockedTitle" = "Mind a 7 asztali widget feloldása";
-"widgetPurchaseLockedDescription" = "Egyetlen vásárlással végleges hozzáférést kap, és a vásárlás bármikor visszaállítható.";
+"widgetPurchaseLockedDescription" = "Egyetlen vásárlás véglegesen feloldja az összes widgetet és a menüsoron megjelenő előfizetés-használatot, és a vásárlás bármikor visszaállítható.";
 "widgetPurchaseUnlockedTitle" = "Minden widget fel van oldva";
 "widgetPurchaseUnlockedDescription" = "A vásárlást ellenőriztük, a widgetek mostantól megjeleníthetik a használati adatokat.";
 "widgetPurchaseLockedStatus" = "Zárolva";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "A menüsoron megjelenik";
 "statusBarDisplayQuota" = "Előfizetés használata";
 "statusBarDisplayTodayTokens" = "Mai Tokens";
-"statusMenuQuotaWindows" = "Használati időszakok";
-"quotaWindowsBoth" = "Mindkét időszak";
 "statusMenuChooseClaudeQuotaFile" = "Claude használati fájl kiválasztása…";
 "claudeQuotaFileOpenPanelMessage" = "A TokenWatch csak a Claude Code konfigurációs fájljában gyorsítótárazott előfizetés-használatot olvassa. Válassza ki a ~/.claude.json fájlt.";
 "statusBarDisplayQuotaAndTodayTokens" = "Előfizetés használata + Mai Tokens";
+"settingsStatusBarQuotaTitle" = "Előfizetés használata a menüsoron";
+"settingsStatusBarQuotaDescription" = "Válassza ki, mely Claude- és Codex-használati időszakok jelenjenek meg a menüsoron. A Tömör csak a gyűrűt mutatja, a Részletes a hátralévő százalékot is.";
+"settingsQuotaStyleCompact" = "Tömör";
+"settingsQuotaStyleDetailed" = "Részletes";
+"quotaPremiumLockedMessage" = "Az előfizetés használata fizetős funkció, amely az asztali widgeteket feloldó egyszeri vásárlás része.";
+"quotaUnlockAction" = "Feloldás";

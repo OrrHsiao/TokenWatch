@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Lege ein Monatsbudget in TokenWatch fest";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Das Budget wird voraussichtlich überschritten";
 "widgetPurchaseLockedTitle" = "Alle 7 Desktop-Mini-Apps freischalten";
-"widgetPurchaseLockedDescription" = "Einmal kaufen, dauerhaft nutzen und jederzeit wiederherstellen.";
+"widgetPurchaseLockedDescription" = "Ein Kauf schaltet alle Mini-Apps und die Abo-Nutzung in der Menüleiste dauerhaft frei und lässt sich jederzeit wiederherstellen.";
 "widgetPurchaseUnlockedTitle" = "Alle Mini-Apps sind freigeschaltet";
 "widgetPurchaseUnlockedDescription" = "Dein Kauf wurde bestätigt und die Mini-Apps können jetzt Nutzungsdaten anzeigen.";
 "widgetPurchaseLockedStatus" = "Gesperrt";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menüleiste zeigt";
 "statusBarDisplayQuota" = "Abo-Nutzung";
 "statusBarDisplayTodayTokens" = "Heutige Tokens";
-"statusMenuQuotaWindows" = "Nutzungszeiträume";
-"quotaWindowsBoth" = "Beide Zeiträume";
 "statusMenuChooseClaudeQuotaFile" = "Claude-Nutzungsdatei wählen…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch liest nur die zwischengespeicherte Abo-Nutzung aus der Konfigurationsdatei von Claude Code. Wähle ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abo-Nutzung + Heutige Tokens";
+"settingsStatusBarQuotaTitle" = "Abo-Nutzung in der Menüleiste";
+"settingsStatusBarQuotaDescription" = "Lege für Claude und Codex jeweils fest, welche Nutzungszeiträume in der Menüleiste erscheinen. Kompakt zeigt nur den Ring, Detailliert zusätzlich den verbleibenden Prozentsatz.";
+"settingsQuotaStyleCompact" = "Kompakt";
+"settingsQuotaStyleDetailed" = "Detailliert";
+"quotaPremiumLockedMessage" = "Die Abo-Nutzung ist eine kostenpflichtige Funktion und im einmaligen Kauf enthalten, der die Desktop-Mini-Apps freischaltet.";
+"quotaUnlockAction" = "Freischalten";

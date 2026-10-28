@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Stel een maandelijks budget in TokenWatch in";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Het budget wordt naar verwachting overschreden";
 "widgetPurchaseLockedTitle" = "Ontgrendel alle 7 bureaubladonderdelen";
-"widgetPurchaseLockedDescription" = "Eenmalige aankoop, permanente toegang en op elk moment te herstellen.";
+"widgetPurchaseLockedDescription" = "Eén aankoop ontgrendelt permanent alle onderdelen en het abonnementsgebruik in de menubalk, en is op elk moment te herstellen.";
 "widgetPurchaseUnlockedTitle" = "Alle onderdelen zijn ontgrendeld";
 "widgetPurchaseUnlockedDescription" = "Je aankoop is geverifieerd en de onderdelen kunnen nu gebruiksgegevens tonen.";
 "widgetPurchaseLockedStatus" = "Vergrendeld";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menubalk toont";
 "statusBarDisplayQuota" = "Abonnementsgebruik";
 "statusBarDisplayTodayTokens" = "Tokens van vandaag";
-"statusMenuQuotaWindows" = "Gebruiksperioden";
-"quotaWindowsBoth" = "Beide perioden";
 "statusMenuChooseClaudeQuotaFile" = "Claude-gebruiksbestand kiezen…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch leest alleen het gecachte abonnementsgebruik in het configuratiebestand van Claude Code. Kies ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonnementsgebruik + Tokens van vandaag";
+"settingsStatusBarQuotaTitle" = "Abonnementsgebruik in de menubalk";
+"settingsStatusBarQuotaDescription" = "Kies welke gebruiksperioden van Claude en Codex in de menubalk verschijnen. Beknopt toont alleen de ring; Gedetailleerd toont ook het resterende percentage.";
+"settingsQuotaStyleCompact" = "Beknopt";
+"settingsQuotaStyleDetailed" = "Gedetailleerd";
+"quotaPremiumLockedMessage" = "Abonnementsgebruik is een betaalde functie, inbegrepen bij de eenmalige aankoop die de bureaubladonderdelen ontgrendelt.";
+"quotaUnlockAction" = "Ontgrendel";

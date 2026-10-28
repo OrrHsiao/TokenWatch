@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch मध्ये मासिक बजेट सेट करा";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "बजेट ओलांडण्याचा अंदाज आहे";
 "widgetPurchaseLockedTitle" = "सर्व 7 डेस्कटॉप विजेट अनलॉक करा";
-"widgetPurchaseLockedDescription" = "एकदाच खरेदी करा, कायमचा प्रवेश मिळवा आणि कधीही पुनर्स्थापित करा.";
+"widgetPurchaseLockedDescription" = "एकदाच खरेदी करून सर्व विजेट आणि मेनू बारमधील सदस्यता वापर कायमचे अनलॉक करा आणि कधीही पुनर्स्थापित करा.";
 "widgetPurchaseUnlockedTitle" = "सर्व विजेट अनलॉक झाले आहेत";
 "widgetPurchaseUnlockedDescription" = "तुमची खरेदी सत्यापित झाली आहे आणि विजेट आता वापराचा डेटा दाखवू शकतात.";
 "widgetPurchaseLockedStatus" = "लॉक केलेले";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "मेनू बारमध्ये दाखवा";
 "statusBarDisplayQuota" = "सदस्यता वापर";
 "statusBarDisplayTodayTokens" = "आजचे Tokens";
-"statusMenuQuotaWindows" = "वापर कालावधी";
-"quotaWindowsBoth" = "दोन्ही कालावधी";
 "statusMenuChooseClaudeQuotaFile" = "Claude वापर फाइल निवडा…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch फक्त Claude Code कॉन्फिगरेशन फाइलमध्ये कॅश केलेला सदस्यता वापर वाचतो. ~/.claude.json निवडा.";
 "statusBarDisplayQuotaAndTodayTokens" = "सदस्यता वापर + आजचे Tokens";
+"settingsStatusBarQuotaTitle" = "मेनू बारमधील सदस्यता वापर";
+"settingsStatusBarQuotaDescription" = "मेनू बारमध्ये Claude आणि Codex चे कोणते वापर कालावधी दिसावेत ते निवडा. संक्षिप्त मोड फक्त रिंग दाखवतो, तर तपशीलवार मोड उरलेली टक्केवारीही दाखवतो.";
+"settingsQuotaStyleCompact" = "संक्षिप्त";
+"settingsQuotaStyleDetailed" = "तपशीलवार";
+"quotaPremiumLockedMessage" = "सदस्यता वापर हे सशुल्क वैशिष्ट्य आहे, जे डेस्कटॉप विजेट अनलॉक करणाऱ्या एकदाच्या खरेदीत समाविष्ट आहे.";
+"quotaUnlockAction" = "अनलॉक करा";

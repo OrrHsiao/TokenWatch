@@ -2727,7 +2727,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test("设置五行目录控件和既有设置项在最小高度内不裁切")
+    @Test("设置五行目录控件和既有设置项在最小高度的首屏内不裁切")
     func settingsProviderRowsFitMinimumHeight() throws {
         #expect(SettingsViewController.minimumContentHeight == 810)
 
@@ -2750,7 +2750,10 @@ struct TokenWatchTests {
                     identifier: "SettingsDataFoldersSection"
                 ) as? DashboardGlassCardView
             )
-            #expect(controller.view.bounds.contains(dataFoldersCard.frame))
+            // 设置页可纵向滚动（末尾为状态栏订阅额度区块），既有设置项仍须在首屏内完整可见。
+            #expect(controller.view.bounds.contains(
+                dataFoldersCard.convert(dataFoldersCard.bounds, to: controller.view)
+            ))
             for identifier in [
                 "ProviderDirectoryStatus.claude",
                 "ProviderDirectoryStatus.codex",

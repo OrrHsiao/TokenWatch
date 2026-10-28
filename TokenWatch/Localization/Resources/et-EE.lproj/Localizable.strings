@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Määrake TokenWatchis kuu eelarve";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Prognoositakse eelarve ületamist";
 "widgetPurchaseLockedTitle" = "Avage kõik 7 töölauavidinat lukust";
-"widgetPurchaseLockedDescription" = "Üks ost annab püsiva juurdepääsu ning seda saab igal ajal taastada.";
+"widgetPurchaseLockedDescription" = "Üks ost avab jäädavalt kõik vidinad ja menüüriba tellimuse kasutuse ning seda saab igal ajal taastada.";
 "widgetPurchaseUnlockedTitle" = "Kõik vidinad on lukust avatud";
 "widgetPurchaseUnlockedDescription" = "Teie ost on kinnitatud ja vidinad saavad nüüd kuvada kasutusandmeid.";
 "widgetPurchaseLockedStatus" = "Lukustatud";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menüüriba näitab";
 "statusBarDisplayQuota" = "Tellimuse kasutus";
 "statusBarDisplayTodayTokens" = "Tänased Tokens";
-"statusMenuQuotaWindows" = "Kasutusperioodid";
-"quotaWindowsBoth" = "Mõlemad perioodid";
 "statusMenuChooseClaudeQuotaFile" = "Vali Claude'i kasutusfail…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch loeb ainult Claude Code'i konfiguratsioonifaili vahemällu salvestatud tellimuse kasutust. Valige ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Tellimuse kasutus + Tänased Tokens";
+"settingsStatusBarQuotaTitle" = "Tellimuse kasutus menüüribal";
+"settingsStatusBarQuotaDescription" = "Vali, millised Claude'i ja Codexi kasutusperioodid menüüribal kuvatakse. Kompaktne näitab ainult rõngast, Üksikasjalik ka järelejäänud protsenti.";
+"settingsQuotaStyleCompact" = "Kompaktne";
+"settingsQuotaStyleDetailed" = "Üksikasjalik";
+"quotaPremiumLockedMessage" = "Tellimuse kasutus on tasuline funktsioon, mis sisaldub töölauavidinad lukust avavas ühekordses ostus.";
+"quotaUnlockAction" = "Ava lukust";

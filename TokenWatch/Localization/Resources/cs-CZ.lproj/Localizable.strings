@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Nastavte měsíční rozpočet v aplikaci TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Očekává se překročení rozpočtu";
 "widgetPurchaseLockedTitle" = "Odemkněte všech 7 widgetů na ploše";
-"widgetPurchaseLockedDescription" = "Jeden nákup zajistí trvalý přístup s možností kdykoli jej obnovit.";
+"widgetPurchaseLockedDescription" = "Jeden nákup trvale odemkne všechny widgety i využití předplatného na řádku nabídek s možností kdykoli jej obnovit.";
 "widgetPurchaseUnlockedTitle" = "Všechny widgety jsou odemčené";
 "widgetPurchaseUnlockedDescription" = "Váš nákup byl ověřen a widgety nyní mohou zobrazovat údaje o využití.";
 "widgetPurchaseLockedStatus" = "Uzamčeno";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Řádek nabídek zobrazuje";
 "statusBarDisplayQuota" = "Využití předplatného";
 "statusBarDisplayTodayTokens" = "Dnešní Tokens";
-"statusMenuQuotaWindows" = "Období využití";
-"quotaWindowsBoth" = "Obě období";
 "statusMenuChooseClaudeQuotaFile" = "Vybrat soubor využití Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch čte pouze využití předplatného uložené v mezipaměti konfiguračního souboru Claude Code. Vyberte ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Využití předplatného + Dnešní Tokens";
+"settingsStatusBarQuotaTitle" = "Využití předplatného na řádku nabídek";
+"settingsStatusBarQuotaDescription" = "Vyberte, která období využití Claude a Codex se zobrazí na řádku nabídek. Kompaktní zobrazí jen kruh, Podrobné i zbývající procenta.";
+"settingsQuotaStyleCompact" = "Kompaktní";
+"settingsQuotaStyleDetailed" = "Podrobné";
+"quotaPremiumLockedMessage" = "Využití předplatného je placená funkce, která je součástí jednorázového nákupu odemykajícího widgety na ploše.";
+"quotaUnlockAction" = "Odemknout";

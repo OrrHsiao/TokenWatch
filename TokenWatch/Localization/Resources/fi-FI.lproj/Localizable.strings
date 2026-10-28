@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Aseta kuukausibudjetti TokenWatchissa";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Budjetti ylittyy ennusteen mukaan";
 "widgetPurchaseLockedTitle" = "Avaa kaikkien 7 työpöytäwidgetin lukitus";
-"widgetPurchaseLockedDescription" = "Kertaostos antaa pysyvän käyttöoikeuden, jonka voi palauttaa milloin tahansa.";
+"widgetPurchaseLockedDescription" = "Kertaostos avaa pysyvästi kaikkien widgetien ja valikkorivin tilauskäytön lukituksen, ja sen voi palauttaa milloin tahansa.";
 "widgetPurchaseUnlockedTitle" = "Kaikkien widgettien lukitus on avattu";
 "widgetPurchaseUnlockedDescription" = "Ostoksesi on vahvistettu, ja widgetit voivat nyt näyttää käyttötietoja.";
 "widgetPurchaseLockedStatus" = "Lukittu";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Valikkorivillä näytetään";
 "statusBarDisplayQuota" = "Tilauksen käyttö";
 "statusBarDisplayTodayTokens" = "Tämän päivän Tokens";
-"statusMenuQuotaWindows" = "Käyttöjaksot";
-"quotaWindowsBoth" = "Molemmat jaksot";
 "statusMenuChooseClaudeQuotaFile" = "Valitse Clauden käyttötiedosto…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch lukee vain Claude Coden asetustiedostoon välimuistiin tallennetun tilauksen käytön. Valitse ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Tilauksen käyttö + Tämän päivän Tokens";
+"settingsStatusBarQuotaTitle" = "Tilauksen käyttö valikkorivillä";
+"settingsStatusBarQuotaDescription" = "Valitse, mitkä Clauden ja Codexin käyttöjaksot näytetään valikkorivillä. Tiivis näyttää vain renkaan, Yksityiskohtainen myös jäljellä olevan prosenttiosuuden.";
+"settingsQuotaStyleCompact" = "Tiivis";
+"settingsQuotaStyleDetailed" = "Yksityiskohtainen";
+"quotaPremiumLockedMessage" = "Tilauksen käyttö on maksullinen ominaisuus, joka sisältyy työpöytäwidgetien lukituksen avaavaan kertaostokseen.";
+"quotaUnlockAction" = "Avaa lukitus";

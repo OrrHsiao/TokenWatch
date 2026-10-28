@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Установите месячный бюджет в TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Ожидается превышение бюджета";
 "widgetPurchaseLockedTitle" = "Разблокируйте все 7 виджетов для рабочего стола";
-"widgetPurchaseLockedDescription" = "Одна покупка — постоянный доступ с возможностью восстановления в любое время.";
+"widgetPurchaseLockedDescription" = "Одна покупка навсегда разблокирует все виджеты и использование подписки в строке меню, с возможностью восстановления в любое время.";
 "widgetPurchaseUnlockedTitle" = "Все виджеты разблокированы";
 "widgetPurchaseUnlockedDescription" = "Покупка подтверждена, и теперь виджеты могут отображать данные об использовании.";
 "widgetPurchaseLockedStatus" = "Заблокировано";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Строка меню показывает";
 "statusBarDisplayQuota" = "Использование подписки";
 "statusBarDisplayTodayTokens" = "Tokens за сегодня";
-"statusMenuQuotaWindows" = "Периоды использования";
-"quotaWindowsBoth" = "Оба периода";
 "statusMenuChooseClaudeQuotaFile" = "Выбрать файл использования Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch читает только кэшированное использование подписки из файла конфигурации Claude Code. Выберите ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Использование подписки + Tokens за сегодня";
+"settingsStatusBarQuotaTitle" = "Использование подписки в строке меню";
+"settingsStatusBarQuotaDescription" = "Выберите, какие периоды использования Claude и Codex показывать в строке меню. Компактный режим показывает только кольцо, подробный — ещё и оставшийся процент.";
+"settingsQuotaStyleCompact" = "Компактный";
+"settingsQuotaStyleDetailed" = "Подробный";
+"quotaPremiumLockedMessage" = "Использование подписки — платная функция, входящая в разовую покупку, которая разблокирует виджеты для рабочего стола.";
+"quotaUnlockAction" = "Разблокировать";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch ನಲ್ಲಿ ಮಾಸಿಕ ಬಜೆಟ್ ಹೊಂದಿಸಿ";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "ಬಜೆಟ್ ಮೀರುವ ನಿರೀಕ್ಷೆಯಿದೆ";
 "widgetPurchaseLockedTitle" = "ಎಲ್ಲಾ 7 ಡೆಸ್ಕ್‌ಟಾಪ್ ವಿಜೆಟ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಿ";
-"widgetPurchaseLockedDescription" = "ಒಮ್ಮೆ ಖರೀದಿಸಿ, ಶಾಶ್ವತ ಪ್ರವೇಶ ಪಡೆಯಿರಿ ಮತ್ತು ಯಾವಾಗ ಬೇಕಾದರೂ ಮರುಸ್ಥಾಪಿಸಿ.";
+"widgetPurchaseLockedDescription" = "ಒಮ್ಮೆ ಖರೀದಿಸಿದರೆ ಎಲ್ಲಾ ವಿಜೆಟ್‌ಗಳು ಮತ್ತು ಮೆನು ಬಾರ್‌ನ ಚಂದಾದಾರಿಕೆ ಬಳಕೆ ಶಾಶ್ವತವಾಗಿ ಅನ್‌ಲಾಕ್ ಆಗುತ್ತವೆ; ಯಾವಾಗ ಬೇಕಾದರೂ ಮರುಸ್ಥಾಪಿಸಬಹುದು.";
 "widgetPurchaseUnlockedTitle" = "ಎಲ್ಲಾ ವಿಜೆಟ್‌ಗಳು ಅನ್‌ಲಾಕ್ ಆಗಿವೆ";
 "widgetPurchaseUnlockedDescription" = "ನಿಮ್ಮ ಖರೀದಿಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ ಮತ್ತು ವಿಜೆಟ್‌ಗಳು ಈಗ ಬಳಕೆಯ ಡೇಟಾವನ್ನು ತೋರಿಸಬಹುದು.";
 "widgetPurchaseLockedStatus" = "ಲಾಕ್ ಆಗಿದೆ";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "ಮೆನು ಬಾರ್‌ನಲ್ಲಿ ತೋರಿಸು";
 "statusBarDisplayQuota" = "ಚಂದಾದಾರಿಕೆ ಬಳಕೆ";
 "statusBarDisplayTodayTokens" = "ಇಂದಿನ Tokens";
-"statusMenuQuotaWindows" = "ಬಳಕೆಯ ಅವಧಿಗಳು";
-"quotaWindowsBoth" = "ಎರಡೂ ಅವಧಿಗಳು";
 "statusMenuChooseClaudeQuotaFile" = "Claude ಬಳಕೆಯ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch ಕೇವಲ Claude Code ಕಾನ್ಫಿಗರೇಶನ್ ಫೈಲ್‌ನಲ್ಲಿ ಕ್ಯಾಶ್ ಮಾಡಲಾದ ಚಂದಾದಾರಿಕೆ ಬಳಕೆಯನ್ನು ಓದುತ್ತದೆ. ~/.claude.json ಆಯ್ಕೆಮಾಡಿ.";
 "statusBarDisplayQuotaAndTodayTokens" = "ಚಂದಾದಾರಿಕೆ ಬಳಕೆ + ಇಂದಿನ Tokens";
+"settingsStatusBarQuotaTitle" = "ಮೆನು ಬಾರ್‌ನಲ್ಲಿ ಚಂದಾದಾರಿಕೆ ಬಳಕೆ";
+"settingsStatusBarQuotaDescription" = "ಮೆನು ಬಾರ್‌ನಲ್ಲಿ Claude ಮತ್ತು Codex ನ ಯಾವ ಬಳಕೆಯ ಅವಧಿಗಳು ಕಾಣಿಸಬೇಕು ಎಂಬುದನ್ನು ಆಯ್ಕೆಮಾಡಿ. ಸಂಕ್ಷಿಪ್ತ ಮೋಡ್ ಉಂಗುರವನ್ನು ಮಾತ್ರ ತೋರಿಸುತ್ತದೆ, ವಿವರವಾದ ಮೋಡ್ ಉಳಿದ ಶೇಕಡಾವಾರನ್ನೂ ತೋರಿಸುತ್ತದೆ.";
+"settingsQuotaStyleCompact" = "ಸಂಕ್ಷಿಪ್ತ";
+"settingsQuotaStyleDetailed" = "ವಿವರವಾದ";
+"quotaPremiumLockedMessage" = "ಚಂದಾದಾರಿಕೆ ಬಳಕೆಯು ಪಾವತಿಸಿದ ವೈಶಿಷ್ಟ್ಯವಾಗಿದ್ದು, ಡೆಸ್ಕ್‌ಟಾಪ್ ವಿಜೆಟ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡುವ ಒಂದು ಬಾರಿಯ ಖರೀದಿಯಲ್ಲಿ ಸೇರಿದೆ.";
+"quotaUnlockAction" = "ಅನ್‌ಲಾಕ್ ಮಾಡಿ";

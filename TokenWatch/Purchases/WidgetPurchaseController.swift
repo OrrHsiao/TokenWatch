@@ -94,16 +94,16 @@ final class WidgetPurchaseController {
         }
 
         guard initialRefreshTask == nil else { return }
+        // 冷启动先用 App Group entitlement 缓存初始化解锁状态：
+        // 首次 StoreKit 查询 indeterminate 时，主 app 与 widget 扩展
+        // （读同一缓存的 fail-closed 副本）保持一致。
+        // 同步应用缓存，使状态栏首帧即可按已购买状态决定是否展示付费的订阅额度。
+        let cachedState = entitlementStore.load()
+        updateState { next in
+            next.isUnlocked = cachedState == .unlocked
+        }
         initialRefreshTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            // 冷启动先用 App Group entitlement 缓存初始化解锁状态：
-            // 首次 StoreKit 查询 indeterminate 时，主 app 与 widget 扩展
-            // （读同一缓存的 fail-closed 副本）保持一致。
-            let cachedState = self.entitlementStore.load()
-            self.updateState { next in
-                next.isUnlocked = cachedState == .unlocked
-            }
-            await self.refresh()
+            await self?.refresh()
         }
     }
 
@@ -475,7 +475,7 @@ enum WidgetPurchaseReviewFixtures {
     static let product = WidgetPurchaseProduct(
         id: WidgetPurchaseController.productID,
         displayName: "Unlock All Widgets",
-        description: "Unlock all 7 desktop widgets permanently.",
+        description: "Unlock all 7 desktop widgets and menu bar subscription usage permanently.",
         displayPrice: "$2.99"
     )
 

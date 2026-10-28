@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "დააყენეთ ყოველთვიური ბიუჯეტი TokenWatch-ში";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "მოსალოდნელია ბიუჯეტის გადაჭარბება";
 "widgetPurchaseLockedTitle" = "განბლოკეთ სამუშაო მაგიდის შვიდივე ვიჯეტი";
-"widgetPurchaseLockedDescription" = "ერთი შეძენა გაძლევთ მუდმივ წვდომას და მისი აღდგენა ნებისმიერ დროს შეგიძლიათ.";
+"widgetPurchaseLockedDescription" = "ერთი შეძენა სამუდამოდ განბლოკავს ყველა ვიჯეტს და გამოწერის გამოყენებას მენიუს ზოლში, ხოლო მისი აღდგენა ნებისმიერ დროს შეგიძლიათ.";
 "widgetPurchaseUnlockedTitle" = "ყველა ვიჯეტი განბლოკილია";
 "widgetPurchaseUnlockedDescription" = "თქვენი შეძენა დადასტურებულია და ვიჯეტებს ახლა გამოყენების მონაცემების ჩვენება შეუძლიათ.";
 "widgetPurchaseLockedStatus" = "დაბლოკილია";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "მენიუს ზოლი აჩვენებს";
 "statusBarDisplayQuota" = "გამოწერის გამოყენება";
 "statusBarDisplayTodayTokens" = "დღევანდელი Tokens";
-"statusMenuQuotaWindows" = "გამოყენების პერიოდები";
-"quotaWindowsBoth" = "ორივე პერიოდი";
 "statusMenuChooseClaudeQuotaFile" = "Claude-ის გამოყენების ფაილის არჩევა…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch კითხულობს მხოლოდ Claude Code-ის კონფიგურაციის ფაილში ქეშირებულ გამოწერის გამოყენებას. აირჩიეთ ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "გამოწერის გამოყენება + დღევანდელი Tokens";
+"settingsStatusBarQuotaTitle" = "გამოწერის გამოყენება მენიუს ზოლში";
+"settingsStatusBarQuotaDescription" = "აირჩიეთ, Claude-ისა და Codex-ის გამოყენების რომელი პერიოდები გამოჩნდეს მენიუს ზოლში. კომპაქტური აჩვენებს მხოლოდ რგოლს, დეტალური კი — დარჩენილ პროცენტსაც.";
+"settingsQuotaStyleCompact" = "კომპაქტური";
+"settingsQuotaStyleDetailed" = "დეტალური";
+"quotaPremiumLockedMessage" = "გამოწერის გამოყენება ფასიანი ფუნქციაა და შედის ერთჯერად შენაძენში, რომელიც სამუშაო მაგიდის ვიჯეტებს განბლოკავს.";
+"quotaUnlockAction" = "განბლოკვა";

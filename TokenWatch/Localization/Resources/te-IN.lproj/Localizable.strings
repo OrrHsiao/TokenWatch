@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatchలో నెలవారీ బడ్జెట్‌ను సెట్ చేయండి";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "బడ్జెట్‌ను మించుతుందని అంచనా";
 "widgetPurchaseLockedTitle" = "మొత్తం 7 డెస్క్‌టాప్ విడ్జెట్‌లను అన్‌లాక్ చేయండి";
-"widgetPurchaseLockedDescription" = "ఒక్కసారి కొనుగోలు చేసి, శాశ్వత యాక్సెస్ పొందండి; ఎప్పుడైనా పునరుద్ధరించవచ్చు.";
+"widgetPurchaseLockedDescription" = "ఒక్కసారి కొనుగోలుతో అన్ని విడ్జెట్‌లు, మెనూ బార్ సబ్‌స్క్రిప్షన్ వినియోగం శాశ్వతంగా అన్‌లాక్ అవుతాయి; ఎప్పుడైనా పునరుద్ధరించవచ్చు.";
 "widgetPurchaseUnlockedTitle" = "అన్ని విడ్జెట్‌లు అన్‌లాక్ అయ్యాయి";
 "widgetPurchaseUnlockedDescription" = "మీ కొనుగోలు ధృవీకరించబడింది; విడ్జెట్‌లు ఇప్పుడు వినియోగ డేటాను చూపగలవు.";
 "widgetPurchaseLockedStatus" = "లాక్ చేయబడింది";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "మెనూ బార్‌లో చూపించేది";
 "statusBarDisplayQuota" = "సబ్‌స్క్రిప్షన్ వినియోగం";
 "statusBarDisplayTodayTokens" = "నేటి Tokens";
-"statusMenuQuotaWindows" = "వినియోగ వ్యవధులు";
-"quotaWindowsBoth" = "రెండు వ్యవధులు";
 "statusMenuChooseClaudeQuotaFile" = "Claude వినియోగ ఫైల్‌ను ఎంచుకోండి…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch కేవలం Claude Code కాన్ఫిగరేషన్ ఫైల్‌లో కాష్ చేసిన సబ్‌స్క్రిప్షన్ వినియోగాన్ని మాత్రమే చదువుతుంది. ~/.claude.json ఎంచుకోండి.";
 "statusBarDisplayQuotaAndTodayTokens" = "సబ్‌స్క్రిప్షన్ వినియోగం + నేటి Tokens";
+"settingsStatusBarQuotaTitle" = "మెనూ బార్‌లో సబ్‌స్క్రిప్షన్ వినియోగం";
+"settingsStatusBarQuotaDescription" = "మెనూ బార్‌లో Claude మరియు Codex యొక్క ఏ వినియోగ వ్యవధులు కనిపించాలో ఎంచుకోండి. సంక్షిప్త మోడ్ కేవలం రింగ్‌ను చూపిస్తుంది, వివరణాత్మక మోడ్ మిగిలిన శాతాన్ని కూడా చూపిస్తుంది.";
+"settingsQuotaStyleCompact" = "సంక్షిప్తం";
+"settingsQuotaStyleDetailed" = "వివరణాత్మకం";
+"quotaPremiumLockedMessage" = "సబ్‌స్క్రిప్షన్ వినియోగం చెల్లింపు ఫీచర్; ఇది డెస్క్‌టాప్ విడ్జెట్‌లను అన్‌లాక్ చేసే ఒకసారి కొనుగోలులో భాగం.";
+"quotaUnlockAction" = "అన్‌లాక్ చేయండి";

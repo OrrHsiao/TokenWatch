@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Caktoni një buxhet mujor në TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Parashikohet tejkalimi i buxhetit";
 "widgetPurchaseLockedTitle" = "Shkyç të 7 widget-et e desktopit";
-"widgetPurchaseLockedDescription" = "Një blerje, qasje e përhershme, me mundësi rikthimi në çdo kohë.";
+"widgetPurchaseLockedDescription" = "Një blerje shkyç përgjithmonë të gjitha widget-et dhe përdorimin e abonimit në shiritin e menysë, me mundësi rikthimi në çdo kohë.";
 "widgetPurchaseUnlockedTitle" = "Të gjitha widget-et janë shkyçur";
 "widgetPurchaseUnlockedDescription" = "Blerja juaj u verifikua dhe widget-et tani mund të shfaqin të dhënat e përdorimit.";
 "widgetPurchaseLockedStatus" = "E kyçur";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Shiriti i menysë shfaq";
 "statusBarDisplayQuota" = "Përdorimi i abonimit";
 "statusBarDisplayTodayTokens" = "Tokens e sotme";
-"statusMenuQuotaWindows" = "Periudhat e përdorimit";
-"quotaWindowsBoth" = "Të dyja periudhat";
 "statusMenuChooseClaudeQuotaFile" = "Zgjidh skedarin e përdorimit të Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch lexon vetëm përdorimin e abonimit të ruajtur në memorien e përkohshme të skedarit të konfigurimit të Claude Code. Zgjidhni ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Përdorimi i abonimit + Tokens e sotme";
+"settingsStatusBarQuotaTitle" = "Përdorimi i abonimit në shiritin e menysë";
+"settingsStatusBarQuotaDescription" = "Zgjidhni cilat periudha përdorimi të Claude dhe Codex shfaqen në shiritin e menysë. Kompakt shfaq vetëm unazën; I detajuar shfaq edhe përqindjen e mbetur.";
+"settingsQuotaStyleCompact" = "Kompakt";
+"settingsQuotaStyleDetailed" = "I detajuar";
+"quotaPremiumLockedMessage" = "Përdorimi i abonimit është veçori me pagesë, e përfshirë në blerjen e njëhershme që shkyç widget-et e desktopit.";
+"quotaUnlockAction" = "Shkyç";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch-ൽ പ്രതിമാസ ബജറ്റ് സജ്ജമാക്കുക";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "ബജറ്റ് കവിയുമെന്ന് പ്രവചിക്കുന്നു";
 "widgetPurchaseLockedTitle" = "എല്ലാ 7 ഡെസ്‌ക്‌ടോപ്പ് വിഡ്ജറ്റുകളും അൺലോക്ക് ചെയ്യുക";
-"widgetPurchaseLockedDescription" = "ഒറ്റ വാങ്ങലിലൂടെ സ്ഥിരമായ ആക്‌സസ് നേടാം; എപ്പോൾ വേണമെങ്കിലും പുനഃസ്ഥാപിക്കാം.";
+"widgetPurchaseLockedDescription" = "ഒറ്റ വാങ്ങലിലൂടെ എല്ലാ വിഡ്ജറ്റുകളും മെനു ബാറിലെ സബ്‌സ്‌ക്രിപ്ഷൻ ഉപയോഗവും സ്ഥിരമായി അൺലോക്ക് ചെയ്യാം; എപ്പോൾ വേണമെങ്കിലും പുനഃസ്ഥാപിക്കാം.";
 "widgetPurchaseUnlockedTitle" = "എല്ലാ വിഡ്ജറ്റുകളും അൺലോക്ക് ചെയ്‌തു";
 "widgetPurchaseUnlockedDescription" = "നിങ്ങളുടെ വാങ്ങൽ സ്ഥിരീകരിച്ചു; വിഡ്ജറ്റുകൾക്ക് ഇപ്പോൾ ഉപയോഗ ഡാറ്റ കാണിക്കാം.";
 "widgetPurchaseLockedStatus" = "ലോക്ക് ചെയ്‌തത്";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "മെനു ബാറിൽ കാണിക്കുന്നത്";
 "statusBarDisplayQuota" = "സബ്‌സ്‌ക്രിപ്ഷൻ ഉപയോഗം";
 "statusBarDisplayTodayTokens" = "ഇന്നത്തെ Tokens";
-"statusMenuQuotaWindows" = "ഉപയോഗ കാലയളവുകൾ";
-"quotaWindowsBoth" = "രണ്ട് കാലയളവുകളും";
 "statusMenuChooseClaudeQuotaFile" = "Claude ഉപയോഗ ഫയൽ തിരഞ്ഞെടുക്കുക…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch, Claude Code കോൺഫിഗറേഷൻ ഫയലിൽ കാഷ് ചെയ്ത സബ്‌സ്‌ക്രിപ്ഷൻ ഉപയോഗം മാത്രമേ വായിക്കൂ. ~/.claude.json തിരഞ്ഞെടുക്കുക.";
 "statusBarDisplayQuotaAndTodayTokens" = "സബ്‌സ്‌ക്രിപ്ഷൻ ഉപയോഗം + ഇന്നത്തെ Tokens";
+"settingsStatusBarQuotaTitle" = "മെനു ബാറിലെ സബ്‌സ്‌ക്രിപ്ഷൻ ഉപയോഗം";
+"settingsStatusBarQuotaDescription" = "മെനു ബാറിൽ Claude, Codex എന്നിവയുടെ ഏതൊക്കെ ഉപയോഗ കാലയളവുകൾ കാണിക്കണമെന്ന് തിരഞ്ഞെടുക്കുക. ചുരുക്കിയ മോഡ് വളയം മാത്രം കാണിക്കുന്നു; വിശദമായ മോഡ് ശേഷിക്കുന്ന ശതമാനവും കാണിക്കുന്നു.";
+"settingsQuotaStyleCompact" = "ചുരുക്കിയത്";
+"settingsQuotaStyleDetailed" = "വിശദമായത്";
+"quotaPremiumLockedMessage" = "സബ്‌സ്‌ക്രിപ്ഷൻ ഉപയോഗം ഒരു പണമടച്ചുള്ള ഫീച്ചറാണ്, ഡെസ്‌ക്‌ടോപ്പ് വിഡ്ജറ്റുകൾ അൺലോക്ക് ചെയ്യുന്ന ഒറ്റത്തവണ വാങ്ങലിൽ ഇത് ഉൾപ്പെടുന്നു.";
+"quotaUnlockAction" = "അൺലോക്ക് ചെയ്യുക";

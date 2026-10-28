@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Postavite mjesečni budžet u TokenWatchu";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Predviđeno prekoračenje budžeta";
 "widgetPurchaseLockedTitle" = "Otključajte svih 7 desktop widgeta";
-"widgetPurchaseLockedDescription" = "Jedna kupovina pruža trajan pristup uz mogućnost obnavljanja u bilo kojem trenutku.";
+"widgetPurchaseLockedDescription" = "Jedna kupovina trajno otključava sve widgete i korištenje pretplate na traci menija uz mogućnost obnavljanja u bilo kojem trenutku.";
 "widgetPurchaseUnlockedTitle" = "Svi widgeti su otključani";
 "widgetPurchaseUnlockedDescription" = "Vaša kupovina je potvrđena i widgeti sada mogu prikazivati podatke o korištenju.";
 "widgetPurchaseLockedStatus" = "Zaključano";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Traka menija prikazuje";
 "statusBarDisplayQuota" = "Korištenje pretplate";
 "statusBarDisplayTodayTokens" = "Današnji Tokens";
-"statusMenuQuotaWindows" = "Periodi korištenja";
-"quotaWindowsBoth" = "Oba perioda";
 "statusMenuChooseClaudeQuotaFile" = "Odaberi datoteku korištenja za Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch čita samo keširano korištenje pretplate iz konfiguracijske datoteke Claude Code. Odaberite ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Korištenje pretplate + Današnji Tokens";
+"settingsStatusBarQuotaTitle" = "Korištenje pretplate na traci menija";
+"settingsStatusBarQuotaDescription" = "Odaberite koji periodi korištenja za Claude i Codex se prikazuju na traci menija. Sažeto prikazuje samo prsten, a Detaljno i preostali procenat.";
+"settingsQuotaStyleCompact" = "Sažeto";
+"settingsQuotaStyleDetailed" = "Detaljno";
+"quotaPremiumLockedMessage" = "Korištenje pretplate je plaćena funkcija, uključena u jednokratnu kupovinu koja otključava desktop widgete.";
+"quotaUnlockAction" = "Otključaj";

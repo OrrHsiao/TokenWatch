@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "حدّد ميزانية شهرية في TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "من المتوقع تجاوز الميزانية";
 "widgetPurchaseLockedTitle" = "ألغِ قفل جميع أدوات سطح المكتب المصغّرة السبعة";
-"widgetPurchaseLockedDescription" = "عملية شراء واحدة تمنحك وصولًا دائمًا، مع إمكانية استعادتها في أي وقت.";
+"widgetPurchaseLockedDescription" = "عملية شراء واحدة تلغي قفل جميع الأدوات المصغّرة واستخدام الاشتراك في شريط القوائم بشكل دائم، مع إمكانية استعادتها في أي وقت.";
 "widgetPurchaseUnlockedTitle" = "تم إلغاء قفل جميع الأدوات المصغّرة";
 "widgetPurchaseUnlockedDescription" = "تم التحقق من عملية الشراء، ويمكن للأدوات المصغّرة الآن عرض بيانات الاستخدام.";
 "widgetPurchaseLockedStatus" = "مقفل";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "يعرض شريط القوائم";
 "statusBarDisplayQuota" = "استخدام الاشتراك";
 "statusBarDisplayTodayTokens" = "Tokens اليوم";
-"statusMenuQuotaWindows" = "فترات الاستخدام";
-"quotaWindowsBoth" = "كلتا الفترتين";
 "statusMenuChooseClaudeQuotaFile" = "اختيار ملف استخدام Claude…";
 "claudeQuotaFileOpenPanelMessage" = "يقرأ TokenWatch فقط استخدام الاشتراك المخزّن مؤقتًا في ملف إعدادات Claude Code. اختر ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "استخدام الاشتراك + Tokens اليوم";
+"settingsStatusBarQuotaTitle" = "استخدام الاشتراك في شريط القوائم";
+"settingsStatusBarQuotaDescription" = "اختر فترات استخدام Claude و Codex التي تظهر في شريط القوائم. يعرض الوضع المختصر الحلقة فقط، بينما يعرض الوضع المفصّل النسبة المئوية المتبقية أيضًا.";
+"settingsQuotaStyleCompact" = "مختصر";
+"settingsQuotaStyleDetailed" = "مفصّل";
+"quotaPremiumLockedMessage" = "استخدام الاشتراك ميزة مدفوعة، مضمّنة في عملية الشراء لمرة واحدة التي تلغي قفل أدوات سطح المكتب المصغّرة.";
+"quotaUnlockAction" = "إلغاء القفل";

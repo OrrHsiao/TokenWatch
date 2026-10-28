@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Nastavite mesečni proračun v TokenWatchu";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Predvidena je prekoračitev proračuna";
 "widgetPurchaseLockedTitle" = "Odklenite vseh 7 pripomočkov za namizje";
-"widgetPurchaseLockedDescription" = "En nakup zagotavlja trajen dostop, nakup pa lahko kadar koli obnovite.";
+"widgetPurchaseLockedDescription" = "En nakup trajno odklene vse pripomočke in uporabo naročnine v menijski vrstici, nakup pa lahko kadar koli obnovite.";
 "widgetPurchaseUnlockedTitle" = "Vsi pripomočki so odklenjeni";
 "widgetPurchaseUnlockedDescription" = "Vaš nakup je preverjen in pripomočki lahko zdaj prikazujejo podatke o uporabi.";
 "widgetPurchaseLockedStatus" = "Zaklenjeno";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menijska vrstica prikazuje";
 "statusBarDisplayQuota" = "Uporaba naročnine";
 "statusBarDisplayTodayTokens" = "Današnji Tokens";
-"statusMenuQuotaWindows" = "Obdobja uporabe";
-"quotaWindowsBoth" = "Obe obdobji";
 "statusMenuChooseClaudeQuotaFile" = "Izberi datoteko uporabe Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch bere samo predpomnjeno uporabo naročnine iz konfiguracijske datoteke Claude Code. Izberite ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Uporaba naročnine + Današnji Tokens";
+"settingsStatusBarQuotaTitle" = "Uporaba naročnine v menijski vrstici";
+"settingsStatusBarQuotaDescription" = "Izberite, katera obdobja uporabe za Claude in Codex so prikazana v menijski vrstici. Strnjeno prikaže le obroč, Podrobno pa tudi preostali odstotek.";
+"settingsQuotaStyleCompact" = "Strnjeno";
+"settingsQuotaStyleDetailed" = "Podrobno";
+"quotaPremiumLockedMessage" = "Uporaba naročnine je plačljiva funkcija, vključena v enkratni nakup, ki odklene pripomočke za namizje.";
+"quotaUnlockAction" = "Odkleni";

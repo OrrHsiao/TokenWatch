@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Nustatykite mėnesio biudžetą programoje TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Prognozuojamas biudžeto viršijimas";
 "widgetPurchaseLockedTitle" = "Atrakinkite visus 7 darbalaukio valdiklius";
-"widgetPurchaseLockedDescription" = "Vienas pirkinys suteikia nuolatinę prieigą, o pirkinį galima bet kada atkurti.";
+"widgetPurchaseLockedDescription" = "Vienas pirkinys visam laikui atrakina visus valdiklius ir prenumeratos naudojimą meniu juostoje, o pirkinį galima bet kada atkurti.";
 "widgetPurchaseUnlockedTitle" = "Visi valdikliai atrakinti";
 "widgetPurchaseUnlockedDescription" = "Jūsų pirkinys patvirtintas, todėl valdikliai dabar gali rodyti naudojimo duomenis.";
 "widgetPurchaseLockedStatus" = "Užrakinta";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Meniu juosta rodo";
 "statusBarDisplayQuota" = "Prenumeratos naudojimas";
 "statusBarDisplayTodayTokens" = "Šiandienos Tokens";
-"statusMenuQuotaWindows" = "Naudojimo laikotarpiai";
-"quotaWindowsBoth" = "Abu laikotarpiai";
 "statusMenuChooseClaudeQuotaFile" = "Pasirinkti Claude naudojimo failą…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch nuskaito tik Claude Code konfigūracijos faile talpykloje išsaugotą prenumeratos naudojimą. Pasirinkite ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Prenumeratos naudojimas + Šiandienos Tokens";
+"settingsStatusBarQuotaTitle" = "Prenumeratos naudojimas meniu juostoje";
+"settingsStatusBarQuotaDescription" = "Pasirinkite, kurie Claude ir Codex naudojimo laikotarpiai rodomi meniu juostoje. Glaustas rodo tik žiedą, Išsamus – ir likusią procentinę dalį.";
+"settingsQuotaStyleCompact" = "Glaustas";
+"settingsQuotaStyleDetailed" = "Išsamus";
+"quotaPremiumLockedMessage" = "Prenumeratos naudojimas yra mokama funkcija, įtraukta į vienkartinį pirkinį, kuris atrakina darbalaukio valdiklius.";
+"quotaUnlockAction" = "Atrakinti";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch میں ماہانہ بجٹ مقرر کریں";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "بجٹ سے تجاوز کا امکان ہے";
 "widgetPurchaseLockedTitle" = "ڈیسک ٹاپ کے تمام 7 ویجٹس اَن لاک کریں";
-"widgetPurchaseLockedDescription" = "ایک خریداری سے مستقل رسائی حاصل کریں، جسے کسی بھی وقت بحال کیا جا سکتا ہے۔";
+"widgetPurchaseLockedDescription" = "ایک خریداری سے تمام ویجٹس اور مینو بار میں سبسکرپشن کا استعمال مستقل طور پر اَن لاک ہو جاتا ہے، جسے کسی بھی وقت بحال کیا جا سکتا ہے۔";
 "widgetPurchaseUnlockedTitle" = "تمام ویجٹس اَن لاک ہیں";
 "widgetPurchaseUnlockedDescription" = "آپ کی خریداری کی تصدیق ہو گئی ہے اور اب ویجٹس استعمال کا ڈیٹا دکھا سکتے ہیں۔";
 "widgetPurchaseLockedStatus" = "لاک شدہ";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "مینو بار میں دکھائیں";
 "statusBarDisplayQuota" = "سبسکرپشن کا استعمال";
 "statusBarDisplayTodayTokens" = "آج کے Tokens";
-"statusMenuQuotaWindows" = "استعمال کی مدتیں";
-"quotaWindowsBoth" = "دونوں مدتیں";
 "statusMenuChooseClaudeQuotaFile" = "Claude استعمال کی فائل منتخب کریں…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch صرف Claude Code کنفیگریشن فائل میں کیش شدہ سبسکرپشن استعمال پڑھتا ہے۔ ~/.claude.json منتخب کریں۔";
 "statusBarDisplayQuotaAndTodayTokens" = "سبسکرپشن کا استعمال + آج کے Tokens";
+"settingsStatusBarQuotaTitle" = "مینو بار میں سبسکرپشن کا استعمال";
+"settingsStatusBarQuotaDescription" = "منتخب کریں کہ مینو بار میں Claude اور Codex کی کون سی استعمال کی مدتیں دکھائی جائیں۔ مختصر موڈ صرف دائرہ دکھاتا ہے، جبکہ تفصیلی موڈ باقی فیصد بھی دکھاتا ہے۔";
+"settingsQuotaStyleCompact" = "مختصر";
+"settingsQuotaStyleDetailed" = "تفصیلی";
+"quotaPremiumLockedMessage" = "سبسکرپشن کا استعمال ایک ادا شدہ فیچر ہے، جو ڈیسک ٹاپ ویجٹس اَن لاک کرنے والی ایک بار کی خریداری میں شامل ہے۔";
+"quotaUnlockAction" = "اَن لاک کریں";

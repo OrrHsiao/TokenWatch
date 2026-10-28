@@ -31,35 +31,38 @@ enum StatusBarDisplayMode: String, CaseIterable, Sendable {
     }
 }
 
-/// 额度模式下状态栏展示的窗口；次序固定为 5H、7D，不自动轮播或切换到更紧张的窗口。
-enum StatusBarQuotaWindowsOption: String, CaseIterable, Sendable {
-    case both
-    case fiveHour
-    case sevenDay
+/// 单个额度周期在状态栏中的展示样式。
+enum StatusBarQuotaWindowStyle: String, CaseIterable, Sendable {
+    /// 简洁：只显示圆环，不显示剩余百分比。
+    case compact
+    /// 详细：圆环右侧显示剩余百分比。
+    case detailed
 
-    static let defaultOption: StatusBarQuotaWindowsOption = .both
+    static let defaultStyle: StatusBarQuotaWindowStyle = .detailed
 
-    var windowKinds: [SubscriptionQuotaWindowKind] {
-        switch self {
-        case .both:
-            return [.fiveHour, .sevenDay]
-        case .fiveHour:
-            return [.fiveHour]
-        case .sevenDay:
-            return [.sevenDay]
-        }
+    var showsValue: Bool {
+        self == .detailed
     }
 
     func title(language: AppLanguage) -> String {
         switch self {
-        case .both:
-            return AppStrings.text(.quotaWindowsBoth, language: language)
-        case .fiveHour:
-            return AppStrings.text(.quotaWindowFiveHour, language: language)
-        case .sevenDay:
-            return AppStrings.text(.quotaWindowWeek, language: language)
+        case .compact:
+            return AppStrings.text(.settingsQuotaStyleCompact, language: language)
+        case .detailed:
+            return AppStrings.text(.settingsQuotaStyleDetailed, language: language)
         }
     }
+}
+
+/// 某个 Agent 的某个额度周期在状态栏中的展示配置。
+struct StatusBarQuotaWindowConfiguration: Equatable, Sendable {
+    var isVisible: Bool
+    var style: StatusBarQuotaWindowStyle
+
+    static let defaultConfiguration = StatusBarQuotaWindowConfiguration(
+        isVisible: true,
+        style: .defaultStyle
+    )
 }
 
 /// 持久化状态栏展示设置，并通知状态栏重绘。
@@ -71,7 +74,6 @@ final class StatusBarDisplaySettings {
 
     static let shared = StatusBarDisplaySettings(defaults: .standard)
     static let modeStorageKey = "TokenWatch.statusBarDisplayMode"
-    static let quotaWindowsStorageKey = "TokenWatch.statusBarQuotaWindows"
 
     private let defaults: UserDefaults
     private var observers: [ObservationToken: @MainActor () -> Void] = [:]
@@ -93,17 +95,68 @@ final class StatusBarDisplaySettings {
         }
     }
 
-    var quotaWindows: StatusBarQuotaWindowsOption {
-        get {
-            defaults.string(forKey: Self.quotaWindowsStorageKey)
-                .flatMap(StatusBarQuotaWindowsOption.init(rawValue:))
-                ?? .defaultOption
+    /// 读取某个 Agent 某个周期的状态栏展示配置；未配置或存储值无效时为默认（显示 + 详细）。
+    /// - Parameters:
+    ///   - provider: Claude 或 Codex。
+    ///   - kind: 5 小时或一周。
+    /// - Returns: 该周期是否展示及展示样式。
+    func quotaWindowConfiguration(
+        provider: SubscriptionQuotaProvider,
+        kind: SubscriptionQuotaWindowKind
+    ) -> StatusBarQuotaWindowConfiguration {
+        let visibilityKey = Self.quotaWindowVisibilityStorageKey(provider: provider, kind: kind)
+        let isVisible = defaults.object(forKey: visibilityKey) == nil
+            ? StatusBarQuotaWindowConfiguration.defaultConfiguration.isVisible
+            : defaults.bool(forKey: visibilityKey)
+        let style = defaults.string(forKey: Self.quotaWindowStyleStorageKey(provider: provider, kind: kind))
+            .flatMap(StatusBarQuotaWindowStyle.init(rawValue:))
+            ?? .defaultStyle
+        return StatusBarQuotaWindowConfiguration(isVisible: isVisible, style: style)
+    }
+
+    /// 更新某个 Agent 某个周期的展示配置；值未变化时不通知重绘。
+    /// - Parameters:
+    ///   - configuration: 新配置。
+    ///   - provider: Claude 或 Codex。
+    ///   - kind: 5 小时或一周。
+    func setQuotaWindowConfiguration(
+        _ configuration: StatusBarQuotaWindowConfiguration,
+        provider: SubscriptionQuotaProvider,
+        kind: SubscriptionQuotaWindowKind
+    ) {
+        guard quotaWindowConfiguration(provider: provider, kind: kind) != configuration else { return }
+        defaults.set(
+            configuration.isVisible,
+            forKey: Self.quotaWindowVisibilityStorageKey(provider: provider, kind: kind)
+        )
+        defaults.set(
+            configuration.style.rawValue,
+            forKey: Self.quotaWindowStyleStorageKey(provider: provider, kind: kind)
+        )
+        notifyChange()
+    }
+
+    /// 是否至少有一个周期需要在状态栏展示；全部关闭时状态栏退回只显示今日 Tokens。
+    var hasVisibleQuotaWindow: Bool {
+        SubscriptionQuotaProvider.allCases.contains { provider in
+            SubscriptionQuotaWindowKind.allCases.contains { kind in
+                quotaWindowConfiguration(provider: provider, kind: kind).isVisible
+            }
         }
-        set {
-            guard quotaWindows != newValue else { return }
-            defaults.set(newValue.rawValue, forKey: Self.quotaWindowsStorageKey)
-            notifyChange()
-        }
+    }
+
+    static func quotaWindowVisibilityStorageKey(
+        provider: SubscriptionQuotaProvider,
+        kind: SubscriptionQuotaWindowKind
+    ) -> String {
+        "TokenWatch.statusBarQuota.\(provider.rawValue).\(kind.rawValue).visible"
+    }
+
+    static func quotaWindowStyleStorageKey(
+        provider: SubscriptionQuotaProvider,
+        kind: SubscriptionQuotaWindowKind
+    ) -> String {
+        "TokenWatch.statusBarQuota.\(provider.rawValue).\(kind.rawValue).style"
     }
 
     @discardableResult

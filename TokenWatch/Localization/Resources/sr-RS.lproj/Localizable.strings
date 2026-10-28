@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Подесите месечни буџет у TokenWatch-у";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Предвиђа се прекорачење буџета";
 "widgetPurchaseLockedTitle" = "Откључајте свих 7 виџета за радну површину";
-"widgetPurchaseLockedDescription" = "Једна куповина обезбеђује трајан приступ и може се обновити у било ком тренутку.";
+"widgetPurchaseLockedDescription" = "Једна куповина трајно откључава све виџете и коришћење претплате на траци менија и може се обновити у било ком тренутку.";
 "widgetPurchaseUnlockedTitle" = "Сви виџети су откључани";
 "widgetPurchaseUnlockedDescription" = "Ваша куповина је потврђена и виџети сада могу да приказују податке о коришћењу.";
 "widgetPurchaseLockedStatus" = "Закључано";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Трака менија приказује";
 "statusBarDisplayQuota" = "Коришћење претплате";
 "statusBarDisplayTodayTokens" = "Данашњи Tokens";
-"statusMenuQuotaWindows" = "Периоди коришћења";
-"quotaWindowsBoth" = "Оба периода";
 "statusMenuChooseClaudeQuotaFile" = "Изабери датотеку коришћења за Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch чита само кеширано коришћење претплате из конфигурационе датотеке Claude Code. Изаберите ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Коришћење претплате + Данашњи Tokens";
+"settingsStatusBarQuotaTitle" = "Коришћење претплате на траци менија";
+"settingsStatusBarQuotaDescription" = "Изаберите који се периоди коришћења за Claude и Codex приказују на траци менија. Сажето приказује само прстен, а Детаљно и преостали проценат.";
+"settingsQuotaStyleCompact" = "Сажето";
+"settingsQuotaStyleDetailed" = "Детаљно";
+"quotaPremiumLockedMessage" = "Коришћење претплате је плаћена функција, укључена у једнократну куповину која откључава виџете за радну површину.";
+"quotaUnlockAction" = "Откључај";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch ਵਿੱਚ ਮਹੀਨਾਵਾਰ ਬਜਟ ਸੈੱਟ ਕਰੋ";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "ਬਜਟ ਤੋਂ ਵੱਧ ਹੋਣ ਦਾ ਅਨੁਮਾਨ ਹੈ";
 "widgetPurchaseLockedTitle" = "ਸਾਰੇ 7 ਡੈਸਕਟਾਪ ਵਿਜੇਟ ਅਨਲੌਕ ਕਰੋ";
-"widgetPurchaseLockedDescription" = "ਇੱਕ ਵਾਰ ਖਰੀਦੋ, ਸਥਾਈ ਪਹੁੰਚ ਪਾਓ ਅਤੇ ਕਿਸੇ ਵੀ ਸਮੇਂ ਰੀਸਟੋਰ ਕਰੋ।";
+"widgetPurchaseLockedDescription" = "ਇੱਕ ਵਾਰ ਖਰੀਦ ਕੇ ਸਾਰੇ ਵਿਜੇਟ ਅਤੇ ਮੀਨੂ ਬਾਰ ਦੀ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਵਰਤੋਂ ਸਥਾਈ ਤੌਰ 'ਤੇ ਅਨਲੌਕ ਕਰੋ ਅਤੇ ਕਿਸੇ ਵੀ ਸਮੇਂ ਰੀਸਟੋਰ ਕਰੋ।";
 "widgetPurchaseUnlockedTitle" = "ਸਾਰੇ ਵਿਜੇਟ ਅਨਲੌਕ ਹਨ";
 "widgetPurchaseUnlockedDescription" = "ਤੁਹਾਡੀ ਖਰੀਦ ਦੀ ਪੁਸ਼ਟੀ ਹੋ ਗਈ ਹੈ ਅਤੇ ਵਿਜੇਟ ਹੁਣ ਵਰਤੋਂ ਦਾ ਡਾਟਾ ਦਿਖਾ ਸਕਦੇ ਹਨ।";
 "widgetPurchaseLockedStatus" = "ਲੌਕ ਹੈ";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "ਮੀਨੂ ਬਾਰ ਵਿੱਚ ਦਿਖਾਓ";
 "statusBarDisplayQuota" = "ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਵਰਤੋਂ";
 "statusBarDisplayTodayTokens" = "ਅੱਜ ਦੇ Tokens";
-"statusMenuQuotaWindows" = "ਵਰਤੋਂ ਮਿਆਦਾਂ";
-"quotaWindowsBoth" = "ਦੋਵੇਂ ਮਿਆਦਾਂ";
 "statusMenuChooseClaudeQuotaFile" = "Claude ਵਰਤੋਂ ਫ਼ਾਈਲ ਚੁਣੋ…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch ਸਿਰਫ਼ Claude Code ਕੌਂਫਿਗਰੇਸ਼ਨ ਫ਼ਾਈਲ ਵਿੱਚ ਕੈਸ਼ ਕੀਤੀ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਵਰਤੋਂ ਪੜ੍ਹਦਾ ਹੈ। ~/.claude.json ਚੁਣੋ।";
 "statusBarDisplayQuotaAndTodayTokens" = "ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਵਰਤੋਂ + ਅੱਜ ਦੇ Tokens";
+"settingsStatusBarQuotaTitle" = "ਮੀਨੂ ਬਾਰ ਵਿੱਚ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਵਰਤੋਂ";
+"settingsStatusBarQuotaDescription" = "ਚੁਣੋ ਕਿ ਮੀਨੂ ਬਾਰ ਵਿੱਚ Claude ਅਤੇ Codex ਦੀਆਂ ਕਿਹੜੀਆਂ ਵਰਤੋਂ ਮਿਆਦਾਂ ਦਿਖਾਈ ਦੇਣ। ਸੰਖੇਪ ਮੋਡ ਸਿਰਫ਼ ਰਿੰਗ ਦਿਖਾਉਂਦਾ ਹੈ, ਜਦਕਿ ਵਿਸਤ੍ਰਿਤ ਮੋਡ ਬਾਕੀ ਪ੍ਰਤੀਸ਼ਤ ਵੀ ਦਿਖਾਉਂਦਾ ਹੈ।";
+"settingsQuotaStyleCompact" = "ਸੰਖੇਪ";
+"settingsQuotaStyleDetailed" = "ਵਿਸਤ੍ਰਿਤ";
+"quotaPremiumLockedMessage" = "ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਵਰਤੋਂ ਇੱਕ ਭੁਗਤਾਨਸ਼ੁਦਾ ਵਿਸ਼ੇਸ਼ਤਾ ਹੈ, ਜੋ ਡੈਸਕਟਾਪ ਵਿਜੇਟ ਅਨਲੌਕ ਕਰਨ ਵਾਲੀ ਇੱਕ ਵਾਰ ਦੀ ਖਰੀਦ ਵਿੱਚ ਸ਼ਾਮਲ ਹੈ।";
+"quotaUnlockAction" = "ਅਨਲੌਕ ਕਰੋ";

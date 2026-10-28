@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "在 TokenWatch 中设置月度预算";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "预计超出预算";
 "widgetPurchaseLockedTitle" = "解锁全部 7 款桌面小组件";
-"widgetPurchaseLockedDescription" = "一次购买，永久使用，并可随时恢复购买。";
+"widgetPurchaseLockedDescription" = "一次购买，永久解锁全部小组件与状态栏订阅额度，并可随时恢复购买。";
 "widgetPurchaseUnlockedTitle" = "所有小组件均已解锁";
 "widgetPurchaseUnlockedDescription" = "购买已验证，小组件现在可以显示用量数据。";
 "widgetPurchaseLockedStatus" = "已锁定";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "状态栏显示";
 "statusBarDisplayQuota" = "订阅额度";
 "statusBarDisplayTodayTokens" = "今日 Tokens";
-"statusMenuQuotaWindows" = "额度周期";
-"quotaWindowsBoth" = "两个周期";
 "statusMenuChooseClaudeQuotaFile" = "选择 Claude 额度文件…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch 只读取 Claude Code 配置文件中缓存的订阅额度。请选择 ~/.claude.json。";
 "statusBarDisplayQuotaAndTodayTokens" = "订阅额度 + 今日 Tokens";
+"settingsStatusBarQuotaTitle" = "状态栏订阅额度";
+"settingsStatusBarQuotaDescription" = "分别选择 Claude 与 Codex 在状态栏中展示的额度周期。简洁模式只显示圆环，详细模式同时显示剩余百分比。";
+"settingsQuotaStyleCompact" = "简洁";
+"settingsQuotaStyleDetailed" = "详细";
+"quotaPremiumLockedMessage" = "订阅额度为付费功能，与桌面小组件共用一次永久买断。";
+"quotaUnlockAction" = "解锁";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Deji miisaaniyad bille ah gudaha TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Waxaa la saadaalinayaa in miisaaniyadda la dhaafi doono";
 "widgetPurchaseLockedTitle" = "Fur dhammaan 7-da aaladood ee yaryar ee desktop-ka";
-"widgetPurchaseLockedDescription" = "Hal mar iibso, hel gelitaan joogto ah, oo dib u soo celi wakhti kasta.";
+"widgetPurchaseLockedDescription" = "Hal iibsi ayaa si joogto ah u furaya dhammaan aaladaha yaryar iyo isticmaalka rukhsadda ee bar-ka liiska, waxaana dib loo soo celin karaa wakhti kasta.";
 "widgetPurchaseUnlockedTitle" = "Dhammaan aaladaha yaryar waa la furay";
 "widgetPurchaseUnlockedDescription" = "Iibsigaaga waa la xaqiijiyay, aaladaha yaryarna hadda waxay soo bandhigi karaan xogta isticmaalka.";
 "widgetPurchaseLockedStatus" = "Xiran";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Bar-ka Liiska wuxuu muujiyaa";
 "statusBarDisplayQuota" = "Isticmaalka Rukhsadda";
 "statusBarDisplayTodayTokens" = "Tokens-ka Maanta";
-"statusMenuQuotaWindows" = "Muddooyinka Isticmaalka";
-"quotaWindowsBoth" = "Labada Muddo";
 "statusMenuChooseClaudeQuotaFile" = "Dooro Faylka Isticmaalka Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch wuxuu akhriyaa oo keliya isticmaalka rukhsadda ee lagu kaydiyey faylka habaynta Claude Code. Dooro ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Isticmaalka Rukhsadda + Tokens-ka Maanta";
+"settingsStatusBarQuotaTitle" = "Isticmaalka Rukhsadda ee Bar-ka Liiska";
+"settingsStatusBarQuotaDescription" = "Dooro muddooyinka isticmaalka Claude iyo Codex ee ka muuqanaya bar-ka liiska. Kooban wuxuu muujiyaa giraanta oo kaliya; Faahfaahsan wuxuu sidoo kale muujiyaa boqolleyda haray.";
+"settingsQuotaStyleCompact" = "Kooban";
+"settingsQuotaStyleDetailed" = "Faahfaahsan";
+"quotaPremiumLockedMessage" = "Isticmaalka rukhsaddu waa sifo lacag leh, oo ku jirta iibsiga hal mar ah ee furaya aaladaha yaryar ee desktop-ka.";
+"quotaUnlockAction" = "Fur";

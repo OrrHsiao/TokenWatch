@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Magtakda ng buwanang badyet sa TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Tinatayang lalampas sa badyet";
 "widgetPurchaseLockedTitle" = "I-unlock ang lahat ng 7 desktop widget";
-"widgetPurchaseLockedDescription" = "Isang beses lang bumili para sa permanenteng access, at puwedeng i-restore anumang oras.";
+"widgetPurchaseLockedDescription" = "Isang beses lang bumili para permanenteng ma-unlock ang lahat ng widget at ang paggamit ng subskripsyon sa bar ng menu, at puwedeng i-restore anumang oras.";
 "widgetPurchaseUnlockedTitle" = "Naka-unlock na ang lahat ng widget";
 "widgetPurchaseUnlockedDescription" = "Na-verify na ang iyong pagbili at maaari nang magpakita ng data ng paggamit ang mga widget.";
 "widgetPurchaseLockedStatus" = "Naka-lock";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Ipinapakita sa Bar ng Menu";
 "statusBarDisplayQuota" = "Paggamit ng Subskripsyon";
 "statusBarDisplayTodayTokens" = "Tokens Ngayong Araw";
-"statusMenuQuotaWindows" = "Mga Panahon ng Paggamit";
-"quotaWindowsBoth" = "Parehong Panahon";
 "statusMenuChooseClaudeQuotaFile" = "Pumili ng File ng Paggamit ng Claude…";
 "claudeQuotaFileOpenPanelMessage" = "Binabasa lang ng TokenWatch ang naka-cache na paggamit ng subskripsyon sa file ng configuration ng Claude Code. Piliin ang ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Paggamit ng Subskripsyon + Tokens Ngayong Araw";
+"settingsStatusBarQuotaTitle" = "Paggamit ng Subskripsyon sa Bar ng Menu";
+"settingsStatusBarQuotaDescription" = "Piliin kung aling mga panahon ng paggamit ng Claude at Codex ang lalabas sa bar ng menu. Ipinapakita ng Payak ang singsing lang; ipinapakita rin ng Detalyado ang natitirang porsiyento.";
+"settingsQuotaStyleCompact" = "Payak";
+"settingsQuotaStyleDetailed" = "Detalyado";
+"quotaPremiumLockedMessage" = "Ang paggamit ng subskripsyon ay bayad na feature na kasama sa isang beses na pagbili na nag-a-unlock ng mga desktop widget.";
+"quotaUnlockAction" = "I-unlock";

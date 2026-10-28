@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Stilltu mánaðarlega fjárhagsáætlun í TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Spáð er að farið verði yfir fjárhagsáætlun";
 "widgetPurchaseLockedTitle" = "Aflæstu öllum 7 skjáborðsgræjunum";
-"widgetPurchaseLockedDescription" = "Kauptu einu sinni og fáðu varanlegan aðgang sem hægt er að endurheimta hvenær sem er.";
+"widgetPurchaseLockedDescription" = "Ein kaup aflæsa varanlega öllum græjum og áskriftarnotkun í valmyndastikunni og hægt er að endurheimta þau hvenær sem er.";
 "widgetPurchaseUnlockedTitle" = "Allar græjur eru aflæstar";
 "widgetPurchaseUnlockedDescription" = "Kaupin þín hafa verið staðfest og græjurnar geta nú birt notkunargögn.";
 "widgetPurchaseLockedStatus" = "Læst";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Valmyndastika sýnir";
 "statusBarDisplayQuota" = "Áskriftarnotkun";
 "statusBarDisplayTodayTokens" = "Tokens dagsins";
-"statusMenuQuotaWindows" = "Notkunartímabil";
-"quotaWindowsBoth" = "Bæði tímabil";
 "statusMenuChooseClaudeQuotaFile" = "Velja notkunarskrá Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch les aðeins áskriftarnotkun sem er geymd í skyndiminni í stillingaskrá Claude Code. Veldu ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Áskriftarnotkun + Tokens dagsins";
+"settingsStatusBarQuotaTitle" = "Áskriftarnotkun í valmyndastiku";
+"settingsStatusBarQuotaDescription" = "Veldu hvaða notkunartímabil Claude og Codex birtast í valmyndastikunni. Einfalt sýnir aðeins hringinn en Ítarlegt sýnir einnig prósentuna sem eftir er.";
+"settingsQuotaStyleCompact" = "Einfalt";
+"settingsQuotaStyleDetailed" = "Ítarlegt";
+"quotaPremiumLockedMessage" = "Áskriftarnotkun er greiddur eiginleiki sem fylgir stökum kaupum sem aflæsa skjáborðsgræjunum.";
+"quotaUnlockAction" = "Aflæsa";

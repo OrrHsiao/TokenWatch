@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Imposta un budget mensile in TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Si prevede di superare il budget";
 "widgetPurchaseLockedTitle" = "Sblocca tutti e 7 i riquadri desktop";
-"widgetPurchaseLockedDescription" = "Un solo acquisto per un accesso permanente, ripristinabile in qualsiasi momento.";
+"widgetPurchaseLockedDescription" = "Un solo acquisto sblocca per sempre tutti i riquadri e l'utilizzo dell'abbonamento nella barra dei menu, ripristinabile in qualsiasi momento.";
 "widgetPurchaseUnlockedTitle" = "Tutti i riquadri sono sbloccati";
 "widgetPurchaseUnlockedDescription" = "Il tuo acquisto è stato verificato e ora i riquadri possono mostrare i dati di utilizzo.";
 "widgetPurchaseLockedStatus" = "Bloccato";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "La barra dei menu mostra";
 "statusBarDisplayQuota" = "Utilizzo abbonamento";
 "statusBarDisplayTodayTokens" = "Tokens di oggi";
-"statusMenuQuotaWindows" = "Periodi di utilizzo";
-"quotaWindowsBoth" = "Entrambi i periodi";
 "statusMenuChooseClaudeQuotaFile" = "Scegli file di utilizzo di Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch legge solo l'utilizzo dell'abbonamento memorizzato nella cache del file di configurazione di Claude Code. Scegli ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Utilizzo abbonamento + Tokens di oggi";
+"settingsStatusBarQuotaTitle" = "Utilizzo abbonamento nella barra dei menu";
+"settingsStatusBarQuotaDescription" = "Scegli quali periodi di utilizzo di Claude e Codex mostrare nella barra dei menu. Compatto mostra solo l'anello; Dettagliato mostra anche la percentuale rimanente.";
+"settingsQuotaStyleCompact" = "Compatto";
+"settingsQuotaStyleDetailed" = "Dettagliato";
+"quotaPremiumLockedMessage" = "L'utilizzo dell'abbonamento è una funzione a pagamento, inclusa nell'acquisto unico che sblocca i riquadri desktop.";
+"quotaUnlockAction" = "Sblocca";

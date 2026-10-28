@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Angiv et månedligt budget i TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Budgettet forventes overskredet";
 "widgetPurchaseLockedTitle" = "Lås alle 7 skrivebordswidgets op";
-"widgetPurchaseLockedDescription" = "Ét køb giver permanent adgang og kan gendannes når som helst.";
+"widgetPurchaseLockedDescription" = "Ét køb låser permanent alle widgets og abonnementsforbrug i menulinjen op og kan gendannes når som helst.";
 "widgetPurchaseUnlockedTitle" = "Alle widgets er låst op";
 "widgetPurchaseUnlockedDescription" = "Dit køb er bekræftet, og widgets kan nu vise brugsdata.";
 "widgetPurchaseLockedStatus" = "Låst";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menulinjen viser";
 "statusBarDisplayQuota" = "Abonnementsforbrug";
 "statusBarDisplayTodayTokens" = "Dagens Tokens";
-"statusMenuQuotaWindows" = "Forbrugsperioder";
-"quotaWindowsBoth" = "Begge perioder";
 "statusMenuChooseClaudeQuotaFile" = "Vælg Claude-forbrugsfil…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch læser kun det cachelagrede abonnementsforbrug i konfigurationsfilen til Claude Code. Vælg ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonnementsforbrug + Dagens Tokens";
+"settingsStatusBarQuotaTitle" = "Abonnementsforbrug i menulinjen";
+"settingsStatusBarQuotaDescription" = "Vælg, hvilke forbrugsperioder for Claude og Codex der vises i menulinjen. Kompakt viser kun ringen, Detaljeret viser også den resterende procentdel.";
+"settingsQuotaStyleCompact" = "Kompakt";
+"settingsQuotaStyleDetailed" = "Detaljeret";
+"quotaPremiumLockedMessage" = "Abonnementsforbrug er en betalingsfunktion, der indgår i engangskøbet, som låser skrivebordswidgets op.";
+"quotaUnlockAction" = "Lås op";

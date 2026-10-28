@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Defina um orçamento mensal no TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Projeção acima do orçamento";
 "widgetPurchaseLockedTitle" = "Desbloqueie os 7 componentes da área de trabalho";
-"widgetPurchaseLockedDescription" = "Uma única compra, acesso permanente e restauração disponível a qualquer momento.";
+"widgetPurchaseLockedDescription" = "Uma única compra desbloqueia para sempre todos os componentes e o uso da assinatura na barra de menus, com restauração disponível a qualquer momento.";
 "widgetPurchaseUnlockedTitle" = "Todos os componentes estão desbloqueados";
 "widgetPurchaseUnlockedDescription" = "Sua compra foi verificada e os componentes agora podem exibir dados de uso.";
 "widgetPurchaseLockedStatus" = "Bloqueado";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "A barra de menus mostra";
 "statusBarDisplayQuota" = "Uso da assinatura";
 "statusBarDisplayTodayTokens" = "Tokens de hoje";
-"statusMenuQuotaWindows" = "Períodos de uso";
-"quotaWindowsBoth" = "Ambos os períodos";
 "statusMenuChooseClaudeQuotaFile" = "Escolher arquivo de uso do Claude…";
 "claudeQuotaFileOpenPanelMessage" = "O TokenWatch lê apenas o uso da assinatura armazenado em cache no arquivo de configuração do Claude Code. Escolha ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Uso da assinatura + Tokens de hoje";
+"settingsStatusBarQuotaTitle" = "Uso da assinatura na barra de menus";
+"settingsStatusBarQuotaDescription" = "Escolha quais períodos de uso do Claude e do Codex aparecem na barra de menus. Compacto mostra só o anel; Detalhado também mostra a porcentagem restante.";
+"settingsQuotaStyleCompact" = "Compacto";
+"settingsQuotaStyleDetailed" = "Detalhado";
+"quotaPremiumLockedMessage" = "O uso da assinatura é um recurso pago, incluído na compra única que desbloqueia os componentes da área de trabalho.";
+"quotaUnlockAction" = "Desbloquear";

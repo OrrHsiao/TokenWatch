@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch에서 월간 예산을 설정하세요";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "예산 초과가 예상됩니다";
 "widgetPurchaseLockedTitle" = "데스크탑 위젯 7개 모두 잠금 해제";
-"widgetPurchaseLockedDescription" = "한 번 구매하면 영구적으로 이용할 수 있으며 언제든 복원할 수 있습니다.";
+"widgetPurchaseLockedDescription" = "한 번 구매하면 모든 위젯과 메뉴 막대 구독 사용량이 영구적으로 잠금 해제되며 언제든 복원할 수 있습니다.";
 "widgetPurchaseUnlockedTitle" = "모든 위젯이 잠금 해제되었습니다";
 "widgetPurchaseUnlockedDescription" = "구매가 확인되어 이제 위젯에 사용량 데이터를 표시할 수 있습니다.";
 "widgetPurchaseLockedStatus" = "잠김";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "메뉴 막대 표시";
 "statusBarDisplayQuota" = "구독 사용량";
 "statusBarDisplayTodayTokens" = "오늘의 Tokens";
-"statusMenuQuotaWindows" = "사용량 기간";
-"quotaWindowsBoth" = "두 기간 모두";
 "statusMenuChooseClaudeQuotaFile" = "Claude 사용량 파일 선택…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch는 Claude Code 설정 파일에 캐시된 구독 사용량만 읽습니다. ~/.claude.json을 선택하세요.";
 "statusBarDisplayQuotaAndTodayTokens" = "구독 사용량 + 오늘의 Tokens";
+"settingsStatusBarQuotaTitle" = "메뉴 막대 구독 사용량";
+"settingsStatusBarQuotaDescription" = "Claude와 Codex 각각 메뉴 막대에 표시할 사용량 기간을 선택합니다. 간결 모드는 링만 표시하고, 자세히 모드는 남은 비율도 함께 표시합니다.";
+"settingsQuotaStyleCompact" = "간결";
+"settingsQuotaStyleDetailed" = "자세히";
+"quotaPremiumLockedMessage" = "구독 사용량은 유료 기능이며, 데스크탑 위젯 잠금 해제와 함께 한 번의 구매로 제공됩니다.";
+"quotaUnlockAction" = "잠금 해제";

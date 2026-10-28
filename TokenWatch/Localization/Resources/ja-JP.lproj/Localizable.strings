@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatchで月間予算を設定";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "予算を超過する見込みです";
 "widgetPurchaseLockedTitle" = "7種類すべてのデスクトップウィジェットをロック解除";
-"widgetPurchaseLockedDescription" = "1回の購入で永久に利用でき、いつでも復元できます。";
+"widgetPurchaseLockedDescription" = "1回の購入で、すべてのウィジェットとメニューバーのサブスクリプション使用量を永久にロック解除でき、いつでも復元できます。";
 "widgetPurchaseUnlockedTitle" = "すべてのウィジェットがロック解除されました";
 "widgetPurchaseUnlockedDescription" = "購入が確認され、ウィジェットに使用量データを表示できるようになりました。";
 "widgetPurchaseLockedStatus" = "ロック中";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "メニューバーの表示";
 "statusBarDisplayQuota" = "サブスクリプション使用量";
 "statusBarDisplayTodayTokens" = "今日の Tokens";
-"statusMenuQuotaWindows" = "使用量の期間";
-"quotaWindowsBoth" = "両方の期間";
 "statusMenuChooseClaudeQuotaFile" = "Claude の使用量ファイルを選択…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch は Claude Code 設定ファイルにキャッシュされたサブスクリプション使用量のみを読み取ります。~/.claude.json を選択してください。";
 "statusBarDisplayQuotaAndTodayTokens" = "サブスクリプション使用量 + 今日の Tokens";
+"settingsStatusBarQuotaTitle" = "メニューバーのサブスクリプション使用量";
+"settingsStatusBarQuotaDescription" = "Claude と Codex それぞれについて、メニューバーに表示する使用量の期間を選択します。シンプルはリングのみ、詳細は残りのパーセンテージも表示します。";
+"settingsQuotaStyleCompact" = "シンプル";
+"settingsQuotaStyleDetailed" = "詳細";
+"quotaPremiumLockedMessage" = "サブスクリプション使用量は有料機能で、デスクトップウィジェットのロックを解除する買い切り購入に含まれます。";
+"quotaUnlockAction" = "ロック解除";

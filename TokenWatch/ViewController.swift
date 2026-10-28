@@ -26,12 +26,20 @@ class ViewController: NSViewController {
     /// observer 凭证 — 用于 deinit 时取消订阅,避免 ViewModel 持有失效闭包
     private var observerToken: TokenStatsViewModel.ObservationToken?
 
+    /// - Parameters:
+    ///   - languageSettings: 界面语言设置。
+    ///   - widgetPurchaseController: 小组件与订阅额度共用的购买控制器。
+    ///   - quotaAccess: 订阅额度解锁状态；nil 时按购买控制器派生。
     init(
         languageSettings: AppLanguageSettings = .shared,
-        widgetPurchaseController: WidgetPurchaseController? = nil
+        widgetPurchaseController: WidgetPurchaseController? = nil,
+        quotaAccess: SubscriptionQuotaAccess? = nil
     ) {
         self.languageSettings = languageSettings
-        self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
+        self.settingsViewController = SettingsViewController(
+            languageSettings: languageSettings,
+            quotaAccess: quotaAccess ?? SubscriptionQuotaAccess(purchaseController: widgetPurchaseController)
+        )
         self.dashboardViewController = DashboardViewController(
             settingsViewController: settingsViewController,
             widgetPurchaseController: widgetPurchaseController,
@@ -89,6 +97,12 @@ class ViewController: NSViewController {
         dashboardViewController.showSettings()
     }
 
+    /// 展示设置页并滚动到“状态栏订阅额度”区块,用于状态栏弹窗的解锁入口。
+    func showStatusBarQuotaSettings() {
+        dashboardViewController.showSettings()
+        settingsViewController.revealStatusBarQuotaSection()
+    }
+
     /// 把 ViewModel 的状态变更回调多路复用到 Notification,
     /// Dashboard 自行订阅并按需刷新。
     private func bindViewModel() {
@@ -110,6 +124,11 @@ class ViewController: NSViewController {
             }
         }
     }
+}
+
+/// 设置页滚动内容使用翻转坐标,内容不足一屏时保持顶部对齐。
+private final class SettingsDocumentView: NSView {
+    override var isFlipped: Bool { true }
 }
 
 private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
@@ -143,7 +162,8 @@ private final class VerticallyCenteredTextField: NSTextField {
     }
 }
 
-private final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefreshable {
+/// 设置页统一的透明描边下拉框。
+final class SettingsPopUpButton: NSPopUpButton, DashboardAppearanceRefreshable {
     init() {
         super.init(frame: .zero, pullsDown: false)
         userInterfaceLayoutDirection = .leftToRight
@@ -299,7 +319,7 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
     }
 }
 
-/// 通用设置页，承载各 provider 目录、刷新和自动刷新配置。
+/// 通用设置页，承载各 provider 目录、刷新、自动刷新、应用偏好与状态栏订阅额度配置。
 final class SettingsViewController: NSViewController {
     static let minimumContentHeight: CGFloat = 810
     private static let directoryActionHorizontalPadding: CGFloat = 24
@@ -332,6 +352,10 @@ final class SettingsViewController: NSViewController {
     private let languagePopUpButton = SettingsPopUpButton()
     private let monthlyBudgetLabel = NSTextField(labelWithString: "")
     private let monthlyBudgetTextField = VerticallyCenteredTextField(string: "")
+    private let statusBarQuotaTitleLabel = NSTextField(labelWithString: "")
+    private let scrollView = NSScrollView()
+    private var statusBarQuotaSection: NSView?
+    private var statusBarQuotaSettingsView: StatusBarQuotaSettingsView?
 
     private let providers: [any UsageProvider]
     private let providerState:
@@ -342,6 +366,8 @@ final class SettingsViewController: NSViewController {
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
     private let monthlyBudgetSettings: MonthlyBudgetSettings
+    private let displaySettings: StatusBarDisplaySettings
+    private let quotaAccess: SubscriptionQuotaAccess
 
     private var providerDirectoryRows:
         [ProviderID: ProviderDirectoryRowViews] = [:]
@@ -366,7 +392,9 @@ final class SettingsViewController: NSViewController {
         loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
         autoRefreshSettings: AutoRefreshSettings = .shared,
         languageSettings: AppLanguageSettings = .shared,
-        monthlyBudgetSettings: MonthlyBudgetSettings = .shared
+        monthlyBudgetSettings: MonthlyBudgetSettings = .shared,
+        displaySettings: StatusBarDisplaySettings = .shared,
+        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
     ) {
         self.providers = providers
         self.providerState = providerState
@@ -375,6 +403,8 @@ final class SettingsViewController: NSViewController {
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         self.monthlyBudgetSettings = monthlyBudgetSettings
+        self.displaySettings = displaySettings
+        self.quotaAccess = quotaAccess
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -383,7 +413,9 @@ final class SettingsViewController: NSViewController {
         loginItemSettings: LoginItemSettingsControlling = LoginItemSettings.shared,
         autoRefreshSettings: AutoRefreshSettings = .shared,
         languageSettings: AppLanguageSettings = .shared,
-        monthlyBudgetSettings: MonthlyBudgetSettings = .shared
+        monthlyBudgetSettings: MonthlyBudgetSettings = .shared,
+        displaySettings: StatusBarDisplaySettings = .shared,
+        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
     ) {
         self.init(
             providers: ProviderRegistry.allProviders,
@@ -400,7 +432,9 @@ final class SettingsViewController: NSViewController {
             loginItemSettings: loginItemSettings,
             autoRefreshSettings: autoRefreshSettings,
             languageSettings: languageSettings,
-            monthlyBudgetSettings: monthlyBudgetSettings
+            monthlyBudgetSettings: monthlyBudgetSettings,
+            displaySettings: displaySettings,
+            quotaAccess: quotaAccess
         )
     }
 
@@ -409,7 +443,8 @@ final class SettingsViewController: NSViewController {
             isAuthorized: isAuthorized,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: AppLanguageSettings(defaults: defaults),
-            monthlyBudgetSettings: MonthlyBudgetSettings(defaults: defaults)
+            monthlyBudgetSettings: MonthlyBudgetSettings(defaults: defaults),
+            displaySettings: StatusBarDisplaySettings(defaults: defaults)
         )
     }
 
@@ -474,6 +509,10 @@ final class SettingsViewController: NSViewController {
         configureSectionTitle(
             appPreferencesTitleLabel,
             identifier: "AppPreferencesTitleLabel"
+        )
+        configureSectionTitle(
+            statusBarQuotaTitleLabel,
+            identifier: "StatusBarQuotaTitleLabel"
         )
 
         configureProviderDirectoryRows()
@@ -691,6 +730,18 @@ final class SettingsViewController: NSViewController {
             title: appPreferencesTitleLabel,
             content: [appPreferencesContent]
         )
+        let statusBarQuotaSettingsView = StatusBarQuotaSettingsView(
+            displaySettings: displaySettings,
+            quotaAccess: quotaAccess,
+            language: languageSettings.resolvedLanguage
+        )
+        self.statusBarQuotaSettingsView = statusBarQuotaSettingsView
+        let statusBarQuotaSection = makeSettingsSection(
+            identifier: "SettingsStatusBarQuotaSection",
+            title: statusBarQuotaTitleLabel,
+            content: [statusBarQuotaSettingsView]
+        )
+        self.statusBarQuotaSection = statusBarQuotaSection
 
         let contentStack = NSStackView(views: [
             titleRow,
@@ -698,6 +749,7 @@ final class SettingsViewController: NSViewController {
             dataFoldersSection,
             dataRefreshSection,
             appPreferencesSection,
+            statusBarQuotaSection,
         ])
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
@@ -707,28 +759,53 @@ final class SettingsViewController: NSViewController {
         contentStack.setCustomSpacing(24, after: descriptionLabel)
         contentStack.setCustomSpacing(16, after: dataFoldersSection)
         contentStack.setCustomSpacing(16, after: dataRefreshSection)
+        contentStack.setCustomSpacing(16, after: appPreferencesSection)
 
         let panel = NSView()
         panel.identifier = NSUserInterfaceItemIdentifier("SettingsPanel")
         panel.setAccessibilityIdentifier("SettingsPanel")
         panel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(contentStack)
-        view.addSubview(panel)
+
+        // 新增状态栏订阅额度区块后内容高于主窗口，设置页改为纵向滚动；滚动条使用 overlay 不占宽度。
+        let documentView = SettingsDocumentView()
+        documentView.translatesAutoresizingMaskIntoConstraints = false
+        documentView.addSubview(panel)
+        scrollView.identifier = NSUserInterfaceItemIdentifier("SettingsScrollView")
+        scrollView.setAccessibilityIdentifier("SettingsScrollView")
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.contentInsets = NSEdgeInsetsZero
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = documentView
+        view.addSubview(scrollView)
         NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            documentView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor),
+            documentView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
+            documentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
             panel.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor,
+                equalTo: documentView.leadingAnchor,
                 constant: 28
             ),
             panel.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor,
+                equalTo: documentView.trailingAnchor,
                 constant: -28
             ),
             panel.topAnchor.constraint(
-                equalTo: view.topAnchor,
+                equalTo: documentView.topAnchor,
                 constant: 28
             ),
             panel.bottomAnchor.constraint(
-                lessThanOrEqualTo: view.bottomAnchor,
+                equalTo: documentView.bottomAnchor,
                 constant: -28
             ),
             contentStack.leadingAnchor.constraint(
@@ -762,9 +839,20 @@ final class SettingsViewController: NSViewController {
             appPreferencesSection.widthAnchor.constraint(
                 equalTo: contentStack.widthAnchor
             ),
+            statusBarQuotaSection.widthAnchor.constraint(
+                equalTo: contentStack.widthAnchor
+            ),
         ])
 
         reloadLocalizedText()
+    }
+
+    /// 滚动到“状态栏订阅额度”区块，使其完整可见。
+    func revealStatusBarQuotaSection() {
+        loadViewIfNeeded()
+        view.layoutSubtreeIfNeeded()
+        guard let statusBarQuotaSection else { return }
+        statusBarQuotaSection.scrollToVisible(statusBarQuotaSection.bounds)
     }
 
     private func configureSectionTitle(
@@ -1252,6 +1340,11 @@ final class SettingsViewController: NSViewController {
             .settingsAppPreferencesTitle,
             language: language
         )
+        statusBarQuotaTitleLabel.stringValue = AppStrings.text(
+            .settingsStatusBarQuotaTitle,
+            language: language
+        )
+        statusBarQuotaSettingsView?.reloadLocalizedText(language: language)
         applySettingsButtonStyle(
             refreshButton,
             title: AppStrings.text(.refreshNow, language: language),

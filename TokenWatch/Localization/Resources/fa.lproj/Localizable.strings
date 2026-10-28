@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "در TokenWatch بودجه ماهانه تنظیم کنید";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "پیش‌بینی می‌شود از بودجه فراتر رود";
 "widgetPurchaseLockedTitle" = "قفل هر ۷ ویجت دسکتاپ را باز کنید";
-"widgetPurchaseLockedDescription" = "با یک خرید، دسترسی دائمی دارید و هر زمان بخواهید می‌توانید آن را بازیابی کنید.";
+"widgetPurchaseLockedDescription" = "با یک خرید، قفل همه ویجت‌ها و مصرف اشتراک در نوار منو برای همیشه باز می‌شود و هر زمان بخواهید می‌توانید آن را بازیابی کنید.";
 "widgetPurchaseUnlockedTitle" = "قفل همه ویجت‌ها باز است";
 "widgetPurchaseUnlockedDescription" = "خرید شما تأیید شد و اکنون ویجت‌ها می‌توانند داده‌های استفاده را نمایش دهند.";
 "widgetPurchaseLockedStatus" = "قفل‌شده";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "نمایش در نوار منو";
 "statusBarDisplayQuota" = "مصرف اشتراک";
 "statusBarDisplayTodayTokens" = "Tokens امروز";
-"statusMenuQuotaWindows" = "دوره‌های مصرف";
-"quotaWindowsBoth" = "هر دو دوره";
 "statusMenuChooseClaudeQuotaFile" = "انتخاب فایل مصرف Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch فقط مصرف اشتراکِ ذخیره‌شده در حافظهٔ پنهان فایل پیکربندی Claude Code را می‌خواند. ~/.claude.json را انتخاب کنید.";
 "statusBarDisplayQuotaAndTodayTokens" = "مصرف اشتراک + Tokens امروز";
+"settingsStatusBarQuotaTitle" = "مصرف اشتراک در نوار منو";
+"settingsStatusBarQuotaDescription" = "انتخاب کنید کدام دوره‌های مصرف Claude و Codex در نوار منو نمایش داده شوند. حالت فشرده فقط حلقه را نشان می‌دهد و حالت مفصل درصد باقی‌مانده را هم نشان می‌دهد.";
+"settingsQuotaStyleCompact" = "فشرده";
+"settingsQuotaStyleDetailed" = "مفصل";
+"quotaPremiumLockedMessage" = "مصرف اشتراک یک قابلیت پولی است که در خرید یک‌باره‌ای که قفل ویجت‌های دسکتاپ را باز می‌کند، گنجانده شده است.";
+"quotaUnlockAction" = "باز کردن قفل";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Establiu un pressupost mensual a TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Es preveu superar el pressupost";
 "widgetPurchaseLockedTitle" = "Desbloqueu els 7 ginys d’escriptori";
-"widgetPurchaseLockedDescription" = "Una sola compra, accés permanent i restauració disponible en qualsevol moment.";
+"widgetPurchaseLockedDescription" = "Una sola compra desbloqueja per sempre tots els ginys i l'ús de la subscripció a la barra de menús, amb restauració disponible en qualsevol moment.";
 "widgetPurchaseUnlockedTitle" = "Tots els ginys estan desbloquejats";
 "widgetPurchaseUnlockedDescription" = "La vostra compra s’ha verificat i ara els ginys poden mostrar les dades d’ús.";
 "widgetPurchaseLockedStatus" = "Bloquejat";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "La barra de menús mostra";
 "statusBarDisplayQuota" = "Ús de la subscripció";
 "statusBarDisplayTodayTokens" = "Tokens d'avui";
-"statusMenuQuotaWindows" = "Períodes d'ús";
-"quotaWindowsBoth" = "Tots dos períodes";
 "statusMenuChooseClaudeQuotaFile" = "Tria el fitxer d'ús de Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch només llegeix l'ús de la subscripció desat a la memòria cau del fitxer de configuració de Claude Code. Trieu ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Ús de la subscripció + Tokens d'avui";
+"settingsStatusBarQuotaTitle" = "Ús de la subscripció a la barra de menús";
+"settingsStatusBarQuotaDescription" = "Trieu quins períodes d'ús de Claude i Codex es mostren a la barra de menús. Compacte mostra només l'anell; Detallat també mostra el percentatge restant.";
+"settingsQuotaStyleCompact" = "Compacte";
+"settingsQuotaStyleDetailed" = "Detallat";
+"quotaPremiumLockedMessage" = "L'ús de la subscripció és una funció de pagament inclosa en la compra única que desbloqueja els ginys d'escriptori.";
+"quotaUnlockAction" = "Desbloqueja";

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch တွင် လစဉ် ဘတ်ဂျက် သတ်မှတ်ပါ";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "ဘတ်ဂျက်ကျော်လွန်မည်ဟု ခန့်မှန်းထားသည်";
 "widgetPurchaseLockedTitle" = "ဒက်စ်တော့ဝစ်ဂျက် ၇ ခုလုံးကို လော့ခ်ဖွင့်ပါ";
-"widgetPurchaseLockedDescription" = "တစ်ကြိမ်ဝယ်ယူရုံဖြင့် အမြဲတမ်းအသုံးပြုနိုင်ပြီး အချိန်မရွေး ပြန်လည်ရယူနိုင်ပါသည်။";
+"widgetPurchaseLockedDescription" = "တစ်ကြိမ်ဝယ်ယူရုံဖြင့် ဝစ်ဂျက်အားလုံးနှင့် မီနူးဘားရှိ စာရင်းသွင်းမှု အသုံးပြုမှုကို အမြဲတမ်း လော့ခ်ဖွင့်နိုင်ပြီး အချိန်မရွေး ပြန်လည်ရယူနိုင်ပါသည်။";
 "widgetPurchaseUnlockedTitle" = "ဝစ်ဂျက်အားလုံးကို လော့ခ်ဖွင့်ပြီးပါပြီ";
 "widgetPurchaseUnlockedDescription" = "သင့်ဝယ်ယူမှုကို အတည်ပြုပြီးဖြစ်၍ ဝစ်ဂျက်များသည် ယခု အသုံးပြုမှုဒေတာကို ပြသနိုင်ပါပြီ။";
 "widgetPurchaseLockedStatus" = "လော့ခ်ချထားသည်";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "မီနူးဘားတွင် ပြသမည်";
 "statusBarDisplayQuota" = "စာရင်းသွင်းမှု အသုံးပြုမှု";
 "statusBarDisplayTodayTokens" = "ယနေ့ Tokens";
-"statusMenuQuotaWindows" = "အသုံးပြုမှု ကာလများ";
-"quotaWindowsBoth" = "ကာလနှစ်ခုလုံး";
 "statusMenuChooseClaudeQuotaFile" = "Claude အသုံးပြုမှုဖိုင် ရွေးချယ်ပါ…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch သည် Claude Code ဖွဲ့စည်းမှုဖိုင်ထဲရှိ ကက်ရှ်လုပ်ထားသော စာရင်းသွင်းမှု အသုံးပြုမှုကိုသာ ဖတ်ပါသည်။ ~/.claude.json ကို ရွေးချယ်ပါ။";
 "statusBarDisplayQuotaAndTodayTokens" = "စာရင်းသွင်းမှု အသုံးပြုမှု + ယနေ့ Tokens";
+"settingsStatusBarQuotaTitle" = "မီနူးဘားရှိ စာရင်းသွင်းမှု အသုံးပြုမှု";
+"settingsStatusBarQuotaDescription" = "မီနူးဘားတွင် Claude နှင့် Codex ၏ မည်သည့်အသုံးပြုမှုကာလများကို ပြသမည်ကို ရွေးချယ်ပါ။ ကျစ်လျစ်ပုံစံတွင် ကွင်းကိုသာ ပြသပြီး အသေးစိတ်ပုံစံတွင် ကျန်ရှိသည့် ရာခိုင်နှုန်းကိုပါ ပြသသည်။";
+"settingsQuotaStyleCompact" = "ကျစ်လျစ်";
+"settingsQuotaStyleDetailed" = "အသေးစိတ်";
+"quotaPremiumLockedMessage" = "စာရင်းသွင်းမှု အသုံးပြုမှုသည် ငွေပေးရသည့် လုပ်ဆောင်ချက်ဖြစ်ပြီး ဒက်စ်တော့ဝစ်ဂျက်များကို လော့ခ်ဖွင့်ပေးသည့် တစ်ကြိမ်တည်းဝယ်ယူမှုတွင် ပါဝင်သည်။";
+"quotaUnlockAction" = "လော့ခ်ဖွင့်ရန်";

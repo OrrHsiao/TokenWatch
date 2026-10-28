@@ -18,6 +18,8 @@ enum SubscriptionQuotaSectionLayout {
     static let windowLabelRowHeight: CGFloat = 19
     static let meterHeight: CGFloat = 4
     static let iconSize: CGFloat = 14
+    static let lockedIconSize: CGFloat = 18
+    static let lockedContentSpacing: CGFloat = 8
 
     static var providerHeight: CGFloat {
         providerHeaderHeight + providerHeaderToContentSpacing + providerContentHeight
@@ -39,14 +41,27 @@ enum SubscriptionQuotaSectionLayout {
 final class SubscriptionQuotaSectionView: NSView {
     /// 用户点击未授权分组中的授权入口。
     var onAction: ((SubscriptionQuotaProviderPresentation.Action) -> Void)?
+    /// 用户点击未购买状态下的解锁入口。
+    var onUnlock: (() -> Void)?
 
     private let titleLabel = NSTextField(labelWithString: "")
     private let divider = DashboardBackgroundView(backgroundColor: DashboardPalette.border)
     private var providerViews: [SubscriptionQuotaProvider: SubscriptionQuotaProviderView] = [:]
+    /// 未购买时替代两个工具分组的锁定提示；占用同一区域，弹窗高度不变。
+    private let lockedView = NSStackView()
+    private let lockedIconView = NSImageView()
+    private let lockedMessageLabel = NSTextField(wrappingLabelWithString: "")
+    private let unlockButton = NSButton(title: "", target: nil, action: nil)
 
     var debugTitle: String { titleLabel.stringValue }
+    var debugIsLocked: Bool { !lockedView.isHidden }
+    var debugLockedMessage: String? { lockedView.isHidden ? nil : lockedMessageLabel.stringValue }
+    var debugUnlockTitle: String? { lockedView.isHidden ? nil : unlockButton.title }
     func debugProviderView(_ provider: SubscriptionQuotaProvider) -> SubscriptionQuotaProviderView? {
         providerViews[provider]
+    }
+    func debugPerformUnlock() {
+        unlockButtonClicked()
     }
 
     /// - Parameter horizontalInset: 与原区域内容边缘对齐的左右内边距。
@@ -69,8 +84,39 @@ final class SubscriptionQuotaSectionView: NSView {
         if titleLabel.stringValue != title {
             titleLabel.stringValue = title
         }
+        setLocked(false)
         for presentation in presentations {
             providerViews[presentation.provider]?.apply(presentation)
+        }
+    }
+
+    /// 未购买时隐藏两个工具分组，只展示付费说明与解锁入口。
+    /// - Parameters:
+    ///   - title: 区域标题。
+    ///   - message: 付费功能说明。
+    ///   - unlockTitle: 解锁按钮文案。
+    func applyLocked(title: String, message: String, unlockTitle: String) {
+        if titleLabel.stringValue != title {
+            titleLabel.stringValue = title
+        }
+        setLocked(true)
+        lockedMessageLabel.stringValue = message
+        unlockButton.title = unlockTitle
+        unlockButton.attributedTitle = NSAttributedString(
+            string: unlockTitle,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+                .foregroundColor: DashboardPalette.accent,
+            ]
+        )
+        unlockButton.setAccessibilityLabel(unlockTitle)
+    }
+
+    private func setLocked(_ isLocked: Bool) {
+        guard lockedView.isHidden == isLocked else { return }
+        lockedView.isHidden = !isLocked
+        for providerView in providerViews.values {
+            providerView.isHidden = isLocked
         }
     }
 
@@ -113,7 +159,55 @@ final class SubscriptionQuotaSectionView: NSView {
             previousBottom = providerView.bottomAnchor
             spacing = SubscriptionQuotaSectionLayout.providerSpacing
         }
+        constraints += setupLockedView(horizontalInset: horizontalInset)
         NSLayoutConstraint.activate(constraints)
+    }
+
+    /// 锁定提示居中放在标题与分隔线之间，与两个工具分组共享同一区域。
+    private func setupLockedView(horizontalInset: CGFloat) -> [NSLayoutConstraint] {
+        lockedIconView.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: SubscriptionQuotaSectionLayout.lockedIconSize, weight: .regular))
+        lockedIconView.contentTintColor = DashboardPalette.secondaryText
+        lockedIconView.setAccessibilityElement(false)
+
+        lockedMessageLabel.font = .systemFont(ofSize: 12)
+        lockedMessageLabel.textColor = DashboardPalette.secondaryText
+        lockedMessageLabel.alignment = .center
+        lockedMessageLabel.maximumNumberOfLines = 3
+
+        unlockButton.isBordered = false
+        unlockButton.bezelStyle = .inline
+        unlockButton.setButtonType(.momentaryChange)
+        unlockButton.target = self
+        unlockButton.action = #selector(unlockButtonClicked)
+        unlockButton.identifier = NSUserInterfaceItemIdentifier("SubscriptionQuotaUnlockButton")
+        unlockButton.setAccessibilityIdentifier("SubscriptionQuotaUnlockButton")
+
+        lockedView.orientation = .vertical
+        lockedView.alignment = .centerX
+        lockedView.spacing = SubscriptionQuotaSectionLayout.lockedContentSpacing
+        lockedView.isHidden = true
+        lockedView.translatesAutoresizingMaskIntoConstraints = false
+        for subview in [lockedIconView, lockedMessageLabel, unlockButton] as [NSView] {
+            lockedView.addArrangedSubview(subview)
+        }
+        addSubview(lockedView)
+
+        // 锁定区域与工具分组区域相同：标题下方到分隔线上方。
+        let areaGuide = NSLayoutGuide()
+        addLayoutGuide(areaGuide)
+        return [
+            areaGuide.topAnchor.constraint(equalTo: titleLabel.bottomAnchor),
+            areaGuide.bottomAnchor.constraint(equalTo: divider.topAnchor),
+            lockedView.centerYAnchor.constraint(equalTo: areaGuide.centerYAnchor),
+            lockedView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalInset),
+            lockedView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -horizontalInset),
+            lockedMessageLabel.widthAnchor.constraint(equalTo: lockedView.widthAnchor),
+        ]
+    }
+
+    @objc private func unlockButtonClicked() {
+        onUnlock?()
     }
 }
 

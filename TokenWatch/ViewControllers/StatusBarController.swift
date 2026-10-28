@@ -5,7 +5,8 @@ import os.log
 /// macOS 状态栏控制器
 ///
 /// 默认常驻原有的图标 + 今日 token 文本,其后是 Claude / Codex 订阅剩余额度圆环;
-/// 可在右键菜单切换为只显示其中一种。
+/// 可在右键菜单切换为只显示其中一种。订阅额度为付费功能:未解锁时只显示今日 token,
+/// 各周期是否展示及简洁 / 详细样式在主界面设置页配置。
 /// 按设置间隔拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 显示设置 / 退出)。
 ///
 /// 设计原则:
@@ -19,6 +20,7 @@ final class StatusBarController {
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
     private let displaySettings: StatusBarDisplaySettings
+    private let quotaAccess: SubscriptionQuotaAccess
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private let statusMenu = NSMenu()
@@ -28,6 +30,7 @@ final class StatusBarController {
     private var autoRefreshSettingsObserverToken: AutoRefreshSettings.ObservationToken?
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var displaySettingsObserverToken: StatusBarDisplaySettings.ObservationToken?
+    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
     private var buttonAppearanceObserver: NSKeyValueObservation?
     /// 含额度的模式下刷新倒计时、旧记录与重置点状态;模型未变化时不重新赋值图像。
     private var quotaPresentationTimer: Timer?
@@ -65,7 +68,7 @@ final class StatusBarController {
         refreshTimer?.timeInterval
     }
     var debugStatusMenuItemTitles: [String] {
-        statusMenu.items.filter { !$0.isSeparatorItem }.map(\.title)
+        statusMenu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
     }
     var debugTitlePlainString: String {
         statusItem.button?.attributedTitle.string ?? ""
@@ -109,9 +112,6 @@ final class StatusBarController {
     var debugCheckedDisplayModeTitle: String? {
         menuItems.displayModeMenuItem.submenu?.items.first { $0.state == .on }?.title
     }
-    var debugQuotaWindowsMenuTitles: [String] {
-        menuItems.quotaWindowsMenuItem.submenu?.items.map(\.title) ?? []
-    }
     func debugRenderTitle() {
         renderTitle()
     }
@@ -121,13 +121,15 @@ final class StatusBarController {
         quotaStore: SubscriptionQuotaStore = SubscriptionQuotaStore(),
         autoRefreshSettings: AutoRefreshSettings = .shared,
         languageSettings: AppLanguageSettings = .shared,
-        displaySettings: StatusBarDisplaySettings = .shared
+        displaySettings: StatusBarDisplaySettings = .shared,
+        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
     ) {
         self.viewModel = viewModel
         self.quotaStore = quotaStore
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         self.displaySettings = displaySettings
+        self.quotaAccess = quotaAccess
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.statusMenu.userInterfaceLayoutDirection = .leftToRight
 
@@ -139,6 +141,7 @@ final class StatusBarController {
         subscribeToAutoRefreshSettings()
         subscribeToLanguageSettings()
         subscribeToDisplaySettings()
+        subscribeToQuotaAccess()
         startRefreshTimer()
         // 立即按当前 ViewModel 状态画一次,避免空标题闪现
         renderTitle()
@@ -156,6 +159,9 @@ final class StatusBarController {
             quotaPresentationTimer?.invalidate()
             if let token = displaySettingsObserverToken {
                 displaySettings.removeObserver(token)
+            }
+            if let token = quotaAccessObserverToken {
+                quotaAccess.removeObserver(token)
             }
             if let token = quotaObserverToken {
                 quotaStore.removeObserver(token)
@@ -195,6 +201,10 @@ final class StatusBarController {
         if let token = displaySettingsObserverToken {
             displaySettings.removeObserver(token)
             displaySettingsObserverToken = nil
+        }
+        if let token = quotaAccessObserverToken {
+            quotaAccess.removeObserver(token)
+            quotaAccessObserverToken = nil
         }
         buttonAppearanceObserver?.invalidate()
         buttonAppearanceObserver = nil
@@ -247,7 +257,7 @@ final class StatusBarController {
         // 额度图像在绘制时按按钮外观解析颜色;状态栏深浅变化时重建一次,避免沿用旧外观缓存。
         buttonAppearanceObserver = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             MainActor.assumeIsolated {
-                guard let self, self.displaySettings.mode.showsQuota else { return }
+                guard let self, self.effectiveDisplayMode.showsQuota else { return }
                 self.renderTitle(forceImage: true)
             }
         }
@@ -257,9 +267,13 @@ final class StatusBarController {
         let contentViewController = StatusPopoverViewController(
             viewModel: viewModel,
             quotaStore: quotaStore,
-            languageSettings: languageSettings
+            languageSettings: languageSettings,
+            quotaAccess: quotaAccess
         )
         contentViewController.preferredContentSize = StatusBarPopoverLayout.contentSize
+        contentViewController.onRequestQuotaUnlock = { [weak self] in
+            self?.openQuotaPurchaseSettings()
+        }
 
         // 外部点击由带 presentation generation 的 monitor 统一处理。
         // 若同时使用 transient，AppKit 可能在 mouseDown 先关闭，随后 mouseUp action 又重新打开。
@@ -343,7 +357,7 @@ final class StatusBarController {
 
         statusMenu.addItem(NSMenuItem.separator())
 
-        // 右键菜单承载状态栏显示设置;左键弹窗不新增操作列表。
+        // 右键菜单承载状态栏显示模式;各额度周期的展示与样式在主界面设置页配置。
         let displayModeMenu = NSMenu()
         for mode in StatusBarDisplayMode.allCases {
             let item = NSMenuItem(title: "", action: #selector(selectDisplayMode(_:)), keyEquivalent: "")
@@ -353,16 +367,6 @@ final class StatusBarController {
         }
         menuItems.displayModeMenuItem.submenu = displayModeMenu
         statusMenu.addItem(menuItems.displayModeMenuItem)
-
-        let quotaWindowsMenu = NSMenu()
-        for option in StatusBarQuotaWindowsOption.allCases {
-            let item = NSMenuItem(title: "", action: #selector(selectQuotaWindows(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = option.rawValue
-            quotaWindowsMenu.addItem(item)
-        }
-        menuItems.quotaWindowsMenuItem.submenu = quotaWindowsMenu
-        statusMenu.addItem(menuItems.quotaWindowsMenuItem)
 
         menuItems.chooseClaudeQuotaFileItem.action = #selector(chooseClaudeQuotaFile)
         menuItems.chooseClaudeQuotaFileItem.target = self
@@ -395,7 +399,7 @@ final class StatusBarController {
 
     private func subscribeToQuotaStore() {
         quotaObserverToken = quotaStore.observe { [weak self] in
-            guard let self, self.displaySettings.mode.showsQuota else { return }
+            guard let self, self.effectiveDisplayMode.showsQuota else { return }
             self.renderTitle()
         }
     }
@@ -409,15 +413,43 @@ final class StatusBarController {
         }
     }
 
+    /// 购买或恢复后立即读取额度并重绘;退款撤销后同步隐藏额度与相关菜单项。
+    private func subscribeToQuotaAccess() {
+        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
+            guard let self else { return }
+            self.updateMenuTitles()
+            self.syncLoadingAnimationState()
+            self.renderTitle()
+            self.refreshQuotaIfUnlocked()
+        }
+    }
+
     /// Codex 额度复用 Codex 数据目录授权;授权状态变化(例如在设置页重新授权)后立即重读。
     private func refreshQuotaIfCodexDirectoryChanged() {
         let directoryState = viewModel.states[.codex]?.directoryState
         guard directoryState != lastCodexDirectoryState else { return }
         lastCodexDirectoryState = directoryState
+        refreshQuotaIfUnlocked()
+    }
+
+    /// 额度为付费功能,未解锁时不读取本地额度记录。
+    private func refreshQuotaIfUnlocked() {
+        guard quotaAccess.isUnlocked else { return }
         let quotaStore = self.quotaStore
         Task { @MainActor in
             await quotaStore.refresh()
         }
+    }
+
+    /// 实际生效的展示模式。
+    ///
+    /// 额度未解锁,或设置页把两个 Agent 的所有周期都关闭时,含额度的模式退回只显示今日 token,
+    /// 保证状态栏始终有可点击的内容;用户选择的模式本身保持不变,解锁或重新开启后自动恢复。
+    private var effectiveDisplayMode: StatusBarDisplayMode {
+        let mode = displaySettings.mode
+        guard mode.showsQuota else { return mode }
+        guard quotaAccess.isUnlocked, displaySettings.hasVisibleQuotaWindow else { return .todayTokens }
+        return mode
     }
 
     private func subscribeToAutoRefreshSettings() {
@@ -442,12 +474,14 @@ final class StatusBarController {
         menuItems.openItem.title = AppStrings.text(.statusMenuOpen, language: language)
         menuItems.refreshItem.title = AppStrings.text(.refreshNow, language: language)
         menuItems.displayModeMenuItem.title = AppStrings.text(.statusMenuDisplayMode, language: language)
-        menuItems.quotaWindowsMenuItem.title = AppStrings.text(.statusMenuQuotaWindows, language: language)
         menuItems.chooseClaudeQuotaFileItem.title = AppStrings.text(
             .statusMenuChooseClaudeQuotaFile,
             language: language
         )
         menuItems.quitItem.title = AppStrings.text(.statusMenuQuit, language: language)
+        // 未解锁时额度不可见,显示模式与额度文件入口没有意义,一并隐藏。
+        menuItems.displayModeMenuItem.isHidden = !quotaAccess.isUnlocked
+        menuItems.chooseClaudeQuotaFileItem.isHidden = !quotaAccess.isUnlocked
 
         let selectedMode = displaySettings.mode
         for item in menuItems.displayModeMenuItem.submenu?.items ?? [] {
@@ -456,15 +490,6 @@ final class StatusBarController {
             }
             item.title = mode.title(language: language)
             item.state = mode == selectedMode ? .on : .off
-        }
-        let selectedWindows = displaySettings.quotaWindows
-        for item in menuItems.quotaWindowsMenuItem.submenu?.items ?? [] {
-            guard let option = (item.representedObject as? String)
-                .flatMap(StatusBarQuotaWindowsOption.init(rawValue:)) else {
-                continue
-            }
-            item.title = option.title(language: language)
-            item.state = option == selectedWindows ? .on : .off
         }
     }
 
@@ -496,8 +521,7 @@ final class StatusBarController {
         if lastRenderedDayKey != todayKey {
             renderTitle()
         }
-        let quotaStore = self.quotaStore
-        Task { await quotaStore.refresh() }
+        refreshQuotaIfUnlocked()
         Task { await viewModel.loadAllStats(mode: .silentIfUnchanged) }
     }
 
@@ -505,7 +529,7 @@ final class StatusBarController {
 
     private func syncLoadingAnimationState() {
         // 只有包含今日 token 的模式承载原有仪表盘加载动画;纯额度模式不跑动画。
-        if displaySettings.mode.showsTodayTokens,
+        if effectiveDisplayMode.showsTodayTokens,
            viewModel.states.values.contains(where: { $0.isLoading }) {
             startLoadingAnimation()
         } else {
@@ -575,7 +599,7 @@ final class StatusBarController {
         force: Bool
     ) {
         guard let button = statusItem.button else { return }
-        let mode = displaySettings.mode
+        let mode = effectiveDisplayMode
         guard force
             || mode != renderedDisplayMode
             || symbolName != lastRenderedSymbolName
@@ -617,7 +641,7 @@ final class StatusBarController {
     /// - Parameter forceImage: 外观变化时即使内容相同也重建图像。
     private func renderTitle(forceImage: Bool = false) {
         guard let button = statusItem.button else { return }
-        let mode = displaySettings.mode
+        let mode = effectiveDisplayMode
         let language = languageSettings.resolvedLanguage
         var toolTipSections: [String] = []
 
@@ -653,14 +677,20 @@ final class StatusBarController {
                     language: language
                 )
             }
+            let displaySettings = self.displaySettings
             quotaModel = StatusBarQuotaModel.make(
                 presentations: presentations,
-                windowKinds: displaySettings.quotaWindows.windowKinds,
+                configuration: { displaySettings.quotaWindowConfiguration(provider: $0, kind: $1) },
                 ringDiameter: StatusBarQuotaLayout.ringDiameter(
                     forStatusBarThickness: NSStatusBar.system.thickness
                 )
             )
-            toolTipSections.append(SubscriptionQuotaPresenter.toolTip(for: presentations, language: language))
+            // 悬停说明只列出状态栏中实际展示的 Agent,简洁模式下仍可在此查看百分比。
+            let visibleProviders = Set(quotaModel?.groups.map(\.provider) ?? [])
+            toolTipSections.append(SubscriptionQuotaPresenter.toolTip(
+                for: presentations.filter { visibleProviders.contains($0.provider) },
+                language: language
+            ))
         } else {
             stopQuotaPresentationTimer()
         }
@@ -699,7 +729,7 @@ final class StatusBarController {
         guard quotaPresentationTimer == nil else { return }
         let timer = Timer(timeInterval: Self.quotaPresentationTickInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.displaySettings.mode.showsQuota else { return }
+                guard let self, self.effectiveDisplayMode.showsQuota else { return }
                 self.renderTitle()
             }
         }
@@ -1014,8 +1044,7 @@ final class StatusBarController {
     }
 
     @objc private func refreshNow() {
-        let quotaStore = self.quotaStore
-        Task { await quotaStore.refresh() }
+        refreshQuotaIfUnlocked()
         Task { await viewModel.loadAllStats() }
     }
 
@@ -1027,13 +1056,13 @@ final class StatusBarController {
         displaySettings.mode = mode
     }
 
-    @objc private func selectQuotaWindows(_ sender: NSMenuItem) {
-        guard let option = (sender.representedObject as? String)
-            .flatMap(StatusBarQuotaWindowsOption.init(rawValue:)) else {
-            return
+    /// 弹窗订阅区的解锁入口:关闭弹窗后打开主界面设置页的订阅额度区块,由其承载购买与恢复。
+    private func openQuotaPurchaseSettings() {
+        logger.info("从状态栏弹窗打开订阅额度解锁入口")
+        dismissCurrentPopover()
+        Task { @MainActor in
+            (NSApp.delegate as? AppDelegate)?.showStatusBarQuotaSettings()
         }
-        logger.info("状态栏额度周期切换为 \(option.rawValue, privacy: .public)")
-        displaySettings.quotaWindows = option
     }
 
     @objc private func chooseClaudeQuotaFile() {
@@ -1154,7 +1183,6 @@ private final class StatusMenuItems {
     let openItem = NSMenuItem()
     let refreshItem = NSMenuItem()
     let displayModeMenuItem = NSMenuItem()
-    let quotaWindowsMenuItem = NSMenuItem()
     let chooseClaudeQuotaFileItem = NSMenuItem()
     let quitItem = NSMenuItem()
 }

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Ustaw miesięczny budżet w TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Przewidywane przekroczenie budżetu";
 "widgetPurchaseLockedTitle" = "Odblokuj wszystkie 7 widżetów pulpitu";
-"widgetPurchaseLockedDescription" = "Jeden zakup zapewnia stały dostęp i możliwość przywrócenia w dowolnym momencie.";
+"widgetPurchaseLockedDescription" = "Jeden zakup na stałe odblokowuje wszystkie widżety i użycie subskrypcji na pasku menu, z możliwością przywrócenia w dowolnym momencie.";
 "widgetPurchaseUnlockedTitle" = "Wszystkie widżety są odblokowane";
 "widgetPurchaseUnlockedDescription" = "Twój zakup został zweryfikowany i widżety mogą teraz wyświetlać dane użycia.";
 "widgetPurchaseLockedStatus" = "Zablokowane";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Pasek menu pokazuje";
 "statusBarDisplayQuota" = "Użycie subskrypcji";
 "statusBarDisplayTodayTokens" = "Dzisiejsze Tokens";
-"statusMenuQuotaWindows" = "Okresy użycia";
-"quotaWindowsBoth" = "Oba okresy";
 "statusMenuChooseClaudeQuotaFile" = "Wybierz plik użycia Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch odczytuje tylko zapisane w pamięci podręcznej użycie subskrypcji z pliku konfiguracyjnego Claude Code. Wybierz ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Użycie subskrypcji + Dzisiejsze Tokens";
+"settingsStatusBarQuotaTitle" = "Użycie subskrypcji na pasku menu";
+"settingsStatusBarQuotaDescription" = "Wybierz, które okresy użycia Claude i Codex mają być widoczne na pasku menu. Tryb kompaktowy pokazuje tylko pierścień, a szczegółowy także pozostały procent.";
+"settingsQuotaStyleCompact" = "Kompaktowy";
+"settingsQuotaStyleDetailed" = "Szczegółowy";
+"quotaPremiumLockedMessage" = "Użycie subskrypcji to płatna funkcja, zawarta w jednorazowym zakupie odblokowującym widżety pulpitu.";
+"quotaUnlockAction" = "Odblokuj";

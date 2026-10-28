@@ -58,4 +58,42 @@ struct WidgetPurchaseCopy: Equatable, Sendable {
     func purchaseTitle(displayPrice: String) -> String {
         String(format: purchaseActionFormat, displayPrice)
     }
+
+    /// Maps a purchase operation to busy state and a user-facing message without raw errors.
+    /// Shared by the widget gallery and the menu bar usage settings, which sell the same product.
+    /// - Parameter operation: The current purchase operation.
+    /// - Returns: Whether purchase actions should be disabled, and the message to show (empty when none).
+    func operationPresentation(
+        _ operation: WidgetPurchaseOperationState
+    ) -> (isBusy: Bool, message: String) {
+        switch operation {
+        case .loading:
+            return (true, loadingMessage)
+        case .purchasing:
+            return (true, purchasingMessage)
+        case .restoring:
+            return (true, restoringMessage)
+        case .purchasePending:
+            return (false, pendingMessage)
+        case .noPurchasesToRestore:
+            return (false, noPurchaseMessage)
+        case .failed(let failure):
+            return (false, failureMessage(failure))
+        case .idle, .purchaseCompleted, .restoreCompleted:
+            return (false, "")
+        }
+    }
+
+    private func failureMessage(_ failure: WidgetPurchaseFailure) -> String {
+        switch failure {
+        case .productUnavailable, .productLoadFailed:
+            return unavailableMessage
+        case .purchaseVerificationFailed:
+            return verificationFailedMessage
+        case .purchaseFailed, .restoreFailed:
+            return failedMessage
+        case .entitlementPersistenceFailed:
+            return entitlementPersistenceFailedMessage
+        }
+    }
 }

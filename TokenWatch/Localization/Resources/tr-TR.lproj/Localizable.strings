@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch'ta aylık bütçe belirleyin";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Bütçenin aşılması bekleniyor";
 "widgetPurchaseLockedTitle" = "7 masaüstü araç takımının tümünün kilidini açın";
-"widgetPurchaseLockedDescription" = "Tek satın alımla kalıcı erişim; satın alımınızı istediğiniz zaman geri yükleyebilirsiniz.";
+"widgetPurchaseLockedDescription" = "Tek satın alım tüm araç takımlarının ve menü çubuğundaki abonelik kullanımının kilidini kalıcı olarak açar; satın alımınızı istediğiniz zaman geri yükleyebilirsiniz.";
 "widgetPurchaseUnlockedTitle" = "Tüm araç takımlarının kilidi açıldı";
 "widgetPurchaseUnlockedDescription" = "Satın alımınız doğrulandı; araç takımları artık kullanım verilerini gösterebilir.";
 "widgetPurchaseLockedStatus" = "Kilitli";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menü Çubuğunda Göster";
 "statusBarDisplayQuota" = "Abonelik Kullanımı";
 "statusBarDisplayTodayTokens" = "Bugünkü Tokens";
-"statusMenuQuotaWindows" = "Kullanım Dönemleri";
-"quotaWindowsBoth" = "Her İki Dönem";
 "statusMenuChooseClaudeQuotaFile" = "Claude Kullanım Dosyasını Seç…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch yalnızca Claude Code yapılandırma dosyasında önbelleğe alınmış abonelik kullanımını okur. ~/.claude.json dosyasını seçin.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonelik Kullanımı + Bugünkü Tokens";
+"settingsStatusBarQuotaTitle" = "Menü Çubuğunda Abonelik Kullanımı";
+"settingsStatusBarQuotaDescription" = "Claude ve Codex için menü çubuğunda hangi kullanım dönemlerinin gösterileceğini seçin. Sade yalnızca halkayı, Ayrıntılı ise kalan yüzdeyi de gösterir.";
+"settingsQuotaStyleCompact" = "Sade";
+"settingsQuotaStyleDetailed" = "Ayrıntılı";
+"quotaPremiumLockedMessage" = "Abonelik kullanımı, masaüstü araç takımlarının kilidini açan tek seferlik satın alıma dahil ücretli bir özelliktir.";
+"quotaUnlockAction" = "Kilidi Aç";

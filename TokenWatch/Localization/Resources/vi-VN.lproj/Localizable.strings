@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Đặt ngân sách hằng tháng trong TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Dự kiến vượt ngân sách";
 "widgetPurchaseLockedTitle" = "Mở khóa cả 7 tiện ích trên màn hình nền";
-"widgetPurchaseLockedDescription" = "Mua một lần, sử dụng vĩnh viễn và có thể khôi phục bất cứ lúc nào.";
+"widgetPurchaseLockedDescription" = "Mua một lần để mở khóa vĩnh viễn tất cả tiện ích và mức sử dụng gói đăng ký trên thanh menu, có thể khôi phục bất cứ lúc nào.";
 "widgetPurchaseUnlockedTitle" = "Tất cả tiện ích đã được mở khóa";
 "widgetPurchaseUnlockedDescription" = "Giao dịch mua của bạn đã được xác minh và các tiện ích giờ đây có thể hiển thị dữ liệu sử dụng.";
 "widgetPurchaseLockedStatus" = "Đã khóa";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Thanh menu hiển thị";
 "statusBarDisplayQuota" = "Mức sử dụng gói đăng ký";
 "statusBarDisplayTodayTokens" = "Tokens hôm nay";
-"statusMenuQuotaWindows" = "Chu kỳ sử dụng";
-"quotaWindowsBoth" = "Cả hai chu kỳ";
 "statusMenuChooseClaudeQuotaFile" = "Chọn tệp sử dụng Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch chỉ đọc mức sử dụng gói đăng ký được lưu trong bộ nhớ đệm của tệp cấu hình Claude Code. Chọn ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Mức sử dụng gói đăng ký + Tokens hôm nay";
+"settingsStatusBarQuotaTitle" = "Mức sử dụng gói đăng ký trên thanh menu";
+"settingsStatusBarQuotaDescription" = "Chọn chu kỳ sử dụng nào của Claude và Codex sẽ hiển thị trên thanh menu. Gọn chỉ hiển thị vòng tròn; Chi tiết hiển thị thêm phần trăm còn lại.";
+"settingsQuotaStyleCompact" = "Gọn";
+"settingsQuotaStyleDetailed" = "Chi tiết";
+"quotaPremiumLockedMessage" = "Mức sử dụng gói đăng ký là tính năng trả phí, đi kèm giao dịch mua một lần để mở khóa các tiện ích trên màn hình nền.";
+"quotaUnlockAction" = "Mở khóa";

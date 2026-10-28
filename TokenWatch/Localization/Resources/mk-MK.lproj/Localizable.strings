@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Поставете месечен буџет во TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Се предвидува надминување на буџетот";
 "widgetPurchaseLockedTitle" = "Отклучете ги сите 7 виџети за работната површина";
-"widgetPurchaseLockedDescription" = "Едно купување, траен пристап и можност за враќање во секое време.";
+"widgetPurchaseLockedDescription" = "Едно купување трајно ги отклучува сите виџети и користењето на претплатата во лентата со менија, со можност за враќање во секое време.";
 "widgetPurchaseUnlockedTitle" = "Сите виџети се отклучени";
 "widgetPurchaseUnlockedDescription" = "Вашето купување е потврдено и виџетите сега можат да прикажуваат податоци за користењето.";
 "widgetPurchaseLockedStatus" = "Заклучено";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Лентата со менија прикажува";
 "statusBarDisplayQuota" = "Користење на претплатата";
 "statusBarDisplayTodayTokens" = "Денешни Tokens";
-"statusMenuQuotaWindows" = "Периоди на користење";
-"quotaWindowsBoth" = "Двата периода";
 "statusMenuChooseClaudeQuotaFile" = "Избери датотека за користење на Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch го чита само кешираното користење на претплатата од конфигурациската датотека на Claude Code. Изберете ја ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Користење на претплатата + Денешни Tokens";
+"settingsStatusBarQuotaTitle" = "Користење на претплатата во лентата со менија";
+"settingsStatusBarQuotaDescription" = "Изберете кои периоди на користење за Claude и Codex да се прикажуваат во лентата со менија. Збиениот приказ покажува само прстен, а деталниот и преостанатиот процент.";
+"settingsQuotaStyleCompact" = "Збиено";
+"settingsQuotaStyleDetailed" = "Детално";
+"quotaPremiumLockedMessage" = "Користењето на претплатата е платена функција, вклучена во еднократното купување што ги отклучува виџетите за работната површина.";
+"quotaUnlockAction" = "Отклучи";

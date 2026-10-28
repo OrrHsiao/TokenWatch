@@ -217,11 +217,15 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case statusMenuDisplayMode
     case statusBarDisplayQuota
     case statusBarDisplayTodayTokens
-    case statusMenuQuotaWindows
-    case quotaWindowsBoth
     case statusMenuChooseClaudeQuotaFile
     case claudeQuotaFileOpenPanelMessage
     case statusBarDisplayQuotaAndTodayTokens
+    case settingsStatusBarQuotaTitle
+    case settingsStatusBarQuotaDescription
+    case settingsQuotaStyleCompact
+    case settingsQuotaStyleDetailed
+    case quotaPremiumLockedMessage
+    case quotaUnlockAction
 }
 
 enum AppStrings {

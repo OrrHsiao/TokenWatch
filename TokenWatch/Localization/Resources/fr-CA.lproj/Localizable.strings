@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Définissez un budget mensuel dans TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Dépassement du budget prévu";
 "widgetPurchaseLockedTitle" = "Déverrouillez les 7 widgets de bureau";
-"widgetPurchaseLockedDescription" = "Un achat unique pour un accès permanent, avec restauration possible en tout temps.";
+"widgetPurchaseLockedDescription" = "Un achat unique déverrouille définitivement tous les widgets et l'utilisation de l'abonnement dans la barre de menus, avec restauration possible en tout temps.";
 "widgetPurchaseUnlockedTitle" = "Tous les widgets sont déverrouillés";
 "widgetPurchaseUnlockedDescription" = "Votre achat est vérifié et les widgets peuvent maintenant afficher les données d’utilisation.";
 "widgetPurchaseLockedStatus" = "Verrouillé";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Affichage de la barre de menus";
 "statusBarDisplayQuota" = "Utilisation de l'abonnement";
 "statusBarDisplayTodayTokens" = "Tokens du jour";
-"statusMenuQuotaWindows" = "Périodes d'utilisation";
-"quotaWindowsBoth" = "Les deux périodes";
 "statusMenuChooseClaudeQuotaFile" = "Choisir le fichier d'utilisation de Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch lit uniquement l'utilisation de l'abonnement mise en cache dans le fichier de configuration de Claude Code. Choisissez ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Utilisation de l'abonnement + Tokens du jour";
+"settingsStatusBarQuotaTitle" = "Utilisation de l'abonnement dans la barre de menus";
+"settingsStatusBarQuotaDescription" = "Choisissez les périodes d'utilisation de Claude et de Codex affichées dans la barre de menus. Simple n'affiche que l'anneau ; Détaillé affiche aussi le pourcentage restant.";
+"settingsQuotaStyleCompact" = "Simple";
+"settingsQuotaStyleDetailed" = "Détaillé";
+"quotaPremiumLockedMessage" = "L'utilisation de l'abonnement est une fonctionnalité payante, incluse dans l'achat unique qui déverrouille les widgets de bureau.";
+"quotaUnlockAction" = "Déverrouiller";

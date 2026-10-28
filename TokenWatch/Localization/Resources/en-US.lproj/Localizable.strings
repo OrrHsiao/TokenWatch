@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Set a monthly budget in TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Projected to exceed budget";
 "widgetPurchaseLockedTitle" = "Unlock all 7 desktop widgets";
-"widgetPurchaseLockedDescription" = "One purchase, permanent access, with restore available anytime.";
+"widgetPurchaseLockedDescription" = "One purchase permanently unlocks all widgets and menu bar subscription usage, with restore available anytime.";
 "widgetPurchaseUnlockedTitle" = "All widgets are unlocked";
 "widgetPurchaseUnlockedDescription" = "Your purchase is verified and widgets can now display usage data.";
 "widgetPurchaseLockedStatus" = "Locked";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Menu Bar Shows";
 "statusBarDisplayQuota" = "Subscription Usage";
 "statusBarDisplayTodayTokens" = "Today's Tokens";
-"statusMenuQuotaWindows" = "Usage Windows";
-"quotaWindowsBoth" = "Both Windows";
 "statusMenuChooseClaudeQuotaFile" = "Choose Claude Usage File…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch reads only the cached subscription usage in the Claude Code config file. Choose ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Subscription Usage + Today's Tokens";
+"settingsStatusBarQuotaTitle" = "Menu Bar Subscription Usage";
+"settingsStatusBarQuotaDescription" = "Choose which Claude and Codex usage windows appear in the menu bar. Compact shows only the ring; Detailed also shows the remaining percentage.";
+"settingsQuotaStyleCompact" = "Compact";
+"settingsQuotaStyleDetailed" = "Detailed";
+"quotaPremiumLockedMessage" = "Subscription usage is a paid feature, included in the one-time purchase that unlocks desktop widgets.";
+"quotaUnlockAction" = "Unlock";

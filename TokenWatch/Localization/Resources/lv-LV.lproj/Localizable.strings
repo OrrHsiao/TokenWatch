@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Iestatiet mēneša budžetu TokenWatch lietotnē";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Paredzams budžeta pārsniegums";
 "widgetPurchaseLockedTitle" = "Atbloķējiet visus 7 darbvirsmas logrīkus";
-"widgetPurchaseLockedDescription" = "Viens pirkums nodrošina pastāvīgu piekļuvi, un pirkumu var atjaunot jebkurā laikā.";
+"widgetPurchaseLockedDescription" = "Viens pirkums pastāvīgi atbloķē visus logrīkus un abonementa lietojumu izvēļņu joslā, un pirkumu var atjaunot jebkurā laikā.";
 "widgetPurchaseUnlockedTitle" = "Visi logrīki ir atbloķēti";
 "widgetPurchaseUnlockedDescription" = "Jūsu pirkums ir pārbaudīts, un logrīki tagad var rādīt lietojuma datus.";
 "widgetPurchaseLockedStatus" = "Bloķēts";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Izvēļņu josla rāda";
 "statusBarDisplayQuota" = "Abonementa lietojums";
 "statusBarDisplayTodayTokens" = "Šodienas Tokens";
-"statusMenuQuotaWindows" = "Lietojuma periodi";
-"quotaWindowsBoth" = "Abi periodi";
 "statusMenuChooseClaudeQuotaFile" = "Izvēlēties Claude lietojuma failu…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch nolasa tikai Claude Code konfigurācijas failā kešatmiņā saglabāto abonementa lietojumu. Izvēlieties ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonementa lietojums + Šodienas Tokens";
+"settingsStatusBarQuotaTitle" = "Abonementa lietojums izvēļņu joslā";
+"settingsStatusBarQuotaDescription" = "Izvēlieties, kuri Claude un Codex lietojuma periodi tiek rādīti izvēļņu joslā. Kompakts rāda tikai gredzenu, Detalizēts – arī atlikušo procentuālo daļu.";
+"settingsQuotaStyleCompact" = "Kompakts";
+"settingsQuotaStyleDetailed" = "Detalizēts";
+"quotaPremiumLockedMessage" = "Abonementa lietojums ir maksas funkcija, kas iekļauta vienreizējā pirkumā, kurš atbloķē darbvirsmas logrīkus.";
+"quotaUnlockAction" = "Atbloķēt";

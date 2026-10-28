@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "በ TokenWatch ውስጥ ወርሃዊ በጀት ያዘጋጁ";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "በጀቱን ሊያልፍ ይችላል";
 "widgetPurchaseLockedTitle" = "ሁሉንም 7 የዴስክቶፕ መግብሮች ይክፈቱ";
-"widgetPurchaseLockedDescription" = "አንድ ጊዜ ይግዙ፣ ቋሚ መዳረሻ ያግኙ፣ እና በማንኛውም ጊዜ ግዢዎን መልሰው ማግኘት ይችላሉ።";
+"widgetPurchaseLockedDescription" = "አንድ ጊዜ በመግዛት ሁሉንም መግብሮች እና በምናሌ አሞሌ ላይ ያለውን የምዝገባ አጠቃቀም በቋሚነት ይክፈቱ፤ በማንኛውም ጊዜ ግዢዎን መልሰው ማግኘት ይችላሉ።";
 "widgetPurchaseUnlockedTitle" = "ሁሉም መግብሮች ተከፍተዋል";
 "widgetPurchaseUnlockedDescription" = "ግዢዎ ተረጋግጧል፣ እና መግብሮቹ አሁን የአጠቃቀም ውሂብን ማሳየት ይችላሉ።";
 "widgetPurchaseLockedStatus" = "ተቆልፏል";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "የምናሌ አሞሌ የሚያሳየው";
 "statusBarDisplayQuota" = "የምዝገባ አጠቃቀም";
 "statusBarDisplayTodayTokens" = "የዛሬ Tokens";
-"statusMenuQuotaWindows" = "የአጠቃቀም ጊዜያት";
-"quotaWindowsBoth" = "ሁለቱም ጊዜያት";
 "statusMenuChooseClaudeQuotaFile" = "የClaude አጠቃቀም ፋይል ይምረጡ…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch በClaude Code ውቅረት ፋይል ውስጥ የተቀመጠውን የምዝገባ አጠቃቀም ብቻ ያነባል። ~/.claude.json ይምረጡ።";
 "statusBarDisplayQuotaAndTodayTokens" = "የምዝገባ አጠቃቀም + የዛሬ Tokens";
+"settingsStatusBarQuotaTitle" = "በምናሌ አሞሌ ላይ የምዝገባ አጠቃቀም";
+"settingsStatusBarQuotaDescription" = "በምናሌ አሞሌ ላይ የትኞቹ የClaude እና የCodex የአጠቃቀም ጊዜያት እንደሚታዩ ይምረጡ። የታመቀ ሁነታ ቀለበቱን ብቻ ያሳያል፤ ዝርዝር ሁነታ የቀረውን መቶኛም ያሳያል።";
+"settingsQuotaStyleCompact" = "የታመቀ";
+"settingsQuotaStyleDetailed" = "ዝርዝር";
+"quotaPremiumLockedMessage" = "የምዝገባ አጠቃቀም የሚከፈልበት ባህሪ ሲሆን የዴስክቶፕ መግብሮችን በሚከፍተው የአንድ ጊዜ ግዢ ውስጥ ተካትቷል።";
+"quotaUnlockAction" = "ይክፈቱ";

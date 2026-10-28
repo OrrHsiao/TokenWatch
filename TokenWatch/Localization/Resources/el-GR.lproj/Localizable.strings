@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Ορίστε μηνιαίο προϋπολογισμό στο TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Προβλέπεται υπέρβαση του προϋπολογισμού";
 "widgetPurchaseLockedTitle" = "Ξεκλειδώστε και τα 7 γραφικά στοιχεία επιφάνειας εργασίας";
-"widgetPurchaseLockedDescription" = "Μία αγορά, μόνιμη πρόσβαση και δυνατότητα επαναφοράς ανά πάσα στιγμή.";
+"widgetPurchaseLockedDescription" = "Μία αγορά ξεκλειδώνει μόνιμα όλα τα γραφικά στοιχεία και τη χρήση συνδρομής στη γραμμή μενού, με δυνατότητα επαναφοράς ανά πάσα στιγμή.";
 "widgetPurchaseUnlockedTitle" = "Όλα τα γραφικά στοιχεία είναι ξεκλειδωμένα";
 "widgetPurchaseUnlockedDescription" = "Η αγορά σας επαληθεύτηκε και τα γραφικά στοιχεία μπορούν πλέον να εμφανίζουν δεδομένα χρήσης.";
 "widgetPurchaseLockedStatus" = "Κλειδωμένο";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Η γραμμή μενού εμφανίζει";
 "statusBarDisplayQuota" = "Χρήση συνδρομής";
 "statusBarDisplayTodayTokens" = "Σημερινά Tokens";
-"statusMenuQuotaWindows" = "Περίοδοι χρήσης";
-"quotaWindowsBoth" = "Και οι δύο περίοδοι";
 "statusMenuChooseClaudeQuotaFile" = "Επιλογή αρχείου χρήσης Claude…";
 "claudeQuotaFileOpenPanelMessage" = "Το TokenWatch διαβάζει μόνο την αποθηκευμένη χρήση συνδρομής από το αρχείο ρυθμίσεων του Claude Code. Επιλέξτε το ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Χρήση συνδρομής + Σημερινά Tokens";
+"settingsStatusBarQuotaTitle" = "Χρήση συνδρομής στη γραμμή μενού";
+"settingsStatusBarQuotaDescription" = "Επιλέξτε ποιες περίοδοι χρήσης του Claude και του Codex εμφανίζονται στη γραμμή μενού. Η συμπαγής προβολή δείχνει μόνο τον δακτύλιο, ενώ η λεπτομερής δείχνει και το υπόλοιπο ποσοστό.";
+"settingsQuotaStyleCompact" = "Συμπαγής";
+"settingsQuotaStyleDetailed" = "Λεπτομερής";
+"quotaPremiumLockedMessage" = "Η χρήση συνδρομής είναι επί πληρωμή λειτουργία, που περιλαμβάνεται στην εφάπαξ αγορά η οποία ξεκλειδώνει τα γραφικά στοιχεία επιφάνειας εργασίας.";
+"quotaUnlockAction" = "Ξεκλείδωμα";

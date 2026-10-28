@@ -13,20 +13,78 @@ struct StatusBarQuotaImageRendererTests {
 
         let both = StatusBarQuotaModel.make(
             presentations: presentations,
-            windowKinds: StatusBarQuotaWindowsOption.both.windowKinds,
+            configuration: Self.allDetailed,
             ringDiameter: 22
         )
         #expect(both.groups.map(\.provider) == [.claude, .codex])
         #expect(both.groups[0].rings.map(\.shortLabel) == ["5H", "7D"])
         #expect(both.groups[0].rings.map(\.valueText) == ["68%", "86%"])
         #expect(both.groups[0].rings[0].remainingFraction == 0.68)
+        #expect(both.groups.allSatisfy { $0.rings.allSatisfy(\.showsValue) })
 
         let weekOnly = StatusBarQuotaModel.make(
             presentations: presentations,
-            windowKinds: StatusBarQuotaWindowsOption.sevenDay.windowKinds,
+            configuration: { _, kind in .init(isVisible: kind == .sevenDay, style: .detailed) },
             ringDiameter: 22
         )
         #expect(weekOnly.groups.map { $0.rings.map(\.shortLabel) } == [["7D"], ["7D"]])
+    }
+
+    @Test("Claude 与 Codex 按各自配置展示周期；周期全部关闭的 Agent 整组省略")
+    func modelFollowsPerProviderConfiguration() {
+        let presentations = makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2))
+
+        let model = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { provider, kind in
+                switch (provider, kind) {
+                case (.claude, .fiveHour):
+                    return .init(isVisible: true, style: .compact)
+                case (.claude, .sevenDay):
+                    return .init(isVisible: true, style: .detailed)
+                case (.codex, _):
+                    return .init(isVisible: false, style: .detailed)
+                }
+            },
+            ringDiameter: 22
+        )
+
+        #expect(model.groups.map(\.provider) == [.claude])
+        #expect(model.groups[0].rings.map(\.shortLabel) == ["5H", "7D"])
+        #expect(model.groups[0].rings.map(\.showsValue) == [false, true])
+
+        let empty = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { _, _ in .init(isVisible: false, style: .detailed) },
+            ringDiameter: 22
+        )
+        #expect(empty.groups.isEmpty)
+        #expect(StatusBarQuotaLayout.imageSize(for: empty).width == 0)
+    }
+
+    @Test("简洁模式只绘制圆环，不预留百分比槽位，图像更窄")
+    func compactStyleOmitsValueSlot() {
+        let presentations = makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2))
+        let detailed = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: Self.allDetailed,
+            ringDiameter: 22
+        )
+        let compact = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { _, _ in .init(isVisible: true, style: .compact) },
+            ringDiameter: 22
+        )
+
+        let slot = StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.valueSlotWidth
+        let detailedWidth = StatusBarQuotaLayout.imageSize(for: detailed).width
+        let compactWidth = StatusBarQuotaLayout.imageSize(for: compact).width
+        #expect(abs(detailedWidth - compactWidth - 4 * slot) <= 1)
+        // 4 个圆环 + 组内 2 个窗口间距 + 1 个分组间距。
+        #expect(compactWidth == ceil(
+            4 * 22 + 2 * StatusBarQuotaLayout.windowSpacing + StatusBarQuotaLayout.providerSpacing
+        ))
+        #expect(StatusBarQuotaImageRenderer.makeImage(for: compact).size.width == compactWidth)
     }
 
     @Test("无数据保留周期标签并使用虚线灰环与 —；旧记录整体弱化")
@@ -50,7 +108,7 @@ struct StatusBarQuotaImageRendererTests {
         ]
         let model = StatusBarQuotaModel.make(
             presentations: presentations,
-            windowKinds: [.fiveHour, .sevenDay],
+            configuration: Self.allDetailed,
             ringDiameter: 22
         )
 
@@ -66,12 +124,12 @@ struct StatusBarQuotaImageRendererTests {
     func imageWidthIsIndependentOfValues() {
         let full = StatusBarQuotaModel.make(
             presentations: makePresentations(claudeUsed: (0, 0), codexUsed: (0, 0)),
-            windowKinds: [.fiveHour, .sevenDay],
+            configuration: Self.allDetailed,
             ringDiameter: 22
         )
         let low = StatusBarQuotaModel.make(
             presentations: makePresentations(claudeUsed: (99.5, 91), codexUsed: (100, 45)),
-            windowKinds: [.fiveHour, .sevenDay],
+            configuration: Self.allDetailed,
             ringDiameter: 22
         )
 
@@ -93,7 +151,7 @@ struct StatusBarQuotaImageRendererTests {
     func combinedImagePutsTodayTokensBeforeQuota() throws {
         let model = StatusBarQuotaModel.make(
             presentations: makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2)),
-            windowKinds: [.fiveHour, .sevenDay],
+            configuration: Self.allDetailed,
             ringDiameter: 22
         )
         let symbol = try #require(NSImage(
@@ -150,7 +208,7 @@ struct StatusBarQuotaImageRendererTests {
 
         let model = StatusBarQuotaModel.make(
             presentations: makePresentations(claudeUsed: (32, 14), codexUsed: (85, 95)),
-            windowKinds: [.fiveHour],
+            configuration: { _, kind in .init(isVisible: kind == .fiveHour, style: .detailed) },
             ringDiameter: 22
         )
         let image = StatusBarQuotaImageRenderer.makeImage(for: model)
@@ -185,6 +243,9 @@ struct StatusBarQuotaImageRendererTests {
     }
 
     // MARK: - Helpers
+
+    private static let allDetailed: (SubscriptionQuotaProvider, SubscriptionQuotaWindowKind)
+        -> StatusBarQuotaWindowConfiguration = { _, _ in .defaultConfiguration }
 
     private func makePresentations(
         claudeUsed: (Double, Double),

@@ -1,12 +1,14 @@
 import AppKit
 
-/// 状态栏中单个额度窗口：圆环 + 圈内图标与周期 + 右侧剩余百分比。
+/// 状态栏中单个额度窗口：圆环 + 圈内图标与周期 + 右侧剩余百分比（仅详细模式）。
 struct StatusBarQuotaRing: Equatable {
     let shortLabel: String
     /// 0...1 的剩余比例；nil 表示没有可展示的值，绘制虚线灰环。
     let remainingFraction: Double?
     let valueText: String
     let severity: SubscriptionQuotaSeverity
+    /// 详细模式在圆环右侧绘制剩余百分比；简洁模式只绘制圆环。
+    let showsValue: Bool
 }
 
 /// 同一个 Agent 的相邻窗口。
@@ -22,24 +24,33 @@ struct StatusBarQuotaModel: Equatable {
     let groups: [StatusBarQuotaGroup]
     let ringDiameter: CGFloat
 
-    /// 按固定的 Claude、Codex 顺序和设置中的窗口生成状态栏模型。
+    /// 按固定的 Claude、Codex 与 5H、7D 顺序，依设置页中每个周期的展示配置生成状态栏模型。
+    /// - Parameters:
+    ///   - presentations: 两个 Agent 的展示模型。
+    ///   - configuration: 某个 Agent 某个周期是否展示及简洁 / 详细样式。
+    ///   - ringDiameter: 圆环直径。
+    /// - Returns: 只包含需展示周期的模型；某个 Agent 的周期全部关闭时整组省略。
     static func make(
         presentations: [SubscriptionQuotaProviderPresentation],
-        windowKinds: [SubscriptionQuotaWindowKind],
+        configuration: (SubscriptionQuotaProvider, SubscriptionQuotaWindowKind) -> StatusBarQuotaWindowConfiguration,
         ringDiameter: CGFloat
     ) -> StatusBarQuotaModel {
-        let groups = presentations.map { presentation in
-            let rings = windowKinds.compactMap { kind -> StatusBarQuotaRing? in
-                guard let window = presentation.windows.first(where: { $0.kind == kind }) else {
+        let groups = presentations.compactMap { presentation -> StatusBarQuotaGroup? in
+            let rings = SubscriptionQuotaWindowKind.allCases.compactMap { kind -> StatusBarQuotaRing? in
+                let windowConfiguration = configuration(presentation.provider, kind)
+                guard windowConfiguration.isVisible,
+                      let window = presentation.windows.first(where: { $0.kind == kind }) else {
                     return nil
                 }
                 return StatusBarQuotaRing(
                     shortLabel: window.shortLabel,
                     remainingFraction: window.remainingPercent.map { $0 / 100 },
                     valueText: window.valueText,
-                    severity: window.severity
+                    severity: window.severity,
+                    showsValue: windowConfiguration.style.showsValue
                 )
             }
+            guard !rings.isEmpty else { return nil }
             return StatusBarQuotaGroup(
                 provider: presentation.provider,
                 rings: rings,
@@ -91,15 +102,19 @@ enum StatusBarQuotaLayout {
             .max() ?? 0
     }
 
-    /// 图像尺寸只取决于分组数、窗口数与圆环直径，与具体数值无关。
+    /// 单个窗口占用的宽度：简洁模式只有圆环，详细模式追加固定宽度的百分比槽位。
+    static func ringWidth(for ring: StatusBarQuotaRing, diameter: CGFloat) -> CGFloat {
+        ring.showsValue ? diameter + ringToValueSpacing + valueSlotWidth : diameter
+    }
+
+    /// 图像尺寸只取决于分组、窗口、简洁 / 详细样式与圆环直径，与具体数值无关。
     static func imageSize(for model: StatusBarQuotaModel) -> NSSize {
-        let ringWidth = model.ringDiameter + ringToValueSpacing + valueSlotWidth
         var width: CGFloat = 0
         for (groupIndex, group) in model.groups.enumerated() {
             if groupIndex > 0 {
                 width += providerSpacing
             }
-            width += CGFloat(group.rings.count) * ringWidth
+            width += group.rings.reduce(0) { $0 + ringWidth(for: $1, diameter: model.ringDiameter) }
             width += CGFloat(max(0, group.rings.count - 1)) * windowSpacing
         }
         return NSSize(width: ceil(width), height: model.ringDiameter)
@@ -117,7 +132,7 @@ enum StatusBarQuotaImageRenderer {
 
     /// 生成状态栏额度图像。
     /// - Parameter model: 分组、窗口与圆环直径。
-    /// - Returns: 非 template 图像；尺寸只由窗口数量决定，绘制时才解析外观颜色。
+    /// - Returns: 非 template 图像；尺寸只由窗口与简洁 / 详细样式决定，绘制时才解析外观颜色。
     static func makeImage(for model: StatusBarQuotaModel) -> NSImage {
         let size = StatusBarQuotaLayout.imageSize(for: model)
         let icons = agentIcons()
@@ -224,7 +239,9 @@ enum StatusBarQuotaImageRenderer {
                 }
                 let ringRect = NSRect(x: x, y: (height - diameter) / 2, width: diameter, height: diameter)
                 drawRing(ring, icon: icons[group.provider], in: ringRect, context: context)
-                x += diameter + StatusBarQuotaLayout.ringToValueSpacing
+                x += diameter
+                guard ring.showsValue else { continue }
+                x += StatusBarQuotaLayout.ringToValueSpacing
                 drawValue(
                     ring.valueText,
                     in: NSRect(x: x, y: 0, width: slotWidth, height: height)

@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "TokenWatch-இல் மாதாந்திர பட்ஜெட்டை அமைக்கவும்";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "பட்ஜெட்டை மீறும் என எதிர்பார்க்கப்படுகிறது";
 "widgetPurchaseLockedTitle" = "அனைத்து 7 டெஸ்க்டாப் விட்ஜெட்டுகளையும் திறக்கவும்";
-"widgetPurchaseLockedDescription" = "ஒரே வாங்குதலில் நிரந்தர அணுகலைப் பெறுங்கள்; எப்போது வேண்டுமானாலும் மீட்டெடுக்கலாம்.";
+"widgetPurchaseLockedDescription" = "ஒரே வாங்குதலில் அனைத்து விட்ஜெட்டுகளும் மெனு பட்டியின் சந்தா பயன்பாடும் நிரந்தரமாகத் திறக்கப்படும்; எப்போது வேண்டுமானாலும் மீட்டெடுக்கலாம்.";
 "widgetPurchaseUnlockedTitle" = "அனைத்து விட்ஜெட்டுகளும் திறக்கப்பட்டன";
 "widgetPurchaseUnlockedDescription" = "உங்கள் வாங்குதல் சரிபார்க்கப்பட்டது; விட்ஜெட்டுகள் இப்போது பயன்பாட்டுத் தரவைக் காட்டலாம்.";
 "widgetPurchaseLockedStatus" = "பூட்டப்பட்டுள்ளது";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "மெனு பட்டியில் காட்டுவது";
 "statusBarDisplayQuota" = "சந்தா பயன்பாடு";
 "statusBarDisplayTodayTokens" = "இன்றைய Tokens";
-"statusMenuQuotaWindows" = "பயன்பாட்டுக் காலங்கள்";
-"quotaWindowsBoth" = "இரு காலங்களும்";
 "statusMenuChooseClaudeQuotaFile" = "Claude பயன்பாட்டுக் கோப்பைத் தேர்ந்தெடு…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch, Claude Code உள்ளமைவுக் கோப்பில் தற்காலிகமாகச் சேமிக்கப்பட்ட சந்தா பயன்பாட்டை மட்டுமே படிக்கும். ~/.claude.json ஐத் தேர்ந்தெடுக்கவும்.";
 "statusBarDisplayQuotaAndTodayTokens" = "சந்தா பயன்பாடு + இன்றைய Tokens";
+"settingsStatusBarQuotaTitle" = "மெனு பட்டியில் சந்தா பயன்பாடு";
+"settingsStatusBarQuotaDescription" = "மெனு பட்டியில் Claude மற்றும் Codex இன் எந்தப் பயன்பாட்டுக் காலங்கள் காட்டப்பட வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும். சுருக்கப் பயன்முறை வளையத்தை மட்டும் காட்டும்; விரிவான பயன்முறை மீதமுள்ள சதவீதத்தையும் காட்டும்.";
+"settingsQuotaStyleCompact" = "சுருக்கம்";
+"settingsQuotaStyleDetailed" = "விரிவானது";
+"quotaPremiumLockedMessage" = "சந்தா பயன்பாடு கட்டண அம்சமாகும்; டெஸ்க்டாப் விட்ஜெட்டுகளைத் திறக்கும் ஒருமுறை வாங்குதலில் இது அடங்கும்.";
+"quotaUnlockAction" = "திறக்கவும்";

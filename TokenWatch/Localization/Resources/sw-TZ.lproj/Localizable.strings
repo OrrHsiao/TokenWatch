@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Weka bajeti ya mwezi katika TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Inatarajiwa kuzidi bajeti";
 "widgetPurchaseLockedTitle" = "Fungua wijeti zote 7 za eneo-kazi";
-"widgetPurchaseLockedDescription" = "Nunua mara moja, upate ufikiaji wa kudumu na urejeshe wakati wowote.";
+"widgetPurchaseLockedDescription" = "Ununuzi mmoja unafungua kabisa wijeti zote na matumizi ya usajili kwenye upau wa menyu, na unaweza kurejesha wakati wowote.";
 "widgetPurchaseUnlockedTitle" = "Wijeti zote zimefunguliwa";
 "widgetPurchaseUnlockedDescription" = "Ununuzi wako umethibitishwa na sasa wijeti zinaweza kuonyesha data ya matumizi.";
 "widgetPurchaseLockedStatus" = "Imefungwa";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Upau wa Menyu Unaonyesha";
 "statusBarDisplayQuota" = "Matumizi ya Usajili";
 "statusBarDisplayTodayTokens" = "Tokens za Leo";
-"statusMenuQuotaWindows" = "Vipindi vya Matumizi";
-"quotaWindowsBoth" = "Vipindi Vyote Viwili";
 "statusMenuChooseClaudeQuotaFile" = "Chagua Faili ya Matumizi ya Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch husoma tu matumizi ya usajili yaliyohifadhiwa kwenye akiba ya faili ya usanidi ya Claude Code. Chagua ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Matumizi ya Usajili + Tokens za Leo";
+"settingsStatusBarQuotaTitle" = "Matumizi ya Usajili kwenye Upau wa Menyu";
+"settingsStatusBarQuotaDescription" = "Chagua vipindi vya matumizi vya Claude na Codex vinavyoonekana kwenye upau wa menyu. Kwa ufupi huonyesha pete pekee; Kwa kina huonyesha pia asilimia iliyobaki.";
+"settingsQuotaStyleCompact" = "Kwa ufupi";
+"settingsQuotaStyleDetailed" = "Kwa kina";
+"quotaPremiumLockedMessage" = "Matumizi ya usajili ni kipengele cha kulipia, kilichojumuishwa katika ununuzi wa mara moja unaofungua wijeti za eneo-kazi.";
+"quotaUnlockAction" = "Fungua";

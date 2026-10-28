@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Configura un presupuesto mensual en TokenWatch";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Se prevé superar el presupuesto";
 "widgetPurchaseLockedTitle" = "Desbloquea los 7 widgets de escritorio";
-"widgetPurchaseLockedDescription" = "Una sola compra, acceso permanente y restauración disponible en cualquier momento.";
+"widgetPurchaseLockedDescription" = "Una sola compra desbloquea para siempre todos los widgets y el uso de la suscripción en la barra de menú, con restauración disponible en cualquier momento.";
 "widgetPurchaseUnlockedTitle" = "Todos los widgets están desbloqueados";
 "widgetPurchaseUnlockedDescription" = "Tu compra se verificó y los widgets ya pueden mostrar los datos de uso.";
 "widgetPurchaseLockedStatus" = "Bloqueado";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "La barra de menú muestra";
 "statusBarDisplayQuota" = "Uso de la suscripción";
 "statusBarDisplayTodayTokens" = "Tokens de hoy";
-"statusMenuQuotaWindows" = "Periodos de uso";
-"quotaWindowsBoth" = "Ambos periodos";
 "statusMenuChooseClaudeQuotaFile" = "Elegir archivo de uso de Claude…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch solo lee el uso de la suscripción almacenado en caché en el archivo de configuración de Claude Code. Elige ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Uso de la suscripción + Tokens de hoy";
+"settingsStatusBarQuotaTitle" = "Uso de la suscripción en la barra de menú";
+"settingsStatusBarQuotaDescription" = "Elige qué periodos de uso de Claude y Codex se muestran en la barra de menú. Compacto muestra solo el anillo; Detallado también muestra el porcentaje restante.";
+"settingsQuotaStyleCompact" = "Compacto";
+"settingsQuotaStyleDetailed" = "Detallado";
+"quotaPremiumLockedMessage" = "El uso de la suscripción es una función de pago incluida en la compra única que desbloquea los widgets de escritorio.";
+"quotaUnlockAction" = "Desbloquear";

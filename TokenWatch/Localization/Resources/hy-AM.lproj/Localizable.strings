@@ -152,7 +152,7 @@
 "widgetMonthlyBudgetUnconfiguredMessage" = "Սահմանեք ամսական բյուջե TokenWatch-ում";
 "widgetMonthlyBudgetForecastOverBudgetMessage" = "Կանխատեսվում է բյուջեի գերազանցում";
 "widgetPurchaseLockedTitle" = "Ապակողպեք աշխատասեղանի բոլոր 7 վիջեթները";
-"widgetPurchaseLockedDescription" = "Մեկ գնում՝ մշտական հասանելիությամբ և ցանկացած պահի վերականգնելու հնարավորությամբ։";
+"widgetPurchaseLockedDescription" = "Մեկ գնումը մշտապես ապակողպում է բոլոր վիջեթները և ընտրացանկի գոտու բաժանորդագրության օգտագործումը՝ ցանկացած պահի վերականգնելու հնարավորությամբ։";
 "widgetPurchaseUnlockedTitle" = "Բոլոր վիջեթներն ապակողպված են";
 "widgetPurchaseUnlockedDescription" = "Ձեր գնումը հաստատված է, և վիջեթներն այժմ կարող են ցուցադրել օգտագործման տվյալները։";
 "widgetPurchaseLockedStatus" = "Կողպված է";
@@ -208,8 +208,12 @@
 "statusMenuDisplayMode" = "Ընտրացանկի գոտում ցուցադրվում է";
 "statusBarDisplayQuota" = "Բաժանորդագրության օգտագործում";
 "statusBarDisplayTodayTokens" = "Այսօրվա Tokens";
-"statusMenuQuotaWindows" = "Օգտագործման ժամանակաշրջաններ";
-"quotaWindowsBoth" = "Երկու ժամանակաշրջանն էլ";
 "statusMenuChooseClaudeQuotaFile" = "Ընտրել Claude-ի օգտագործման ֆայլը…";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch-ը կարդում է միայն Claude Code-ի կազմաձևման ֆայլում քեշավորված բաժանորդագրության օգտագործումը։ Ընտրեք ~/.claude.json։";
 "statusBarDisplayQuotaAndTodayTokens" = "Բաժանորդագրության օգտագործում + Այսօրվա Tokens";
+"settingsStatusBarQuotaTitle" = "Բաժանորդագրության օգտագործումը ընտրացանկի գոտում";
+"settingsStatusBarQuotaDescription" = "Ընտրեք, թե Claude-ի և Codex-ի օգտագործման որ ժամանակաշրջանները ցուցադրվեն ընտրացանկի գոտում։ Համառոտ ռեժիմը ցույց է տալիս միայն օղակը, իսկ Մանրամասնը՝ նաև մնացած տոկոսը։";
+"settingsQuotaStyleCompact" = "Համառոտ";
+"settingsQuotaStyleDetailed" = "Մանրամասն";
+"quotaPremiumLockedMessage" = "Բաժանորդագրության օգտագործումը վճարովի գործառույթ է, որը ներառված է աշխատասեղանի վիջեթներն ապակողպող միանվագ գնման մեջ։";
+"quotaUnlockAction" = "Ապակողպել";
