@@ -7,9 +7,12 @@ struct CodexProvider: UsageProvider {
     static let currentDiskCacheVersion = 5
     static let compatibleDiskCacheVersions: Set<Int> = []
 
+    /// 数据目录 bookmark 键；订阅额度读取复用同一授权。
+    static let dataDirectoryBookmarkKey = "CodexDataDirectoryBookmark"
+
     let id: ProviderID = .codex
     let displayName = "Codex"
-    let bookmarkKey = "CodexDataDirectoryBookmark"
+    let bookmarkKey = CodexProvider.dataDirectoryBookmarkKey
     let openPanelMessageKey: AppStringKey = .codexDataDirectoryOpenPanelMessage
     /// Codex 不暴露 cache write 概念，UI 该 Tab 不展示该行
     let hasCacheWriteDimension = false

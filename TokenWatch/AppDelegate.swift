@@ -27,6 +27,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
     let viewModel: TokenStatsViewModel
 
+    /// Claude / Codex 本地订阅额度;状态栏与弹窗共享同一份状态。
+    let quotaStore: SubscriptionQuotaStore
+
     /// StoreKit 控制器由应用生命周期持有，以便窗口关闭后仍能接收交易更新。
     let widgetPurchaseController: WidgetPurchaseController?
 
@@ -50,6 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: settings,
             widgetSnapshotPublisher: WidgetSnapshotPublisherFactory.makeLive()
         )
+        self.quotaStore = SubscriptionQuotaStore(languageProvider: { settings.resolvedLanguage })
         self.widgetPurchaseController = Self.makeWidgetPurchaseController()
         self.externalURLOpener = { NSWorkspace.shared.open($0) }
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
@@ -67,6 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: languageSettings,
             widgetSnapshotPublisher: widgetSnapshotPublisher
         )
+        self.quotaStore = SubscriptionQuotaStore(languageProvider: { languageSettings.resolvedLanguage })
         self.widgetPurchaseController = widgetPurchaseController
         self.externalURLOpener = externalURLOpener
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
@@ -93,7 +98,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenuController?.start()
 
         // 先建状态栏(订阅 ViewModel),再异步加载,确保首次 onStateChange 能被状态栏接到
-        statusBarController = StatusBarController(viewModel: viewModel)
+        statusBarController = StatusBarController(viewModel: viewModel, quotaStore: quotaStore)
+
+        // 额度只读取已授权的本地记录,不依赖统计扫描完成,也不会触发授权面板。
+        let quotaStore = self.quotaStore
+        Task { @MainActor in
+            await quotaStore.refresh()
+        }
 
         if Self.shouldOpenMainWindowOnLaunch() {
             _ = presentMainWindow()
@@ -218,6 +229,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 立即重新加载所有 provider 的统计数据。
     @objc func refreshNow(_ sender: Any?) {
+        let quotaStore = self.quotaStore
+        Task { await quotaStore.refresh() }
         Task { await viewModel.loadAllStats() }
     }
 
@@ -315,6 +328,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let contentSize = StatusPopoverViewController.contentSize
         let popoverVC = StatusPopoverViewController(
             viewModel: viewModel,
+            quotaStore: quotaStore,
             languageSettings: languageSettings
         )
         let window = StatusPopoverScreenshotWindow(
@@ -357,13 +371,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             langSettings.selectedPreference = .language(language)
 
             let testViewModel = TokenStatsViewModel(languageSettings: langSettings)
+            let testQuotaStore = SubscriptionQuotaStore(languageProvider: { langSettings.resolvedLanguage })
             Task { @MainActor in
                 await testViewModel.loadAllStats()
+                await testQuotaStore.refresh()
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
 
             let controller = StatusPopoverViewController(
                 viewModel: testViewModel,
+                quotaStore: testQuotaStore,
                 languageSettings: langSettings
             )
 
@@ -387,8 +404,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             controller.view.layoutSubtreeIfNeeded()
 
             let scale: CGFloat = 2.0
-            let pixelWidth = Int(contentSize.width * scale)   // 740
-            let pixelHeight = Int(contentSize.height * scale) // 710
+            let pixelWidth = Int(contentSize.width * scale)
+            let pixelHeight = Int(contentSize.height * scale)
 
             guard let rep = NSBitmapImageRep(
                 bitmapDataPlanes: nil,

@@ -181,7 +181,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.view.userInterfaceLayoutDirection == .leftToRight)
     }
 
-    @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")
+    @Test("加载时以覆盖原统计区的液态玻璃遮罩展示状态栏同款动画，不遮挡订阅区")
     func loadingOverlayCoversPopoverWithStatusBarAnimation() {
         let controller = makeController()
 
@@ -192,7 +192,7 @@ struct StatusPopoverViewControllerTests {
 
         #expect(controller.debugLoadingOverlayIsVisible)
         #expect(controller.debugLoadingOverlayUsesGlassMaterial)
-        #expect(controller.debugLoadingOverlayCoversRootView)
+        #expect(controller.debugLoadingOverlayCoversOriginalContent)
         #expect(controller.debugLoadingOverlayMessage == "正在加载用量数据...")
         #expect(controller.debugLoadingOverlaySymbolName == StatusBarLoadingAnimation.symbolNames.first)
 
@@ -397,6 +397,90 @@ struct StatusPopoverViewControllerTests {
         #expect(abs(heatmapTrailingInRoot - chartTrailingInRoot) < 0.001)
     }
 
+    @Test("订阅区位于顶部，原统计区保持 370 × 355pt 并整体下移")
+    func quotaSectionSitsAboveUnchangedOriginalContent() {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let original = controller.debugOriginalContentFrame
+        let quota = controller.debugQuotaSectionFrame
+        #expect(original.size == StatusPopoverViewController.originalContentSize)
+        #expect(original.minY == 0)
+        #expect(quota.minY == original.maxY)
+        #expect(quota.maxY == controller.view.bounds.maxY)
+        #expect(quota.height == SubscriptionQuotaSectionLayout.height)
+        #expect(controller.debugTodayDescriptionRowCenteredInRoot)
+        #expect(controller.debugCollectionViewBottomFitsInRootBounds)
+        #expect(controller.debugHourlyLineChartBottomFitsInRootBounds)
+    }
+
+    @Test("订阅区标题与两个工具分组按固定顺序展示；未授权时只显示简短授权入口")
+    func quotaSectionShowsProvidersAndAuthorizationEntries() throws {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        #expect(section.debugTitle == "订阅剩余")
+        let claude = try #require(section.debugProviderView(.claude))
+        let codex = try #require(section.debugProviderView(.codex))
+        // store 尚未刷新时显示 —，不覆盖原统计区。
+        #expect(claude.debugShowsWindows)
+        #expect(claude.debugWindowView(.fiveHour)?.debugValueText == "—")
+        #expect(codex.debugWindowView(.sevenDay)?.debugTitle == "一周")
+        #expect(!controller.debugLoadingOverlayIsVisible)
+    }
+
+    @Test("订阅区展示剩余百分比、横条与重置倒计时")
+    func quotaSectionRendersDemoSnapshots() async throws {
+        let quotaStore = SubscriptionQuotaStore(
+            bookmarkManager: SecurityScopedBookmarkManager.shared,
+            languageProvider: { .zhHans },
+            isDemoModeEnabled: { true },
+            nowProvider: { Date() }
+        )
+        await quotaStore.refresh()
+        let controller = makeController(quotaStore: quotaStore)
+        controller.loadViewIfNeeded()
+
+        let claude = try #require(controller.debugQuotaSectionView.debugProviderView(.claude))
+        let fiveHour = try #require(claude.debugWindowView(.fiveHour))
+        #expect(claude.debugStatusText == "记录于 2 分钟前")
+        #expect(fiveHour.debugValueText == "68%")
+        #expect(fiveHour.debugMeterFraction == 0.68)
+        #expect(fiveHour.debugMeterStyle == .normal)
+        #expect(fiveHour.debugDetailText == "2小时14分钟后重置")
+        #expect(claude.debugMessageText == nil)
+    }
+
+    @Test("Claude 未授权时点击授权入口打开额度文件面板，Codex 入口独立")
+    func unauthorizedClaudeActionOpensFilePanel() async throws {
+        let panel = RecordingQuotaFilePanel()
+        let quotaStore = SubscriptionQuotaStore(
+            bookmarkManager: EmptyQuotaBookmarks(),
+            filePanelPresenter: panel,
+            languageProvider: { .zhHans },
+            isDemoModeEnabled: { false }
+        )
+        await quotaStore.refresh()
+        let controller = makeController(quotaStore: quotaStore)
+        controller.loadViewIfNeeded()
+
+        let claude = try #require(controller.debugQuotaSectionView.debugProviderView(.claude))
+        let codex = try #require(controller.debugQuotaSectionView.debugProviderView(.codex))
+        #expect(claude.debugMessageText == "尚未读取额度")
+        #expect(claude.debugActionTitle == "选择额度文件")
+        #expect(codex.debugActionTitle == "去授权")
+        #expect(!claude.debugShowsWindows)
+
+        claude.debugPerformAction()
+        for _ in 0..<20 where panel.requestCount == 0 {
+            await Task.yield()
+        }
+        #expect(panel.requestCount == 1)
+    }
+
     @Test("cell 访问对越界索引做保护")
     func cellAccessChecksItemBounds() {
         let controller = makeController()
@@ -407,7 +491,10 @@ struct StatusPopoverViewControllerTests {
         #expect(!controller.debugHasCell(at: 999))
     }
 
-    private func makeController(language: AppLanguage = .zhHans) -> StatusPopoverViewController {
+    private func makeController(
+        language: AppLanguage = .zhHans,
+        quotaStore: SubscriptionQuotaStore? = nil
+    ) -> StatusPopoverViewController {
         let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
@@ -417,7 +504,8 @@ struct StatusPopoverViewControllerTests {
         languageSettings.selectedPreference = .language(language)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
-            nowProvider: { fixedDate() },
+            quotaStore: quotaStore ?? SubscriptionQuotaStore(languageProvider: { language }),
+            nowProvider: quotaStore == nil ? { fixedDate() } : Date.init,
             calendar: fixedCalendar(),
             languageSettings: languageSettings
         )
@@ -476,4 +564,22 @@ struct StatusPopoverViewControllerTests {
             | Int((components[1] * 255).rounded()) << 8
             | Int((components[2] * 255).rounded())
     }
+}
+
+@MainActor
+private final class RecordingQuotaFilePanel: ClaudeQuotaFilePanelPresenting {
+    private(set) var requestCount = 0
+
+    func chooseClaudeConfigFile(language: AppLanguage) async -> URL? {
+        requestCount += 1
+        return nil
+    }
+}
+
+@MainActor
+private struct EmptyQuotaBookmarks: SubscriptionQuotaBookmarkAccessing {
+    func hasBookmark(forKey key: String) -> Bool { false }
+    func restoreBookmarkAndAccess(forKey key: String) -> URL? { nil }
+    func stopAccessing(forKey key: String) {}
+    func persistSelectedDirectory(_ url: URL, forKey key: String) -> Bool { false }
 }

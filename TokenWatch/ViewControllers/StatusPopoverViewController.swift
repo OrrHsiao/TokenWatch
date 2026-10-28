@@ -1,10 +1,18 @@
 import AppKit
 
 /// 状态栏 popover 内容控制器,展示摘要统计与近 22 周跨 provider token 日历热力图。
+///
+/// 顶部为订阅剩余区，原有统计区作为整体位于其下方：原区域保持 370 × 355pt 与内部全部
+/// 相对布局，只整体下移；弹窗总高度为两者之和，不压缩或缩放原控件。
 @MainActor
 final class StatusPopoverViewController: NSViewController {
 
-    nonisolated static let contentSize = NSSize(width: 370, height: 355)
+    /// 原有统计区尺寸；内部控件布局全部相对该区域，不随新增区调整。
+    nonisolated static let originalContentSize = NSSize(width: 370, height: 355)
+    nonisolated static let contentSize = NSSize(
+        width: originalContentSize.width,
+        height: originalContentSize.height + SubscriptionQuotaSectionLayout.height
+    )
     private static let outerMargin: CGFloat = 14
     private static let tileSpacing: CGFloat = 3
     private static let todayDescriptionHeight: CGFloat = 20
@@ -24,17 +32,31 @@ final class StatusPopoverViewController: NSViewController {
         + tileSpacing * CGFloat(gridColumnCount - 1)
     private static let hourlyLineChartTopSpacing: CGFloat = 14
     private static let hourlyLineChartHeight: CGFloat = 111
+    /// 订阅区与原区域内容边缘（热力图卡片）对齐。
+    private static let quotaSectionHorizontalInset =
+        (originalContentSize.width - collectionWidth) / 2 - heatmapCardHorizontalPadding
+    private static let heatmapCardHorizontalPadding: CGFloat = 8
+    /// 弹窗可见期间刷新倒计时与记录时间的间隔。
+    private static let quotaPresentationTickInterval: TimeInterval = 60
 
     private let viewModel: TokenStatsViewModel
+    private let quotaStore: SubscriptionQuotaStore
     private let nowProvider: () -> Date
     private let calendar: Calendar
     private let languageSettings: AppLanguageSettings
     private var observerToken: TokenStatsViewModel.ObservationToken?
+    private var quotaObserverToken: SubscriptionQuotaStore.ObservationToken?
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
+    private var quotaPresentationTimer: Timer?
     private var snapshot: CalendarHeatmapSnapshot?
     private var hoverText: String?
     private var currentTodayRefreshButtonSymbolName: String?
 
+    private let quotaSectionView = SubscriptionQuotaSectionView(
+        horizontalInset: StatusPopoverViewController.quotaSectionHorizontalInset
+    )
+    /// 原有统计区容器；原控件的约束全部相对它建立，以保证整体下移时内部布局不变。
+    private let originalContentView = NSView()
     private let summaryStack = NSStackView()
     private var summaryCards: [SummaryMetricCardView] = []
     private let todayDescriptionRow = NSView()
@@ -242,32 +264,42 @@ final class StatusPopoverViewController: NSViewController {
             && loadingOverlay.blendingMode == .withinWindow
             && loadingOverlay.state == .active
     }
-    var debugLoadingOverlayCoversRootView: Bool {
+    /// 统计加载遮罩只覆盖原统计区，不遮挡新增订阅区。
+    var debugLoadingOverlayCoversOriginalContent: Bool {
         hasConstraint(
             firstItem: loadingOverlay,
             firstAttribute: .leading,
-            secondItem: view,
+            secondItem: originalContentView,
             secondAttribute: .leading,
             constant: 0
         ) && hasConstraint(
             firstItem: loadingOverlay,
             firstAttribute: .trailing,
-            secondItem: view,
+            secondItem: originalContentView,
             secondAttribute: .trailing,
             constant: 0
         ) && hasConstraint(
             firstItem: loadingOverlay,
             firstAttribute: .top,
-            secondItem: view,
+            secondItem: originalContentView,
             secondAttribute: .top,
             constant: 0
         ) && hasConstraint(
             firstItem: loadingOverlay,
             firstAttribute: .bottom,
-            secondItem: view,
+            secondItem: originalContentView,
             secondAttribute: .bottom,
             constant: 0
         )
+    }
+    var debugQuotaSectionView: SubscriptionQuotaSectionView { quotaSectionView }
+    /// 原统计区在根视图中的 frame（非 flipped 坐标）。
+    var debugOriginalContentFrame: NSRect {
+        originalContentView.convert(originalContentView.bounds, to: view)
+    }
+    /// 新增订阅区在根视图中的 frame（非 flipped 坐标）。
+    var debugQuotaSectionFrame: NSRect {
+        quotaSectionView.convert(quotaSectionView.bounds, to: view)
     }
     func debugHasCell(at item: Int) -> Bool { cell(at: item) != nil }
     func debugUpdateHoverText(_ text: String?) { updateHoverText(text) }
@@ -316,11 +348,13 @@ final class StatusPopoverViewController: NSViewController {
 
     init(
         viewModel: TokenStatsViewModel,
+        quotaStore: SubscriptionQuotaStore = SubscriptionQuotaStore(),
         nowProvider: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         languageSettings: AppLanguageSettings = .shared
     ) {
         self.viewModel = viewModel
+        self.quotaStore = quotaStore
         self.nowProvider = nowProvider
         self.calendar = calendar
         self.languageSettings = languageSettings
@@ -346,23 +380,39 @@ final class StatusPopoverViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         render()
+        renderQuota()
         observerToken = viewModel.observe { [weak self] _ in
             self?.render()
         }
+        quotaObserverToken = quotaStore.observe { [weak self] in
+            self?.renderQuota()
+        }
         languageSettingsObserverToken = languageSettings.observe { [weak self] in
             self?.render()
+            self?.renderQuota()
         }
     }
 
     override func viewWillAppear() {
         super.viewWillAppear()
         DashboardAppearanceRefresh.refresh(in: view)
+        renderQuota()
+        startQuotaPresentationTimer()
+    }
+
+    override func viewDidDisappear() {
+        super.viewDidDisappear()
+        stopQuotaPresentationTimer()
     }
 
     deinit {
         MainActor.assumeIsolated {
+            quotaPresentationTimer?.invalidate()
             if let observerToken {
                 viewModel.removeObserver(observerToken)
+            }
+            if let quotaObserverToken {
+                quotaStore.removeObserver(quotaObserverToken)
             }
             if let languageSettingsObserverToken {
                 languageSettings.removeObserver(languageSettingsObserverToken)
@@ -416,18 +466,35 @@ final class StatusPopoverViewController: NSViewController {
 
         hourlyLineChartView.translatesAutoresizingMaskIntoConstraints = false
 
+        quotaSectionView.onAction = { [weak self] action in
+            self?.performQuotaAction(action)
+        }
+        originalContentView.translatesAutoresizingMaskIntoConstraints = false
+        addToRootGlass(quotaSectionView)
+        addToRootGlass(originalContentView)
+
         todayDescriptionRow.addSubview(todayDescriptionLabel)
         todayDescriptionRow.addSubview(todayRefreshButton)
-        addToRootGlass(todayDescriptionRow)
-        addToRootGlass(summaryStack)
-        addToRootGlass(heatmapCard)
-        addToRootGlass(hoverLabel)
-        addToRootGlass(collectionView)
-        addToRootGlass(hourlyLineChartView)
-        addToRootGlass(loadingOverlay)
+        originalContentView.addSubview(todayDescriptionRow)
+        originalContentView.addSubview(summaryStack)
+        originalContentView.addSubview(heatmapCard)
+        originalContentView.addSubview(hoverLabel)
+        originalContentView.addSubview(collectionView)
+        originalContentView.addSubview(hourlyLineChartView)
+        originalContentView.addSubview(loadingOverlay)
 
         NSLayoutConstraint.activate([
-            todayDescriptionRow.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.outerMargin),
+            quotaSectionView.topAnchor.constraint(equalTo: view.topAnchor),
+            quotaSectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            quotaSectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            originalContentView.topAnchor.constraint(equalTo: quotaSectionView.bottomAnchor),
+            originalContentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            originalContentView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            originalContentView.heightAnchor.constraint(equalToConstant: Self.originalContentSize.height),
+            originalContentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            todayDescriptionRow.topAnchor.constraint(equalTo: originalContentView.topAnchor, constant: Self.outerMargin),
             todayDescriptionRow.leadingAnchor.constraint(equalTo: heatmapCard.leadingAnchor),
             todayDescriptionRow.trailingAnchor.constraint(equalTo: heatmapCard.trailingAnchor),
             todayDescriptionRow.heightAnchor.constraint(equalToConstant: Self.todayDescriptionHeight),
@@ -453,8 +520,14 @@ final class StatusPopoverViewController: NSViewController {
             summaryStack.trailingAnchor.constraint(equalTo: heatmapCard.trailingAnchor),
             summaryStack.heightAnchor.constraint(equalToConstant: Self.summaryCardHeight),
 
-            heatmapCard.leadingAnchor.constraint(equalTo: collectionView.leadingAnchor, constant: -8),
-            heatmapCard.trailingAnchor.constraint(equalTo: collectionView.trailingAnchor, constant: 8),
+            heatmapCard.leadingAnchor.constraint(
+                equalTo: collectionView.leadingAnchor,
+                constant: -Self.heatmapCardHorizontalPadding
+            ),
+            heatmapCard.trailingAnchor.constraint(
+                equalTo: collectionView.trailingAnchor,
+                constant: Self.heatmapCardHorizontalPadding
+            ),
             heatmapCard.topAnchor.constraint(equalTo: summaryStack.bottomAnchor, constant: 6),
             heatmapCard.bottomAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 8),
 
@@ -463,10 +536,13 @@ final class StatusPopoverViewController: NSViewController {
             hoverLabel.bottomAnchor.constraint(equalTo: collectionView.topAnchor, constant: -1),
 
             collectionView.topAnchor.constraint(equalTo: summaryStack.bottomAnchor, constant: 21),
-            collectionView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            collectionView.centerXAnchor.constraint(equalTo: originalContentView.centerXAnchor),
             collectionView.widthAnchor.constraint(equalToConstant: Self.collectionWidth),
             collectionView.heightAnchor.constraint(equalToConstant: Self.collectionHeight),
-            collectionView.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -Self.outerMargin),
+            collectionView.bottomAnchor.constraint(
+                lessThanOrEqualTo: originalContentView.bottomAnchor,
+                constant: -Self.outerMargin
+            ),
 
             hourlyLineChartView.topAnchor.constraint(
                 equalTo: collectionView.bottomAnchor,
@@ -476,14 +552,14 @@ final class StatusPopoverViewController: NSViewController {
             hourlyLineChartView.trailingAnchor.constraint(equalTo: heatmapCard.trailingAnchor),
             hourlyLineChartView.heightAnchor.constraint(equalToConstant: Self.hourlyLineChartHeight),
             hourlyLineChartView.bottomAnchor.constraint(
-                lessThanOrEqualTo: view.bottomAnchor,
+                lessThanOrEqualTo: originalContentView.bottomAnchor,
                 constant: -Self.outerMargin
             ),
 
-            loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
-            loadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            loadingOverlay.leadingAnchor.constraint(equalTo: originalContentView.leadingAnchor),
+            loadingOverlay.trailingAnchor.constraint(equalTo: originalContentView.trailingAnchor),
+            loadingOverlay.topAnchor.constraint(equalTo: originalContentView.topAnchor),
+            loadingOverlay.bottomAnchor.constraint(equalTo: originalContentView.bottomAnchor),
         ])
     }
 
@@ -525,11 +601,67 @@ final class StatusPopoverViewController: NSViewController {
 
     @objc private func refreshTodayStats(_ sender: Any?) {
         setRefreshButtonLoading(true)
+        // 原刷新入口追加本地额度读取；按钮样式与统计刷新行为保持不变。
+        let quotaStore = self.quotaStore
+        Task { @MainActor in
+            await quotaStore.refresh()
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             await viewModel.loadAllStats()
             applyRefreshButtonLoadingState()
         }
+    }
+
+    /// 处理订阅区的授权入口；另一个工具的展示不受影响。
+    private func performQuotaAction(_ action: SubscriptionQuotaProviderPresentation.Action) {
+        let quotaStore = self.quotaStore
+        let viewModel = self.viewModel
+        switch action {
+        case .chooseClaudeFile:
+            Task { @MainActor in
+                await quotaStore.requestClaudeFileAuthorization()
+            }
+        case .authorizeCodexDirectory:
+            Task { @MainActor in
+                guard await viewModel.requestAuthorization(for: .codex) else { return }
+                await quotaStore.refresh()
+            }
+        }
+    }
+
+    /// 只重绘订阅区；统计数据失败或加载不会覆盖该区域，反之亦然。
+    private func renderQuota() {
+        let now = nowProvider()
+        let language = languageSettings.resolvedLanguage
+        let presentations = SubscriptionQuotaProvider.allCases.map { provider in
+            SubscriptionQuotaPresenter.make(
+                provider: provider,
+                state: quotaStore.state(for: provider),
+                now: now,
+                language: language
+            )
+        }
+        quotaSectionView.apply(
+            title: AppStrings.text(.quotaSectionTitle, language: language),
+            presentations: presentations
+        )
+    }
+
+    private func startQuotaPresentationTimer() {
+        guard quotaPresentationTimer == nil else { return }
+        let timer = Timer(timeInterval: Self.quotaPresentationTickInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.renderQuota()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        quotaPresentationTimer = timer
+    }
+
+    private func stopQuotaPresentationTimer() {
+        quotaPresentationTimer?.invalidate()
+        quotaPresentationTimer = nil
     }
 
     private func applyRefreshButtonLoadingState() {
