@@ -6,11 +6,20 @@ protocol BookmarkDataCreating: Sendable {
 
 struct SecurityScopedBookmarkDataCreator: BookmarkDataCreating {
     func createBookmarkData(for url: URL) throws -> Data {
-        try url.bookmarkData(
-            options: .withSecurityScope,
+        let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? true
+        return try url.bookmarkData(
+            options: Self.creationOptions(isDirectory: isDirectory),
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         )
+    }
+
+    /// App 只有 `files.user-selected.read-only` 权限：单个文件（如 `.claude.json`）必须声明只读，
+    /// 否则系统拒绝创建 bookmark；该文件会被 Claude Code 整体替换，过期重建也走这里。
+    /// 目录保持原有选项，不改变已验证的 provider 目录授权行为。
+    /// - Parameter isDirectory: 目标是否为目录；无法判断时按目录处理。
+    static func creationOptions(isDirectory: Bool) -> URL.BookmarkCreationOptions {
+        isDirectory ? .withSecurityScope : [.withSecurityScope, .securityScopeAllowOnlyReadAccess]
     }
 }
 

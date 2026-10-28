@@ -48,6 +48,15 @@ struct BookmarkPersistenceTests {
         #expect(store.save(data, forKey: "bookmark"))
         #expect(store.data(forKey: "bookmark") == data)
     }
+
+    @Test("只读沙盒下单文件 bookmark 声明只读访问，目录保持原有选项")
+    func fileBookmarksRequestReadOnlyScope() {
+        let fileOptions = SecurityScopedBookmarkDataCreator.creationOptions(isDirectory: false)
+        #expect(fileOptions.contains(.withSecurityScope))
+        #expect(fileOptions.contains(.securityScopeAllowOnlyReadAccess))
+
+        #expect(SecurityScopedBookmarkDataCreator.creationOptions(isDirectory: true) == .withSecurityScope)
+    }
 }
 
 private enum BookmarkFixtureError: Error {

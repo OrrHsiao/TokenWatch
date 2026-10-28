@@ -225,7 +225,10 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
             }
             return true
         } catch {
-            logger.error("Bookmark 创建失败: \(error.localizedDescription)")
+            let nsError = error as NSError
+            logger.error(
+                "Bookmark 创建失败 (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public)): \(key, privacy: .public)"
+            )
             return false
         }
     }
@@ -270,7 +273,10 @@ final class SecurityScopedBookmarkManager: BookmarkAccessManaging {
                     return nil
                 }
             } catch {
-                logger.error("过期 Bookmark 重建失败并清除当前 key: \(key)")
+                let nsError = error as NSError
+                logger.error(
+                    "过期 Bookmark 重建失败并清除当前 key: \(key) (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+                )
                 resourceAccessor.stopAccessing(resolved.url)
                 bookmarkStore.removeData(forKey: key)
                 return nil
