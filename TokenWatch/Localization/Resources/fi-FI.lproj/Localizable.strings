@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Yksityiskohtainen";
 "quotaPremiumLockedMessage" = "Tilauksen käyttö on maksullinen ominaisuus, joka sisältyy työpöytäwidgetien lukituksen avaavaan kertaostokseen.";
 "quotaUnlockAction" = "Avaa lukitus";
+"quotaDataSourceInfo" = "Tilauksen jäljellä oleva määrä luetaan käyttötiedoista, jotka Claude Code ja Codex tallentavat paikallisesti (~/.claude.json ja Codexin istuntolokit). Mitään verkko-API:a ei kutsuta eikä tietoja lähetetä. Tiedot päivittyvät vain, kun käytät näitä työkaluja, joten arvot voivat olla hieman jäljessä; yli 1 tunnin vanhat tiedot näytetään himmennettyinä.";

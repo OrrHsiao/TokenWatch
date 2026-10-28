@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "詳細";
 "quotaPremiumLockedMessage" = "サブスクリプション使用量は有料機能で、デスクトップウィジェットのロックを解除する買い切り購入に含まれます。";
 "quotaUnlockAction" = "ロック解除";
+"quotaDataSourceInfo" = "サブスクリプション残量は、Claude Code と Codex がこの Mac に保存している使用量の記録（~/.claude.json と Codex のセッションログ）から読み取ります。ネットワーク API は呼び出さず、データもアップロードしません。記録はこれらのツールを使ったときだけ更新されるため、値が少し遅れることがあります。1 時間以上前の記録は薄く表示されます。";

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detaljerad";
 "quotaPremiumLockedMessage" = "Abonnemangsanvändning är en betalfunktion som ingår i engångsköpet som låser upp skrivbordswidgetarna.";
 "quotaUnlockAction" = "Lås upp";
+"quotaDataSourceInfo" = "Återstående abonnemang läses från användningsposter som Claude Code och Codex sparar lokalt (~/.claude.json och Codex-sessionsloggar). Inget nätverks-API anropas och inga data laddas upp. Posterna uppdateras bara när du använder de här verktygen, så värdena kan ligga något efter; poster som är äldre än 1 timme visas nedtonade.";

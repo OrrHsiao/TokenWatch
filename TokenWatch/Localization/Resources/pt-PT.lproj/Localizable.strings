@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detalhado";
 "quotaPremiumLockedMessage" = "A utilização da subscrição é uma funcionalidade paga, incluída na compra única que desbloqueia os widgets de secretária.";
 "quotaUnlockAction" = "Desbloquear";
+"quotaDataSourceInfo" = "A subscrição restante é lida dos registos de utilização que o Claude Code e o Codex guardam neste Mac (~/.claude.json e registos de sessão do Codex). Não é chamada nenhuma API de rede nem são enviados dados. Os registos só são atualizados quando utiliza estas ferramentas, pelo que os valores podem ter um ligeiro atraso; os registos com mais de 1 hora aparecem esbatidos.";

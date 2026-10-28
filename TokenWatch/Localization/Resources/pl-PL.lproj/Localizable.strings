@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Szczegółowy";
 "quotaPremiumLockedMessage" = "Użycie subskrypcji to płatna funkcja, zawarta w jednorazowym zakupie odblokowującym widżety pulpitu.";
 "quotaUnlockAction" = "Odblokuj";
+"quotaDataSourceInfo" = "Pozostała subskrypcja jest odczytywana z zapisów użycia, które Claude Code i Codex przechowują na tym Macu (~/.claude.json i logi sesji Codex). Nie jest wywoływane żadne sieciowe API ani nie są wysyłane żadne dane. Zapisy aktualizują się tylko podczas korzystania z tych narzędzi, więc wartości mogą być lekko opóźnione; zapisy starsze niż 1 godzina są przyciemnione.";

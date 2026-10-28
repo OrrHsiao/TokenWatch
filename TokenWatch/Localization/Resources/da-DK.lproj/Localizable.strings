@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detaljeret";
 "quotaPremiumLockedMessage" = "Abonnementsforbrug er en betalingsfunktion, der indgår i engangskøbet, som låser skrivebordswidgets op.";
 "quotaUnlockAction" = "Lås op";
+"quotaDataSourceInfo" = "Det resterende abonnement læses fra forbrugsregistreringer, som Claude Code og Codex gemmer lokalt (~/.claude.json og Codex-sessionslogfiler). Der kaldes ingen netværks-API, og der uploades ingen data. Registreringerne opdateres kun, når du bruger disse værktøjer, så værdierne kan være lidt forsinkede; registreringer, der er ældre end 1 time, vises nedtonet.";

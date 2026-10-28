@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detaljno";
 "quotaPremiumLockedMessage" = "Korištenje pretplate je plaćena funkcija, uključena u jednokratnu kupovinu koja otključava desktop widgete.";
 "quotaUnlockAction" = "Otključaj";
+"quotaDataSourceInfo" = "Preostala pretplata čita se iz zapisa o korištenju koje Claude Code i Codex čuvaju lokalno (~/.claude.json i zapisnici sesija za Codex). Ne poziva se nijedan mrežni API niti se šalju podaci. Zapisi se ažuriraju samo kada koristite ove alate, pa vrijednosti mogu malo kasniti; zapisi stariji od 1 sata prikazuju se zatamnjeno.";

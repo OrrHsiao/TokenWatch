@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Gedetailleerd";
 "quotaPremiumLockedMessage" = "Abonnementsgebruik is een betaalde functie, inbegrepen bij de eenmalige aankoop die de bureaubladonderdelen ontgrendelt.";
 "quotaUnlockAction" = "Ontgrendel";
+"quotaDataSourceInfo" = "Het resterende abonnement wordt gelezen uit gebruiksgegevens die Claude Code en Codex op deze Mac opslaan (~/.claude.json en Codex-sessielogs). Er wordt geen netwerk-API aangeroepen en er worden geen gegevens geüpload. De gegevens worden alleen bijgewerkt als je deze tools gebruikt, dus waarden kunnen iets achterlopen; gegevens ouder dan 1 uur worden gedimd.";

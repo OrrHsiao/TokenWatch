@@ -413,6 +413,14 @@ final class StatusPopoverViewController: NSViewController {
     override func viewDidDisappear() {
         super.viewDidDisappear()
         stopQuotaPresentationTimer()
+        quotaSectionView.closeInfoPopover()
+    }
+
+    /// 判断窗口是否属于本弹窗派生的说明气泡；状态栏控制器据此不把气泡内点击当作外部点击。
+    /// - Parameter windowNumber: 鼠标事件所在窗口编号。
+    /// - Returns: 是订阅区说明气泡的窗口时为 true。
+    func ownsAuxiliaryWindow(withNumber windowNumber: Int) -> Bool {
+        quotaSectionView.infoPopoverWindowNumber == windowNumber
     }
 
     deinit {
@@ -652,6 +660,10 @@ final class StatusPopoverViewController: NSViewController {
     private func renderQuota() {
         let now = nowProvider()
         let language = languageSettings.resolvedLanguage
+        quotaSectionView.applyInfo(
+            text: AppStrings.text(.quotaDataSourceInfo, language: language),
+            accessibilityLabel: AppStrings.text(.quotaSectionTitle, language: language)
+        )
         guard quotaAccess.isUnlocked else {
             quotaSectionView.applyLocked(
                 title: AppStrings.text(.quotaSectionTitle, language: language),

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Terperinci";
 "quotaPremiumLockedMessage" = "Penggunaan langganan ialah ciri berbayar yang termasuk dalam pembelian sekali sahaja yang membuka kunci widget desktop.";
 "quotaUnlockAction" = "Buka Kunci";
+"quotaDataSourceInfo" = "Baki langganan dibaca daripada rekod penggunaan yang disimpan secara setempat oleh Claude Code dan Codex (~/.claude.json dan log sesi Codex). Tiada API rangkaian dipanggil dan tiada data dimuat naik. Rekod hanya dikemas kini apabila anda menggunakan alat ini, jadi nilai mungkin sedikit lewat; rekod yang lebih lama daripada 1 jam dipaparkan malap.";

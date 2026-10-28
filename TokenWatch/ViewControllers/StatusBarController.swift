@@ -1008,6 +1008,11 @@ final class StatusBarController {
         if let contentView = popover.contentViewController?.view, eventHitsView(event, view: contentView) {
             return .popover
         }
+        // 订阅区说明气泡是独立窗口,其中的点击属于弹窗内部交互,不应关闭弹窗。
+        if let contentController = popover.contentViewController as? StatusPopoverViewController,
+           contentController.ownsAuxiliaryWindow(withNumber: event.windowNumber) {
+            return .popover
+        }
         return .background
     }
 

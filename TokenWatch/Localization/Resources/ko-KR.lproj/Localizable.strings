@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "자세히";
 "quotaPremiumLockedMessage" = "구독 사용량은 유료 기능이며, 데스크탑 위젯 잠금 해제와 함께 한 번의 구매로 제공됩니다.";
 "quotaUnlockAction" = "잠금 해제";
+"quotaDataSourceInfo" = "구독 잔여량은 Claude Code와 Codex가 이 Mac에 저장한 사용량 기록(~/.claude.json 및 Codex 세션 로그)에서 읽어 옵니다. 네트워크 API를 호출하지 않으며 데이터를 업로드하지 않습니다. 기록은 해당 도구를 사용할 때만 갱신되므로 값이 다소 늦을 수 있으며, 1시간이 지난 기록은 흐리게 표시됩니다.";

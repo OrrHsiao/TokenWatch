@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Chi tiết";
 "quotaPremiumLockedMessage" = "Mức sử dụng gói đăng ký là tính năng trả phí, đi kèm giao dịch mua một lần để mở khóa các tiện ích trên màn hình nền.";
 "quotaUnlockAction" = "Mở khóa";
+"quotaDataSourceInfo" = "Phần còn lại của gói đăng ký được đọc từ các bản ghi sử dụng mà Claude Code và Codex lưu trên máy (~/.claude.json và nhật ký phiên của Codex). Không gọi bất kỳ API mạng nào và không tải lên dữ liệu. Bản ghi chỉ cập nhật khi bạn dùng các công cụ này nên giá trị có thể chậm một chút; bản ghi cũ hơn 1 giờ sẽ hiển thị mờ.";

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detallado";
 "quotaPremiumLockedMessage" = "El uso de la suscripción es una función de pago incluida en la compra única que desbloquea los widgets de escritorio.";
 "quotaUnlockAction" = "Desbloquear";
+"quotaDataSourceInfo" = "La suscripción restante se lee de los registros de uso que Claude Code y Codex guardan en esta Mac (~/.claude.json y los registros de sesión de Codex). No se llama a ninguna API de red ni se suben datos. Los registros solo se actualizan cuando usas estas herramientas, así que los valores pueden tener un ligero retraso; los registros de más de 1 hora se muestran atenuados.";

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detalizēts";
 "quotaPremiumLockedMessage" = "Abonementa lietojums ir maksas funkcija, kas iekļauta vienreizējā pirkumā, kurš atbloķē darbvirsmas logrīkus.";
 "quotaUnlockAction" = "Atbloķēt";
+"quotaDataSourceInfo" = "Atlikušais abonements tiek nolasīts no lietojuma ierakstiem, ko Claude Code un Codex saglabā lokāli (~/.claude.json un Codex sesiju žurnāli). Netiek izsaukta neviena tīkla API un netiek augšupielādēti dati. Ieraksti tiek atjaunināti tikai, kad izmantojat šos rīkus, tāpēc vērtības var nedaudz kavēties; ieraksti, kas vecāki par 1 stundu, tiek rādīti blāvāk.";

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Podrobné";
 "quotaPremiumLockedMessage" = "Využití předplatného je placená funkce, která je součástí jednorázového nákupu odemykajícího widgety na ploše.";
 "quotaUnlockAction" = "Odemknout";
+"quotaDataSourceInfo" = "Zbývající předplatné se čte ze záznamů o využití, které Claude Code a Codex ukládají místně (~/.claude.json a protokoly relací Codex). Nevolá se žádné síťové API a neodesílají se žádná data. Záznamy se aktualizují jen při používání těchto nástrojů, takže hodnoty mohou být mírně opožděné; záznamy starší než 1 hodina jsou ztlumené.";

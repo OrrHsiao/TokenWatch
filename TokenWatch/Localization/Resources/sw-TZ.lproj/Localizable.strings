@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Kwa kina";
 "quotaPremiumLockedMessage" = "Matumizi ya usajili ni kipengele cha kulipia, kilichojumuishwa katika ununuzi wa mara moja unaofungua wijeti za eneo-kazi.";
 "quotaUnlockAction" = "Fungua";
+"quotaDataSourceInfo" = "Usajili uliobaki husomwa kutoka kwenye rekodi za matumizi ambazo Claude Code na Codex huhifadhi ndani ya kifaa (~/.claude.json na kumbukumbu za vipindi vya Codex). Hakuna API ya mtandao inayoitwa na hakuna data inayopakiwa. Rekodi husasishwa tu unapotumia zana hizi, hivyo thamani zinaweza kuchelewa kidogo; rekodi zilizozidi saa 1 huonyeshwa zikiwa zimefifia.";

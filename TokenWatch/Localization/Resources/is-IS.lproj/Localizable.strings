@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Ítarlegt";
 "quotaPremiumLockedMessage" = "Áskriftarnotkun er greiddur eiginleiki sem fylgir stökum kaupum sem aflæsa skjáborðsgræjunum.";
 "quotaUnlockAction" = "Aflæsa";
+"quotaDataSourceInfo" = "Eftirstandandi áskrift er lesin úr notkunarskrám sem Claude Code og Codex vista á þessum Mac (~/.claude.json og lotuskrár Codex). Ekkert net-API er kallað og engin gögn eru send. Skrárnar uppfærast aðeins þegar þú notar þessi verkfæri, svo gildin geta verið örlítið á eftir; skrár eldri en 1 klukkustund eru deyfðar.";

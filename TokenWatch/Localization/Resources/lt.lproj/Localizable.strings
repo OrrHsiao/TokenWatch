@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Išsamus";
 "quotaPremiumLockedMessage" = "Prenumeratos naudojimas yra mokama funkcija, įtraukta į vienkartinį pirkinį, kuris atrakina darbalaukio valdiklius.";
 "quotaUnlockAction" = "Atrakinti";
+"quotaDataSourceInfo" = "Likusi prenumerata nuskaitoma iš naudojimo įrašų, kuriuos Claude Code ir Codex saugo vietoje (~/.claude.json ir Codex seansų žurnalai). Jokia tinklo API nekviečiama ir jokie duomenys neįkeliami. Įrašai atnaujinami tik naudojant šiuos įrankius, todėl reikšmės gali šiek tiek vėluoti; senesni nei 1 valandos įrašai rodomi blankiau.";

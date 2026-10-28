@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detalyado";
 "quotaPremiumLockedMessage" = "Ang paggamit ng subskripsyon ay bayad na feature na kasama sa isang beses na pagbili na nag-a-unlock ng mga desktop widget.";
 "quotaUnlockAction" = "I-unlock";
+"quotaDataSourceInfo" = "Binabasa ang natitirang subskripsyon mula sa mga tala ng paggamit na lokal na sine-save ng Claude Code at Codex (~/.claude.json at mga log ng session ng Codex). Walang tinatawag na API sa network at walang ina-upload na data. Naa-update lang ang mga tala kapag ginagamit mo ang mga tool na ito, kaya maaaring bahagyang maantala ang mga value; pinalalabo ang mga tala na mas luma sa 1 oras.";

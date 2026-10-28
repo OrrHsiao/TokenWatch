@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detalhado";
 "quotaPremiumLockedMessage" = "O uso da assinatura é um recurso pago, incluído na compra única que desbloqueia os componentes da área de trabalho.";
 "quotaUnlockAction" = "Desbloquear";
+"quotaDataSourceInfo" = "A assinatura restante é lida dos registros de uso que o Claude Code e o Codex salvam neste Mac (~/.claude.json e logs de sessão do Codex). Nenhuma API de rede é chamada e nenhum dado é enviado. Os registros só são atualizados quando você usa essas ferramentas, então os valores podem ter um leve atraso; registros com mais de 1 hora aparecem esmaecidos.";

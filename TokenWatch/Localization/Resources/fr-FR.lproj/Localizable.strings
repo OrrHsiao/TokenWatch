@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Détaillé";
 "quotaPremiumLockedMessage" = "L'utilisation de l'abonnement est une fonctionnalité payante, incluse dans l'achat unique qui déverrouille les composants de bureau.";
 "quotaUnlockAction" = "Déverrouiller";
+"quotaDataSourceInfo" = "L'abonnement restant est lu à partir des relevés d'utilisation que Claude Code et Codex enregistrent sur ce Mac (~/.claude.json et journaux de session Codex). Aucune API réseau n'est appelée et aucune donnée n'est envoyée. Les relevés ne sont mis à jour que lorsque vous utilisez ces outils ; les valeurs peuvent donc avoir un léger retard. Les relevés de plus d'1 heure sont estompés.";

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detailed";
 "quotaPremiumLockedMessage" = "Subscription usage is a paid feature, included in the one-time purchase that unlocks desktop widgets.";
 "quotaUnlockAction" = "Unlock";
+"quotaDataSourceInfo" = "Subscription remaining is read from usage records that Claude Code and Codex save locally (~/.claude.json and Codex session logs). No network API is called and no data is uploaded. Records update only as you use these tools, so values may lag slightly; records older than 1 hour are dimmed.";

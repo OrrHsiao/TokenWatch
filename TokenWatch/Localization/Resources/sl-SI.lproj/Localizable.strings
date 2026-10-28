@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Podrobno";
 "quotaPremiumLockedMessage" = "Uporaba naročnine je plačljiva funkcija, vključena v enkratni nakup, ki odklene pripomočke za namizje.";
 "quotaUnlockAction" = "Odkleni";
+"quotaDataSourceInfo" = "Preostanek naročnine se bere iz zapisov o uporabi, ki jih Claude Code in Codex shranjujeta lokalno (~/.claude.json in dnevniki sej Codex). Noben omrežni API se ne kliče in nobeni podatki se ne naložijo. Zapisi se posodobijo le, ko uporabljate ta orodja, zato lahko vrednosti nekoliko zamujajo; zapisi, starejši od 1 ure, so zatemnjeni.";

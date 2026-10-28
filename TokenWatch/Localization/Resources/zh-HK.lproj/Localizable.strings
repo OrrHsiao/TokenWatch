@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "詳細";
 "quotaPremiumLockedMessage" = "訂閱額度為付費功能，與桌面小工具共用一次永久買斷。";
 "quotaUnlockAction" = "解鎖";
+"quotaDataSourceInfo" = "訂閱剩餘讀取自 Claude Code 與 Codex 在本機儲存的額度記錄（~/.claude.json 與 Codex 工作階段記錄），不會呼叫任何網絡 API，亦不會上載資料。記錄只會在你使用這些工具時更新，因此數值可能略有延遲；超過 1 小時未更新的記錄會淡化顯示。";

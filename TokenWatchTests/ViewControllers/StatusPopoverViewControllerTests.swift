@@ -531,6 +531,24 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugQuotaSectionView.debugProviderView(.claude)?.isHidden == false)
     }
 
+    @Test("订阅剩余标题右侧的感叹号说明数据来自本地记录且不调用网络 API")
+    func quotaInfoButtonExplainsLocalDataSource() {
+        let controller = makeController(isQuotaUnlocked: false)
+        controller.loadViewIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        let infoButton = section.debugInfoButton
+        #expect(infoButton.identifier?.rawValue == "SubscriptionQuotaInfoButton")
+        #expect(infoButton.image != nil)
+        #expect(infoButton.toolTip == section.debugInfoText)
+        #expect(infoButton.accessibilityLabel() == "订阅剩余")
+        #expect(section.debugInfoText.contains("~/.claude.json"))
+        #expect(section.debugInfoText.contains("不调用任何网络 API"))
+        #expect(section.debugInfoText.contains("略有延迟"))
+        #expect(!section.debugIsInfoPopoverShown)
+        #expect(!controller.ownsAuxiliaryWindow(withNumber: -1))
+    }
+
     @Test("cell 访问对越界索引做保护")
     func cellAccessChecksItemBounds() {
         let controller = makeController()

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Faahfaahsan";
 "quotaPremiumLockedMessage" = "Isticmaalka rukhsaddu waa sifo lacag leh, oo ku jirta iibsiga hal mar ah ee furaya aaladaha yaryar ee desktop-ka.";
 "quotaUnlockAction" = "Fur";
+"quotaDataSourceInfo" = "Rukhsadda haray waxaa laga akhriyaa diiwaannada isticmaalka ee Claude Code iyo Codex ay si gudaha ah u kaydiyaan (~/.claude.json iyo diiwaannada fadhiyada Codex). Wax API shabakad ah lama wacayo, xogna lama soo gelinayo. Diiwaannadu waxay cusboonaadaan oo keliya marka aad isticmaasho qalabkan, sidaas darteed qiimayaashu wax yar ayay dib u dhici karaan; diiwaannada ka da' weyn 1 saac waa la khafiifiyaa.";

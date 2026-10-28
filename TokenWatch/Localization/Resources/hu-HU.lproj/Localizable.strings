@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Részletes";
 "quotaPremiumLockedMessage" = "Az előfizetés használata fizetős funkció, amely az asztali widgeteket feloldó egyszeri vásárlás része.";
 "quotaUnlockAction" = "Feloldás";
+"quotaDataSourceInfo" = "Az előfizetésből hátralévő keretet a Claude Code és a Codex által helyben tárolt használati rekordokból olvassuk ki (~/.claude.json és a Codex munkamenetnaplói). Nem hívunk meg hálózati API-t, és nem töltünk fel adatokat. A rekordok csak az eszközök használatakor frissülnek, ezért az értékek kissé késhetnek; az 1 óránál régebbi rekordok halványan jelennek meg.";

@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Dettagliato";
 "quotaPremiumLockedMessage" = "L'utilizzo dell'abbonamento è una funzione a pagamento, inclusa nell'acquisto unico che sblocca i riquadri desktop.";
 "quotaUnlockAction" = "Sblocca";
+"quotaDataSourceInfo" = "L'abbonamento rimanente viene letto dai registri di utilizzo che Claude Code e Codex salvano su questo Mac (~/.claude.json e log di sessione di Codex). Non viene chiamata alcuna API di rete e nessun dato viene caricato. I registri si aggiornano solo quando usi questi strumenti, quindi i valori possono avere un leggero ritardo; i registri più vecchi di 1 ora appaiono attenuati.";

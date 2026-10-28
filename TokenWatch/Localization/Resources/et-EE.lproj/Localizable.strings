@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Üksikasjalik";
 "quotaPremiumLockedMessage" = "Tellimuse kasutus on tasuline funktsioon, mis sisaldub töölauavidinad lukust avavas ühekordses ostus.";
 "quotaUnlockAction" = "Ava lukust";
+"quotaDataSourceInfo" = "Tellimuse jääk loetakse kasutuskirjetest, mida Claude Code ja Codex salvestavad kohalikult (~/.claude.json ja Codexi seansilogid). Ühtegi võrgu-API-t ei kutsuta ega andmeid üles laadita. Kirjed uuenevad ainult nende tööriistade kasutamisel, seega võivad väärtused veidi hilineda; üle 1 tunni vanad kirjed kuvatakse tuhmimalt.";

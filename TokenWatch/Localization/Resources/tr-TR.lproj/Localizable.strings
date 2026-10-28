@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Ayrıntılı";
 "quotaPremiumLockedMessage" = "Abonelik kullanımı, masaüstü araç takımlarının kilidini açan tek seferlik satın alıma dahil ücretli bir özelliktir.";
 "quotaUnlockAction" = "Kilidi Aç";
+"quotaDataSourceInfo" = "Kalan abonelik, Claude Code ve Codex'in yerel olarak kaydettiği kullanım kayıtlarından okunur (~/.claude.json ve Codex oturum günlükleri). Hiçbir ağ API'si çağrılmaz ve hiçbir veri yüklenmez. Kayıtlar yalnızca bu araçları kullandığınızda güncellenir, bu nedenle değerler biraz gecikebilir; 1 saatten eski kayıtlar soluk gösterilir.";

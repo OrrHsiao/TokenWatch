@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detallat";
 "quotaPremiumLockedMessage" = "L'ús de la subscripció és una funció de pagament inclosa en la compra única que desbloqueja els ginys d'escriptori.";
 "quotaUnlockAction" = "Desbloqueja";
+"quotaDataSourceInfo" = "La subscripció restant es llegeix dels registres d'ús que Claude Code i Codex desen en aquest Mac (~/.claude.json i registres de sessió de Codex). No es crida cap API de xarxa ni es pugen dades. Els registres només s'actualitzen quan feu servir aquestes eines, de manera que els valors poden tenir un lleuger retard; els registres de més d'1 hora es mostren atenuats.";

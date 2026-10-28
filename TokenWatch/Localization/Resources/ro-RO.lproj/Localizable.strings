@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detaliat";
 "quotaPremiumLockedMessage" = "Utilizarea abonamentului este o funcție plătită, inclusă în achiziția unică ce deblochează widgeturile pentru desktop.";
 "quotaUnlockAction" = "Deblocați";
+"quotaDataSourceInfo" = "Abonamentul rămas este citit din înregistrările de utilizare pe care Claude Code și Codex le salvează pe acest Mac (~/.claude.json și jurnalele de sesiune Codex). Nu se apelează niciun API de rețea și nu se încarcă date. Înregistrările se actualizează doar când folosiți aceste instrumente, așa că valorile pot avea o mică întârziere; înregistrările mai vechi de 1 oră apar estompate.";

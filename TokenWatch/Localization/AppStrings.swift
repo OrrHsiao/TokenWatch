@@ -226,6 +226,7 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case settingsQuotaStyleDetailed
     case quotaPremiumLockedMessage
     case quotaUnlockAction
+    case quotaDataSourceInfo
 }
 
 enum AppStrings {

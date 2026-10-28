@@ -217,3 +217,4 @@
 "settingsQuotaStyleDetailed" = "Detailliert";
 "quotaPremiumLockedMessage" = "Die Abo-Nutzung ist eine kostenpflichtige Funktion und im einmaligen Kauf enthalten, der die Desktop-Mini-Apps freischaltet.";
 "quotaUnlockAction" = "Freischalten";
+"quotaDataSourceInfo" = "Das verbleibende Abo wird aus Nutzungsdaten gelesen, die Claude Code und Codex lokal speichern (~/.claude.json und Codex-Sitzungsprotokolle). Es wird keine Netzwerk-API aufgerufen und es werden keine Daten hochgeladen. Die Daten werden nur aktualisiert, wenn du diese Tools verwendest, daher können die Werte leicht verzögert sein; Einträge, die älter als 1 Stunde sind, werden abgeblendet.";

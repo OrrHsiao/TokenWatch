@@ -20,6 +20,9 @@ enum SubscriptionQuotaSectionLayout {
     static let iconSize: CGFloat = 14
     static let lockedIconSize: CGFloat = 18
     static let lockedContentSpacing: CGFloat = 8
+    static let infoButtonSize: CGFloat = 16
+    static let infoPopoverTextWidth: CGFloat = 280
+    static let infoPopoverPadding: CGFloat = 12
 
     static var providerHeight: CGFloat {
         providerHeaderHeight + providerHeaderToContentSpacing + providerContentHeight
@@ -38,7 +41,7 @@ enum SubscriptionQuotaSectionLayout {
 }
 
 @MainActor
-final class SubscriptionQuotaSectionView: NSView {
+final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
     /// 用户点击未授权分组中的授权入口。
     var onAction: ((SubscriptionQuotaProviderPresentation.Action) -> Void)?
     /// 用户点击未购买状态下的解锁入口。
@@ -52,8 +55,22 @@ final class SubscriptionQuotaSectionView: NSView {
     private let lockedIconView = NSImageView()
     private let lockedMessageLabel = NSTextField(wrappingLabelWithString: "")
     private let unlockButton = NSButton(title: "", target: nil, action: nil)
+    /// 标题右侧的感叹号：点击弹出数据来源说明（读取本地记录、可能略有延迟、不调用网络 API）。
+    private let infoButton = NSButton(title: "", target: nil, action: nil)
+    private var infoText = ""
+    private var infoPopover: NSPopover?
+    /// transient 气泡在 mouseDown 时已关闭，按钮 action 要到 mouseUp 才触发；
+    /// 记录关闭时间，避免再次点击感叹号想关闭说明时又被重新打开。
+    private var infoPopoverClosedAt: Date?
+    private static let infoPopoverReopenSuppressionInterval: TimeInterval = 0.3
 
     var debugTitle: String { titleLabel.stringValue }
+    var debugInfoText: String { infoText }
+    var debugInfoButton: NSButton { infoButton }
+    var debugIsInfoPopoverShown: Bool { infoPopover?.isShown ?? false }
+    func debugPerformInfo() {
+        infoButtonClicked()
+    }
     var debugIsLocked: Bool { !lockedView.isHidden }
     var debugLockedMessage: String? { lockedView.isHidden ? nil : lockedMessageLabel.stringValue }
     var debugUnlockTitle: String? { lockedView.isHidden ? nil : unlockButton.title }
@@ -112,6 +129,33 @@ final class SubscriptionQuotaSectionView: NSView {
         unlockButton.setAccessibilityLabel(unlockTitle)
     }
 
+    /// 更新标题右侧说明入口的提示文案。
+    /// - Parameters:
+    ///   - text: 数据来源说明。
+    ///   - accessibilityLabel: 读屏时说明入口的名称。
+    func applyInfo(text: String, accessibilityLabel: String) {
+        infoText = text
+        infoButton.toolTip = text
+        infoButton.setAccessibilityLabel(accessibilityLabel)
+        infoButton.setAccessibilityHelp(text)
+    }
+
+    /// 弹窗关闭时一并收起说明气泡。
+    func closeInfoPopover() {
+        infoPopover?.close()
+        infoPopover = nil
+    }
+
+    /// 说明气泡所在窗口编号；状态栏控制器据此把气泡内点击视为弹窗内部点击。
+    var infoPopoverWindowNumber: Int? {
+        guard let infoPopover, infoPopover.isShown else { return nil }
+        return infoPopover.contentViewController?.view.window?.windowNumber
+    }
+
+    func popoverWillClose(_ notification: Notification) {
+        infoPopoverClosedAt = Date()
+    }
+
     private func setLocked(_ isLocked: Bool) {
         guard lockedView.isHidden == isLocked else { return }
         lockedView.isHidden = !isLocked
@@ -130,10 +174,28 @@ final class SubscriptionQuotaSectionView: NSView {
         divider.translatesAutoresizingMaskIntoConstraints = false
         addSubview(divider)
 
+        infoButton.image = NSImage(systemSymbolName: "exclamationmark.circle", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 12, weight: .regular))
+        infoButton.imagePosition = .imageOnly
+        infoButton.isBordered = false
+        infoButton.bezelStyle = .inline
+        infoButton.setButtonType(.momentaryChange)
+        infoButton.contentTintColor = DashboardPalette.secondaryText
+        infoButton.target = self
+        infoButton.action = #selector(infoButtonClicked)
+        infoButton.identifier = NSUserInterfaceItemIdentifier("SubscriptionQuotaInfoButton")
+        infoButton.setAccessibilityIdentifier("SubscriptionQuotaInfoButton")
+        infoButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(infoButton)
+
         var constraints = [
             heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.height),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalInset),
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -horizontalInset),
+            infoButton.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 4),
+            infoButton.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+            infoButton.widthAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.infoButtonSize),
+            infoButton.heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.infoButtonSize),
+            infoButton.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -horizontalInset),
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: SubscriptionQuotaSectionLayout.topPadding),
             titleLabel.heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.titleHeight),
             divider.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalInset),
@@ -208,6 +270,65 @@ final class SubscriptionQuotaSectionView: NSView {
 
     @objc private func unlockButtonClicked() {
         onUnlock?()
+    }
+
+    @objc private func infoButtonClicked() {
+        if let infoPopover, infoPopover.isShown {
+            closeInfoPopover()
+            return
+        }
+        if let infoPopoverClosedAt,
+           Date().timeIntervalSince(infoPopoverClosedAt) < Self.infoPopoverReopenSuppressionInterval {
+            return
+        }
+        guard !infoText.isEmpty else { return }
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.delegate = self
+        popover.appearance = effectiveAppearance
+        popover.contentViewController = SubscriptionQuotaInfoViewController(text: infoText)
+        popover.show(relativeTo: infoButton.bounds, of: infoButton, preferredEdge: .minY)
+        infoPopover = popover
+    }
+}
+
+/// 订阅剩余数据来源说明气泡的内容：固定宽度、按文案自动换行。
+@MainActor
+private final class SubscriptionQuotaInfoViewController: NSViewController {
+    private let text: String
+
+    init(text: String) {
+        self.text = text
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("SubscriptionQuotaInfoViewController 不支持 storyboard 初始化")
+    }
+
+    override func loadView() {
+        let layout = SubscriptionQuotaSectionLayout.self
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .labelColor
+        label.isSelectable = false
+        label.preferredMaxLayoutWidth = layout.infoPopoverTextWidth
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.identifier = NSUserInterfaceItemIdentifier("SubscriptionQuotaInfoText")
+
+        let container = NSView()
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: layout.infoPopoverPadding),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -layout.infoPopoverPadding),
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: layout.infoPopoverPadding),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -layout.infoPopoverPadding),
+            label.widthAnchor.constraint(equalToConstant: layout.infoPopoverTextWidth),
+        ])
+        view = container
+        // NSPopover 按 preferredContentSize 定尺寸；文案长度随语言变化，按实际换行高度计算。
+        preferredContentSize = container.fittingSize
     }
 }
 
