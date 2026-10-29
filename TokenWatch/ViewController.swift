@@ -30,15 +30,18 @@ class ViewController: NSViewController {
     ///   - languageSettings: 界面语言设置。
     ///   - widgetPurchaseController: 小组件与订阅额度共用的购买控制器。
     ///   - quotaAccess: 订阅额度解锁状态；nil 时按购买控制器派生。
+    ///   - quotaStore: 与状态栏共享的订阅额度 store；设置页数据源区块用它授权 Claude 额度文件。
     init(
         languageSettings: AppLanguageSettings = .shared,
         widgetPurchaseController: WidgetPurchaseController? = nil,
-        quotaAccess: SubscriptionQuotaAccess? = nil
+        quotaAccess: SubscriptionQuotaAccess? = nil,
+        quotaStore: SubscriptionQuotaStore? = nil
     ) {
         self.languageSettings = languageSettings
         self.settingsViewController = SettingsViewController(
             languageSettings: languageSettings,
-            quotaAccess: quotaAccess ?? SubscriptionQuotaAccess(purchaseController: widgetPurchaseController)
+            quotaAccess: quotaAccess ?? SubscriptionQuotaAccess(purchaseController: widgetPurchaseController),
+            quotaStore: quotaStore
         )
         self.dashboardViewController = DashboardViewController(
             settingsViewController: settingsViewController,
@@ -319,6 +322,64 @@ struct ProviderDirectoryRowModel: Sendable, Equatable {
     }
 }
 
+/// 设置页数据源区块中“Claude 额度文件”行的展示模型。
+///
+/// 额度文件不是 token 统计 provider，授权状态来自 `SubscriptionQuotaStore`，
+/// 文案与配色沿用目录行，使两类数据源在同一区块内保持一致。
+struct ClaudeQuotaFileRowModel: Sendable, Equatable {
+    let statusText: String
+    let statusStyle: ProviderDirectoryStatusStyle
+    let actionTitle: String
+    let actionStyle: ProviderDirectoryActionStyle
+    let isActionEnabled: Bool
+
+    /// - Parameters:
+    ///   - hasBookmark: 是否已保存 `.claude.json` 的 bookmark。
+    ///   - state: store 中 Claude 额度的最近读取状态。
+    ///   - isAuthorizing: 文件面板是否正在展示。
+    ///   - language: 界面语言。
+    static func make(
+        hasBookmark: Bool,
+        state: SubscriptionQuotaProviderState,
+        isAuthorizing: Bool,
+        language: AppLanguage
+    ) -> ClaudeQuotaFileRowModel {
+        let statusKey: AppStringKey
+        let statusStyle: ProviderDirectoryStatusStyle
+        let actionKey: AppStringKey
+        let actionStyle: ProviderDirectoryActionStyle
+        if !hasBookmark {
+            statusKey = .settingsDirectoryNotSelected
+            statusStyle = .warning
+            actionKey = .settingsChooseDirectory
+            actionStyle = .primary
+        } else if state.result == .notAuthorized {
+            // 有 bookmark 却读成未授权，只会是 bookmark 恢复失败（文件被移动或授权失效）。
+            statusKey = .settingsDirectoryNeedsReselection
+            statusStyle = .warning
+            actionKey = .settingsChooseAgain
+            actionStyle = .neutral
+        } else if state.lastReadFailed {
+            statusKey = .quotaReadFailed
+            statusStyle = .error
+            actionKey = .settingsReselectDirectory
+            actionStyle = .neutral
+        } else {
+            statusKey = .settingsDirectorySelected
+            statusStyle = .success
+            actionKey = .settingsReselectDirectory
+            actionStyle = .neutral
+        }
+        return ClaudeQuotaFileRowModel(
+            statusText: AppStrings.text(statusKey, language: language),
+            statusStyle: statusStyle,
+            actionTitle: AppStrings.text(actionKey, language: language),
+            actionStyle: actionStyle,
+            isActionEnabled: !isAuthorizing
+        )
+    }
+}
+
 /// 通用设置页，承载各 provider 目录、刷新、自动刷新、应用偏好与状态栏订阅额度配置。
 final class SettingsViewController: NSViewController {
     static let minimumContentHeight: CGFloat = 810
@@ -368,11 +429,19 @@ final class SettingsViewController: NSViewController {
     private let monthlyBudgetSettings: MonthlyBudgetSettings
     private let displaySettings: StatusBarDisplaySettings
     private let quotaAccess: SubscriptionQuotaAccess
+    /// 订阅额度 store；nil 时（测试、预览）不展示 Claude 额度文件行。
+    private let quotaStore: SubscriptionQuotaStore?
 
     private var providerDirectoryRows:
         [ProviderID: ProviderDirectoryRowViews] = [:]
+    private var claudeQuotaFileRow: ProviderDirectoryRowViews?
+    /// Claude 额度文件行及其上方分隔线，未解锁订阅额度时整体隐藏。
+    private var claudeQuotaFileRowContainers: [NSView] = []
+    private var isAuthorizingClaudeQuotaFile = false
     private var languageSettingsObserverToken:
         AppLanguageSettings.ObservationToken?
+    private var quotaStoreObserverToken: SubscriptionQuotaStore.ObservationToken?
+    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
 
     private var viewModel: TokenStatsViewModel? {
         (NSApp.delegate as? AppDelegate)?.viewModel
@@ -394,7 +463,8 @@ final class SettingsViewController: NSViewController {
         languageSettings: AppLanguageSettings = .shared,
         monthlyBudgetSettings: MonthlyBudgetSettings = .shared,
         displaySettings: StatusBarDisplaySettings = .shared,
-        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
+        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false),
+        quotaStore: SubscriptionQuotaStore? = nil
     ) {
         self.providers = providers
         self.providerState = providerState
@@ -405,6 +475,7 @@ final class SettingsViewController: NSViewController {
         self.monthlyBudgetSettings = monthlyBudgetSettings
         self.displaySettings = displaySettings
         self.quotaAccess = quotaAccess
+        self.quotaStore = quotaStore
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -467,6 +538,7 @@ final class SettingsViewController: NSViewController {
         super.viewDidLoad()
         setupSubviews()
         subscribeToLanguageSettings()
+        subscribeToQuotaUpdates()
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(applicationDidBecomeActive(_:)),
@@ -919,7 +991,7 @@ final class SettingsViewController: NSViewController {
         return divider
     }
 
-    /// 依照注入 providers 的稳定顺序建立目录设置行。
+    /// 依照注入 providers 的稳定顺序建立目录设置行；注入额度 store 时在末尾追加 Claude 额度文件行。
     private func configureProviderDirectoryRows() {
         providerDirectoryStack.orientation = .vertical
         providerDirectoryStack.alignment = .leading
@@ -927,139 +999,175 @@ final class SettingsViewController: NSViewController {
         providerDirectoryStack.spacing = 0
 
         for (index, provider) in providers.enumerated() {
-            let nameLabel = NSTextField(labelWithString: provider.displayName)
-            nameLabel.font = .systemFont(ofSize: 14, weight: .semibold)
-            nameLabel.textColor = DashboardPalette.primaryText
-            nameLabel.identifier = NSUserInterfaceItemIdentifier(
-                "ProviderDirectoryName.\(provider.id.rawValue)"
+            let (row, rowViews) = makeDirectoryRow(
+                identifierSuffix: provider.id.rawValue,
+                name: provider.displayName,
+                action: #selector(directoryAuthorizationButtonClicked(_:))
             )
-            nameLabel.setAccessibilityIdentifier(
-                "ProviderDirectoryName.\(provider.id.rawValue)"
-            )
-            nameLabel.setContentHuggingPriority(.required, for: .horizontal)
-            nameLabel.setContentCompressionResistancePriority(
-                .required,
-                for: .horizontal
-            )
+            rowViews.actionButton.tag = index
+            providerDirectoryRows[provider.id] = rowViews
+            addDirectoryStackRow(row)
 
-            let statusDotView = SettingsStatusDotView(
-                color: DashboardPalette.yellow
-            )
-            statusDotView.identifier = NSUserInterfaceItemIdentifier(
-                "ProviderDirectoryStatusDot.\(provider.id.rawValue)"
-            )
-            statusDotView.setAccessibilityIdentifier(
-                "ProviderDirectoryStatusDot.\(provider.id.rawValue)"
-            )
-            statusDotView.setAccessibilityElement(false)
+            if index < providers.count - 1 {
+                addDirectoryStackRow(makeSettingsDivider())
+            }
+        }
 
-            let statusLabel = NSTextField(labelWithString: "")
-            statusLabel.font = .systemFont(ofSize: 12)
-            statusLabel.textColor = DashboardPalette.secondaryText
-            statusLabel.maximumNumberOfLines = 1
-            statusLabel.lineBreakMode = .byTruncatingTail
-            statusLabel.identifier = NSUserInterfaceItemIdentifier(
-                "ProviderDirectoryStatus.\(provider.id.rawValue)"
-            )
-            statusLabel.setAccessibilityIdentifier(
-                "ProviderDirectoryStatus.\(provider.id.rawValue)"
-            )
-            statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            statusLabel.setContentCompressionResistancePriority(
-                .defaultLow,
-                for: .horizontal
-            )
+        guard quotaStore != nil else { return }
+        // 订阅额度的 Claude 来源 `.claude.json` 与 token 统计目录同属本地数据源授权，放在同一区块。
+        let (row, rowViews) = makeDirectoryRow(
+            identifierSuffix: "claudeQuotaFile",
+            name: "",
+            action: #selector(claudeQuotaFileButtonClicked)
+        )
+        claudeQuotaFileRow = rowViews
+        let divider = makeSettingsDivider()
+        claudeQuotaFileRowContainers = providers.isEmpty ? [row] : [divider, row]
+        for view in claudeQuotaFileRowContainers {
+            addDirectoryStackRow(view)
+        }
+    }
 
-            let statusStack = NSStackView(views: [statusDotView, statusLabel])
-            statusStack.orientation = .horizontal
-            statusStack.alignment = .centerY
-            statusStack.spacing = 6
-            statusStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            statusStack.setContentCompressionResistancePriority(
-                .defaultLow,
-                for: .horizontal
-            )
+    /// 创建一行“名称 + 状态 / 操作按钮”的数据源设置行。
+    /// - Parameters:
+    ///   - identifierSuffix: 拼接在各子视图 accessibility identifier 之后的唯一后缀。
+    ///   - name: 名称初始文案；本地化名称在渲染时更新。
+    ///   - action: 操作按钮点击后的 selector。
+    /// - Returns: 行容器与需要在渲染时更新的子视图。
+    private func makeDirectoryRow(
+        identifierSuffix: String,
+        name: String,
+        action: Selector
+    ) -> (NSStackView, ProviderDirectoryRowViews) {
+        let nameLabel = NSTextField(labelWithString: name)
+        nameLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        nameLabel.textColor = DashboardPalette.primaryText
+        nameLabel.identifier = NSUserInterfaceItemIdentifier(
+            "ProviderDirectoryName.\(identifierSuffix)"
+        )
+        nameLabel.setAccessibilityIdentifier(
+            "ProviderDirectoryName.\(identifierSuffix)"
+        )
+        nameLabel.setContentHuggingPriority(.required, for: .horizontal)
+        nameLabel.setContentCompressionResistancePriority(
+            .required,
+            for: .horizontal
+        )
 
-            let providerInfoStack = NSStackView(views: [nameLabel, statusStack])
-            providerInfoStack.orientation = .vertical
-            providerInfoStack.alignment = .leading
-            providerInfoStack.spacing = 4
-            providerInfoStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            providerInfoStack.setContentCompressionResistancePriority(
-                .defaultLow,
-                for: .horizontal
-            )
+        let statusDotView = SettingsStatusDotView(
+            color: DashboardPalette.yellow
+        )
+        statusDotView.identifier = NSUserInterfaceItemIdentifier(
+            "ProviderDirectoryStatusDot.\(identifierSuffix)"
+        )
+        statusDotView.setAccessibilityIdentifier(
+            "ProviderDirectoryStatusDot.\(identifierSuffix)"
+        )
+        statusDotView.setAccessibilityElement(false)
 
-            let actionButton = DashboardRangeButton(
-                title: "",
-                target: nil,
-                action: nil
-            )
-            configureSettingsButton(actionButton)
-            actionButton.identifier = NSUserInterfaceItemIdentifier(
-                "ProviderDirectoryAction.\(provider.id.rawValue)"
-            )
-            actionButton.setAccessibilityIdentifier(
-                "ProviderDirectoryAction.\(provider.id.rawValue)"
-            )
-            actionButton.target = self
-            actionButton.action = #selector(directoryAuthorizationButtonClicked(_:))
-            actionButton.tag = index
-            actionButton.setContentHuggingPriority(.required, for: .horizontal)
-            actionButton.setContentCompressionResistancePriority(
-                .required,
-                for: .horizontal
-            )
-            // DashboardRangeButton 使用无边框自定义外观，没有可用的原生内容宽度；
-            // 通过标题宽度约束让操作按钮保持紧凑，同时为不同语言预留内边距。
-            let actionButtonWidthConstraint = actionButton.widthAnchor.constraint(
-                equalToConstant: 64
-            )
-            actionButtonWidthConstraint.isActive = true
+        let statusLabel = NSTextField(labelWithString: "")
+        statusLabel.font = .systemFont(ofSize: 12)
+        statusLabel.textColor = DashboardPalette.secondaryText
+        statusLabel.maximumNumberOfLines = 1
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.identifier = NSUserInterfaceItemIdentifier(
+            "ProviderDirectoryStatus.\(identifierSuffix)"
+        )
+        statusLabel.setAccessibilityIdentifier(
+            "ProviderDirectoryStatus.\(identifierSuffix)"
+        )
+        statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        statusLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
 
-            let trailingSpacer = makeFlexibleSpacer()
-            let row = NSStackView(views: [
-                providerInfoStack,
-                trailingSpacer,
-                actionButton,
-            ])
-            row.translatesAutoresizingMaskIntoConstraints = false
-            row.orientation = .horizontal
-            row.alignment = .centerY
-            row.distribution = .fill
-            row.spacing = 12
-            row.identifier = NSUserInterfaceItemIdentifier(
-                "ProviderDirectoryRow.\(provider.id.rawValue)"
-            )
-            row.setAccessibilityIdentifier(
-                "ProviderDirectoryRow.\(provider.id.rawValue)"
-            )
-            // 行高与数据源数量共同决定设置页总高度；5 个数据源时 60pt 会超出最小内容高度，
-            // 因此固定为 48pt：仍高于按钮(32.5pt)与两行文案(≈37pt)，但不至于顶出可视区域。
-            row.heightAnchor.constraint(
-                greaterThanOrEqualToConstant: 48
-            ).isActive = true
+        let statusStack = NSStackView(views: [statusDotView, statusLabel])
+        statusStack.orientation = .horizontal
+        statusStack.alignment = .centerY
+        statusStack.spacing = 6
+        statusStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        statusStack.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
 
-            providerDirectoryRows[provider.id] = ProviderDirectoryRowViews(
+        let providerInfoStack = NSStackView(views: [nameLabel, statusStack])
+        providerInfoStack.orientation = .vertical
+        providerInfoStack.alignment = .leading
+        providerInfoStack.spacing = 4
+        providerInfoStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        providerInfoStack.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+
+        let actionButton = DashboardRangeButton(
+            title: "",
+            target: nil,
+            action: nil
+        )
+        configureSettingsButton(actionButton)
+        actionButton.identifier = NSUserInterfaceItemIdentifier(
+            "ProviderDirectoryAction.\(identifierSuffix)"
+        )
+        actionButton.setAccessibilityIdentifier(
+            "ProviderDirectoryAction.\(identifierSuffix)"
+        )
+        actionButton.target = self
+        actionButton.action = action
+        actionButton.setContentHuggingPriority(.required, for: .horizontal)
+        actionButton.setContentCompressionResistancePriority(
+            .required,
+            for: .horizontal
+        )
+        // DashboardRangeButton 使用无边框自定义外观，没有可用的原生内容宽度；
+        // 通过标题宽度约束让操作按钮保持紧凑，同时为不同语言预留内边距。
+        let actionButtonWidthConstraint = actionButton.widthAnchor.constraint(
+            equalToConstant: 64
+        )
+        actionButtonWidthConstraint.isActive = true
+
+        let trailingSpacer = makeFlexibleSpacer()
+        let row = NSStackView(views: [
+            providerInfoStack,
+            trailingSpacer,
+            actionButton,
+        ])
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fill
+        row.spacing = 12
+        row.identifier = NSUserInterfaceItemIdentifier(
+            "ProviderDirectoryRow.\(identifierSuffix)"
+        )
+        row.setAccessibilityIdentifier(
+            "ProviderDirectoryRow.\(identifierSuffix)"
+        )
+        // 行高与数据源数量共同决定设置页总高度；5 个数据源时 60pt 会超出最小内容高度，
+        // 因此固定为 48pt：仍高于按钮(32.5pt)与两行文案(≈37pt)，但不至于顶出可视区域。
+        row.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: 48
+        ).isActive = true
+
+        return (
+            row,
+            ProviderDirectoryRowViews(
                 nameLabel: nameLabel,
                 statusDotView: statusDotView,
                 statusLabel: statusLabel,
                 actionButton: actionButton,
                 actionButtonWidthConstraint: actionButtonWidthConstraint
             )
-            providerDirectoryStack.addArrangedSubview(row)
-            row.widthAnchor.constraint(
-                equalTo: providerDirectoryStack.widthAnchor
-            ).isActive = true
+        )
+    }
 
-            if index < providers.count - 1 {
-                let divider = makeSettingsDivider()
-                providerDirectoryStack.addArrangedSubview(divider)
-                divider.widthAnchor.constraint(
-                    equalTo: providerDirectoryStack.widthAnchor
-                ).isActive = true
-            }
-        }
+    private func addDirectoryStackRow(_ view: NSView) {
+        providerDirectoryStack.addArrangedSubview(view)
+        view.widthAnchor.constraint(
+            equalTo: providerDirectoryStack.widthAnchor
+        ).isActive = true
     }
 
     private func configureSettingsButton(_ button: DashboardRangeButton) {
@@ -1111,6 +1219,39 @@ final class SettingsViewController: NSViewController {
         for provider in providers {
             renderDirectoryRow(for: provider.id)
         }
+        renderClaudeQuotaFileRow()
+    }
+
+    /// 额度为付费功能：未解锁时不读取额度，授权入口与原状态栏菜单一致地隐藏。
+    private var isClaudeQuotaFileRowVisible: Bool {
+        quotaStore != nil && quotaAccess.isUnlocked
+    }
+
+    private func renderClaudeQuotaFileRow() {
+        guard let quotaStore, let row = claudeQuotaFileRow else { return }
+        let isVisible = isClaudeQuotaFileRowVisible
+        for view in claudeQuotaFileRowContainers {
+            view.isHidden = !isVisible
+        }
+        let language = languageSettings.resolvedLanguage
+        let model = ClaudeQuotaFileRowModel.make(
+            hasBookmark: quotaStore.hasClaudeFileBookmark,
+            state: quotaStore.state(for: .claude),
+            isAuthorizing: isAuthorizingClaudeQuotaFile,
+            language: language
+        )
+        row.nameLabel.toolTip = AppStrings.text(.claudeQuotaFileOpenPanelMessage, language: language)
+        applyDirectoryRowContent(
+            row,
+            name: AppStrings.text(.settingsClaudeQuotaFile, language: language),
+            statusText: model.statusText,
+            statusStyle: model.statusStyle,
+            showsStatus: true,
+            actionTitle: model.actionTitle,
+            actionStyle: model.actionStyle,
+            showsAction: true,
+            isActionEnabled: model.isActionEnabled
+        )
     }
 
     /// 只读取并重绘指定 provider；不得查询其他 providerState。
@@ -1130,25 +1271,50 @@ final class SettingsViewController: NSViewController {
             language: languageSettings.resolvedLanguage
         )
 
-        row.nameLabel.stringValue = model.providerName
-        row.statusLabel.stringValue = model.statusText
-        row.statusLabel.isHidden = !model.showsStatus
-        row.statusDotView.isHidden = !model.showsStatus
-        let statusColor = providerStatusColor(for: model.statusStyle)
+        applyDirectoryRowContent(
+            row,
+            name: model.providerName,
+            statusText: model.statusText,
+            statusStyle: model.statusStyle,
+            showsStatus: model.showsStatus,
+            actionTitle: model.actionTitle,
+            actionStyle: model.actionStyle,
+            showsAction: model.showsAction,
+            isActionEnabled: model.isActionEnabled
+        )
+    }
+
+    /// 把名称、状态与操作按钮文案 / 配色写入一行数据源设置行，并同步操作列宽。
+    private func applyDirectoryRowContent(
+        _ row: ProviderDirectoryRowViews,
+        name: String,
+        statusText: String,
+        statusStyle: ProviderDirectoryStatusStyle,
+        showsStatus: Bool,
+        actionTitle: String,
+        actionStyle: ProviderDirectoryActionStyle,
+        showsAction: Bool,
+        isActionEnabled: Bool
+    ) {
+        row.nameLabel.stringValue = name
+        row.statusLabel.stringValue = statusText
+        row.statusLabel.isHidden = !showsStatus
+        row.statusDotView.isHidden = !showsStatus
+        let statusColor = providerStatusColor(for: statusStyle)
         row.statusDotView.setColor(statusColor)
-        row.statusLabel.toolTip = model.showsStatus ? model.statusText : nil
+        row.statusLabel.toolTip = showsStatus ? statusText : nil
         row.statusLabel.textColor = statusColor
         row.statusLabel.setAccessibilityLabel(
-            "\(model.providerName), \(model.statusText)"
+            "\(name), \(statusText)"
         )
-        row.actionButton.isHidden = !model.showsAction
-        row.actionButton.isEnabled = model.isActionEnabled
+        row.actionButton.isHidden = !showsAction
+        row.actionButton.isEnabled = isActionEnabled
 
-        switch model.actionStyle {
+        switch actionStyle {
         case .primary:
             applySettingsButtonStyle(
                 row.actionButton,
-                title: model.actionTitle,
+                title: actionTitle,
                 backgroundColor: DashboardPalette.rangeSelectedBackground,
                 borderColor: DashboardPalette.rangeSelectedBorder,
                 textColor: DashboardPalette.rangeSelectedText
@@ -1156,14 +1322,14 @@ final class SettingsViewController: NSViewController {
         case .neutral:
             applySettingsButtonStyle(
                 row.actionButton,
-                title: model.actionTitle,
+                title: actionTitle,
                 backgroundColor: .clear,
                 borderColor: DashboardPalette.glassControlBorder,
                 textColor: DashboardPalette.primaryText
             )
         }
         row.actionButton.setAccessibilityLabel(
-            "\(model.providerName), \(model.actionTitle)"
+            "\(name), \(actionTitle)"
         )
         synchronizeDirectoryActionButtonWidths()
     }
@@ -1183,12 +1349,16 @@ final class SettingsViewController: NSViewController {
 
     /// 同步目录操作列宽，让每一行尾部操作保持一致的视觉节奏。
     private func synchronizeDirectoryActionButtonWidths() {
-        let sharedWidth = providerDirectoryRows.values
+        let claudeQuotaFileRows = [claudeQuotaFileRow].compactMap { $0 }
+        // 隐藏的 Claude 额度文件行不参与列宽计算，避免撑宽其他行的按钮。
+        let visibleRows = Array(providerDirectoryRows.values)
+            + (isClaudeQuotaFileRowVisible ? claudeQuotaFileRows : [])
+        let sharedWidth = visibleRows
             .filter { !$0.actionButton.isHidden }
             .map { directoryActionButtonWidth(for: $0.actionButton.title) }
             .max() ?? 64
 
-        for row in providerDirectoryRows.values {
+        for row in Array(providerDirectoryRows.values) + claudeQuotaFileRows {
             row.actionButtonWidthConstraint.constant = sharedWidth
         }
     }
@@ -1315,6 +1485,19 @@ final class SettingsViewController: NSViewController {
         return result
     }
 
+    /// 选择 `.claude.json` 并保存只读 bookmark；store 授权成功后会立即重读额度。
+    @objc private func claudeQuotaFileButtonClicked() {
+        guard let quotaStore, !isAuthorizingClaudeQuotaFile else { return }
+        isAuthorizingClaudeQuotaFile = true
+        renderClaudeQuotaFileRow()
+        Task { @MainActor [weak self] in
+            await quotaStore.requestClaudeFileAuthorization()
+            guard let self else { return }
+            self.isAuthorizingClaudeQuotaFile = false
+            self.renderClaudeQuotaFileRow()
+        }
+    }
+
     @objc private func refreshButtonClicked() {
         Task { @MainActor in
             await viewModel?.loadAllStats()
@@ -1386,6 +1569,17 @@ final class SettingsViewController: NSViewController {
         }
     }
 
+    /// 额度读取结果或解锁状态变化时重绘 Claude 额度文件行（授权状态与显隐）。
+    private func subscribeToQuotaUpdates() {
+        guard let quotaStore else { return }
+        quotaStoreObserverToken = quotaStore.observe { [weak self] in
+            self?.renderClaudeQuotaFileRow()
+        }
+        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
+            self?.renderClaudeQuotaFileRow()
+        }
+    }
+
     private func reloadAutoRefreshIntervalPopUp(language: AppLanguage) {
         let selectedOption = autoRefreshSettings.selectedOption
         autoRefreshIntervalPopUpButton.removeAllItems()
@@ -1430,6 +1624,12 @@ final class SettingsViewController: NSViewController {
             NotificationCenter.default.removeObserver(self)
             if let token = languageSettingsObserverToken {
                 languageSettings.removeObserver(token)
+            }
+            if let token = quotaStoreObserverToken {
+                quotaStore?.removeObserver(token)
+            }
+            if let token = quotaAccessObserverToken {
+                quotaAccess.removeObserver(token)
             }
         }
     }

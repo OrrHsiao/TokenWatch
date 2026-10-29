@@ -357,7 +357,7 @@ final class StatusBarController {
 
         statusMenu.addItem(NSMenuItem.separator())
 
-        // 右键菜单承载状态栏显示模式;各额度周期的展示与样式在主界面设置页配置。
+        // 右键菜单只承载状态栏显示模式;各额度周期的展示与样式、Claude 额度文件授权在主界面设置页配置。
         let displayModeMenu = NSMenu()
         for mode in StatusBarDisplayMode.allCases {
             let item = NSMenuItem(title: "", action: #selector(selectDisplayMode(_:)), keyEquivalent: "")
@@ -367,10 +367,6 @@ final class StatusBarController {
         }
         menuItems.displayModeMenuItem.submenu = displayModeMenu
         statusMenu.addItem(menuItems.displayModeMenuItem)
-
-        menuItems.chooseClaudeQuotaFileItem.action = #selector(chooseClaudeQuotaFile)
-        menuItems.chooseClaudeQuotaFileItem.target = self
-        statusMenu.addItem(menuItems.chooseClaudeQuotaFileItem)
 
         statusMenu.addItem(NSMenuItem.separator())
 
@@ -474,14 +470,9 @@ final class StatusBarController {
         menuItems.openItem.title = AppStrings.text(.statusMenuOpen, language: language)
         menuItems.refreshItem.title = AppStrings.text(.refreshNow, language: language)
         menuItems.displayModeMenuItem.title = AppStrings.text(.statusMenuDisplayMode, language: language)
-        menuItems.chooseClaudeQuotaFileItem.title = AppStrings.text(
-            .statusMenuChooseClaudeQuotaFile,
-            language: language
-        )
         menuItems.quitItem.title = AppStrings.text(.statusMenuQuit, language: language)
-        // 未解锁时额度不可见,显示模式与额度文件入口没有意义,一并隐藏。
+        // 未解锁时额度不可见,显示模式入口没有意义,隐藏。
         menuItems.displayModeMenuItem.isHidden = !quotaAccess.isUnlocked
-        menuItems.chooseClaudeQuotaFileItem.isHidden = !quotaAccess.isUnlocked
 
         let selectedMode = displaySettings.mode
         for item in menuItems.displayModeMenuItem.submenu?.items ?? [] {
@@ -1070,14 +1061,6 @@ final class StatusBarController {
         }
     }
 
-    @objc private func chooseClaudeQuotaFile() {
-        let quotaStore = self.quotaStore
-        // 菜单 action 执行时仍在 tracking;延后到下一轮主线程再弹出文件面板。
-        Task { @MainActor in
-            await quotaStore.requestClaudeFileAuthorization()
-        }
-    }
-
     @objc private func quitApp() {
         NSApp.terminate(nil)
     }
@@ -1188,7 +1171,6 @@ private final class StatusMenuItems {
     let openItem = NSMenuItem()
     let refreshItem = NSMenuItem()
     let displayModeMenuItem = NSMenuItem()
-    let chooseClaudeQuotaFileItem = NSMenuItem()
     let quitItem = NSMenuItem()
 }
 

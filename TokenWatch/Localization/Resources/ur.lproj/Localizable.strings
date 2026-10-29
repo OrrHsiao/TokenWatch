@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "مینو بار میں دکھائیں";
 "statusBarDisplayQuota" = "سبسکرپشن کا استعمال";
 "statusBarDisplayTodayTokens" = "آج کے Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude استعمال کی فائل منتخب کریں…";
+"settingsClaudeQuotaFile" = "Claude استعمال کی فائل";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch صرف Claude Code کنفیگریشن فائل میں کیش شدہ سبسکرپشن استعمال پڑھتا ہے۔ ~/.claude.json منتخب کریں۔";
 "statusBarDisplayQuotaAndTodayTokens" = "سبسکرپشن کا استعمال + آج کے Tokens";
 "settingsStatusBarQuotaTitle" = "مینو بار میں سبسکرپشن کا استعمال";

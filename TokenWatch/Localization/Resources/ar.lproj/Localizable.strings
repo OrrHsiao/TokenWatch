@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "يعرض شريط القوائم";
 "statusBarDisplayQuota" = "استخدام الاشتراك";
 "statusBarDisplayTodayTokens" = "Tokens اليوم";
-"statusMenuChooseClaudeQuotaFile" = "اختيار ملف استخدام Claude…";
+"settingsClaudeQuotaFile" = "ملف استخدام Claude";
 "claudeQuotaFileOpenPanelMessage" = "يقرأ TokenWatch فقط استخدام الاشتراك المخزّن مؤقتًا في ملف إعدادات Claude Code. اختر ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "استخدام الاشتراك + Tokens اليوم";
 "settingsStatusBarQuotaTitle" = "استخدام الاشتراك في شريط القوائم";

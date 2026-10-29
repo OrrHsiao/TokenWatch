@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Tampilan Bilah Menu";
 "statusBarDisplayQuota" = "Penggunaan Langganan";
 "statusBarDisplayTodayTokens" = "Tokens Hari Ini";
-"statusMenuChooseClaudeQuotaFile" = "Pilih File Penggunaan Claude…";
+"settingsClaudeQuotaFile" = "File Penggunaan Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch hanya membaca penggunaan langganan yang di-cache dalam file konfigurasi Claude Code. Pilih ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Penggunaan Langganan + Tokens Hari Ini";
 "settingsStatusBarQuotaTitle" = "Penggunaan Langganan di Bilah Menu";

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "A menüsoron megjelenik";
 "statusBarDisplayQuota" = "Előfizetés használata";
 "statusBarDisplayTodayTokens" = "Mai Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude használati fájl kiválasztása…";
+"settingsClaudeQuotaFile" = "Claude használati fájl";
 "claudeQuotaFileOpenPanelMessage" = "A TokenWatch csak a Claude Code konfigurációs fájljában gyorsítótárazott előfizetés-használatot olvassa. Válassza ki a ~/.claude.json fájlt.";
 "statusBarDisplayQuotaAndTodayTokens" = "Előfizetés használata + Mai Tokens";
 "settingsStatusBarQuotaTitle" = "Előfizetés használata a menüsoron";

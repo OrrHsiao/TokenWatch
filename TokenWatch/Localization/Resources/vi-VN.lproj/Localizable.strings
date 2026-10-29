@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Thanh menu hiển thị";
 "statusBarDisplayQuota" = "Mức sử dụng gói đăng ký";
 "statusBarDisplayTodayTokens" = "Tokens hôm nay";
-"statusMenuChooseClaudeQuotaFile" = "Chọn tệp sử dụng Claude…";
+"settingsClaudeQuotaFile" = "Tệp sử dụng Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch chỉ đọc mức sử dụng gói đăng ký được lưu trong bộ nhớ đệm của tệp cấu hình Claude Code. Chọn ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Mức sử dụng gói đăng ký + Tokens hôm nay";
 "settingsStatusBarQuotaTitle" = "Mức sử dụng gói đăng ký trên thanh menu";

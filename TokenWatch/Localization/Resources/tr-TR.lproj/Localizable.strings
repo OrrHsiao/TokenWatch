@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Menü Çubuğunda Göster";
 "statusBarDisplayQuota" = "Abonelik Kullanımı";
 "statusBarDisplayTodayTokens" = "Bugünkü Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude Kullanım Dosyasını Seç…";
+"settingsClaudeQuotaFile" = "Claude Kullanım Dosyası";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch yalnızca Claude Code yapılandırma dosyasında önbelleğe alınmış abonelik kullanımını okur. ~/.claude.json dosyasını seçin.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonelik Kullanımı + Bugünkü Tokens";
 "settingsStatusBarQuotaTitle" = "Menü Çubuğunda Abonelik Kullanımı";

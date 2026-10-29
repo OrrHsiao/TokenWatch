@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "የምናሌ አሞሌ የሚያሳየው";
 "statusBarDisplayQuota" = "የምዝገባ አጠቃቀም";
 "statusBarDisplayTodayTokens" = "የዛሬ Tokens";
-"statusMenuChooseClaudeQuotaFile" = "የClaude አጠቃቀም ፋይል ይምረጡ…";
+"settingsClaudeQuotaFile" = "የClaude አጠቃቀም ፋይል";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch በClaude Code ውቅረት ፋይል ውስጥ የተቀመጠውን የምዝገባ አጠቃቀም ብቻ ያነባል። ~/.claude.json ይምረጡ።";
 "statusBarDisplayQuotaAndTodayTokens" = "የምዝገባ አጠቃቀም + የዛሬ Tokens";
 "settingsStatusBarQuotaTitle" = "በምናሌ አሞሌ ላይ የምዝገባ አጠቃቀም";

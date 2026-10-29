@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Menüüriba näitab";
 "statusBarDisplayQuota" = "Tellimuse kasutus";
 "statusBarDisplayTodayTokens" = "Tänased Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Vali Claude'i kasutusfail…";
+"settingsClaudeQuotaFile" = "Claude'i kasutusfail";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch loeb ainult Claude Code'i konfiguratsioonifaili vahemällu salvestatud tellimuse kasutust. Valige ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Tellimuse kasutus + Tänased Tokens";
 "settingsStatusBarQuotaTitle" = "Tellimuse kasutus menüüribal";

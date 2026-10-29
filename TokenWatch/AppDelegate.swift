@@ -31,7 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
     let viewModel: TokenStatsViewModel
 
-    /// Claude / Codex 本地订阅额度;状态栏与弹窗共享同一份状态。
+    /// Claude / Codex 本地订阅额度;状态栏、弹窗与设置页共享同一份状态。
     let quotaStore: SubscriptionQuotaStore
 
     /// StoreKit 控制器由应用生命周期持有，以便窗口关闭后仍能接收交易更新。
@@ -299,7 +299,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let windowController = MainWindowFactory.makeWindowController(
             languageSettings: languageSettings,
             widgetPurchaseController: widgetPurchaseController,
-            quotaAccess: quotaAccess
+            quotaAccess: quotaAccess,
+            quotaStore: quotaStore
         )
         mainWindowController = windowController
         return windowController.window
@@ -495,7 +496,8 @@ enum MainWindowFactory {
     static func makeWindowController(
         languageSettings: AppLanguageSettings = .shared,
         widgetPurchaseController: WidgetPurchaseController? = nil,
-        quotaAccess: SubscriptionQuotaAccess? = nil
+        quotaAccess: SubscriptionQuotaAccess? = nil,
+        quotaStore: SubscriptionQuotaStore? = nil
     ) -> NSWindowController {
         // 使用 .fullSizeContentView 与透明无分割线标题栏实现 macOS 原生沉浸式毛玻璃窗口
         let window = NSWindow(
@@ -507,7 +509,8 @@ enum MainWindowFactory {
         let contentController = ViewController(
             languageSettings: languageSettings,
             widgetPurchaseController: widgetPurchaseController,
-            quotaAccess: quotaAccess
+            quotaAccess: quotaAccess,
+            quotaStore: quotaStore
         )
         window.title = "TokenWatch"
         window.identifier = NSUserInterfaceItemIdentifier("TokenWatchMainWindow")

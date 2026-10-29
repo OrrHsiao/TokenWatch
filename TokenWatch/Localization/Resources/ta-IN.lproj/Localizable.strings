@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "மெனு பட்டியில் காட்டுவது";
 "statusBarDisplayQuota" = "சந்தா பயன்பாடு";
 "statusBarDisplayTodayTokens" = "இன்றைய Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude பயன்பாட்டுக் கோப்பைத் தேர்ந்தெடு…";
+"settingsClaudeQuotaFile" = "Claude பயன்பாட்டுக் கோப்பு";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch, Claude Code உள்ளமைவுக் கோப்பில் தற்காலிகமாகச் சேமிக்கப்பட்ட சந்தா பயன்பாட்டை மட்டுமே படிக்கும். ~/.claude.json ஐத் தேர்ந்தெடுக்கவும்.";
 "statusBarDisplayQuotaAndTodayTokens" = "சந்தா பயன்பாடு + இன்றைய Tokens";
 "settingsStatusBarQuotaTitle" = "மெனு பட்டியில் சந்தா பயன்பாடு";

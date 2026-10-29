@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "状态栏显示";
 "statusBarDisplayQuota" = "订阅额度";
 "statusBarDisplayTodayTokens" = "今日 Tokens";
-"statusMenuChooseClaudeQuotaFile" = "选择 Claude 额度文件…";
+"settingsClaudeQuotaFile" = "Claude 额度文件";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch 只读取 Claude Code 配置文件中缓存的订阅额度。请选择 ~/.claude.json。";
 "statusBarDisplayQuotaAndTodayTokens" = "订阅额度 + 今日 Tokens";
 "settingsStatusBarQuotaTitle" = "状态栏订阅额度";

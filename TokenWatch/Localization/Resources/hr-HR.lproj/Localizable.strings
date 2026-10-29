@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Traka izbornika prikazuje";
 "statusBarDisplayQuota" = "Korištenje pretplate";
 "statusBarDisplayTodayTokens" = "Današnji Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Odaberi datoteku korištenja za Claude…";
+"settingsClaudeQuotaFile" = "Datoteka korištenja za Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch čita samo predmemorirano korištenje pretplate iz konfiguracijske datoteke Claude Code. Odaberite ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Korištenje pretplate + Današnji Tokens";
 "settingsStatusBarQuotaTitle" = "Korištenje pretplate na traci izbornika";

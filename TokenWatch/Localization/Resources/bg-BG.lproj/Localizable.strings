@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Лентата с менюта показва";
 "statusBarDisplayQuota" = "Използване на абонамента";
 "statusBarDisplayTodayTokens" = "Днешни Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Избор на файл за използване на Claude…";
+"settingsClaudeQuotaFile" = "Файл за използване на Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch чете само кешираното използване на абонамента от конфигурационния файл на Claude Code. Изберете ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Използване на абонамента + Днешни Tokens";
 "settingsStatusBarQuotaTitle" = "Използване на абонамента в лентата с менюта";

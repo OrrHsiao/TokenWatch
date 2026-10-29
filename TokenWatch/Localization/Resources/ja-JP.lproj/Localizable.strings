@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "メニューバーの表示";
 "statusBarDisplayQuota" = "サブスクリプション使用量";
 "statusBarDisplayTodayTokens" = "今日の Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude の使用量ファイルを選択…";
+"settingsClaudeQuotaFile" = "Claude の使用量ファイル";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch は Claude Code 設定ファイルにキャッシュされたサブスクリプション使用量のみを読み取ります。~/.claude.json を選択してください。";
 "statusBarDisplayQuotaAndTodayTokens" = "サブスクリプション使用量 + 今日の Tokens";
 "settingsStatusBarQuotaTitle" = "メニューバーのサブスクリプション使用量";

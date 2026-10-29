@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "မီနူးဘားတွင် ပြသမည်";
 "statusBarDisplayQuota" = "စာရင်းသွင်းမှု အသုံးပြုမှု";
 "statusBarDisplayTodayTokens" = "ယနေ့ Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude အသုံးပြုမှုဖိုင် ရွေးချယ်ပါ…";
+"settingsClaudeQuotaFile" = "Claude အသုံးပြုမှုဖိုင်";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch သည် Claude Code ဖွဲ့စည်းမှုဖိုင်ထဲရှိ ကက်ရှ်လုပ်ထားသော စာရင်းသွင်းမှု အသုံးပြုမှုကိုသာ ဖတ်ပါသည်။ ~/.claude.json ကို ရွေးချယ်ပါ။";
 "statusBarDisplayQuotaAndTodayTokens" = "စာရင်းသွင်းမှု အသုံးပြုမှု + ယနေ့ Tokens";
 "settingsStatusBarQuotaTitle" = "မီနူးဘားရှိ စာရင်းသွင်းမှု အသုံးပြုမှု";

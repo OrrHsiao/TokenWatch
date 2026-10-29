@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Η γραμμή μενού εμφανίζει";
 "statusBarDisplayQuota" = "Χρήση συνδρομής";
 "statusBarDisplayTodayTokens" = "Σημερινά Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Επιλογή αρχείου χρήσης Claude…";
+"settingsClaudeQuotaFile" = "Αρχείο χρήσης Claude";
 "claudeQuotaFileOpenPanelMessage" = "Το TokenWatch διαβάζει μόνο την αποθηκευμένη χρήση συνδρομής από το αρχείο ρυθμίσεων του Claude Code. Επιλέξτε το ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Χρήση συνδρομής + Σημερινά Tokens";
 "settingsStatusBarQuotaTitle" = "Χρήση συνδρομής στη γραμμή μενού";

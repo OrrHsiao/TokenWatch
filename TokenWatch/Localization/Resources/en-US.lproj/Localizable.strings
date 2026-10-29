@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Menu Bar Shows";
 "statusBarDisplayQuota" = "Subscription Usage";
 "statusBarDisplayTodayTokens" = "Today's Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Choose Claude Usage File…";
+"settingsClaudeQuotaFile" = "Claude Usage File";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch reads only the cached subscription usage in the Claude Code config file. Choose ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Subscription Usage + Today's Tokens";
 "settingsStatusBarQuotaTitle" = "Menu Bar Subscription Usage";

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Bar-ka Liiska wuxuu muujiyaa";
 "statusBarDisplayQuota" = "Isticmaalka Rukhsadda";
 "statusBarDisplayTodayTokens" = "Tokens-ka Maanta";
-"statusMenuChooseClaudeQuotaFile" = "Dooro Faylka Isticmaalka Claude…";
+"settingsClaudeQuotaFile" = "Faylka Isticmaalka Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch wuxuu akhriyaa oo keliya isticmaalka rukhsadda ee lagu kaydiyey faylka habaynta Claude Code. Dooro ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Isticmaalka Rukhsadda + Tokens-ka Maanta";
 "settingsStatusBarQuotaTitle" = "Isticmaalka Rukhsadda ee Bar-ka Liiska";

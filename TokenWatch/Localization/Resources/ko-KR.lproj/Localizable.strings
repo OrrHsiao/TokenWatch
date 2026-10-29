@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "메뉴 막대 표시";
 "statusBarDisplayQuota" = "구독 사용량";
 "statusBarDisplayTodayTokens" = "오늘의 Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude 사용량 파일 선택…";
+"settingsClaudeQuotaFile" = "Claude 사용량 파일";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch는 Claude Code 설정 파일에 캐시된 구독 사용량만 읽습니다. ~/.claude.json을 선택하세요.";
 "statusBarDisplayQuotaAndTodayTokens" = "구독 사용량 + 오늘의 Tokens";
 "settingsStatusBarQuotaTitle" = "메뉴 막대 구독 사용량";

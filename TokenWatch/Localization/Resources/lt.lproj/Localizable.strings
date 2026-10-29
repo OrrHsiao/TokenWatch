@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Meniu juosta rodo";
 "statusBarDisplayQuota" = "Prenumeratos naudojimas";
 "statusBarDisplayTodayTokens" = "Šiandienos Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Pasirinkti Claude naudojimo failą…";
+"settingsClaudeQuotaFile" = "Claude naudojimo failas";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch nuskaito tik Claude Code konfigūracijos faile talpykloje išsaugotą prenumeratos naudojimą. Pasirinkite ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Prenumeratos naudojimas + Šiandienos Tokens";
 "settingsStatusBarQuotaTitle" = "Prenumeratos naudojimas meniu juostoje";

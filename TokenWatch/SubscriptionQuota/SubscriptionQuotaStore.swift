@@ -104,6 +104,11 @@ final class SubscriptionQuotaStore {
         states[provider] ?? .initial
     }
 
+    /// 是否已保存 Claude 额度文件 bookmark；只查询存在性、不恢复访问，供设置页展示授权状态。
+    var hasClaudeFileBookmark: Bool {
+        bookmarkManager.hasBookmark(forKey: Self.claudeQuotaFileBookmarkKey)
+    }
+
     @discardableResult
     func observe(_ handler: @escaping @MainActor () -> Void) -> ObservationToken {
         let token = ObservationToken(id: UUID())

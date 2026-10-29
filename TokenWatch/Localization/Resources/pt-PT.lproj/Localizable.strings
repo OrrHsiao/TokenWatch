@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "A barra de menus mostra";
 "statusBarDisplayQuota" = "Utilização da subscrição";
 "statusBarDisplayTodayTokens" = "Tokens de hoje";
-"statusMenuChooseClaudeQuotaFile" = "Escolher ficheiro de utilização do Claude…";
+"settingsClaudeQuotaFile" = "Ficheiro de utilização do Claude";
 "claudeQuotaFileOpenPanelMessage" = "O TokenWatch lê apenas a utilização da subscrição em cache no ficheiro de configuração do Claude Code. Escolha ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Utilização da subscrição + Tokens de hoje";
 "settingsStatusBarQuotaTitle" = "Utilização da subscrição na barra de menus";

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Bara de meniu afișează";
 "statusBarDisplayQuota" = "Utilizarea abonamentului";
 "statusBarDisplayTodayTokens" = "Tokens de azi";
-"statusMenuChooseClaudeQuotaFile" = "Alegeți fișierul de utilizare Claude…";
+"settingsClaudeQuotaFile" = "Fișier de utilizare Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch citește doar utilizarea abonamentului stocată în cache în fișierul de configurare Claude Code. Alegeți ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Utilizarea abonamentului + Tokens de azi";
 "settingsStatusBarQuotaTitle" = "Utilizarea abonamentului în bara de meniu";

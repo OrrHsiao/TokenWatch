@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "แถบเมนูแสดง";
 "statusBarDisplayQuota" = "การใช้งานการสมัครสมาชิก";
 "statusBarDisplayTodayTokens" = "Tokens วันนี้";
-"statusMenuChooseClaudeQuotaFile" = "เลือกไฟล์การใช้งาน Claude…";
+"settingsClaudeQuotaFile" = "ไฟล์การใช้งาน Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch อ่านเฉพาะการใช้งานการสมัครสมาชิกที่แคชไว้ในไฟล์การกำหนดค่าของ Claude Code เลือก ~/.claude.json";
 "statusBarDisplayQuotaAndTodayTokens" = "การใช้งานการสมัครสมาชิก + Tokens วันนี้";
 "settingsStatusBarQuotaTitle" = "การใช้งานการสมัครสมาชิกในแถบเมนู";

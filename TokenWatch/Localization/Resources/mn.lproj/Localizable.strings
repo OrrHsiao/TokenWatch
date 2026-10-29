@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Цэсний мөрөнд харуулах";
 "statusBarDisplayQuota" = "Захиалгын ашиглалт";
 "statusBarDisplayTodayTokens" = "Өнөөдрийн Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude-ийн ашиглалтын файл сонгох…";
+"settingsClaudeQuotaFile" = "Claude-ийн ашиглалтын файл";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch нь Claude Code-ийн тохиргооны файлд кэшлэгдсэн захиалгын ашиглалтыг л уншдаг. ~/.claude.json-ийг сонгоно уу.";
 "statusBarDisplayQuotaAndTodayTokens" = "Захиалгын ашиглалт + Өнөөдрийн Tokens";
 "settingsStatusBarQuotaTitle" = "Цэсний мөр дэх захиалгын ашиглалт";

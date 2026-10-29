@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Лентата со менија прикажува";
 "statusBarDisplayQuota" = "Користење на претплатата";
 "statusBarDisplayTodayTokens" = "Денешни Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Избери датотека за користење на Claude…";
+"settingsClaudeQuotaFile" = "Датотека за користење на Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch го чита само кешираното користење на претплатата од конфигурациската датотека на Claude Code. Изберете ја ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Користење на претплатата + Денешни Tokens";
 "settingsStatusBarQuotaTitle" = "Користење на претплатата во лентата со менија";

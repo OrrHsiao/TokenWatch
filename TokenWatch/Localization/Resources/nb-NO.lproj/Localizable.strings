@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Menylinjen viser";
 "statusBarDisplayQuota" = "Abonnementsbruk";
 "statusBarDisplayTodayTokens" = "Dagens Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Velg Claude-bruksfil…";
+"settingsClaudeQuotaFile" = "Claude-bruksfil";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch leser bare den hurtigbufrede abonnementsbruken i konfigurasjonsfilen til Claude Code. Velg ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonnementsbruk + Dagens Tokens";
 "settingsStatusBarQuotaTitle" = "Abonnementsbruk i menylinjen";

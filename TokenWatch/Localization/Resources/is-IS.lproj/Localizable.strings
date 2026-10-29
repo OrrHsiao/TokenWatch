@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Valmyndastika sýnir";
 "statusBarDisplayQuota" = "Áskriftarnotkun";
 "statusBarDisplayTodayTokens" = "Tokens dagsins";
-"statusMenuChooseClaudeQuotaFile" = "Velja notkunarskrá Claude…";
+"settingsClaudeQuotaFile" = "Notkunarskrá Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch les aðeins áskriftarnotkun sem er geymd í skyndiminni í stillingaskrá Claude Code. Veldu ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Áskriftarnotkun + Tokens dagsins";
 "settingsStatusBarQuotaTitle" = "Áskriftarnotkun í valmyndastiku";

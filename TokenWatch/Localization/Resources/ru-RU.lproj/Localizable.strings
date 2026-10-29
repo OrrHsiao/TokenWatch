@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Строка меню показывает";
 "statusBarDisplayQuota" = "Использование подписки";
 "statusBarDisplayTodayTokens" = "Tokens за сегодня";
-"statusMenuChooseClaudeQuotaFile" = "Выбрать файл использования Claude…";
+"settingsClaudeQuotaFile" = "Файл использования Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch читает только кэшированное использование подписки из файла конфигурации Claude Code. Выберите ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Использование подписки + Tokens за сегодня";
 "settingsStatusBarQuotaTitle" = "Использование подписки в строке меню";

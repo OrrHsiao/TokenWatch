@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Shiriti i menysë shfaq";
 "statusBarDisplayQuota" = "Përdorimi i abonimit";
 "statusBarDisplayTodayTokens" = "Tokens e sotme";
-"statusMenuChooseClaudeQuotaFile" = "Zgjidh skedarin e përdorimit të Claude…";
+"settingsClaudeQuotaFile" = "Skedari i përdorimit të Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch lexon vetëm përdorimin e abonimit të ruajtur në memorien e përkohshme të skedarit të konfigurimit të Claude Code. Zgjidhni ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Përdorimi i abonimit + Tokens e sotme";
 "settingsStatusBarQuotaTitle" = "Përdorimi i abonimit në shiritin e menysë";

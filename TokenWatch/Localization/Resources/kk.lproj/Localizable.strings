@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Мәзір жолағы көрсетеді";
 "statusBarDisplayQuota" = "Жазылымды пайдалану";
 "statusBarDisplayTodayTokens" = "Бүгінгі Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude пайдалану файлын таңдау…";
+"settingsClaudeQuotaFile" = "Claude пайдалану файлы";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch тек Claude Code конфигурация файлында кэштелген жазылым пайдалануын оқиды. ~/.claude.json файлын таңдаңыз.";
 "statusBarDisplayQuotaAndTodayTokens" = "Жазылымды пайдалану + Бүгінгі Tokens";
 "settingsStatusBarQuotaTitle" = "Мәзір жолағындағы жазылымды пайдалану";

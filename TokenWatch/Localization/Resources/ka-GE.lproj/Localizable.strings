@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "მენიუს ზოლი აჩვენებს";
 "statusBarDisplayQuota" = "გამოწერის გამოყენება";
 "statusBarDisplayTodayTokens" = "დღევანდელი Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude-ის გამოყენების ფაილის არჩევა…";
+"settingsClaudeQuotaFile" = "Claude-ის გამოყენების ფაილი";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch კითხულობს მხოლოდ Claude Code-ის კონფიგურაციის ფაილში ქეშირებულ გამოწერის გამოყენებას. აირჩიეთ ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "გამოწერის გამოყენება + დღევანდელი Tokens";
 "settingsStatusBarQuotaTitle" = "გამოწერის გამოყენება მენიუს ზოლში";

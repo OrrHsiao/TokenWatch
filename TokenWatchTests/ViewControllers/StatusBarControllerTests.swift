@@ -357,12 +357,11 @@ struct StatusBarControllerTests {
         )
         defer { controller.stop() }
 
-        // 额度周期改在主界面设置页配置，右键菜单不再提供周期子菜单。
+        // 额度周期与 Claude 额度文件授权改在主界面设置页配置，右键菜单不再提供对应入口。
         #expect(controller.debugStatusMenuItemTitles == [
             "打开 AI Token Watch",
             "立即刷新",
             "状态栏显示",
-            "选择 Claude 额度文件…",
             "退出 AI Token Watch",
         ])
         #expect(controller.debugDisplayModeMenuTitles == ["订阅额度 + 今日 Tokens", "订阅额度", "今日 Tokens"])
@@ -613,7 +612,7 @@ struct StatusBarControllerTests {
         #expect(quotaAccess.isUnlocked)
         #expect(controller.debugRenderedDisplayMode == .quotaAndTodayTokens)
         #expect(controller.debugLastRenderedQuotaModel?.groups.count == 2)
-        #expect(controller.debugStatusMenuItemTitles.count == 5)
+        #expect(controller.debugStatusMenuItemTitles.count == 4)
     }
 
     /// 设置页把两个 Agent 的所有周期都关闭时,含额度模式退回今日 token,保证状态栏仍有可点击内容。

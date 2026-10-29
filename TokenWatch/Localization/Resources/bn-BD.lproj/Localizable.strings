@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "মেনু বারে দেখানো হয়";
 "statusBarDisplayQuota" = "সাবস্ক্রিপশন ব্যবহার";
 "statusBarDisplayTodayTokens" = "আজকের Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude ব্যবহারের ফাইল নির্বাচন করুন…";
+"settingsClaudeQuotaFile" = "Claude ব্যবহারের ফাইল";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch শুধু Claude Code কনফিগারেশন ফাইলে ক্যাশ করা সাবস্ক্রিপশন ব্যবহার পড়ে। ~/.claude.json নির্বাচন করুন।";
 "statusBarDisplayQuotaAndTodayTokens" = "সাবস্ক্রিপশন ব্যবহার + আজকের Tokens";
 "settingsStatusBarQuotaTitle" = "মেনু বারে সাবস্ক্রিপশন ব্যবহার";

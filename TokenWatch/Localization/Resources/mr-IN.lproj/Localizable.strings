@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "मेनू बारमध्ये दाखवा";
 "statusBarDisplayQuota" = "सदस्यता वापर";
 "statusBarDisplayTodayTokens" = "आजचे Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude वापर फाइल निवडा…";
+"settingsClaudeQuotaFile" = "Claude वापर फाइल";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch फक्त Claude Code कॉन्फिगरेशन फाइलमध्ये कॅश केलेला सदस्यता वापर वाचतो. ~/.claude.json निवडा.";
 "statusBarDisplayQuotaAndTodayTokens" = "सदस्यता वापर + आजचे Tokens";
 "settingsStatusBarQuotaTitle" = "मेनू बारमधील सदस्यता वापर";

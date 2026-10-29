@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Řádek nabídek zobrazuje";
 "statusBarDisplayQuota" = "Využití předplatného";
 "statusBarDisplayTodayTokens" = "Dnešní Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Vybrat soubor využití Claude…";
+"settingsClaudeQuotaFile" = "Soubor využití Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch čte pouze využití předplatného uložené v mezipaměti konfiguračního souboru Claude Code. Vyberte ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Využití předplatného + Dnešní Tokens";
 "settingsStatusBarQuotaTitle" = "Využití předplatného na řádku nabídek";

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Menijska vrstica prikazuje";
 "statusBarDisplayQuota" = "Uporaba naročnine";
 "statusBarDisplayTodayTokens" = "Današnji Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Izberi datoteko uporabe Claude…";
+"settingsClaudeQuotaFile" = "Datoteka uporabe Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch bere samo predpomnjeno uporabo naročnine iz konfiguracijske datoteke Claude Code. Izberite ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Uporaba naročnine + Današnji Tokens";
 "settingsStatusBarQuotaTitle" = "Uporaba naročnine v menijski vrstici";

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Valikkorivillä näytetään";
 "statusBarDisplayQuota" = "Tilauksen käyttö";
 "statusBarDisplayTodayTokens" = "Tämän päivän Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Valitse Clauden käyttötiedosto…";
+"settingsClaudeQuotaFile" = "Clauden käyttötiedosto";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch lukee vain Claude Coden asetustiedostoon välimuistiin tallennetun tilauksen käytön. Valitse ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Tilauksen käyttö + Tämän päivän Tokens";
 "settingsStatusBarQuotaTitle" = "Tilauksen käyttö valikkorivillä";

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Menüleiste zeigt";
 "statusBarDisplayQuota" = "Abo-Nutzung";
 "statusBarDisplayTodayTokens" = "Heutige Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude-Nutzungsdatei wählen…";
+"settingsClaudeQuotaFile" = "Claude-Nutzungsdatei";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch liest nur die zwischengespeicherte Abo-Nutzung aus der Konfigurationsdatei von Claude Code. Wähle ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abo-Nutzung + Heutige Tokens";
 "settingsStatusBarQuotaTitle" = "Abo-Nutzung in der Menüleiste";

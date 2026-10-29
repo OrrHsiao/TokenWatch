@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "మెనూ బార్‌లో చూపించేది";
 "statusBarDisplayQuota" = "సబ్‌స్క్రిప్షన్ వినియోగం";
 "statusBarDisplayTodayTokens" = "నేటి Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Claude వినియోగ ఫైల్‌ను ఎంచుకోండి…";
+"settingsClaudeQuotaFile" = "Claude వినియోగ ఫైల్";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch కేవలం Claude Code కాన్ఫిగరేషన్ ఫైల్‌లో కాష్ చేసిన సబ్‌స్క్రిప్షన్ వినియోగాన్ని మాత్రమే చదువుతుంది. ~/.claude.json ఎంచుకోండి.";
 "statusBarDisplayQuotaAndTodayTokens" = "సబ్‌స్క్రిప్షన్ వినియోగం + నేటి Tokens";
 "settingsStatusBarQuotaTitle" = "మెనూ బార్‌లో సబ్‌స్క్రిప్షన్ వినియోగం";

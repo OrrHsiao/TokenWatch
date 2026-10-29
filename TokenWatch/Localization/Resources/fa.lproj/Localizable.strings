@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "نمایش در نوار منو";
 "statusBarDisplayQuota" = "مصرف اشتراک";
 "statusBarDisplayTodayTokens" = "Tokens امروز";
-"statusMenuChooseClaudeQuotaFile" = "انتخاب فایل مصرف Claude…";
+"settingsClaudeQuotaFile" = "فایل مصرف Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch فقط مصرف اشتراکِ ذخیره‌شده در حافظهٔ پنهان فایل پیکربندی Claude Code را می‌خواند. ~/.claude.json را انتخاب کنید.";
 "statusBarDisplayQuotaAndTodayTokens" = "مصرف اشتراک + Tokens امروز";
 "settingsStatusBarQuotaTitle" = "مصرف اشتراک در نوار منو";

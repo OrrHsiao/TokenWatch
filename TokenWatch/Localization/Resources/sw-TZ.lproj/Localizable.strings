@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Upau wa Menyu Unaonyesha";
 "statusBarDisplayQuota" = "Matumizi ya Usajili";
 "statusBarDisplayTodayTokens" = "Tokens za Leo";
-"statusMenuChooseClaudeQuotaFile" = "Chagua Faili ya Matumizi ya Claude…";
+"settingsClaudeQuotaFile" = "Faili ya Matumizi ya Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch husoma tu matumizi ya usajili yaliyohifadhiwa kwenye akiba ya faili ya usanidi ya Claude Code. Chagua ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Matumizi ya Usajili + Tokens za Leo";
 "settingsStatusBarQuotaTitle" = "Matumizi ya Usajili kwenye Upau wa Menyu";

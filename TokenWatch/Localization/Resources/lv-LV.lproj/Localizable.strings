@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "Izvēļņu josla rāda";
 "statusBarDisplayQuota" = "Abonementa lietojums";
 "statusBarDisplayTodayTokens" = "Šodienas Tokens";
-"statusMenuChooseClaudeQuotaFile" = "Izvēlēties Claude lietojuma failu…";
+"settingsClaudeQuotaFile" = "Claude lietojuma fails";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch nolasa tikai Claude Code konfigurācijas failā kešatmiņā saglabāto abonementa lietojumu. Izvēlieties ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Abonementa lietojums + Šodienas Tokens";
 "settingsStatusBarQuotaTitle" = "Abonementa lietojums izvēļņu joslā";

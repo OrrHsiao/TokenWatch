@@ -218,7 +218,7 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case statusMenuDisplayMode
     case statusBarDisplayQuota
     case statusBarDisplayTodayTokens
-    case statusMenuChooseClaudeQuotaFile
+    case settingsClaudeQuotaFile
     case claudeQuotaFileOpenPanelMessage
     case statusBarDisplayQuotaAndTodayTokens
     case settingsStatusBarQuotaTitle

@@ -209,7 +209,7 @@
 "statusMenuDisplayMode" = "La barra de menús mostra";
 "statusBarDisplayQuota" = "Ús de la subscripció";
 "statusBarDisplayTodayTokens" = "Tokens d'avui";
-"statusMenuChooseClaudeQuotaFile" = "Tria el fitxer d'ús de Claude…";
+"settingsClaudeQuotaFile" = "Fitxer d'ús de Claude";
 "claudeQuotaFileOpenPanelMessage" = "TokenWatch només llegeix l'ús de la subscripció desat a la memòria cau del fitxer de configuració de Claude Code. Trieu ~/.claude.json.";
 "statusBarDisplayQuotaAndTodayTokens" = "Ús de la subscripció + Tokens d'avui";
 "settingsStatusBarQuotaTitle" = "Ús de la subscripció a la barra de menús";
