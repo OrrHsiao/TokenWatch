@@ -76,16 +76,15 @@ struct StatusBarQuotaImageRendererTests {
             ringDiameter: 22
         )
 
+        // 每个 Agent：圆环到首段文本间距 + 两段文本之间的窗口间距 + 两段文本宽度。
         let valueWidths = detailed.groups.flatMap(\.rings).reduce(0) {
-            $0 + StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.valueSize(for: $1).width
-        }
+            $0 + StatusBarQuotaLayout.valueSize(for: $1).width
+        } + CGFloat(detailed.groups.count) * (StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.windowSpacing)
         let detailedWidth = StatusBarQuotaLayout.imageSize(for: detailed).width
         let compactWidth = StatusBarQuotaLayout.imageSize(for: compact).width
         #expect(abs(detailedWidth - compactWidth - valueWidths) <= 1)
-        // 4 个圆环 + 组内 2 个窗口间距 + 1 个分组间距。
-        #expect(compactWidth == ceil(
-            4 * 22 + 2 * StatusBarQuotaLayout.windowSpacing + StatusBarQuotaLayout.providerSpacing
-        ))
+        // 每个 Agent 一个同心双环 + 1 个分组间距。
+        #expect(compactWidth == ceil(2 * 22 + StatusBarQuotaLayout.providerSpacing))
         #expect(StatusBarQuotaImageRenderer.makeImage(for: compact).size.width == compactWidth)
     }
 
@@ -115,6 +114,55 @@ struct StatusBarQuotaImageRendererTests {
         let detailedPixels = try opaquePixelCount(in: StatusBarQuotaImageRenderer.makeImage(for: detailed), rect: ringRect)
         let compactPixels = try opaquePixelCount(in: StatusBarQuotaImageRenderer.makeImage(for: compact), rect: ringRect)
         #expect(detailedPixels > compactPixels)
+    }
+
+    @Test("同一 Agent 同时展示 5H、7D 时合并为同心双环：外环 5H、内环 7D，环外文本仍按周期左右排列")
+    func bothWindowsMergeIntoConcentricRings() throws {
+        let presentations = makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2))
+        func claudeGroup(style: StatusBarQuotaWindowStyle) throws -> StatusBarQuotaGroup {
+            let model = StatusBarQuotaModel.make(
+                presentations: presentations,
+                configuration: { provider, _ in .init(isVisible: provider == .claude, style: style) },
+                ringDiameter: 22
+            )
+            return try #require(model.groups.first)
+        }
+
+        // 详细模式每个周期仍是“百分比 / 周期”两行，两段从左到右排在圆环右侧。
+        let detailed = try claudeGroup(style: .detailed)
+        #expect(detailed.rings.map { StatusBarQuotaLayout.valueText(for: $0).string } == ["68%\n5H", "86%\n7D"])
+        #expect(StatusBarQuotaLayout.groupWidth(for: detailed, diameter: 22) == 22
+            + StatusBarQuotaLayout.ringToValueSpacing
+            + StatusBarQuotaLayout.valueSize(for: detailed.rings[0]).width
+            + StatusBarQuotaLayout.windowSpacing
+            + StatusBarQuotaLayout.valueSize(for: detailed.rings[1]).width)
+
+        let compact = try claudeGroup(style: .compact)
+        #expect(StatusBarQuotaLayout.groupWidth(for: compact, diameter: 22) == 22)
+
+        // 沿圆心竖线取样：外环与内环之间（半径 8.5–9.5pt）留空，内环（半径 7–8.5pt）绘制出剩余额度圆弧。
+        let image = StatusBarQuotaImageRenderer.makeImage(
+            for: StatusBarQuotaModel(groups: [compact], ringDiameter: 22)
+        )
+        let outerInnerEdge = 11 - StatusBarQuotaLayout.nestedRingLineWidth
+        let innerRingCenter = outerInnerEdge - StatusBarQuotaLayout.nestedRingGap
+            - StatusBarQuotaLayout.nestedRingLineWidth / 2
+        let gapPixels = try opaquePixelCount(
+            in: image,
+            rect: NSRect(
+                x: 11,
+                y: 11 + outerInnerEdge - StatusBarQuotaLayout.nestedRingGap,
+                width: 0.5,
+                height: StatusBarQuotaLayout.nestedRingGap
+            )
+        )
+        let innerArcPixels = try opaquePixelCount(
+            in: image,
+            rect: NSRect(x: 11, y: 11 + innerRingCenter - 0.25, width: 0.5, height: 0.5)
+        )
+        #expect(gapPixels == 0)
+        #expect(innerArcPixels > 0)
+        #expect(StatusBarQuotaLayout.iconSide(ringCount: 2, diameter: 22) == 11)
     }
 
     @Test("无数据保留周期标签并使用虚线灰环与 —；旧记录整体弱化")
@@ -183,7 +231,7 @@ struct StatusBarQuotaImageRendererTests {
 
         let size = StatusBarQuotaLayout.imageSize(for: full)
         #expect(size.height == 22)
-        #expect(size.width > 200 && size.width < 260)
+        #expect(size.width > 140 && size.width < 190)
 
         let image = StatusBarQuotaImageRenderer.makeImage(for: low)
         #expect(image.size == StatusBarQuotaLayout.imageSize(for: low))

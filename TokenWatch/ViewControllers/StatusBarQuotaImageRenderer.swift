@@ -1,6 +1,6 @@
 import AppKit
 
-/// 状态栏中单个额度窗口：圆环 + 圈内 Agent 图标；详细模式右侧另有百分比与周期两行文本。
+/// 状态栏中单个额度窗口：Agent 圆环单元中的一层圆环；详细模式环外另有百分比与周期两行文本。
 struct StatusBarQuotaRing: Equatable {
     let shortLabel: String
     /// 0...1 的剩余比例；nil 表示没有可展示的值，绘制虚线灰环。
@@ -11,9 +11,11 @@ struct StatusBarQuotaRing: Equatable {
     let showsValue: Bool
 }
 
-/// 同一个 Agent 的相邻窗口。
+/// 同一个 Agent 的额度窗口，共用一个圆环单元：
+/// 只展示一个周期时为单环；同时展示 5H、7D 时为同心双环，外环 5H、内环 7D。
 struct StatusBarQuotaGroup: Equatable {
     let provider: SubscriptionQuotaProvider
+    /// 按 5H、7D 顺序排列：圆环由外向内绘制，环外文本从左到右排列。
     let rings: [StatusBarQuotaRing]
     /// 旧记录整体弱化。
     let isDimmed: Bool
@@ -66,8 +68,14 @@ enum StatusBarQuotaLayout {
     static let defaultRingDiameter: CGFloat = 22
     static let minimumRingDiameter: CGFloat = 20
     static let ringLineWidth: CGFloat = 1.75
-    /// 图标与圆弧之间保留约 2pt 间隙（22pt 圆环内图标约 14pt）。
+    /// 单环图标与圆弧之间保留约 2pt 间隙（22pt 圆环内图标约 14pt）。
     static let iconDiameterRatio: CGFloat = 0.64
+    /// 同心双环在单环外径内容纳两层圆弧，线宽收细到 1.5pt（Retina 下 3px）；
+    /// 层间留 1pt（2px），避免两层圆弧在抗锯齿后连成一片。
+    static let nestedRingLineWidth: CGFloat = 1.5
+    static let nestedRingGap: CGFloat = 1
+    /// 同心双环图标与内环之间的间隙；22pt 圆环内图标约 11pt，20pt 时约 9pt。
+    static let nestedIconGap: CGFloat = 1.5
     /// 简洁模式叠加在图标中心的周期字号，尽量小以少遮挡 Agent 图标；
     /// Retina 下 5pt 镂空笔画约 2px 仍可辨认，4.5pt 起笔画只剩 1px、开始糊成一片。
     static let periodFontSize: CGFloat = 5
@@ -80,6 +88,7 @@ enum StatusBarQuotaLayout {
     static let valuePeriodLineHeight: CGFloat = 8
     /// 数字左侧字形留白约 0.25pt，可见间隔约 4.25pt，与仪表盘图标到今日 token 文本一致。
     static let ringToValueSpacing: CGFloat = 4
+    /// 同一 Agent 相邻两段环外文本（5H、7D）之间的间距。
     static let windowSpacing: CGFloat = 6
     /// 环外文本宽度向上取整并含字形右侧留白，可见间隔约比该值多 0.75pt；
     /// 取 6.5 使分组间可见间隔与今日 token 文本到首个圆环一致（约 7.25pt）。
@@ -115,6 +124,16 @@ enum StatusBarQuotaLayout {
 
     static var periodFont: NSFont {
         .systemFont(ofSize: periodFontSize, weight: .bold)
+    }
+
+    /// 圈内 Agent 图标边长：单环按 `iconDiameterRatio`；同心环从直径中扣除各层线宽、层间距与图标间隙。
+    /// - Parameters:
+    ///   - ringCount: 圆环层数。
+    ///   - diameter: 最外层圆环直径。
+    static func iconSide(ringCount: Int, diameter: CGFloat) -> CGFloat {
+        guard ringCount > 1 else { return diameter * iconDiameterRatio }
+        let ringsThickness = CGFloat(ringCount) * nestedRingLineWidth + CGFloat(ringCount - 1) * nestedRingGap
+        return diameter - 2 * (ringsThickness + nestedIconGap)
     }
 
     /// 详细模式环外文本：剩余百分比在上、周期在下，与今日 token 的“数字 / 单位”排布一致。
@@ -156,22 +175,18 @@ enum StatusBarQuotaLayout {
         return NSSize(width: ceil(bounds.width), height: ceil(bounds.height))
     }
 
-    /// 单个窗口占用的宽度：简洁模式只有圆环，详细模式追加环外文本宽度。
-    static func ringWidth(for ring: StatusBarQuotaRing, diameter: CGFloat) -> CGFloat {
-        ring.showsValue ? diameter + ringToValueSpacing + valueSize(for: ring).width : diameter
+    /// 单个 Agent 占用的宽度：一个圆环单元，详细模式的周期依次在右侧追加环外文本。
+    static func groupWidth(for group: StatusBarQuotaGroup, diameter: CGFloat) -> CGFloat {
+        group.rings.filter(\.showsValue).enumerated().reduce(diameter) { width, item in
+            width + (item.offset == 0 ? ringToValueSpacing : windowSpacing) + valueSize(for: item.element).width
+        }
     }
 
     /// 图像尺寸由分组、窗口、简洁 / 详细样式、圆环直径与百分比字符数决定。
     static func imageSize(for model: StatusBarQuotaModel) -> NSSize {
-        var width: CGFloat = 0
-        for (groupIndex, group) in model.groups.enumerated() {
-            if groupIndex > 0 {
-                width += providerSpacing
-            }
-            width += group.rings.reduce(0) { $0 + ringWidth(for: $1, diameter: model.ringDiameter) }
-            width += CGFloat(max(0, group.rings.count - 1)) * windowSpacing
-        }
-        return NSSize(width: ceil(width), height: model.ringDiameter)
+        let groupsWidth = model.groups.reduce(0) { $0 + groupWidth(for: $1, diameter: model.ringDiameter) }
+        let spacing = CGFloat(max(0, model.groups.count - 1)) * providerSpacing
+        return NSSize(width: ceil(groupsWidth + spacing), height: model.ringDiameter)
     }
 }
 
@@ -293,15 +308,11 @@ enum StatusBarQuotaImageRenderer {
                 context.setAlpha(StatusBarQuotaLayout.dimmedAlpha)
             }
             context.beginTransparencyLayer(auxiliaryInfo: nil)
-            for (ringIndex, ring) in group.rings.enumerated() {
-                if ringIndex > 0 {
-                    x += StatusBarQuotaLayout.windowSpacing
-                }
-                let ringRect = NSRect(x: x, y: (height - diameter) / 2, width: diameter, height: diameter)
-                drawRing(ring, icon: icons[group.provider], in: ringRect, context: context)
-                x += diameter
-                guard ring.showsValue else { continue }
-                x += StatusBarQuotaLayout.ringToValueSpacing
+            let ringRect = NSRect(x: x, y: (height - diameter) / 2, width: diameter, height: diameter)
+            drawRings(group.rings, icon: icons[group.provider], in: ringRect, context: context)
+            x += diameter
+            for (valueIndex, ring) in group.rings.filter(\.showsValue).enumerated() {
+                x += valueIndex == 0 ? StatusBarQuotaLayout.ringToValueSpacing : StatusBarQuotaLayout.windowSpacing
                 let valueSize = StatusBarQuotaLayout.valueSize(for: ring)
                 StatusBarQuotaLayout.valueText(for: ring).draw(
                     with: NSRect(
@@ -319,44 +330,23 @@ enum StatusBarQuotaImageRenderer {
         }
     }
 
-    private static func drawRing(
-        _ ring: StatusBarQuotaRing,
+    /// 绘制一个 Agent 的圆环单元：单个周期为一层圆环；多个周期为同心环，
+    /// `rings[0]` 在最外层，其余依次向内收一层线宽与层间距，图标居中。
+    private static func drawRings(
+        _ rings: [StatusBarQuotaRing],
         icon: NSImage?,
         in rect: NSRect,
         context: CGContext
     ) {
-        let lineWidth = StatusBarQuotaLayout.ringLineWidth
+        let isNested = rings.count > 1
+        let lineWidth = isNested ? StatusBarQuotaLayout.nestedRingLineWidth : StatusBarQuotaLayout.ringLineWidth
         let labelColor = NSColor.labelColor
-
-        let track = NSBezierPath(ovalIn: rect.insetBy(dx: lineWidth / 2, dy: lineWidth / 2))
-        track.lineWidth = lineWidth
-        if ring.remainingFraction == nil {
-            let dash = StatusBarQuotaLayout.unknownTrackDash
-            track.setLineDash(dash, count: dash.count, phase: 0)
-            labelColor.withAlphaComponent(StatusBarQuotaLayout.unknownTrackAlpha).setStroke()
-        } else {
-            labelColor.withAlphaComponent(StatusBarQuotaLayout.usedTrackAlpha).setStroke()
-        }
-        track.stroke()
-
-        if let fraction = ring.remainingFraction, fraction > 0 {
-            // 12 点方向起顺时针填充剩余额度。
-            let clampedFraction = min(fraction, 1)
-            let arc = NSBezierPath()
-            arc.appendArc(
-                withCenter: NSPoint(x: rect.midX, y: rect.midY),
-                radius: (rect.width - lineWidth) / 2,
-                startAngle: 90,
-                endAngle: 90 - 360 * clampedFraction,
-                clockwise: true
-            )
-            arc.lineWidth = lineWidth
-            arc.lineCapStyle = clampedFraction >= 1 ? .butt : .round
-            arcColor(for: ring.severity).setStroke()
-            arc.stroke()
+        for (index, ring) in rings.enumerated() {
+            let inset = CGFloat(index) * (lineWidth + StatusBarQuotaLayout.nestedRingGap)
+            drawRing(ring, in: rect.insetBy(dx: inset, dy: inset), lineWidth: lineWidth)
         }
 
-        let iconSide = rect.width * StatusBarQuotaLayout.iconDiameterRatio
+        let iconSide = StatusBarQuotaLayout.iconSide(ringCount: rings.count, diameter: rect.width)
         let iconRect = NSRect(
             x: rect.midX - iconSide / 2,
             y: rect.midY - iconSide / 2,
@@ -372,11 +362,44 @@ enum StatusBarQuotaImageRenderer {
             context.fill(iconRect)
             context.setBlendMode(.normal)
         }
-        // 详细模式的周期已在环外第二行；简洁模式没有环外文本，周期仍叠加在图标中心。
-        if !ring.showsValue {
+        // 详细模式的周期已在环外第二行；简洁模式没有环外文本，单环时周期仍叠加在图标中心。
+        // 同心环的两个周期无法同时叠加，且图标更小，改由内外层区分周期。
+        if !isNested, let ring = rings.first, !ring.showsValue {
             drawPeriodLabel(ring.shortLabel, centeredIn: iconRect, color: labelColor, context: context)
         }
         context.endTransparencyLayer()
+    }
+
+    /// 绘制一层额度圆环：已用额度轨道（无数据时为虚线灰环）与剩余额度圆弧。
+    private static func drawRing(_ ring: StatusBarQuotaRing, in rect: NSRect, lineWidth: CGFloat) {
+        let labelColor = NSColor.labelColor
+
+        let track = NSBezierPath(ovalIn: rect.insetBy(dx: lineWidth / 2, dy: lineWidth / 2))
+        track.lineWidth = lineWidth
+        if ring.remainingFraction == nil {
+            let dash = StatusBarQuotaLayout.unknownTrackDash
+            track.setLineDash(dash, count: dash.count, phase: 0)
+            labelColor.withAlphaComponent(StatusBarQuotaLayout.unknownTrackAlpha).setStroke()
+        } else {
+            labelColor.withAlphaComponent(StatusBarQuotaLayout.usedTrackAlpha).setStroke()
+        }
+        track.stroke()
+
+        guard let fraction = ring.remainingFraction, fraction > 0 else { return }
+        // 12 点方向起顺时针填充剩余额度。
+        let clampedFraction = min(fraction, 1)
+        let arc = NSBezierPath()
+        arc.appendArc(
+            withCenter: NSPoint(x: rect.midX, y: rect.midY),
+            radius: (rect.width - lineWidth) / 2,
+            startAngle: 90,
+            endAngle: 90 - 360 * clampedFraction,
+            clockwise: true
+        )
+        arc.lineWidth = lineWidth
+        arc.lineCapStyle = clampedFraction >= 1 ? .butt : .round
+        arcColor(for: ring.severity).setStroke()
+        arc.stroke()
     }
 
     /// 周期与图标共享同一中心：先描一圈细外沿，再把字面从图标中镂空，
