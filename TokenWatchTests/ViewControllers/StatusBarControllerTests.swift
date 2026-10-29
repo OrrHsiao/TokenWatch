@@ -128,13 +128,13 @@ struct StatusBarControllerTests {
     @Test func statusBarIconAddsTrailingSpacingBeforeTitle() {
         #expect(StatusBarIconLayout.pointSize == 18)
         #expect(StatusBarIconLayout.pointSize < 20)
-        #expect(StatusBarIconLayout.imageTitleSpacing == 4)
-        #expect(StatusBarIconLayout.canvasSize(for: NSSize(width: 20, height: 18)) == NSSize(width: 24, height: 18))
+        #expect(StatusBarIconLayout.imageTitleSpacing == 2)
+        #expect(StatusBarIconLayout.canvasSize(for: NSSize(width: 20, height: 18)) == NSSize(width: 22, height: 18))
 
         let image = NSImage(size: NSSize(width: 20, height: 18))
         image.isTemplate = true
         let paddedImage = StatusBarIconLayout.imageWithTrailingSpacing(image)
-        #expect(paddedImage.size == NSSize(width: 24, height: 18))
+        #expect(paddedImage.size == NSSize(width: 22, height: 18))
         #expect(paddedImage.isTemplate)
     }
 

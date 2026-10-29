@@ -62,7 +62,7 @@ struct StatusBarQuotaImageRendererTests {
         #expect(StatusBarQuotaLayout.imageSize(for: empty).width == 0)
     }
 
-    @Test("简洁模式只绘制圆环，不预留百分比槽位，图像更窄")
+    @Test("简洁模式只绘制圆环，不占用百分比宽度，图像更窄")
     func compactStyleOmitsValueSlot() {
         let presentations = makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2))
         let detailed = StatusBarQuotaModel.make(
@@ -76,10 +76,12 @@ struct StatusBarQuotaImageRendererTests {
             ringDiameter: 22
         )
 
-        let slot = StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.valueSlotWidth
+        let valueWidths = detailed.groups.flatMap(\.rings).reduce(0) {
+            $0 + StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.valueWidth(for: $1.valueText)
+        }
         let detailedWidth = StatusBarQuotaLayout.imageSize(for: detailed).width
         let compactWidth = StatusBarQuotaLayout.imageSize(for: compact).width
-        #expect(abs(detailedWidth - compactWidth - 4 * slot) <= 1)
+        #expect(abs(detailedWidth - compactWidth - valueWidths) <= 1)
         // 4 个圆环 + 组内 2 个窗口间距 + 1 个分组间距。
         #expect(compactWidth == ceil(
             4 * 22 + 2 * StatusBarQuotaLayout.windowSpacing + StatusBarQuotaLayout.providerSpacing
@@ -120,8 +122,18 @@ struct StatusBarQuotaImageRendererTests {
         #expect(model.groups[1].rings[0].severity == .normal)
     }
 
-    @Test("图像宽度只取决于窗口数量，数值变化不引起状态栏抖动")
-    func imageWidthIsIndependentOfValues() {
+    @Test("百分比按实际宽度占位：同位数数值变化宽度不变，只有字符数变化才改变宽度")
+    func imageWidthFollowsValueCharacterCount() {
+        let twoDigits = StatusBarQuotaModel.make(
+            presentations: makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2)),
+            configuration: Self.allDetailed,
+            ringDiameter: 22
+        )
+        let otherTwoDigits = StatusBarQuotaModel.make(
+            presentations: makePresentations(claudeUsed: (45, 20), codexUsed: (30, 10)),
+            configuration: Self.allDetailed,
+            ringDiameter: 22
+        )
         let full = StatusBarQuotaModel.make(
             presentations: makePresentations(claudeUsed: (0, 0), codexUsed: (0, 0)),
             configuration: Self.allDetailed,
@@ -135,15 +147,18 @@ struct StatusBarQuotaImageRendererTests {
 
         #expect(low.groups[0].rings.map(\.valueText) == ["<1%", "9%"])
         #expect(low.groups[1].rings.map(\.valueText) == ["0%", "55%"])
-        #expect(StatusBarQuotaLayout.imageSize(for: full) == StatusBarQuotaLayout.imageSize(for: low))
+        // 数字为等宽字体，同位数变化不引起状态栏宽度变化。
+        #expect(StatusBarQuotaLayout.imageSize(for: twoDigits) == StatusBarQuotaLayout.imageSize(for: otherTwoDigits))
+        // 不再为 100% 预留空白：两位数比满额窄，一位数更窄。
+        #expect(StatusBarQuotaLayout.imageSize(for: twoDigits).width < StatusBarQuotaLayout.imageSize(for: full).width)
+        #expect(StatusBarQuotaLayout.imageSize(for: low).width < StatusBarQuotaLayout.imageSize(for: twoDigits).width)
 
         let size = StatusBarQuotaLayout.imageSize(for: full)
         #expect(size.height == 22)
-        // 设计预估 240–260pt；以原生字体实测，保持在合理区间。
-        #expect(size.width > 200 && size.width < 270)
+        #expect(size.width > 200 && size.width < 260)
 
         let image = StatusBarQuotaImageRenderer.makeImage(for: low)
-        #expect(image.size == size)
+        #expect(image.size == StatusBarQuotaLayout.imageSize(for: low))
         #expect(!image.isTemplate)
     }
 

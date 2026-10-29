@@ -72,11 +72,14 @@ enum StatusBarQuotaLayout {
     /// 周期字形外沿描边宽度（pt）。
     static let periodOutlineWidth: CGFloat = 0.6
     static let valueFontSize: CGFloat = 11
-    static let ringToValueSpacing: CGFloat = 3
+    /// 数字左侧字形留白约 0.25pt，可见间隔约 4.25pt，与仪表盘图标到今日 token 文本一致。
+    static let ringToValueSpacing: CGFloat = 4
     static let windowSpacing: CGFloat = 6
-    static let providerSpacing: CGFloat = 14
+    /// 百分比文本宽度向上取整并含 `%` 右侧字形留白，可见间隔约比该值多 1.75pt；
+    /// 取 5.5 使分组间可见间隔与今日 token 文本到首个圆环一致（约 7.25pt）。
+    static let providerSpacing: CGFloat = 5.5
     /// 组合模式中今日 token 文本与第一个额度圆环之间的间距。
-    static let todayTokensToQuotaSpacing: CGFloat = 14
+    static let todayTokensToQuotaSpacing: CGFloat = 6
     static let dimmedAlpha: CGFloat = 0.55
     /// 虚线灰环的线段与间隔。
     static let unknownTrackDash: [CGFloat] = [2, 2]
@@ -94,20 +97,18 @@ enum StatusBarQuotaLayout {
         .systemFont(ofSize: periodFontSize, weight: .bold)
     }
 
-    /// 百分比槽位按 `100%` 预留，数值变化时状态栏宽度保持不变。
-    static var valueSlotWidth: CGFloat {
-        let font = valueFont
-        return ["100%", "<1%", "—"]
-            .map { ceil(($0 as NSString).size(withAttributes: [.font: font]).width) }
-            .max() ?? 0
+    /// 百分比按实际文本宽度占位，不为 `100%` 预留空白，使各段间隔保持一致、整体更窄。
+    /// 数字为等宽字体，宽度只在字符数变化（如 `100%`→`99%`、`10%`→`9%`）时改变，不会持续抖动。
+    static func valueWidth(for text: String) -> CGFloat {
+        ceil((text as NSString).size(withAttributes: [.font: valueFont]).width)
     }
 
-    /// 单个窗口占用的宽度：简洁模式只有圆环，详细模式追加固定宽度的百分比槽位。
+    /// 单个窗口占用的宽度：简洁模式只有圆环，详细模式追加百分比文本宽度。
     static func ringWidth(for ring: StatusBarQuotaRing, diameter: CGFloat) -> CGFloat {
-        ring.showsValue ? diameter + ringToValueSpacing + valueSlotWidth : diameter
+        ring.showsValue ? diameter + ringToValueSpacing + valueWidth(for: ring.valueText) : diameter
     }
 
-    /// 图像尺寸只取决于分组、窗口、简洁 / 详细样式与圆环直径，与具体数值无关。
+    /// 图像尺寸由分组、窗口、简洁 / 详细样式、圆环直径与百分比字符数决定。
     static func imageSize(for model: StatusBarQuotaModel) -> NSSize {
         var width: CGFloat = 0
         for (groupIndex, group) in model.groups.enumerated() {
@@ -132,7 +133,7 @@ enum StatusBarQuotaImageRenderer {
 
     /// 生成状态栏额度图像。
     /// - Parameter model: 分组、窗口与圆环直径。
-    /// - Returns: 非 template 图像；尺寸只由窗口与简洁 / 详细样式决定，绘制时才解析外观颜色。
+    /// - Returns: 非 template 图像；尺寸由窗口、样式与百分比字符数决定，绘制时才解析外观颜色。
     static func makeImage(for model: StatusBarQuotaModel) -> NSImage {
         let size = StatusBarQuotaLayout.imageSize(for: model)
         let icons = agentIcons()
@@ -222,7 +223,6 @@ enum StatusBarQuotaImageRenderer {
         in context: CGContext
     ) {
         let diameter = model.ringDiameter
-        let slotWidth = StatusBarQuotaLayout.valueSlotWidth
         var x: CGFloat = 0
         for (groupIndex, group) in model.groups.enumerated() {
             if groupIndex > 0 {
@@ -242,11 +242,12 @@ enum StatusBarQuotaImageRenderer {
                 x += diameter
                 guard ring.showsValue else { continue }
                 x += StatusBarQuotaLayout.ringToValueSpacing
+                let valueWidth = StatusBarQuotaLayout.valueWidth(for: ring.valueText)
                 drawValue(
                     ring.valueText,
-                    in: NSRect(x: x, y: 0, width: slotWidth, height: height)
+                    in: NSRect(x: x, y: 0, width: valueWidth, height: height)
                 )
-                x += slotWidth
+                x += valueWidth
             }
             context.endTransparencyLayer()
             context.restoreGState()
@@ -348,7 +349,7 @@ enum StatusBarQuotaImageRenderer {
         let text = value as NSString
         let size = text.size(withAttributes: attributes)
         text.draw(
-            at: NSPoint(x: slot.maxX - size.width, y: slot.midY - size.height / 2),
+            at: NSPoint(x: slot.minX, y: slot.midY - size.height / 2),
             withAttributes: attributes
         )
     }

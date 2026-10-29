@@ -1454,7 +1454,7 @@ enum StatusBarTitleTextLayout {
 /// 继续交给原生 NSStatusBarButton cell 绘制 image + attributedTitle,避免标题字符串塞空格。
 enum StatusBarIconLayout {
     static let pointSize: CGFloat = 18
-    static let imageTitleSpacing: CGFloat = 4
+    static let imageTitleSpacing: CGFloat = 2
 
     static func canvasSize(for imageSize: NSSize) -> NSSize {
         NSSize(width: imageSize.width + imageTitleSpacing, height: imageSize.height)
