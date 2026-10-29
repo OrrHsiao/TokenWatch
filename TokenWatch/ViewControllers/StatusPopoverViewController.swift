@@ -18,7 +18,6 @@ final class StatusPopoverViewController: NSViewController {
     private static let todayDescriptionHeight: CGFloat = 20
     private static let todayDescriptionToSummarySpacing: CGFloat = 8
     private static let todayRefreshButtonSize: CGFloat = 20
-    private static let todayRefreshButtonSpacing: CGFloat = 6
     private static let todayRefreshButtonDefaultSymbolName = "arrow.clockwise"
     private static let todayRefreshButtonLoadingSymbolName = "arrow.triangle.2.circlepath"
     private static let summaryCardHeight: CGFloat = 50
@@ -167,23 +166,9 @@ final class StatusPopoverViewController: NSViewController {
             constant: Self.todayDescriptionToSummarySpacing
         )
     }
-    var debugRefreshButtonSitsRightOfDescriptionLabel: Bool {
-        hasConstraint(
-            firstItem: todayRefreshButton,
-            firstAttribute: .leading,
-            secondItem: todayDescriptionLabel,
-            secondAttribute: .trailing,
-            constant: Self.todayRefreshButtonSpacing
-        )
-    }
-    var debugRefreshButtonTrailingAlignsWithDescriptionRow: Bool {
-        hasConstraint(
-            firstItem: todayRefreshButton,
-            firstAttribute: .trailing,
-            secondItem: todayDescriptionRow,
-            secondAttribute: .trailing,
-            constant: 0
-        )
+    /// 刷新按钮在根视图中的 frame（非 flipped 坐标）。
+    var debugRefreshButtonFrame: NSRect {
+        todayRefreshButton.convert(todayRefreshButton.bounds, to: view)
     }
     var debugHoverLabelTrailingAlignsWithCollectionView: Bool {
         hasConstraint(
@@ -496,9 +481,10 @@ final class StatusPopoverViewController: NSViewController {
         originalContentView.translatesAutoresizingMaskIntoConstraints = false
         addToRootGlass(quotaSectionView)
         addToRootGlass(originalContentView)
+        // 刷新同时作用于订阅额度与下方统计，放在弹窗右上角（订阅区标题行右端）作为整个弹窗的入口。
+        quotaSectionView.setTitleAccessory(todayRefreshButton)
 
         todayDescriptionRow.addSubview(todayDescriptionLabel)
-        todayDescriptionRow.addSubview(todayRefreshButton)
         originalContentView.addSubview(todayDescriptionRow)
         originalContentView.addSubview(summaryStack)
         originalContentView.addSubview(heatmapCard)
@@ -524,15 +510,10 @@ final class StatusPopoverViewController: NSViewController {
             todayDescriptionRow.heightAnchor.constraint(equalToConstant: Self.todayDescriptionHeight),
 
             todayDescriptionLabel.leadingAnchor.constraint(equalTo: todayDescriptionRow.leadingAnchor),
+            todayDescriptionLabel.trailingAnchor.constraint(equalTo: todayDescriptionRow.trailingAnchor),
             todayDescriptionLabel.topAnchor.constraint(equalTo: todayDescriptionRow.topAnchor),
             todayDescriptionLabel.bottomAnchor.constraint(equalTo: todayDescriptionRow.bottomAnchor),
 
-            todayRefreshButton.leadingAnchor.constraint(
-                equalTo: todayDescriptionLabel.trailingAnchor,
-                constant: Self.todayRefreshButtonSpacing
-            ),
-            todayRefreshButton.trailingAnchor.constraint(equalTo: todayDescriptionRow.trailingAnchor),
-            todayRefreshButton.centerYAnchor.constraint(equalTo: todayDescriptionRow.centerYAnchor),
             todayRefreshButton.widthAnchor.constraint(equalToConstant: Self.todayRefreshButtonSize),
             todayRefreshButton.heightAnchor.constraint(equalToConstant: Self.todayRefreshButtonSize),
 

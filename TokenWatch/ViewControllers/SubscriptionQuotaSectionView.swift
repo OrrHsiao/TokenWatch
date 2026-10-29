@@ -47,7 +47,12 @@ final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
     /// 用户点击未购买状态下的解锁入口。
     var onUnlock: (() -> Void)?
 
+    private let horizontalInset: CGFloat
     private let titleLabel = NSTextField(labelWithString: "")
+    /// 标题行占位：行高固定为 `titleHeight`，下方分组都相对它排布。
+    /// 标题标签本身不设固定高度——NSTextField 把文字贴顶绘制，被拉高后几何中线会低于文字中线，
+    /// 导致按中线对齐的感叹号和附加控件看起来偏下。
+    private let titleRowGuide = NSLayoutGuide()
     private let divider = DashboardBackgroundView(backgroundColor: DashboardPalette.border)
     private var providerViews: [SubscriptionQuotaProvider: SubscriptionQuotaProviderView] = [:]
     /// 未购买时替代两个工具分组的锁定提示；占用同一区域，弹窗高度不变。
@@ -65,6 +70,7 @@ final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
     private static let infoPopoverReopenSuppressionInterval: TimeInterval = 0.3
 
     var debugTitle: String { titleLabel.stringValue }
+    var debugTitleLabel: NSTextField { titleLabel }
     var debugInfoText: String { infoText }
     var debugInfoButton: NSButton { infoButton }
     var debugIsInfoPopoverShown: Bool { infoPopover?.isShown ?? false }
@@ -83,6 +89,7 @@ final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
 
     /// - Parameter horizontalInset: 与原区域内容边缘对齐的左右内边距。
     init(horizontalInset: CGFloat) {
+        self.horizontalInset = horizontalInset
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         setupSubviews(horizontalInset: horizontalInset)
@@ -140,6 +147,18 @@ final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
         infoButton.setAccessibilityHelp(text)
     }
 
+    /// 在标题行最右侧放置附加控件（弹窗刷新按钮），右缘与内容边缘对齐，与标题文字垂直居中。
+    /// - Parameter accessory: 附加控件；宽高由调用方约束。
+    func setTitleAccessory(_ accessory: NSView) {
+        accessory.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(accessory)
+        NSLayoutConstraint.activate([
+            accessory.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -horizontalInset),
+            accessory.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+            infoButton.trailingAnchor.constraint(lessThanOrEqualTo: accessory.leadingAnchor, constant: -8),
+        ])
+    }
+
     /// 弹窗关闭时一并收起说明气泡。
     func closeInfoPopover() {
         infoPopover?.close()
@@ -187,24 +206,26 @@ final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
         infoButton.setAccessibilityIdentifier("SubscriptionQuotaInfoButton")
         infoButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(infoButton)
+        addLayoutGuide(titleRowGuide)
 
         var constraints = [
             heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.height),
+            titleRowGuide.topAnchor.constraint(equalTo: topAnchor, constant: SubscriptionQuotaSectionLayout.topPadding),
+            titleRowGuide.heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.titleHeight),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalInset),
+            titleLabel.topAnchor.constraint(equalTo: titleRowGuide.topAnchor),
             infoButton.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 4),
             infoButton.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
             infoButton.widthAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.infoButtonSize),
             infoButton.heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.infoButtonSize),
             infoButton.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -horizontalInset),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: SubscriptionQuotaSectionLayout.topPadding),
-            titleLabel.heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.titleHeight),
             divider.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalInset),
             divider.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -horizontalInset),
             divider.bottomAnchor.constraint(equalTo: bottomAnchor),
             divider.heightAnchor.constraint(equalToConstant: SubscriptionQuotaSectionLayout.dividerHeight),
         ]
 
-        var previousBottom = titleLabel.bottomAnchor
+        var previousBottom = titleRowGuide.bottomAnchor
         var spacing = SubscriptionQuotaSectionLayout.titleToProviderSpacing
         for provider in SubscriptionQuotaProvider.allCases {
             let providerView = SubscriptionQuotaProviderView(provider: provider)
@@ -259,7 +280,7 @@ final class SubscriptionQuotaSectionView: NSView, NSPopoverDelegate {
         let areaGuide = NSLayoutGuide()
         addLayoutGuide(areaGuide)
         return [
-            areaGuide.topAnchor.constraint(equalTo: titleLabel.bottomAnchor),
+            areaGuide.topAnchor.constraint(equalTo: titleRowGuide.bottomAnchor),
             areaGuide.bottomAnchor.constraint(equalTo: divider.topAnchor),
             lockedView.centerYAnchor.constraint(equalTo: areaGuide.centerYAnchor),
             lockedView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalInset),

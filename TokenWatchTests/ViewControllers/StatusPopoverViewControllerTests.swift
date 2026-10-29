@@ -31,11 +31,23 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugHourlyLineChartXAxisLabels == ["0", "6", "12", "18"])
     }
 
-    @Test("本日 token 文案右侧展示 SF Symbols 刷新按钮")
-    func todayDescriptionShowsRefreshButtonOnRight() {
+    @Test("弹窗右上角展示 SF Symbols 刷新按钮，与订阅剩余标题同行且右缘对齐内容边缘")
+    func refreshButtonSitsAtPopoverTopTrailingCorner() throws {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let buttonFrame = controller.debugRefreshButtonFrame
+        let heatmapCard = try #require(controller.debugHeatmapCard)
+        let cardFrame = heatmapCard.convert(heatmapCard.bounds, to: controller.view)
+        let titleLabel = controller.debugQuotaSectionView.debugTitleLabel
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: controller.view)
+        #expect(abs(buttonFrame.maxX - cardFrame.maxX) < 0.5)
+        // 标题文字行高非整数，Auto Layout 会把各自 frame 对齐到像素，中线允许 1pt 内的取整误差。
+        #expect(abs(buttonFrame.midY - titleFrame.midY) < 1)
+        #expect(controller.debugQuotaSectionFrame.contains(buttonFrame))
 
         #expect(controller.debugRefreshButtonTitle == "")
         #expect(controller.debugRefreshButtonSymbolName == "arrow.clockwise")
@@ -43,8 +55,6 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonToolTip == "立即刷新")
         #expect(controller.debugRefreshButtonAccessibilityLabel == "刷新本日 token 消耗")
         #expect(controller.debugRefreshButtonImageAccessibilityDescription == "立即刷新")
-        #expect(controller.debugRefreshButtonSitsRightOfDescriptionLabel)
-        #expect(controller.debugRefreshButtonTrailingAlignsWithDescriptionRow)
         #expect(controller.debugRefreshButtonActionName == "refreshTodayStats:")
     }
 
@@ -549,6 +559,23 @@ struct StatusPopoverViewControllerTests {
         #expect(section.debugInfoText.contains("显示剩余 100%"))
         #expect(!section.debugIsInfoPopoverShown)
         #expect(!controller.ownsAuxiliaryWindow(withNumber: -1))
+    }
+
+    @Test("订阅剩余标题按文字自身行高布局，感叹号与标题文字垂直居中")
+    func quotaInfoButtonCentersOnTitleText() {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        let titleLabel = section.debugTitleLabel
+        let infoButton = section.debugInfoButton
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: controller.view)
+        let infoFrame = infoButton.convert(infoButton.bounds, to: controller.view)
+        // 标签被拉高时文字仍贴顶绘制，几何中线会偏离文字中线；高度须等于文字自身行高。
+        #expect(abs(titleFrame.height - titleLabel.intrinsicContentSize.height) < 0.5)
+        #expect(abs(infoFrame.midY - titleFrame.midY) < 0.5)
     }
 
     @Test("cell 访问对越界索引做保护")
