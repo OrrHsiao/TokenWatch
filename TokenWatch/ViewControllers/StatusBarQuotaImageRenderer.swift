@@ -86,6 +86,12 @@ enum StatusBarQuotaLayout {
     static let providerSpacing: CGFloat = 6.5
     /// 组合模式中今日 token 文本与第一个额度圆环之间的间距。
     static let todayTokensToQuotaSpacing: CGFloat = 6
+    /// 仪表盘 SF Symbol 画布四周自带透明边：18pt 字号时画布 21pt、可见外圈约 18pt。
+    /// 组合模式据此放大绘制，使仪表盘可见外圈与额度圆环直径一致。
+    static let todayTokensSymbolVisibleRatio: CGFloat = 18.0 / 21.0
+    /// 组合模式中仪表盘可见外圈到今日 token 文本的间距；加上文本左侧字形留白，
+    /// 可见间隔约 4.25pt，与圆环到百分比一致。
+    static let todayTokensSymbolToTitleSpacing: CGFloat = 3.25
     static let dimmedAlpha: CGFloat = 0.55
     /// 虚线灰环的线段与间隔。
     static let unknownTrackDash: [CGFloat] = [2, 2]
@@ -194,6 +200,7 @@ enum StatusBarQuotaImageRenderer {
     ///
     /// NSStatusBarButton 只能把 image 放在 title 一侧，无法让圆环排在原生标题之后，
     /// 因此组合模式把三部分绘制进同一张图；文本沿用原有标题的字体、字号与双行排布。
+    /// 仪表盘可见外圈按圆环直径绘制，使两者一样大；图像高度不超过圆环，避免状态栏整体缩放。
     /// - Parameters:
     ///   - model: 额度圆环模型。
     ///   - leadingSymbol: 原有今日 token 档位图标（template）。
@@ -205,14 +212,20 @@ enum StatusBarQuotaImageRenderer {
         leadingTitle: NSAttributedString
     ) -> NSImage {
         let quotaSize = StatusBarQuotaLayout.imageSize(for: model)
-        let symbolSize = leadingSymbol.size
+        // 可见外圈占据 ringDiameter 见方；按透明边比例放大后的绘制区超出部分只是透明边，被图像边界裁掉。
+        let symbolSide = model.ringDiameter
+        let symbolScale = symbolSide / (leadingSymbol.size.width * StatusBarQuotaLayout.todayTokensSymbolVisibleRatio)
+        let symbolDrawSize = NSSize(
+            width: leadingSymbol.size.width * symbolScale,
+            height: leadingSymbol.size.height * symbolScale
+        )
         let titleBounds = leadingTitle.boundingRect(
             with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin]
         )
         let titleSize = NSSize(width: ceil(titleBounds.width), height: ceil(titleBounds.height))
-        let height = max(quotaSize.height, symbolSize.height, titleSize.height)
-        let titleOriginX = symbolSize.width + StatusBarIconLayout.imageTitleSpacing
+        let height = max(quotaSize.height, symbolSide, titleSize.height)
+        let titleOriginX = symbolSide + StatusBarQuotaLayout.todayTokensSymbolToTitleSpacing
         let quotaOriginX = titleOriginX + titleSize.width + StatusBarQuotaLayout.todayTokensToQuotaSpacing
         let size = NSSize(width: ceil(quotaOriginX + quotaSize.width), height: height)
         let icons = agentIcons()
@@ -220,10 +233,10 @@ enum StatusBarQuotaImageRenderer {
         let image = NSImage(size: size, flipped: false) { _ in
             guard let context = NSGraphicsContext.current?.cgContext else { return false }
             let symbolRect = NSRect(
-                x: 0,
-                y: (height - symbolSize.height) / 2,
-                width: symbolSize.width,
-                height: symbolSize.height
+                x: (symbolSide - symbolDrawSize.width) / 2,
+                y: (height - symbolDrawSize.height) / 2,
+                width: symbolDrawSize.width,
+                height: symbolDrawSize.height
             )
             context.beginTransparencyLayer(auxiliaryInfo: nil)
             leadingSymbol.draw(in: symbolRect)

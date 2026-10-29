@@ -217,15 +217,41 @@ struct StatusBarQuotaImageRendererTests {
         )
         let quotaSize = StatusBarQuotaLayout.imageSize(for: model)
 
+        // 仪表盘可见外圈按圆环直径占位，图像高度不超过圆环，避免状态栏整体缩放。
         #expect(image.size.width == ceil(
-            symbol.size.width
-                + StatusBarIconLayout.imageTitleSpacing
+            model.ringDiameter
+                + StatusBarQuotaLayout.todayTokensSymbolToTitleSpacing
                 + titleWidth
                 + StatusBarQuotaLayout.todayTokensToQuotaSpacing
                 + quotaSize.width
         ))
-        #expect(image.size.height >= quotaSize.height)
+        #expect(image.size.height == quotaSize.height)
         #expect(!image.isTemplate)
+    }
+
+    @Test("组合模式仪表盘可见外圈与额度圆环直径一致")
+    func combinedImageGaugeMatchesRingDiameter() throws {
+        for diameter in [StatusBarQuotaLayout.minimumRingDiameter, StatusBarQuotaLayout.defaultRingDiameter] {
+            let model = StatusBarQuotaModel.make(
+                presentations: makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2)),
+                configuration: Self.allDetailed,
+                ringDiameter: diameter
+            )
+            let symbol = try #require(NSImage(
+                systemSymbolName: "gauge.with.dots.needle.33percent",
+                accessibilityDescription: nil
+            )?.withSymbolConfiguration(.init(pointSize: StatusBarIconLayout.pointSize, weight: .regular)))
+            let image = StatusBarQuotaImageRenderer.makeImage(
+                for: model,
+                leadingSymbol: symbol,
+                leadingTitle: NSAttributedString(string: "1.2M\nTokens", attributes: [.font: NSFont.boldSystemFont(ofSize: 9)])
+            )
+
+            let ink = try inkBounds(in: image, columns: 0..<Int(diameter + 2))
+            // 允许 1pt 抗锯齿与字形取整误差。
+            #expect(abs(ink.width - diameter) <= 1)
+            #expect(abs(ink.height - diameter) <= 1)
+        }
     }
 
     @Test("圆环内图标与圆弧之间保留约 2pt 间隙")
@@ -263,12 +289,12 @@ struct StatusBarQuotaImageRendererTests {
 
     // MARK: - Helpers
 
-    /// 以 2x 浅色外观渲染图像，统计指定区域（点坐标）内不透明像素数。
-    private func opaquePixelCount(in image: NSImage, rect: NSRect) throws -> Int {
+    /// 以浅色外观按指定倍率渲染图像。
+    private func rasterize(_ image: NSImage, scale: CGFloat) throws -> NSBitmapImageRep {
         let rep = try #require(NSBitmapImageRep(
             bitmapDataPlanes: nil,
-            pixelsWide: Int(image.size.width * 2),
-            pixelsHigh: Int(image.size.height * 2),
+            pixelsWide: Int(image.size.width * scale),
+            pixelsHigh: Int(image.size.height * scale),
             bitsPerSample: 8,
             samplesPerPixel: 4,
             hasAlpha: true,
@@ -284,7 +310,29 @@ struct StatusBarQuotaImageRendererTests {
             image.draw(in: NSRect(origin: .zero, size: image.size))
         }
         NSGraphicsContext.restoreGraphicsState()
+        return rep
+    }
 
+    /// 指定列范围（点坐标）内可见像素的外接尺寸（点）。
+    private func inkBounds(in image: NSImage, columns: Range<Int>) throws -> NSSize {
+        let scale: CGFloat = 4
+        let rep = try rasterize(image, scale: scale)
+        var minX = Int.max, maxX = -1, minY = Int.max, maxY = -1
+        for x in Int(CGFloat(columns.lowerBound) * scale)..<Int(CGFloat(columns.upperBound) * scale) {
+            for y in 0..<rep.pixelsHigh where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.15 {
+                minX = min(minX, x)
+                maxX = max(maxX, x)
+                minY = min(minY, y)
+                maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= 0 else { return .zero }
+        return NSSize(width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
+    }
+
+    /// 以 2x 浅色外观渲染图像，统计指定区域（点坐标）内不透明像素数。
+    private func opaquePixelCount(in image: NSImage, rect: NSRect) throws -> Int {
+        let rep = try rasterize(image, scale: 2)
         var count = 0
         for x in Int(rect.minX * 2)..<Int(rect.maxX * 2) {
             for y in Int(rect.minY * 2)..<Int(rect.maxY * 2) where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.5 {
