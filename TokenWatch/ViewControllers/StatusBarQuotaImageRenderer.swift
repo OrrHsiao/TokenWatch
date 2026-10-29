@@ -93,7 +93,11 @@ enum StatusBarQuotaLayout {
     /// 可见间隔约 4.25pt，与圆环到百分比一致。
     static let todayTokensSymbolToTitleSpacing: CGFloat = 3.25
     static let dimmedAlpha: CGFloat = 0.55
-    /// 虚线灰环的线段与间隔。
+    /// 已用额度轨道相对 labelColor 的透明度：0.22 在浅色状态栏上几乎看不见已用部分，
+    /// 提高到 0.4 使已用段清晰可辨，同时仍明显弱于剩余额度圆弧。
+    static let usedTrackAlpha: CGFloat = 0.4
+    /// 无数据虚线灰环的透明度与线段 / 间隔。
+    static let unknownTrackAlpha: CGFloat = 0.45
     static let unknownTrackDash: [CGFloat] = [2, 2]
 
     /// 圆环直径跟随系统状态栏高度，在 20–22pt 候选范围内取值，并为上下留出 1pt。
@@ -329,9 +333,9 @@ enum StatusBarQuotaImageRenderer {
         if ring.remainingFraction == nil {
             let dash = StatusBarQuotaLayout.unknownTrackDash
             track.setLineDash(dash, count: dash.count, phase: 0)
-            labelColor.withAlphaComponent(0.45).setStroke()
+            labelColor.withAlphaComponent(StatusBarQuotaLayout.unknownTrackAlpha).setStroke()
         } else {
-            labelColor.withAlphaComponent(0.22).setStroke()
+            labelColor.withAlphaComponent(StatusBarQuotaLayout.usedTrackAlpha).setStroke()
         }
         track.stroke()
 
