@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Қалпына келу уақыты белгісіз";
 "quotaRecordedFormat" = "Жазылған: %@";
 "quotaStaleRecord" = "Ескі жазба";
-"quotaWaitingForNewRecord" = "Жаңа жазба күтілуде";
+"quotaResetInferred" = "Қалпына келді (болжам)";
+"quotaResetInferredNoteFormat" = "Қалпына келу уақыты жаңа жазбасыз өтсе, %@ қалды деп көрсетіледі (болжам). Басқа құрылғыларда немесе вебте пайдалану осы Mac-та тіркелмейді, сондықтан нақты қалдық азырақ болуы мүмкін.";
 "quotaNoRecord" = "Пайдалану жазбасы әлі жоқ";
 "quotaNotRead" = "Пайдалану әлі оқылмады";
 "quotaChooseFile" = "Пайдалану файлын таңдау";

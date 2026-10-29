@@ -79,14 +79,68 @@ struct SubscriptionQuotaPresenterTests {
         #expect(fiveHour.severity == .normal)
     }
 
-    @Test("已跨过重置点却没有新快照时显示等待新记录，不推断为 100%")
-    func passedResetWaitsForNewRecord() throws {
-        let presentation = make(.snapshot(snapshot(fiveHour: (used: 80, resetsIn: -60))))
+    @Test("已跨过重置点却没有新快照时推断剩余 100%，标注推断并弱化，未跨过的窗口照常展示")
+    func passedResetInfersFullRemaining() throws {
+        let presentation = make(.snapshot(snapshot(
+            fiveHour: (used: 80, resetsIn: -60),
+            sevenDay: (used: 16, resetsIn: 86_400)
+        )))
+        let fiveHour = try #require(presentation.windows.first { $0.kind == .fiveHour })
+        let sevenDay = try #require(presentation.windows.first { $0.kind == .sevenDay })
+
+        #expect(fiveHour.remainingPercent == 100)
+        #expect(fiveHour.valueText == "100%")
+        #expect(fiveHour.detailText == "已重置（推断）")
+        #expect(fiveHour.severity == .normal)
+        #expect(fiveHour.isStale)
+        #expect(fiveHour.isResetInferred)
+        #expect(fiveHour.accessibilityText == "Claude 5 小时 · 剩余 100% · 已重置（推断）")
+
+        #expect(sevenDay.remainingPercent == 84)
+        #expect(!sevenDay.isResetInferred)
+        #expect(!sevenDay.isStale)
+    }
+
+    @Test("用尽的窗口跨过重置点后同样推断为 100%，不保留危险色")
+    func exhaustedWindowAfterResetIsInferredFull() throws {
+        let presentation = make(.snapshot(snapshot(fiveHour: (used: 100, resetsIn: 0))))
         let fiveHour = try #require(presentation.windows.first)
 
-        #expect(fiveHour.remainingPercent == nil)
-        #expect(fiveHour.valueText == "—")
-        #expect(fiveHour.detailText == "等待新记录")
+        #expect(fiveHour.valueText == "100%")
+        #expect(fiveHour.severity == .normal)
+        #expect(fiveHour.isResetInferred)
+    }
+
+    @Test("悬停说明含推断窗口时在末尾说明一次推断的局限")
+    func toolTipAppendsInferredNoteOnce() {
+        let presentations = [SubscriptionQuotaProvider.claude, .codex].map { provider in
+            SubscriptionQuotaPresenter.make(
+                provider: provider,
+                state: SubscriptionQuotaProviderState(
+                    result: .snapshot(snapshot(
+                        provider: provider,
+                        recordedSecondsAgo: 10,
+                        fiveHour: (used: 40, resetsIn: -60)
+                    )),
+                    lastReadFailed: false
+                ),
+                now: now,
+                language: .en
+            )
+        }
+
+        #expect(SubscriptionQuotaPresenter.toolTip(for: presentations, language: .en) == """
+        Claude · Recorded just now
+        5 hours · 100% left · Reset (estimated)
+        Week · — · No usage record yet
+
+        Codex · Recorded just now
+        5 hours · 100% left · Reset (estimated)
+        Week · — · No usage record yet
+
+        When a reset time passes without a new record, the window is shown as 100% left (estimated). \
+        Usage on other devices or the web isn't recorded on this Mac, so the actual remaining may be lower.
+        """)
     }
 
     @Test("重置时间未知与窗口缺失分开提示")

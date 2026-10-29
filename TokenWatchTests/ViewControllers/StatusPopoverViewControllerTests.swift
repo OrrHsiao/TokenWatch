@@ -545,6 +545,8 @@ struct StatusPopoverViewControllerTests {
         #expect(section.debugInfoText.contains("~/.claude.json"))
         #expect(section.debugInfoText.contains("不调用任何网络 API"))
         #expect(section.debugInfoText.contains("略有延迟"))
+        #expect(section.debugInfoText.hasSuffix(SubscriptionQuotaPresenter.resetInferredNote(language: .zhHans)))
+        #expect(section.debugInfoText.contains("显示剩余 100%"))
         #expect(!section.debugIsInfoPopoverShown)
         #expect(!controller.ownsAuxiliaryWindow(withNumber: -1))
     }

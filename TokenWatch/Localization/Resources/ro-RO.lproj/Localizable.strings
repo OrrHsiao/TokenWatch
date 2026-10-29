@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Ora resetării necunoscută";
 "quotaRecordedFormat" = "Înregistrat: %@";
 "quotaStaleRecord" = "Înregistrare veche";
-"quotaWaitingForNewRecord" = "Se așteaptă o înregistrare nouă";
+"quotaResetInferred" = "Resetat (estimare)";
+"quotaResetInferredNoteFormat" = "Dacă ora de resetare trece fără o înregistrare nouă, se afișează %@ rămas (estimare). Utilizarea pe alte dispozitive sau pe web nu este înregistrată pe acest Mac, așa că restul real poate fi mai mic.";
 "quotaNoRecord" = "Încă nu există nicio înregistrare de utilizare";
 "quotaNotRead" = "Utilizarea nu a fost citită încă";
 "quotaChooseFile" = "Alegeți fișierul de utilizare";

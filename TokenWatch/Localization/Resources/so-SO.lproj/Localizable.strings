@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Waqtiga dib-u-bilaabidda lama yaqaan";
 "quotaRecordedFormat" = "La diiwaangeliyey: %@";
 "quotaStaleRecord" = "Diiwaan duug ah";
-"quotaWaitingForNewRecord" = "Waxaa la sugayaa diiwaan cusub";
+"quotaResetInferred" = "Dib ayaa loo bilaabay (qiyaas)";
+"quotaResetInferredNoteFormat" = "Haddii waqtiga dib-u-bilaabidda uu dhaafo iyada oo aan diiwaan cusub jirin, waxaa la muujinayaa %@ haray (qiyaas). Isticmaalka qalabka kale ama shabakadda laguma diiwaangeliyo Mac-gan, sidaas darteed waxa dhabta ah ee haray way ka yaraan karaan.";
 "quotaNoRecord" = "Weli ma jiro diiwaan isticmaal";
 "quotaNotRead" = "Isticmaalka weli lama akhrin";
 "quotaChooseFile" = "Dooro Faylka Isticmaalka";

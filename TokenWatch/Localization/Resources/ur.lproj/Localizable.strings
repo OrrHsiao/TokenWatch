@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "ری سیٹ کا وقت نامعلوم";
 "quotaRecordedFormat" = "درج: %@";
 "quotaStaleRecord" = "پرانا ریکارڈ";
-"quotaWaitingForNewRecord" = "نئے ریکارڈ کا انتظار";
+"quotaResetInferred" = "ری سیٹ ہو گیا (اندازاً)";
+"quotaResetInferredNoteFormat" = "ری سیٹ کا وقت گزرنے کے بعد نیا ریکارڈ نہ ہو تو %@ باقی دکھایا جاتا ہے (اندازاً)۔ دوسرے آلات یا ویب پر استعمال اس Mac پر درج نہیں ہوتا، اس لیے اصل باقی کم ہو سکتا ہے۔";
 "quotaNoRecord" = "ابھی تک استعمال کا کوئی ریکارڈ نہیں";
 "quotaNotRead" = "استعمال ابھی پڑھا نہیں گیا";
 "quotaChooseFile" = "استعمال کی فائل منتخب کریں";

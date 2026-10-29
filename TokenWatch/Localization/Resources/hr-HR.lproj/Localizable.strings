@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Vrijeme ponovnog postavljanja nepoznato";
 "quotaRecordedFormat" = "Zabilježeno: %@";
 "quotaStaleRecord" = "Stari zapis";
-"quotaWaitingForNewRecord" = "Čeka se novi zapis";
+"quotaResetInferred" = "Ponovno postavljeno (procjena)";
+"quotaResetInferredNoteFormat" = "Ako vrijeme ponovnog postavljanja prođe bez novog zapisa, prikazuje se %@ preostalo (procjena). Korištenje na drugim uređajima ili na webu ne bilježi se na ovom Macu, pa stvarni preostali iznos može biti manji.";
 "quotaNoRecord" = "Još nema zapisa o korištenju";
 "quotaNotRead" = "Korištenje još nije učitano";
 "quotaChooseFile" = "Odaberi datoteku korištenja";

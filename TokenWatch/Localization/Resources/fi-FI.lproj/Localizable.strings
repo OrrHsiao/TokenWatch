@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Nollausaika tuntematon";
 "quotaRecordedFormat" = "Tallennettu: %@";
 "quotaStaleRecord" = "Vanha tietue";
-"quotaWaitingForNewRecord" = "Odotetaan uutta tietuetta";
+"quotaResetInferred" = "Nollautunut (arvio)";
+"quotaResetInferredNoteFormat" = "Jos nollausaika kuluu ilman uutta tietuetta, jäljellä näytetään %@ (arvio). Käyttöä muilla laitteilla tai verkossa ei tallenneta tähän Maciin, joten todellinen jäljellä oleva määrä voi olla pienempi.";
 "quotaNoRecord" = "Käyttötietuetta ei vielä ole";
 "quotaNotRead" = "Käyttöä ei ole vielä luettu";
 "quotaChooseFile" = "Valitse käyttötiedosto";

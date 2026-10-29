@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Horário de redefinição desconhecido";
 "quotaRecordedFormat" = "Registrado: %@";
 "quotaStaleRecord" = "Registro antigo";
-"quotaWaitingForNewRecord" = "Aguardando novo registro";
+"quotaResetInferred" = "Redefinido (estimado)";
+"quotaResetInferredNoteFormat" = "Se o horário de redefinição passar sem um novo registro, é exibido %@ restante (estimado). O uso em outros dispositivos ou na web não é registrado neste Mac, então o restante real pode ser menor.";
 "quotaNoRecord" = "Nenhum registro de uso ainda";
 "quotaNotRead" = "Uso ainda não lido";
 "quotaChooseFile" = "Escolher arquivo de uso";

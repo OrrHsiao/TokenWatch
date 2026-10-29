@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "রিসেটের সময় অজানা";
 "quotaRecordedFormat" = "রেকর্ড: %@";
 "quotaStaleRecord" = "পুরোনো রেকর্ড";
-"quotaWaitingForNewRecord" = "নতুন রেকর্ডের অপেক্ষায়";
+"quotaResetInferred" = "রিসেট হয়েছে (আনুমানিক)";
+"quotaResetInferredNoteFormat" = "রিসেটের সময় পেরিয়ে যাওয়ার পর নতুন রেকর্ড না এলে %@ বাকি দেখানো হয় (আনুমানিক)। অন্য ডিভাইস বা ওয়েবে ব্যবহার এই Mac-এ রেকর্ড হয় না, তাই প্রকৃত বাকি কম হতে পারে।";
 "quotaNoRecord" = "এখনও কোনো ব্যবহারের রেকর্ড নেই";
 "quotaNotRead" = "ব্যবহার এখনও পড়া হয়নি";
 "quotaChooseFile" = "ব্যবহারের ফাইল নির্বাচন করুন";

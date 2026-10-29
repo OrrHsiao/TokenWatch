@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Hora de restabliment desconeguda";
 "quotaRecordedFormat" = "Registrat: %@";
 "quotaStaleRecord" = "Registre antic";
-"quotaWaitingForNewRecord" = "S'espera un registre nou";
+"quotaResetInferred" = "Restablert (estimat)";
+"quotaResetInferredNoteFormat" = "Si passa l'hora de restabliment sense cap registre nou, es mostra un %@ restant (estimat). L'ús en altres dispositius o al web no es registra en aquest Mac, de manera que el restant real pot ser inferior.";
 "quotaNoRecord" = "Encara no hi ha cap registre d'ús";
 "quotaNotRead" = "L'ús encara no s'ha llegit";
 "quotaChooseFile" = "Tria el fitxer d'ús";

@@ -207,7 +207,8 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case quotaResetUnknown
     case quotaRecordedFormat
     case quotaStaleRecord
-    case quotaWaitingForNewRecord
+    case quotaResetInferred
+    case quotaResetInferredNoteFormat
     case quotaNoRecord
     case quotaNotRead
     case quotaChooseFile

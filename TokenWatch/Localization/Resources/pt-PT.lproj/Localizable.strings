@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Hora de reposição desconhecida";
 "quotaRecordedFormat" = "Registado: %@";
 "quotaStaleRecord" = "Registo antigo";
-"quotaWaitingForNewRecord" = "A aguardar novo registo";
+"quotaResetInferred" = "Reposto (estimativa)";
+"quotaResetInferredNoteFormat" = "Se a hora de reposição passar sem um novo registo, é apresentado %@ restante (estimativa). A utilização noutros dispositivos ou na web não é registada neste Mac, pelo que o restante real pode ser inferior.";
 "quotaNoRecord" = "Ainda sem registo de utilização";
 "quotaNotRead" = "Utilização ainda não lida";
 "quotaChooseFile" = "Escolher ficheiro de utilização";

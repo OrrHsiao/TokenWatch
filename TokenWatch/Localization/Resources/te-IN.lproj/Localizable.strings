@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "రీసెట్ సమయం తెలియదు";
 "quotaRecordedFormat" = "నమోదైంది: %@";
 "quotaStaleRecord" = "పాత రికార్డ్";
-"quotaWaitingForNewRecord" = "కొత్త రికార్డ్ కోసం వేచి ఉంది";
+"quotaResetInferred" = "రీసెట్ అయింది (అంచనా)";
+"quotaResetInferredNoteFormat" = "రీసెట్ సమయం దాటిన తర్వాత కొత్త రికార్డ్ లేకపోతే %@ మిగిలి ఉన్నట్లు చూపబడుతుంది (అంచనా). ఇతర పరికరాలు లేదా వెబ్‌లో వినియోగం ఈ Macలో నమోదు కాదు, కాబట్టి వాస్తవ మిగులు తక్కువగా ఉండవచ్చు.";
 "quotaNoRecord" = "ఇంకా వినియోగ రికార్డ్ లేదు";
 "quotaNotRead" = "వినియోగం ఇంకా చదవబడలేదు";
 "quotaChooseFile" = "వినియోగ ఫైల్‌ను ఎంచుకోండి";

@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Muda wa kuweka upya haujulikani";
 "quotaRecordedFormat" = "Imerekodiwa: %@";
 "quotaStaleRecord" = "Rekodi ya zamani";
-"quotaWaitingForNewRecord" = "Inasubiri rekodi mpya";
+"quotaResetInferred" = "Imewekwa upya (makadirio)";
+"quotaResetInferredNoteFormat" = "Ikiwa muda wa kuweka upya utapita bila rekodi mpya, inaonyeshwa %@ iliyobaki (makadirio). Matumizi kwenye vifaa vingine au wavuti hayarekodiwi kwenye Mac hii, kwa hivyo kiasi halisi kilichobaki kinaweza kuwa kidogo.";
 "quotaNoRecord" = "Bado hakuna rekodi ya matumizi";
 "quotaNotRead" = "Matumizi bado hayajasomwa";
 "quotaChooseFile" = "Chagua Faili ya Matumizi";

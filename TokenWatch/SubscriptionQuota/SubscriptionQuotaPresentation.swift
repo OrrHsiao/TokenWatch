@@ -19,10 +19,13 @@ struct SubscriptionQuotaWindowPresentation: Equatable, Sendable {
     /// 剩余百分比；nil 表示该窗口显示“—”。
     let remainingPercent: Double?
     let valueText: String
-    /// 弹窗横条下方的说明：重置倒计时、重置时间未知、等待新记录等。
+    /// 弹窗横条下方的说明：重置倒计时、重置时间未知、已重置（推断）等。
     let detailText: String
     let severity: SubscriptionQuotaSeverity
+    /// 记录较旧或按重置点推断时为 true，横条弱化显示。
     let isStale: Bool
+    /// 剩余额度不是来源报告值，而是跨过重置点后推断的 100%。
+    let isResetInferred: Bool
     let accessibilityText: String
 }
 
@@ -55,6 +58,8 @@ enum SubscriptionQuotaPresenter {
     static let staleInterval: TimeInterval = 60 * 60
     static let warningThreshold: Double = 20
     static let dangerThreshold: Double = 10
+    /// 跨过重置点且没有新快照时推断的剩余百分比。
+    static let resetInferredRemainingPercent: Double = 100
 
     /// 生成单个工具的展示模型。
     /// - Parameters:
@@ -234,12 +239,13 @@ enum SubscriptionQuotaPresenter {
         return String(format: AppStrings.text(.quotaResetsInFormat, language: language), duration)
     }
 
-    /// 状态栏悬停说明：按工具分组列出窗口、剩余额度、重置时间、记录时间及旧记录状态。
+    /// 状态栏悬停说明：按工具分组列出窗口、剩余额度、重置时间、记录时间及旧记录状态；
+    /// 含推断窗口时在末尾说明推断的局限，只说明一次。
     static func toolTip(
         for presentations: [SubscriptionQuotaProviderPresentation],
         language: AppLanguage
     ) -> String {
-        presentations.map { presentation in
+        var sections = presentations.map { presentation in
             let name = presentation.provider.displayName
             if let message = presentation.message {
                 return "\(name) · \(message)"
@@ -258,7 +264,19 @@ enum SubscriptionQuotaPresenter {
                 lines.append(parts.joined(separator: " · "))
             }
             return lines.joined(separator: "\n")
-        }.joined(separator: "\n\n")
+        }
+        if presentations.contains(where: { $0.windows.contains(where: \.isResetInferred) }) {
+            sections.append(resetInferredNote(language: language))
+        }
+        return sections.joined(separator: "\n\n")
+    }
+
+    /// 推断规则与局限的说明，悬停说明与订阅区说明气泡共用。
+    static func resetInferredNote(language: AppLanguage) -> String {
+        String(
+            format: AppStrings.text(.quotaResetInferredNoteFormat, language: language),
+            percentText(remainingPercent: resetInferredRemainingPercent)
+        )
     }
 
     static func remainingText(remainingPercent: Double, language: AppLanguage) -> String {
@@ -286,13 +304,29 @@ enum SubscriptionQuotaPresenter {
                 language: language
             )
         }
-        // 已跨过重置点却没有新快照时不推断为已恢复 100%，只提示等待新记录。
+        let title = windowTitle(kind, language: language)
+
+        // 来源只在本机使用工具时写新快照：跨过重置点后若本机用过，最新快照会换成新窗口的值，
+        // 仍停留在旧快照即说明重置后本机未使用，因此推断剩余 100%。
+        // 其他设备或网页的消耗本机看不到，文案标注“推断”并弱化横条，不使用警告色。
         if let resetsAt = value.resetsAt, now >= resetsAt {
-            return unavailableWindow(
+            let detail = AppStrings.text(.quotaResetInferred, language: language)
+            let remaining = resetInferredRemainingPercent
+            return SubscriptionQuotaWindowPresentation(
                 kind: kind,
-                provider: provider,
-                detail: AppStrings.text(.quotaWaitingForNewRecord, language: language),
-                language: language
+                title: title,
+                shortLabel: shortLabel(kind),
+                remainingPercent: remaining,
+                valueText: percentText(remainingPercent: remaining),
+                detailText: detail,
+                severity: .normal,
+                isStale: true,
+                isResetInferred: true,
+                accessibilityText: [
+                    "\(provider.displayName) \(title)",
+                    remainingText(remainingPercent: remaining, language: language),
+                    detail,
+                ].joined(separator: " · ")
             )
         }
 
@@ -307,7 +341,6 @@ enum SubscriptionQuotaPresenter {
             detailParts.append(AppStrings.text(.quotaResetUnknown, language: language))
         }
 
-        let title = windowTitle(kind, language: language)
         var accessibilityParts = [
             "\(provider.displayName) \(title)",
             remainingText(remainingPercent: remaining, language: language),
@@ -324,6 +357,7 @@ enum SubscriptionQuotaPresenter {
             detailText: detailParts.joined(separator: " · "),
             severity: isStale ? .normal : severity(remainingPercent: remaining),
             isStale: isStale,
+            isResetInferred: false,
             accessibilityText: accessibilityParts.joined(separator: " · ")
         )
     }
@@ -357,6 +391,7 @@ enum SubscriptionQuotaPresenter {
             detailText: detail,
             severity: .normal,
             isStale: false,
+            isResetInferred: false,
             accessibilityText: accessibility
         )
     }

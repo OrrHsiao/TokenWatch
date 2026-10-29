@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Nieznany czas resetu";
 "quotaRecordedFormat" = "Zarejestrowano: %@";
 "quotaStaleRecord" = "Stary zapis";
-"quotaWaitingForNewRecord" = "Oczekiwanie na nowy zapis";
+"quotaResetInferred" = "Zresetowano (szacunek)";
+"quotaResetInferredNoteFormat" = "Jeśli czas resetu minie bez nowego zapisu, wyświetlane jest %@ pozostałe (szacunek). Użycie na innych urządzeniach lub w internecie nie jest rejestrowane na tym Macu, więc rzeczywista pozostała wartość może być niższa.";
 "quotaNoRecord" = "Brak zapisu użycia";
 "quotaNotRead" = "Użycie jeszcze nieodczytane";
 "quotaChooseFile" = "Wybierz plik użycia";

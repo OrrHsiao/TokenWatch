@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "재설정 시간 알 수 없음";
 "quotaRecordedFormat" = "기록: %@";
 "quotaStaleRecord" = "오래된 기록";
-"quotaWaitingForNewRecord" = "새 기록 대기 중";
+"quotaResetInferred" = "재설정됨(추정)";
+"quotaResetInferredNoteFormat" = "재설정 시각이 지난 뒤 새 기록이 없으면 %@ 남음으로 표시합니다(추정). 다른 기기나 웹에서의 사용은 이 Mac에 기록되지 않으므로 실제 남은 양은 더 적을 수 있습니다.";
 "quotaNoRecord" = "아직 사용량 기록 없음";
 "quotaNotRead" = "아직 사용량을 읽지 않음";
 "quotaChooseFile" = "사용량 파일 선택";

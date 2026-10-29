@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Heure de réinitialisation inconnue";
 "quotaRecordedFormat" = "Enregistré : %@";
 "quotaStaleRecord" = "Ancien relevé";
-"quotaWaitingForNewRecord" = "En attente d'un nouveau relevé";
+"quotaResetInferred" = "Réinitialisé (estimé)";
+"quotaResetInferredNoteFormat" = "Si l'heure de réinitialisation est dépassée sans nouveau relevé, l'affichage indique %@ restant (estimé). L'utilisation sur d'autres appareils ou sur le Web n'est pas enregistrée sur ce Mac, le solde réel peut donc être inférieur.";
 "quotaNoRecord" = "Aucun relevé d'utilisation pour l'instant";
 "quotaNotRead" = "Utilisation pas encore lue";
 "quotaChooseFile" = "Choisir le fichier d'utilisation";

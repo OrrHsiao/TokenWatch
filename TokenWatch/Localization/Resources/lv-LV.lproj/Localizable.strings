@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Atiestatīšanas laiks nav zināms";
 "quotaRecordedFormat" = "Reģistrēts: %@";
 "quotaStaleRecord" = "Vecs ieraksts";
-"quotaWaitingForNewRecord" = "Gaida jaunu ierakstu";
+"quotaResetInferred" = "Atiestatīts (aplēse)";
+"quotaResetInferredNoteFormat" = "Ja atiestatīšanas laiks paiet bez jauna ieraksta, tiek rādīts %@ atlikums (aplēse). Lietojums citās ierīcēs vai tīmeklī šajā Mac netiek reģistrēts, tāpēc faktiskais atlikums var būt mazāks.";
 "quotaNoRecord" = "Lietojuma ieraksta vēl nav";
 "quotaNotRead" = "Lietojums vēl nav nolasīts";
 "quotaChooseFile" = "Izvēlēties lietojuma failu";

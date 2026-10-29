@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "زمان بازنشانی نامشخص";
 "quotaRecordedFormat" = "ثبت‌شده: %@";
 "quotaStaleRecord" = "رکورد قدیمی";
-"quotaWaitingForNewRecord" = "در انتظار رکورد جدید";
+"quotaResetInferred" = "بازنشانی شد (تخمینی)";
+"quotaResetInferredNoteFormat" = "اگر زمان بازنشانی بدون رکورد جدید بگذرد، %@ باقی‌مانده نمایش داده می‌شود (تخمینی). استفاده در دستگاه‌های دیگر یا وب در این Mac ثبت نمی‌شود، بنابراین مقدار واقعی باقی‌مانده ممکن است کمتر باشد.";
 "quotaNoRecord" = "هنوز رکورد مصرفی وجود ندارد";
 "quotaNotRead" = "مصرف هنوز خوانده نشده";
 "quotaChooseFile" = "انتخاب فایل مصرف";

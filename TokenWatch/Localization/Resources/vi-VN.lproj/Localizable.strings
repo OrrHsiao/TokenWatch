@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Không rõ thời gian đặt lại";
 "quotaRecordedFormat" = "Đã ghi: %@";
 "quotaStaleRecord" = "Bản ghi cũ";
-"quotaWaitingForNewRecord" = "Đang chờ bản ghi mới";
+"quotaResetInferred" = "Đã đặt lại (ước tính)";
+"quotaResetInferredNoteFormat" = "Nếu đã qua thời điểm đặt lại mà chưa có bản ghi mới, mức còn lại được hiển thị là %@ (ước tính). Mức sử dụng trên thiết bị khác hoặc trên web không được ghi lại trên máy Mac này, nên mức còn lại thực tế có thể thấp hơn.";
 "quotaNoRecord" = "Chưa có bản ghi sử dụng";
 "quotaNotRead" = "Chưa đọc mức sử dụng";
 "quotaChooseFile" = "Chọn tệp sử dụng";

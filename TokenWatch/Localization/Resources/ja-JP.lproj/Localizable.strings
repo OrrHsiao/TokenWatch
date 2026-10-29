@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "リセット時刻不明";
 "quotaRecordedFormat" = "記録: %@";
 "quotaStaleRecord" = "古い記録";
-"quotaWaitingForNewRecord" = "新しい記録を待機中";
+"quotaResetInferred" = "リセット済み（推定）";
+"quotaResetInferredNoteFormat" = "リセット時刻を過ぎても新しい記録がない場合は、残り %@ と表示します（推定）。ほかのデバイスや Web での使用はこの Mac に記録されないため、実際の残りはこれより少ない可能性があります。";
 "quotaNoRecord" = "使用量の記録はまだありません";
 "quotaNotRead" = "使用量はまだ読み込まれていません";
 "quotaChooseFile" = "使用量ファイルを選択";

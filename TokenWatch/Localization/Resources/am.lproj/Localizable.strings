@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "ዳግም የሚጀመርበት ጊዜ አይታወቅም";
 "quotaRecordedFormat" = "የተመዘገበው፦ %@";
 "quotaStaleRecord" = "የቆየ መዝገብ";
-"quotaWaitingForNewRecord" = "አዲስ መዝገብ በመጠበቅ ላይ";
+"quotaResetInferred" = "ዳግም ተጀምሯል (ግምት)";
+"quotaResetInferredNoteFormat" = "የዳግም መጀመሪያ ጊዜ ካለፈ በኋላ አዲስ መዝገብ ከሌለ %@ እንደቀረ ይታያል (ግምት)። በሌሎች መሣሪያዎች ወይም በድር ላይ ያለ አጠቃቀም በዚህ Mac ላይ አይመዘገብም፣ ስለዚህ ትክክለኛው ቀሪ ያነሰ ሊሆን ይችላል።";
 "quotaNoRecord" = "እስካሁን የአጠቃቀም መዝገብ የለም";
 "quotaNotRead" = "አጠቃቀም ገና አልተነበበም";
 "quotaChooseFile" = "የአጠቃቀም ፋይል ይምረጡ";

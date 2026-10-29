@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Atstatymo laikas nežinomas";
 "quotaRecordedFormat" = "Užfiksuota: %@";
 "quotaStaleRecord" = "Senas įrašas";
-"quotaWaitingForNewRecord" = "Laukiama naujo įrašo";
+"quotaResetInferred" = "Atstatyta (įvertis)";
+"quotaResetInferredNoteFormat" = "Jei atstatymo laikas praeina be naujo įrašo, rodoma %@ likusi dalis (įvertis). Naudojimas kituose įrenginiuose ar žiniatinklyje šiame Mac neįrašomas, todėl tikrasis likutis gali būti mažesnis.";
 "quotaNoRecord" = "Naudojimo įrašo dar nėra";
 "quotaNotRead" = "Naudojimas dar nenuskaitytas";
 "quotaChooseFile" = "Pasirinkti naudojimo failą";

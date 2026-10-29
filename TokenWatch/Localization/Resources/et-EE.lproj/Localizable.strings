@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Lähtestamise aeg teadmata";
 "quotaRecordedFormat" = "Salvestatud: %@";
 "quotaStaleRecord" = "Vana kirje";
-"quotaWaitingForNewRecord" = "Ootab uut kirjet";
+"quotaResetInferred" = "Lähtestatud (hinnang)";
+"quotaResetInferredNoteFormat" = "Kui lähtestamise aeg möödub ilma uue kirjeta, kuvatakse %@ alles (hinnang). Teistes seadmetes või veebis kasutamist selles Macis ei salvestata, seega tegelik jääk võib olla väiksem.";
 "quotaNoRecord" = "Kasutuskirjet veel pole";
 "quotaNotRead" = "Kasutust pole veel loetud";
 "quotaChooseFile" = "Vali kasutusfail";

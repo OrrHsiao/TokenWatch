@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Ukendt nulstillingstidspunkt";
 "quotaRecordedFormat" = "Registreret: %@";
 "quotaStaleRecord" = "Gammel registrering";
-"quotaWaitingForNewRecord" = "Venter på ny registrering";
+"quotaResetInferred" = "Nulstillet (anslået)";
+"quotaResetInferredNoteFormat" = "Hvis nulstillingstidspunktet passerer uden en ny registrering, vises %@ tilbage (anslået). Brug på andre enheder eller på nettet registreres ikke på denne Mac, så det faktiske resterende kan være lavere.";
 "quotaNoRecord" = "Ingen forbrugsregistrering endnu";
 "quotaNotRead" = "Forbrug er ikke læst endnu";
 "quotaChooseFile" = "Vælg forbrugsfil";

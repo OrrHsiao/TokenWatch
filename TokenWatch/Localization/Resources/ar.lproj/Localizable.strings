@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "وقت إعادة التعيين غير معروف";
 "quotaRecordedFormat" = "سُجّل: %@";
 "quotaStaleRecord" = "سجل قديم";
-"quotaWaitingForNewRecord" = "في انتظار سجل جديد";
+"quotaResetInferred" = "أُعيد التعيين (تقديري)";
+"quotaResetInferredNoteFormat" = "إذا مرّ وقت إعادة التعيين دون سجل جديد، يُعرض المتبقي %@ (تقديري). لا يُسجَّل الاستخدام على الأجهزة الأخرى أو على الويب في هذا الـ Mac، لذا قد يكون المتبقي الفعلي أقل.";
 "quotaNoRecord" = "لا يوجد سجل استخدام بعد";
 "quotaNotRead" = "لم تتم قراءة الاستخدام بعد";
 "quotaChooseFile" = "اختيار ملف الاستخدام";

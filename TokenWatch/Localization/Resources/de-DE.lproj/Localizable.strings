@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Zurücksetzung unbekannt";
 "quotaRecordedFormat" = "Erfasst: %@";
 "quotaStaleRecord" = "Alter Eintrag";
-"quotaWaitingForNewRecord" = "Warte auf neuen Eintrag";
+"quotaResetInferred" = "Zurückgesetzt (geschätzt)";
+"quotaResetInferredNoteFormat" = "Ist der Rücksetzzeitpunkt ohne neuen Eintrag verstrichen, werden %@ verbleibend angezeigt (geschätzt). Nutzung auf anderen Geräten oder im Web wird auf diesem Mac nicht erfasst, daher kann der tatsächliche Rest niedriger sein.";
 "quotaNoRecord" = "Noch kein Nutzungseintrag";
 "quotaNotRead" = "Nutzung noch nicht gelesen";
 "quotaChooseFile" = "Nutzungsdatei wählen";

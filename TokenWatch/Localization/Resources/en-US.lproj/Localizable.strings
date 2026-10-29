@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Reset time unknown";
 "quotaRecordedFormat" = "Recorded %@";
 "quotaStaleRecord" = "Old record";
-"quotaWaitingForNewRecord" = "Waiting for new record";
+"quotaResetInferred" = "Reset (estimated)";
+"quotaResetInferredNoteFormat" = "When a reset time passes without a new record, the window is shown as %@ left (estimated). Usage on other devices or the web isn't recorded on this Mac, so the actual remaining may be lower.";
 "quotaNoRecord" = "No usage record yet";
 "quotaNotRead" = "Usage not read yet";
 "quotaChooseFile" = "Choose Usage File";

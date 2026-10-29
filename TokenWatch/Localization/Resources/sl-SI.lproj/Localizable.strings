@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Čas ponastavitve ni znan";
 "quotaRecordedFormat" = "Zabeleženo: %@";
 "quotaStaleRecord" = "Star zapis";
-"quotaWaitingForNewRecord" = "Čakanje na nov zapis";
+"quotaResetInferred" = "Ponastavljeno (ocena)";
+"quotaResetInferredNoteFormat" = "Če čas ponastavitve mine brez novega zapisa, je prikazano %@ preostanka (ocena). Uporaba v drugih napravah ali na spletu se v tem Macu ne beleži, zato je dejanski preostanek lahko manjši.";
 "quotaNoRecord" = "Zapisa o uporabi še ni";
 "quotaNotRead" = "Uporaba še ni prebrana";
 "quotaChooseFile" = "Izberi datoteko uporabe";

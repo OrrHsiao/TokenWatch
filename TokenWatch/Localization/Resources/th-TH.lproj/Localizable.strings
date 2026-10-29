@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "ไม่ทราบเวลารีเซ็ต";
 "quotaRecordedFormat" = "บันทึกเมื่อ: %@";
 "quotaStaleRecord" = "บันทึกเก่า";
-"quotaWaitingForNewRecord" = "กำลังรอบันทึกใหม่";
+"quotaResetInferred" = "รีเซ็ตแล้ว (ประมาณการ)";
+"quotaResetInferredNoteFormat" = "หากเลยเวลารีเซ็ตแล้วยังไม่มีบันทึกใหม่ จะแสดงว่าเหลือ %@ (ประมาณการ) การใช้งานบนอุปกรณ์อื่นหรือบนเว็บจะไม่ถูกบันทึกใน Mac เครื่องนี้ ยอดคงเหลือจริงจึงอาจน้อยกว่านี้";
 "quotaNoRecord" = "ยังไม่มีบันทึกการใช้งาน";
 "quotaNotRead" = "ยังไม่ได้อ่านการใช้งาน";
 "quotaChooseFile" = "เลือกไฟล์การใช้งาน";

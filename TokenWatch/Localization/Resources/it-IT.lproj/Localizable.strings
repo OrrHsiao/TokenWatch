@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Ora di azzeramento sconosciuta";
 "quotaRecordedFormat" = "Registrato: %@";
 "quotaStaleRecord" = "Registrazione vecchia";
-"quotaWaitingForNewRecord" = "In attesa di una nuova registrazione";
+"quotaResetInferred" = "Azzerato (stima)";
+"quotaResetInferredNoteFormat" = "Se l'orario di azzeramento passa senza una nuova registrazione, viene mostrato il %@ rimanente (stima). L'uso su altri dispositivi o sul web non viene registrato su questo Mac, quindi il residuo effettivo potrebbe essere inferiore.";
 "quotaNoRecord" = "Nessuna registrazione di utilizzo";
 "quotaNotRead" = "Utilizzo non ancora letto";
 "quotaChooseFile" = "Scegli file di utilizzo";

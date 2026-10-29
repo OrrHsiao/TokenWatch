@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "रीसेटची वेळ अज्ञात";
 "quotaRecordedFormat" = "नोंदवले: %@";
 "quotaStaleRecord" = "जुनी नोंद";
-"quotaWaitingForNewRecord" = "नवीन नोंदीची प्रतीक्षा";
+"quotaResetInferred" = "रीसेट झाले (अंदाजे)";
+"quotaResetInferredNoteFormat" = "रीसेटची वेळ उलटल्यानंतर नवीन नोंद नसल्यास %@ शिल्लक दाखवले जाते (अंदाजे). इतर डिव्हाइसवर किंवा वेबवरील वापर या Mac वर नोंदवला जात नाही, त्यामुळे प्रत्यक्ष शिल्लक कमी असू शकते.";
 "quotaNoRecord" = "अद्याप वापराची नोंद नाही";
 "quotaNotRead" = "वापर अद्याप वाचलेला नाही";
 "quotaChooseFile" = "वापर फाइल निवडा";

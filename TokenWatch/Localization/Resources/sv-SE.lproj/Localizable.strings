@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Okänd återställningstid";
 "quotaRecordedFormat" = "Registrerat: %@";
 "quotaStaleRecord" = "Gammal registrering";
-"quotaWaitingForNewRecord" = "Väntar på ny registrering";
+"quotaResetInferred" = "Återställd (uppskattat)";
+"quotaResetInferredNoteFormat" = "Om återställningstiden passerar utan en ny registrering visas %@ kvar (uppskattat). Användning på andra enheter eller på webben registreras inte på den här Macen, så den faktiska återstoden kan vara lägre.";
 "quotaNoRecord" = "Ingen användningsregistrering än";
 "quotaNotRead" = "Användning har inte lästs än";
 "quotaChooseFile" = "Välj användningsfil";

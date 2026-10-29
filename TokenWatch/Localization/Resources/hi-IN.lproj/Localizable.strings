@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "रीसेट का समय अज्ञात";
 "quotaRecordedFormat" = "दर्ज: %@";
 "quotaStaleRecord" = "पुराना रिकॉर्ड";
-"quotaWaitingForNewRecord" = "नए रिकॉर्ड की प्रतीक्षा";
+"quotaResetInferred" = "रीसेट हो गया (अनुमानित)";
+"quotaResetInferredNoteFormat" = "रीसेट समय बीतने के बाद नया रिकॉर्ड न होने पर %@ शेष दिखाया जाता है (अनुमानित)। अन्य डिवाइस या वेब पर उपयोग इस Mac पर दर्ज नहीं होता, इसलिए वास्तविक शेष कम हो सकता है।";
 "quotaNoRecord" = "अभी कोई उपयोग रिकॉर्ड नहीं";
 "quotaNotRead" = "उपयोग अभी पढ़ा नहीं गया";
 "quotaChooseFile" = "उपयोग फ़ाइल चुनें";

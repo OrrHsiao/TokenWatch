@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "重置时间未知";
 "quotaRecordedFormat" = "记录于 %@";
 "quotaStaleRecord" = "旧记录";
-"quotaWaitingForNewRecord" = "等待新记录";
+"quotaResetInferred" = "已重置（推断）";
+"quotaResetInferredNoteFormat" = "跨过重置时间后若没有新记录，会按已重置显示剩余 %@；其他设备或网页上的使用不会记录在本机，实际剩余可能更低。";
 "quotaNoRecord" = "尚无额度记录";
 "quotaNotRead" = "尚未读取额度";
 "quotaChooseFile" = "选择额度文件";

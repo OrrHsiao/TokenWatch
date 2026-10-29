@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Време ресетовања непознато";
 "quotaRecordedFormat" = "Забележено: %@";
 "quotaStaleRecord" = "Стари запис";
-"quotaWaitingForNewRecord" = "Чека се нови запис";
+"quotaResetInferred" = "Ресетовано (процена)";
+"quotaResetInferredNoteFormat" = "Ако време ресетовања прође без новог записа, приказује се %@ преостало (процена). Коришћење на другим уређајима или на вебу не бележи се на овом Mac-у, па стварни остатак може бити мањи.";
 "quotaNoRecord" = "Још нема записа о коришћењу";
 "quotaNotRead" = "Коришћење још није учитано";
 "quotaChooseFile" = "Изабери датотеку коришћења";

@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Koha e rivendosjes e panjohur";
 "quotaRecordedFormat" = "Regjistruar: %@";
 "quotaStaleRecord" = "Regjistrim i vjetër";
-"quotaWaitingForNewRecord" = "Në pritje të regjistrimit të ri";
+"quotaResetInferred" = "U rivendos (vlerësim)";
+"quotaResetInferredNoteFormat" = "Nëse ora e rivendosjes kalon pa një regjistrim të ri, shfaqet %@ e mbetur (vlerësim). Përdorimi në pajisje të tjera ose në ueb nuk regjistrohet në këtë Mac, prandaj mbetja e vërtetë mund të jetë më e ulët.";
 "quotaNoRecord" = "Ende nuk ka regjistrim përdorimi";
 "quotaNotRead" = "Përdorimi nuk është lexuar ende";
 "quotaChooseFile" = "Zgjidh skedarin e përdorimit";

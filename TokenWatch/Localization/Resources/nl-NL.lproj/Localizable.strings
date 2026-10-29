@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Resettijd onbekend";
 "quotaRecordedFormat" = "Vastgelegd: %@";
 "quotaStaleRecord" = "Oude registratie";
-"quotaWaitingForNewRecord" = "Wachten op nieuwe registratie";
+"quotaResetInferred" = "Gereset (geschat)";
+"quotaResetInferredNoteFormat" = "Als het resettijdstip verstrijkt zonder nieuwe registratie, wordt %@ resterend getoond (geschat). Gebruik op andere apparaten of op het web wordt niet op deze Mac vastgelegd, dus het werkelijke resterende deel kan lager zijn.";
 "quotaNoRecord" = "Nog geen gebruiksregistratie";
 "quotaNotRead" = "Gebruik nog niet gelezen";
 "quotaChooseFile" = "Gebruiksbestand kiezen";

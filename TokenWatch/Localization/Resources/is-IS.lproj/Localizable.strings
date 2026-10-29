@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Óþekktur endurstillingartími";
 "quotaRecordedFormat" = "Skráð: %@";
 "quotaStaleRecord" = "Gömul skráning";
-"quotaWaitingForNewRecord" = "Bíður eftir nýrri skráningu";
+"quotaResetInferred" = "Endurstillt (áætlað)";
+"quotaResetInferredNoteFormat" = "Ef endurstillingartíminn líður án nýrrar skráningar er sýnt %@ eftir (áætlað). Notkun á öðrum tækjum eða á vefnum er ekki skráð á þennan Mac, svo raunveruleg eftirstöð gæti verið lægri.";
 "quotaNoRecord" = "Engin notkunarskráning enn";
 "quotaNotRead" = "Notkun hefur ekki verið lesin enn";
 "quotaChooseFile" = "Velja notkunarskrá";

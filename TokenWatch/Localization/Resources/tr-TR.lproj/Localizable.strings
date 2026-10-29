@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Sıfırlanma zamanı bilinmiyor";
 "quotaRecordedFormat" = "Kaydedildi: %@";
 "quotaStaleRecord" = "Eski kayıt";
-"quotaWaitingForNewRecord" = "Yeni kayıt bekleniyor";
+"quotaResetInferred" = "Sıfırlandı (tahmini)";
+"quotaResetInferredNoteFormat" = "Sıfırlama zamanı yeni bir kayıt olmadan geçerse %@ kaldı olarak gösterilir (tahmini). Diğer cihazlarda veya web'de yapılan kullanım bu Mac'te kaydedilmez, bu nedenle gerçek kalan miktar daha düşük olabilir.";
 "quotaNoRecord" = "Henüz kullanım kaydı yok";
 "quotaNotRead" = "Kullanım henüz okunmadı";
 "quotaChooseFile" = "Kullanım Dosyasını Seç";

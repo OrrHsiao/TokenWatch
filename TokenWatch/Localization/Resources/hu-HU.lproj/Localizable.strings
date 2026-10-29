@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "A visszaállítás ideje ismeretlen";
 "quotaRecordedFormat" = "Rögzítve: %@";
 "quotaStaleRecord" = "Régi rekord";
-"quotaWaitingForNewRecord" = "Új rekordra vár";
+"quotaResetInferred" = "Visszaállítva (becslés)";
+"quotaResetInferredNoteFormat" = "Ha a visszaállítási idő új rekord nélkül telik el, %@ maradék jelenik meg (becslés). A más eszközökön vagy a weben történő használatot ez a Mac nem rögzíti, így a tényleges maradék kevesebb lehet.";
 "quotaNoRecord" = "Még nincs használati rekord";
 "quotaNotRead" = "A használat még nincs beolvasva";
 "quotaChooseFile" = "Használati fájl kiválasztása";

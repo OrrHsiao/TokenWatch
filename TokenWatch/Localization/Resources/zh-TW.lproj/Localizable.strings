@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "重設時間未知";
 "quotaRecordedFormat" = "記錄於 %@";
 "quotaStaleRecord" = "舊記錄";
-"quotaWaitingForNewRecord" = "等待新記錄";
+"quotaResetInferred" = "已重設（推斷）";
+"quotaResetInferredNoteFormat" = "超過重設時間後若沒有新記錄，會按已重設顯示剩餘 %@；在其他裝置或網頁上的使用不會記錄在本機，實際剩餘可能更低。";
 "quotaNoRecord" = "尚無額度記錄";
 "quotaNotRead" = "尚未讀取額度";
 "quotaChooseFile" = "選擇額度檔案";

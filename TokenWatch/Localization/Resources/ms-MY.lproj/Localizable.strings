@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Masa tetapan semula tidak diketahui";
 "quotaRecordedFormat" = "Direkodkan: %@";
 "quotaStaleRecord" = "Rekod lama";
-"quotaWaitingForNewRecord" = "Menunggu rekod baharu";
+"quotaResetInferred" = "Telah ditetapkan semula (anggaran)";
+"quotaResetInferredNoteFormat" = "Jika masa tetapan semula berlalu tanpa rekod baharu, baki %@ dipaparkan (anggaran). Penggunaan pada peranti lain atau web tidak direkodkan pada Mac ini, jadi baki sebenar mungkin lebih rendah.";
 "quotaNoRecord" = "Belum ada rekod penggunaan";
 "quotaNotRead" = "Penggunaan belum dibaca";
 "quotaChooseFile" = "Pilih Fail Penggunaan";

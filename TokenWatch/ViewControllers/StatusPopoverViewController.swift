@@ -661,7 +661,10 @@ final class StatusPopoverViewController: NSViewController {
         let now = nowProvider()
         let language = languageSettings.resolvedLanguage
         quotaSectionView.applyInfo(
-            text: AppStrings.text(.quotaDataSourceInfo, language: language),
+            text: [
+                AppStrings.text(.quotaDataSourceInfo, language: language),
+                SubscriptionQuotaPresenter.resetInferredNote(language: language),
+            ].joined(separator: "\n\n"),
             accessibilityLabel: AppStrings.text(.quotaSectionTitle, language: language)
         )
         guard quotaAccess.isUnlocked else {

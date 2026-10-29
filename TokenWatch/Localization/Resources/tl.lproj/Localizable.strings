@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Hindi alam ang oras ng reset";
 "quotaRecordedFormat" = "Naitala: %@";
 "quotaStaleRecord" = "Lumang tala";
-"quotaWaitingForNewRecord" = "Naghihintay ng bagong tala";
+"quotaResetInferred" = "Na-reset na (tantiya)";
+"quotaResetInferredNoteFormat" = "Kapag lumipas ang oras ng reset nang walang bagong tala, ipinapakita ang %@ na natitira (tantiya). Hindi naitatala sa Mac na ito ang paggamit sa ibang device o sa web, kaya maaaring mas mababa ang aktwal na natitira.";
 "quotaNoRecord" = "Wala pang tala ng paggamit";
 "quotaNotRead" = "Hindi pa nababasa ang paggamit";
 "quotaChooseFile" = "Pumili ng File ng Paggamit";

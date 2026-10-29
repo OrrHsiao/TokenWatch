@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Čas obnovení neznámý";
 "quotaRecordedFormat" = "Zaznamenáno: %@";
 "quotaStaleRecord" = "Starý záznam";
-"quotaWaitingForNewRecord" = "Čeká se na nový záznam";
+"quotaResetInferred" = "Obnoveno (odhad)";
+"quotaResetInferredNoteFormat" = "Pokud čas obnovení uplyne bez nového záznamu, zobrazí se zbývajících %@ (odhad). Používání na jiných zařízeních nebo na webu se na tomto Macu nezaznamenává, takže skutečný zůstatek může být nižší.";
 "quotaNoRecord" = "Zatím žádný záznam o využití";
 "quotaNotRead" = "Využití zatím nebylo načteno";
 "quotaChooseFile" = "Vybrat soubor využití";

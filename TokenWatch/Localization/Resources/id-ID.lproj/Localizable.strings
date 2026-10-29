@@ -198,7 +198,8 @@
 "quotaResetUnknown" = "Waktu reset tidak diketahui";
 "quotaRecordedFormat" = "Tercatat: %@";
 "quotaStaleRecord" = "Catatan lama";
-"quotaWaitingForNewRecord" = "Menunggu catatan baru";
+"quotaResetInferred" = "Sudah direset (perkiraan)";
+"quotaResetInferredNoteFormat" = "Jika waktu reset terlewati tanpa catatan baru, sisa ditampilkan %@ (perkiraan). Penggunaan di perangkat lain atau web tidak dicatat di Mac ini, jadi sisa sebenarnya bisa lebih rendah.";
 "quotaNoRecord" = "Belum ada catatan penggunaan";
 "quotaNotRead" = "Penggunaan belum dibaca";
 "quotaChooseFile" = "Pilih File Penggunaan";
