@@ -1,13 +1,13 @@
 import AppKit
 
-/// 状态栏中单个额度窗口：圆环 + 圈内图标与周期 + 右侧剩余百分比（仅详细模式）。
+/// 状态栏中单个额度窗口：圆环 + 圈内 Agent 图标；详细模式右侧另有百分比与周期两行文本。
 struct StatusBarQuotaRing: Equatable {
     let shortLabel: String
     /// 0...1 的剩余比例；nil 表示没有可展示的值，绘制虚线灰环。
     let remainingFraction: Double?
     let valueText: String
     let severity: SubscriptionQuotaSeverity
-    /// 详细模式在圆环右侧绘制剩余百分比；简洁模式只绘制圆环。
+    /// 详细模式在圆环右侧绘制剩余百分比（上）与周期（下）；简洁模式只绘制圆环，周期叠加在图标中心。
     let showsValue: Bool
 }
 
@@ -68,16 +68,22 @@ enum StatusBarQuotaLayout {
     static let ringLineWidth: CGFloat = 1.75
     /// 图标与圆弧之间保留约 2pt 间隙（22pt 圆环内图标约 14pt）。
     static let iconDiameterRatio: CGFloat = 0.64
-    static let periodFontSize: CGFloat = 6.5
-    /// 周期字形外沿描边宽度（pt）。
-    static let periodOutlineWidth: CGFloat = 0.6
-    static let valueFontSize: CGFloat = 11
+    /// 简洁模式叠加在图标中心的周期字号，尽量小以少遮挡 Agent 图标；
+    /// Retina 下 5pt 镂空笔画约 2px 仍可辨认，4.5pt 起笔画只剩 1px、开始糊成一片。
+    static let periodFontSize: CGFloat = 5
+    /// 周期字形外沿描边宽度（pt）；随字号收细，避免描边填满字形内部。
+    static let periodOutlineWidth: CGFloat = 0.5
+    /// 详细模式环外两行文本，字号与行高沿用今日 token 标题（数字 9pt 粗体 / 单位 7pt）。
+    static let valueFontSize: CGFloat = 9
+    static let valueLineHeight: CGFloat = 10
+    static let valuePeriodFontSize: CGFloat = 7
+    static let valuePeriodLineHeight: CGFloat = 8
     /// 数字左侧字形留白约 0.25pt，可见间隔约 4.25pt，与仪表盘图标到今日 token 文本一致。
     static let ringToValueSpacing: CGFloat = 4
     static let windowSpacing: CGFloat = 6
-    /// 百分比文本宽度向上取整并含 `%` 右侧字形留白，可见间隔约比该值多 1.75pt；
-    /// 取 5.5 使分组间可见间隔与今日 token 文本到首个圆环一致（约 7.25pt）。
-    static let providerSpacing: CGFloat = 5.5
+    /// 环外文本宽度向上取整并含字形右侧留白，可见间隔约比该值多 0.75pt；
+    /// 取 6.5 使分组间可见间隔与今日 token 文本到首个圆环一致（约 7.25pt）。
+    static let providerSpacing: CGFloat = 6.5
     /// 组合模式中今日 token 文本与第一个额度圆环之间的间距。
     static let todayTokensToQuotaSpacing: CGFloat = 6
     static let dimmedAlpha: CGFloat = 0.55
@@ -90,22 +96,59 @@ enum StatusBarQuotaLayout {
     }
 
     static var valueFont: NSFont {
-        .monospacedDigitSystemFont(ofSize: valueFontSize, weight: .regular)
+        .monospacedDigitSystemFont(ofSize: valueFontSize, weight: .bold)
+    }
+
+    static var valuePeriodFont: NSFont {
+        .systemFont(ofSize: valuePeriodFontSize)
     }
 
     static var periodFont: NSFont {
         .systemFont(ofSize: periodFontSize, weight: .bold)
     }
 
-    /// 百分比按实际文本宽度占位，不为 `100%` 预留空白，使各段间隔保持一致、整体更窄。
-    /// 数字为等宽字体，宽度只在字符数变化（如 `100%`→`99%`、`10%`→`9%`）时改变，不会持续抖动。
-    static func valueWidth(for text: String) -> CGFloat {
-        ceil((text as NSString).size(withAttributes: [.font: valueFont]).width)
+    /// 详细模式环外文本：剩余百分比在上、周期在下，与今日 token 的“数字 / 单位”排布一致。
+    /// 周期移出圆环，避免压住圈内 Agent 图标。
+    static func valueText(for ring: StatusBarQuotaRing) -> NSAttributedString {
+        func paragraph(lineHeight: CGFloat) -> NSParagraphStyle {
+            let style = NSMutableParagraphStyle()
+            style.alignment = .center
+            style.minimumLineHeight = lineHeight
+            style.maximumLineHeight = lineHeight
+            return style
+        }
+        let text = NSMutableAttributedString(
+            string: ring.valueText,
+            attributes: [
+                .font: valueFont,
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: paragraph(lineHeight: valueLineHeight),
+            ]
+        )
+        text.append(NSAttributedString(
+            string: "\n\(ring.shortLabel)",
+            attributes: [
+                .font: valuePeriodFont,
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: paragraph(lineHeight: valuePeriodLineHeight),
+            ]
+        ))
+        return text
     }
 
-    /// 单个窗口占用的宽度：简洁模式只有圆环，详细模式追加百分比文本宽度。
+    /// 环外文本按实际宽度占位，不为 `100%` 预留空白，使各段间隔保持一致、整体更窄。
+    /// 数字为等宽字体，宽度只在字符数变化（如 `100%`→`99%`、`10%`→`9%`）时改变，不会持续抖动。
+    static func valueSize(for ring: StatusBarQuotaRing) -> NSSize {
+        let bounds = valueText(for: ring).boundingRect(
+            with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin]
+        )
+        return NSSize(width: ceil(bounds.width), height: ceil(bounds.height))
+    }
+
+    /// 单个窗口占用的宽度：简洁模式只有圆环，详细模式追加环外文本宽度。
     static func ringWidth(for ring: StatusBarQuotaRing, diameter: CGFloat) -> CGFloat {
-        ring.showsValue ? diameter + ringToValueSpacing + valueWidth(for: ring.valueText) : diameter
+        ring.showsValue ? diameter + ringToValueSpacing + valueSize(for: ring).width : diameter
     }
 
     /// 图像尺寸由分组、窗口、简洁 / 详细样式、圆环直径与百分比字符数决定。
@@ -242,12 +285,17 @@ enum StatusBarQuotaImageRenderer {
                 x += diameter
                 guard ring.showsValue else { continue }
                 x += StatusBarQuotaLayout.ringToValueSpacing
-                let valueWidth = StatusBarQuotaLayout.valueWidth(for: ring.valueText)
-                drawValue(
-                    ring.valueText,
-                    in: NSRect(x: x, y: 0, width: valueWidth, height: height)
+                let valueSize = StatusBarQuotaLayout.valueSize(for: ring)
+                StatusBarQuotaLayout.valueText(for: ring).draw(
+                    with: NSRect(
+                        x: x,
+                        y: (height - valueSize.height) / 2,
+                        width: valueSize.width,
+                        height: valueSize.height
+                    ),
+                    options: [.usesLineFragmentOrigin]
                 )
-                x += valueWidth
+                x += valueSize.width
             }
             context.endTransparencyLayer()
             context.restoreGState()
@@ -307,7 +355,10 @@ enum StatusBarQuotaImageRenderer {
             context.fill(iconRect)
             context.setBlendMode(.normal)
         }
-        drawPeriodLabel(ring.shortLabel, centeredIn: iconRect, color: labelColor, context: context)
+        // 详细模式的周期已在环外第二行；简洁模式没有环外文本，周期仍叠加在图标中心。
+        if !ring.showsValue {
+            drawPeriodLabel(ring.shortLabel, centeredIn: iconRect, color: labelColor, context: context)
+        }
         context.endTransparencyLayer()
     }
 
@@ -339,19 +390,6 @@ enum StatusBarQuotaImageRenderer {
             .foregroundColor: NSColor.black,
         ])
         context.setBlendMode(.normal)
-    }
-
-    private static func drawValue(_ value: String, in slot: NSRect) {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: StatusBarQuotaLayout.valueFont,
-            .foregroundColor: NSColor.labelColor,
-        ]
-        let text = value as NSString
-        let size = text.size(withAttributes: attributes)
-        text.draw(
-            at: NSPoint(x: slot.minX, y: slot.midY - size.height / 2),
-            withAttributes: attributes
-        )
     }
 
     private static func arcColor(for severity: SubscriptionQuotaSeverity) -> NSColor {

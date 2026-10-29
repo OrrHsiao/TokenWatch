@@ -77,7 +77,7 @@ struct StatusBarQuotaImageRendererTests {
         )
 
         let valueWidths = detailed.groups.flatMap(\.rings).reduce(0) {
-            $0 + StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.valueWidth(for: $1.valueText)
+            $0 + StatusBarQuotaLayout.ringToValueSpacing + StatusBarQuotaLayout.valueSize(for: $1).width
         }
         let detailedWidth = StatusBarQuotaLayout.imageSize(for: detailed).width
         let compactWidth = StatusBarQuotaLayout.imageSize(for: compact).width
@@ -87,6 +87,34 @@ struct StatusBarQuotaImageRendererTests {
             4 * 22 + 2 * StatusBarQuotaLayout.windowSpacing + StatusBarQuotaLayout.providerSpacing
         ))
         #expect(StatusBarQuotaImageRenderer.makeImage(for: compact).size.width == compactWidth)
+    }
+
+    @Test("详细模式周期移到百分比下方，圈内只保留 Agent 图标；简洁模式周期仍叠加在图标中心")
+    func detailedStyleMovesPeriodBelowValue() throws {
+        let presentations = makePresentations(claudeUsed: (32, 14), codexUsed: (12, 2))
+        let detailed = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { provider, kind in
+                .init(isVisible: provider == .claude && kind == .fiveHour, style: .detailed)
+            },
+            ringDiameter: 22
+        )
+        let compact = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { provider, kind in
+                .init(isVisible: provider == .claude && kind == .fiveHour, style: .compact)
+            },
+            ringDiameter: 22
+        )
+
+        let ring = try #require(detailed.groups.first?.rings.first)
+        #expect(StatusBarQuotaLayout.valueText(for: ring).string == "68%\n5H")
+
+        // 简洁模式的周期从图标中镂空，圈内不透明像素应少于详细模式。
+        let ringRect = NSRect(x: 0, y: 0, width: 22, height: 22)
+        let detailedPixels = try opaquePixelCount(in: StatusBarQuotaImageRenderer.makeImage(for: detailed), rect: ringRect)
+        let compactPixels = try opaquePixelCount(in: StatusBarQuotaImageRenderer.makeImage(for: compact), rect: ringRect)
+        #expect(detailedPixels > compactPixels)
     }
 
     @Test("无数据保留周期标签并使用虚线灰环与 —；旧记录整体弱化")
@@ -227,6 +255,16 @@ struct StatusBarQuotaImageRendererTests {
             ringDiameter: 22
         )
         let image = StatusBarQuotaImageRenderer.makeImage(for: model)
+
+        // 第一个圆环内圈应绘制出图标，而不只有圆弧。
+        let iconPixels = try opaquePixelCount(in: image, rect: NSRect(x: 6, y: 6, width: 10, height: 10))
+        #expect(iconPixels > 50)
+    }
+
+    // MARK: - Helpers
+
+    /// 以 2x 浅色外观渲染图像，统计指定区域（点坐标）内不透明像素数。
+    private func opaquePixelCount(in image: NSImage, rect: NSRect) throws -> Int {
         let rep = try #require(NSBitmapImageRep(
             bitmapDataPlanes: nil,
             pixelsWide: Int(image.size.width * 2),
@@ -247,17 +285,14 @@ struct StatusBarQuotaImageRendererTests {
         }
         NSGraphicsContext.restoreGraphicsState()
 
-        // 第一个圆环内圈（2x 像素坐标）应绘制出图标，而不只有圆弧。
-        var iconPixels = 0
-        for x in 12..<32 {
-            for y in 12..<32 where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.5 {
-                iconPixels += 1
+        var count = 0
+        for x in Int(rect.minX * 2)..<Int(rect.maxX * 2) {
+            for y in Int(rect.minY * 2)..<Int(rect.maxY * 2) where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.5 {
+                count += 1
             }
         }
-        #expect(iconPixels > 50)
+        return count
     }
-
-    // MARK: - Helpers
 
     private static let allDetailed: (SubscriptionQuotaProvider, SubscriptionQuotaWindowKind)
         -> StatusBarQuotaWindowConfiguration = { _, _ in .defaultConfiguration }
