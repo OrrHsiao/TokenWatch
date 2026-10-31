@@ -17,7 +17,7 @@ AI Token Watch 是一个原生 macOS 应用，用于从本地 coding agent 数�
 ## 截图
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/zh-Hans/01-menu-bar-popover.png" alt="AI Token Watch 菜单栏弹窗，展示本月、本周、今日和日均 token 用量" width="820">
+  <img src="./snapshots/appstore_snapshot/zh-Hans/01-menu-bar-popover.png" alt="AI Token Watch 菜单栏显示 Claude 与 Codex 订阅额度圆环，弹窗展示订阅剩余以及本月、本周、今日和日均 token 用量" width="820">
 </p>
 
 <p align="center">
@@ -35,6 +35,9 @@ AI Token Watch 是一个原生 macOS 应用，用于从本地 coding agent 数�
 - 按 provider 和模型拆分 token 用量与费用
 - 日历热力图和图表视图，方便快速查看趋势
 - 按 session 查看模型、项目、token、费用和记录数
+- 菜单栏和弹窗展示 Claude 与 Codex 订阅额度：5 小时与一周剩余比例及重置时间，只读取本地记录
+- 7 款桌面小组件，展示热力图、趋势和近期用量
+- 桌面小组件与订阅额度为付费功能，在 App Store 版本中通过一次性 App 内购买一起解锁
 - 本地解析 Claude Code JSONL、Codex rollout JSONL 和 opencode SQLite 数据
 - 使用 security-scoped bookmark 适配沙盒环境下的本地文件授权
 - 内置 LiteLLM 价格快照，并对常用模型做了手动价格修正
@@ -54,11 +57,14 @@ AI Token Watch 启动时绝不会自动打开文件选择器。请在**设置**�
 
 每个数据源分别保存一个只读 security-scoped bookmark。某个数据源未选择，不会阻止其他已选择的数据源工作。
 
+订阅额度使用独立的数据来源。Claude 额度读取 `~/.claude.json`，需在**数据文件夹**区域单独选择**Claude 额度文件**，只解析其中缓存的额度和当前账号 ID；Codex 额度读取已选择的 Codex 数据文件夹中的 `sessions/**/rollout-*.jsonl`。
+
 ## 隐私
 
 AI Token Watch 被设计为只在本地运行的工具。
 
 - 只有在你通过标准 macOS 打开面板明确选择某个数据源文件夹后，它才会读取该文件夹。
+- 只有在你为订阅额度选择 `~/.claude.json` 后才会读取它，并且只解析其中缓存的额度和当前账号 ID。
 - 它会在 `UserDefaults` 中为每个已选择的数据源分别保存 security-scoped bookmark，便于下次重新打开同一文件夹。
 - 它不会上传使用记录、项目路径、prompt、response 或价格数据。
 - 它不包含 analytics 或 telemetry。

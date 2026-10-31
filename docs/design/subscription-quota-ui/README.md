@@ -6,7 +6,7 @@
 
 ## 原界面保持
 
-弹窗下方使用 `existing-popover.png` 展示项目原有界面，文件与 `snapshots/raw/zh-Hans/01-menu-bar-popover.png` 一致。该图是深色演示截图，作为已有样式参照，不随预览主题改变。
+弹窗下方使用 `existing-popover.png` 展示项目原有界面，文件取自加入订阅额度之前的 `snapshots/raw/zh-Hans/01-menu-bar-popover.png`，当前商店截图已包含订阅剩余区。该图是深色演示截图，作为已有样式参照，不随预览主题改变。
 
 开发时复用当前 AppKit 原生视图，不把图片用于应用。只在原区域上方新增订阅区，并增加总高度；原区域的文案、刷新按钮、摘要、热力图、趋势图、字体、颜色、尺寸、间距、材质及交互保持。
 

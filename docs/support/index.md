@@ -19,7 +19,7 @@ To help us investigate, include:
 
 - your AI Token Watch version and build number, shown under **AI Token Watch > About AI Token Watch**;
 - your macOS version;
-- the affected data source: Claude Code, Codex, opencode, or more than one;
+- the affected data source: Claude Code, Codex, opencode, Antigravity, DeepSeek Harness, or more than one, and whether the issue involves subscription quota;
 - clear steps to reproduce the problem;
 - the expected and actual behavior.
 
