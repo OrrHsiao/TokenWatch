@@ -95,9 +95,6 @@ enum StatusBarQuotaLayout {
     static let providerSpacing: CGFloat = 6.5
     /// 组合模式中今日 token 文本与第一个额度圆环之间的间距。
     static let todayTokensToQuotaSpacing: CGFloat = 6
-    /// 仪表盘 SF Symbol 画布四周自带透明边：18pt 字号时画布 21pt、可见外圈约 18pt。
-    /// 组合模式据此放大绘制，使仪表盘可见外圈与额度圆环直径一致。
-    static let todayTokensSymbolVisibleRatio: CGFloat = 18.0 / 21.0
     /// 组合模式中仪表盘可见外圈到今日 token 文本的间距；加上文本左侧字形留白，
     /// 可见间隔约 4.25pt，与圆环到百分比一致。
     static let todayTokensSymbolToTitleSpacing: CGFloat = 3.25
@@ -231,9 +228,12 @@ enum StatusBarQuotaImageRenderer {
         leadingTitle: NSAttributedString
     ) -> NSImage {
         let quotaSize = StatusBarQuotaLayout.imageSize(for: model)
-        // 可见外圈占据 ringDiameter 见方；按透明边比例放大后的绘制区超出部分只是透明边，被图像边界裁掉。
+        // 可见外圈占据 ringDiameter 见方。SF Symbol 画布四周的透明边与字形在画布中的位置随系统版本变化
+        // （macOS 27 为 21pt 画布居中 18pt 字形，macOS 26 字形不居中），按固定比例与画布居中会让仪表盘
+        // 偏移并被图像上下边裁掉，因此按字形实际可见范围缩放并居中；超出图像的部分只是透明边。
         let symbolSide = model.ringDiameter
-        let symbolScale = symbolSide / (leadingSymbol.size.width * StatusBarQuotaLayout.todayTokensSymbolVisibleRatio)
+        let glyphBounds = visibleBounds(of: leadingSymbol) ?? NSRect(origin: .zero, size: leadingSymbol.size)
+        let symbolScale = symbolSide / max(glyphBounds.width, glyphBounds.height)
         let symbolDrawSize = NSSize(
             width: leadingSymbol.size.width * symbolScale,
             height: leadingSymbol.size.height * symbolScale
@@ -252,8 +252,8 @@ enum StatusBarQuotaImageRenderer {
         let image = NSImage(size: size, flipped: false) { _ in
             guard let context = NSGraphicsContext.current?.cgContext else { return false }
             let symbolRect = NSRect(
-                x: (symbolSide - symbolDrawSize.width) / 2,
-                y: (height - symbolDrawSize.height) / 2,
+                x: (symbolSide - glyphBounds.width * symbolScale) / 2 - glyphBounds.minX * symbolScale,
+                y: (height - glyphBounds.height * symbolScale) / 2 - glyphBounds.minY * symbolScale,
                 width: symbolDrawSize.width,
                 height: symbolDrawSize.height
             )
@@ -282,6 +282,58 @@ enum StatusBarQuotaImageRenderer {
         }
         image.isTemplate = false
         return image
+    }
+
+    /// 按透明度统计图像中可见像素的范围。
+    /// - Parameter image: 待测图像（template 亦可，只看透明度）。
+    /// - Returns: 点坐标、原点在左下的可见范围；图像为空或无法创建位图时返回 nil。
+    private static func visibleBounds(of image: NSImage) -> NSRect? {
+        let scale: CGFloat = 4
+        let pixelsWide = Int(ceil(image.size.width * scale))
+        let pixelsHigh = Int(ceil(image.size.height * scale))
+        guard pixelsWide > 0, pixelsHigh > 0,
+              let rep = NSBitmapImageRep(
+                  bitmapDataPlanes: nil,
+                  pixelsWide: pixelsWide,
+                  pixelsHigh: pixelsHigh,
+                  bitsPerSample: 8,
+                  samplesPerPixel: 4,
+                  hasAlpha: true,
+                  isPlanar: false,
+                  colorSpaceName: .deviceRGB,
+                  bytesPerRow: pixelsWide * 4,
+                  bitsPerPixel: 32
+              ) else {
+            return nil
+        }
+        rep.size = image.size
+        guard let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+        context.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let data = rep.bitmapData else { return nil }
+        // 透明度低于约 15% 的抗锯齿边缘不计入可见范围。
+        let alphaThreshold: UInt8 = 38
+        var minX = Int.max, maxX = -1, minRow = Int.max, maxRow = -1
+        for row in 0..<pixelsHigh {
+            for column in 0..<pixelsWide where data[row * rep.bytesPerRow + column * 4 + 3] > alphaThreshold {
+                minX = min(minX, column)
+                maxX = max(maxX, column)
+                minRow = min(minRow, row)
+                maxRow = max(maxRow, row)
+            }
+        }
+        guard maxX >= 0 else { return nil }
+        // 位图行号自上而下，转换为原点在左下的点坐标。
+        return NSRect(
+            x: CGFloat(minX) / scale,
+            y: image.size.height - CGFloat(maxRow + 1) / scale,
+            width: CGFloat(maxX - minX + 1) / scale,
+            height: CGFloat(maxRow - minRow + 1) / scale
+        )
     }
 
     private static func agentIcons() -> [SubscriptionQuotaProvider: NSImage] {
