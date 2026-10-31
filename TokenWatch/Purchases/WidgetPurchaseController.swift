@@ -474,8 +474,8 @@ final class WidgetPurchaseController {
 enum WidgetPurchaseReviewFixtures {
     static let product = WidgetPurchaseProduct(
         id: WidgetPurchaseController.productID,
-        displayName: "Unlock All Widgets",
-        description: "Unlock all 7 desktop widgets and menu bar subscription usage permanently.",
+        displayName: "Unlock Widgets & Quota",
+        description: "Unlock all 7 widgets and menu bar quota.",
         displayPrice: "$2.99"
     )
 

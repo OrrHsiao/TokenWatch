@@ -20,13 +20,13 @@
       "internalID" : "9D4E6A20",
       "localizations" : [
         {
-          "description" : "Unlock all 7 desktop widgets and menu bar subscription usage permanently.",
-          "displayName" : "Unlock All Widgets",
+          "description" : "Unlock all 7 widgets and menu bar quota.",
+          "displayName" : "Unlock Widgets & Quota",
           "locale" : "en_US"
         },
         {
           "description" : "一次购买，永久解锁全部 7 款桌面小组件与状态栏订阅额度。",
-          "displayName" : "解锁全部桌面小组件",
+          "displayName" : "解锁全部小组件与订阅额度",
           "locale" : "zh_CN"
         }
       ],

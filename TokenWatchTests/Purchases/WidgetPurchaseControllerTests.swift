@@ -386,7 +386,7 @@ struct WidgetPurchaseControllerTests {
     func reviewFixturesAreDeterministic() async {
         let locked = WidgetPurchaseReviewFixtures.makeLockedController()
         await locked.refresh()
-        #expect(locked.state.product?.displayName == "Unlock All Widgets")
+        #expect(locked.state.product?.displayName == "Unlock Widgets & Quota")
         #expect(locked.state.product?.displayPrice == "$2.99")
         #expect(!locked.state.isUnlocked)
 

@@ -10,14 +10,15 @@ module TokenWatchFastlane
     BASE_TERRITORY = "USA".freeze
     BASE_PRICE = BigDecimal("2.99")
     CHINA_TERRITORY = "CHN".freeze
+    # 同一次买断同时解锁桌面小组件与状态栏订阅额度；App Store Connect 限制名称 30 字符、描述 45 字符。
     LOCALIZATIONS = {
       "en-US" => {
-        name: "Unlock All Widgets",
-        description: "Unlock all 7 desktop widgets permanently."
+        name: "Unlock Widgets & Quota",
+        description: "Unlock all 7 widgets and menu bar quota."
       },
       "zh-Hans" => {
-        name: "解锁全部桌面小组件",
-        description: "一次购买，永久解锁全部 7 款桌面小组件。"
+        name: "解锁全部小组件与订阅额度",
+        description: "一次购买，永久解锁全部 7 款桌面小组件与状态栏订阅额度。"
       }
     }.freeze
 
