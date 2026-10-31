@@ -18,7 +18,7 @@ struct ClaudeQuotaParserTests {
         }
         """, accountID: "account-a"))
 
-        let snapshot = try #require(snapshot(from: result))
+        let snapshot = try #require(self.snapshot(from: result))
         #expect(snapshot.provider == .claude)
         #expect(snapshot.accountID == "account-a")
         #expect(snapshot.recordedAt == Date(timeIntervalSince1970: 1_793_170_561.369))
@@ -39,7 +39,7 @@ struct ClaudeQuotaParserTests {
         }
         """))
 
-        let snapshot = try #require(snapshot(from: result))
+        let snapshot = try #require(self.snapshot(from: result))
         #expect(snapshot.windows[.fiveHour]?.usedPercent == 0)
         #expect(snapshot.windows[.fiveHour]?.resetsAt == nil)
         #expect(snapshot.windows[.sevenDay] == nil)
@@ -57,7 +57,7 @@ struct ClaudeQuotaParserTests {
         }
         """))
 
-        let snapshot = try #require(snapshot(from: result))
+        let snapshot = try #require(self.snapshot(from: result))
         #expect(snapshot.windows[.fiveHour] == nil)
         #expect(snapshot.windows[.sevenDay]?.usedPercent == 14)
     }
@@ -74,7 +74,7 @@ struct ClaudeQuotaParserTests {
         }
         """))
 
-        let snapshot = try #require(snapshot(from: result))
+        let snapshot = try #require(self.snapshot(from: result))
         #expect(snapshot.windows[.fiveHour]?.remainingPercent == 0)
         #expect(snapshot.windows[.sevenDay]?.remainingPercent == 100)
     }
@@ -143,6 +143,8 @@ struct ClaudeQuotaParserTests {
         return Data(#"{"numStartups": 3, "cachedUsageUtilization": \#(cache)\#(account)}"#.utf8)
     }
 
+    /// 调用处与局部常量 `snapshot` 同名时需写成 `self.snapshot(from:)`：
+    /// 较旧的编译器展开 `#require` 时会把 `snapshot(...)` 解析为正在声明的常量。
     private func snapshot(from result: SubscriptionQuotaReadResult) -> SubscriptionQuotaSnapshot? {
         guard case .snapshot(let snapshot) = result else { return nil }
         return snapshot

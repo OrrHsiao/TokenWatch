@@ -253,19 +253,23 @@ final class SubscriptionQuotaStore {
             )))
         }
 
-        return [
-            .claude: snapshot(
-                .claude,
-                recordedSecondsAgo: 2 * 60,
-                fiveHour: (32, 2 * 3_600 + 14 * 60 + 30),
-                sevenDay: (14, 3 * 86_400 + 5 * 3_600 + 30)
-            ),
-            .codex: snapshot(
-                .codex,
-                recordedSecondsAgo: 10,
-                fiveHour: (12, 4 * 3_600 + 49 * 60 + 30),
-                sevenDay: (2, 6 * 86_400 + 23 * 3_600 + 30)
-            ),
-        ]
+        // 时长先落成带类型的常量再组装字典：整数运算与元组混在一个字典字面量里时，
+        // 较旧的 Swift 编译器无法在限定时间内完成类型推断（CI 上编译失败）。
+        let minute: TimeInterval = 60
+        let hour: TimeInterval = 3_600
+        let day: TimeInterval = 86_400
+        let claude = snapshot(
+            .claude,
+            recordedSecondsAgo: 2 * minute,
+            fiveHour: (32, 2 * hour + 14 * minute + 30),
+            sevenDay: (14, 3 * day + 5 * hour + 30)
+        )
+        let codex = snapshot(
+            .codex,
+            recordedSecondsAgo: 10,
+            fiveHour: (12, 4 * hour + 49 * minute + 30),
+            sevenDay: (2, 6 * day + 23 * hour + 30)
+        )
+        return [.claude: claude, .codex: codex]
     }
 }
