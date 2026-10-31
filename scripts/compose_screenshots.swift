@@ -248,63 +248,41 @@ final class ScreenshotCompositor {
                 context.draw(appleCrop, in: appleRect)
             }
 
-            // 3. 右侧：系统常驻控制图标 (Wi-Fi、控制中心、时间等，从 status_bar.png 提取 x: 3290..3810)
-            let sysWidth: CGFloat = 520
+            // 3. 右侧：日期时间按截图语言绘制并右对齐，避免英文截图出现中文日期；
+            //    其左为系统常驻图标 (Wi-Fi、聚焦、控制中心、Siri，从 status_bar.png 提取 x: 3290..3550)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+            let clockAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 26),
+                .foregroundColor: NSColor(white: 0.93, alpha: 1.0)
+            ]
+            let clockText = Self.menuBarClockText(locale: locale) as NSString
+            let clockSize = clockText.size(withAttributes: clockAttrs)
+            let clockX = CGFloat(canvasWidth) - 48 - clockSize.width
+            clockText.draw(at: NSPoint(x: clockX, y: sbY + (sbHeight - clockSize.height) / 2), withAttributes: clockAttrs)
+            NSGraphicsContext.restoreGraphicsState()
+
+            let sysWidth: CGFloat = 260
             if let sysCrop = sbCGImage.cropping(to: CGRect(x: 3290, y: 0, width: Int(sysWidth), height: 60)) {
-                let sysX = CGFloat(canvasWidth) - sysWidth - 40
-                let sysRect = CGRect(x: sysX, y: sbY, width: sysWidth, height: sbHeight)
+                let sysRect = CGRect(x: clockX - 32 - sysWidth, y: sbY, width: sysWidth, height: sbHeight)
                 context.draw(sysCrop, in: sysRect)
             }
+        }
 
-            // 4. 正对 Popover 视图上方：TokenWatch 状态栏项目 (仪表盘图标 + 342.0k Tokens，原汁原味原生样式，无多余底色)
-            let tokenWidth: CGFloat = 116
-            let tokenX = popRect.midX - tokenWidth / 2
-
-            NSGraphicsContext.saveGraphicsState()
-            let nsContext = NSGraphicsContext(cgContext: context, flipped: false)
-            NSGraphicsContext.current = nsContext
-
-            // 绘制仪表盘 SF Symbol (以白色调色板渲染，保证在深色状态栏上清晰可见)
-            let config = NSImage.SymbolConfiguration(pointSize: 18, weight: .regular)
-                .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
-            if let sym = NSImage(systemSymbolName: "gauge.with.dots.needle.33percent", accessibilityDescription: nil)?.withSymbolConfiguration(config) {
-                let iconRect = NSRect(x: tokenX, y: sbY + (sbHeight - 34) / 2, width: 34, height: 34)
-                sym.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
-            }
-
-            // 绘制两行文本 (342.0k / Tokens)
-            let primaryParagraph = NSMutableParagraphStyle()
-            primaryParagraph.alignment = .left
-            primaryParagraph.maximumLineHeight = 18
-            primaryParagraph.minimumLineHeight = 18
-
-            let secondaryParagraph = NSMutableParagraphStyle()
-            secondaryParagraph.alignment = .left
-            secondaryParagraph.maximumLineHeight = 14
-            secondaryParagraph.minimumLineHeight = 14
-
-            let attrStr = NSMutableAttributedString(
-                string: "342.0k\n",
-                attributes: [
-                    .font: NSFont.boldSystemFont(ofSize: 18),
-                    .foregroundColor: NSColor.white,
-                    .paragraphStyle: primaryParagraph
-                ]
+        // 4. 正对 Popover 视图上方：TokenWatch 状态栏项目，使用 App 以真实状态栏绘制逻辑导出的 2x 图像
+        if let statusItemRep = findStatusBarItemImage(locale: locale),
+           let statusItemCGImage = statusItemRep.cgImage {
+            let itemWidth = CGFloat(statusItemRep.pixelsWide)
+            let itemHeight = CGFloat(statusItemRep.pixelsHigh)
+            let itemRect = CGRect(
+                x: (popRect.midX - itemWidth / 2).rounded(),
+                y: (sbY + (sbHeight - itemHeight) / 2).rounded(),
+                width: itemWidth,
+                height: itemHeight
             )
-            attrStr.append(NSAttributedString(
-                string: "Tokens",
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: 14),
-                    .foregroundColor: NSColor(white: 0.9, alpha: 1.0),
-                    .paragraphStyle: secondaryParagraph
-                ]
-            ))
-
-            // 垂直居中微调：补偿多行文本向上偏移的 3.5px，使文本中心与 SF Symbol 图标中心严格水平对齐
-            let textRect = NSRect(x: tokenX + 44, y: sbY + (sbHeight - 32) / 2 - 5.5, width: 72, height: 36)
-            attrStr.draw(in: textRect)
-
-            NSGraphicsContext.restoreGraphicsState()
+            context.draw(statusItemCGImage, in: itemRect)
+        } else {
+            print("⚠️ 未找到 \(locale) 的状态栏项目原图")
         }
 
         // 5. 绘制弹出视图 (Popover) 柔和投影与圆角内容
@@ -334,42 +312,39 @@ final class ScreenshotCompositor {
     private func findRawImage(for screenID: String, locale: String) -> NSBitmapImageRep? {
         let rawDir = rootDir.appendingPathComponent("snapshots/raw/\(locale)")
         let rawURL = rawDir.appendingPathComponent("\(screenID).png")
-        if let data = try? Data(contentsOf: rawURL), let rep = NSBitmapImageRep(data: data) {
-            return rep
-        }
 
-        // 检查 UI 测试 Runner 容器内生成的最新原图并自动同步
+        // UI 测试 Runner 容器内的原图比 raw 目录新时先同步，否则 run_ui_tests 抓到的新界面会被已提交的旧原图挡住
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
         let runnerTmpURL = homeDir
             .appendingPathComponent("Library/Containers/com.xiaoao.TokenWatchUITests.xctrunner/Data/tmp/tokenwatch_screenshots/raw/\(locale)/\(screenID).png")
-        if let data = try? Data(contentsOf: runnerTmpURL), let rep = NSBitmapImageRep(data: data) {
+        if isFile(runnerTmpURL, newerThan: rawURL),
+           let data = try? Data(contentsOf: runnerTmpURL),
+           let rep = NSBitmapImageRep(data: data) {
             try? FileManager.default.createDirectory(at: rawDir, withIntermediateDirectories: true)
             try? data.write(to: rawURL)
+            print("  ✓ 已从 UI 测试 Runner 同步 \(locale) 的 \(screenID).png")
             return rep
         }
 
-        // 回退查找旧版/预置的原图命名
-        let langSuffix = (locale == "zh-Hans") ? "zh" : "en"
-        let fallbackCandidates: [String]
-        switch screenID {
-        case "02-overview":
-            fallbackCandidates = ["overview-\(langSuffix).png", "overview_\(langSuffix).png"]
-        case "03-sessions":
-            fallbackCandidates = ["sessions-\(langSuffix).png", "sessions_\(langSuffix).png"]
-        case "04-widgets":
-            fallbackCandidates = ["widgets_\(langSuffix).png", "widgets-\(langSuffix).png"]
-        default:
-            fallbackCandidates = []
-        }
+        guard let data = try? Data(contentsOf: rawURL) else { return nil }
+        return NSBitmapImageRep(data: data)
+    }
 
-        for candidate in fallbackCandidates {
-            let candidateURL = rootDir.appendingPathComponent("snapshots/\(candidate)")
-            if let data = try? Data(contentsOf: candidateURL), let rep = NSBitmapImageRep(data: data) {
-                return rep
-            }
+    /// 菜单栏右侧的日期时间，按截图语言格式化。
+    /// 日期取生成当天，与 demo 数据的“今日”一致；时间固定，保证同一天重复生成结果不变。
+    private static func menuBarClockText(locale: String, now: Date = Date()) -> String {
+        let calendar = Calendar(identifier: .gregorian)
+        let date = calendar.date(bySettingHour: 11, minute: 45, second: 0, of: now) ?? now
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        if locale == "zh-Hans" {
+            formatter.locale = Locale(identifier: "zh_CN")
+            formatter.dateFormat = "M月d日 EEE HH:mm"
+        } else {
+            formatter.locale = Locale(identifier: "en_US")
+            formatter.dateFormat = "EEE MMM d  h:mm a"
         }
-
-        return nil
+        return formatter.string(from: date)
     }
 
     private func findPopoverImage(locale: String) -> NSBitmapImageRep? {
@@ -379,18 +354,41 @@ final class ScreenshotCompositor {
         }
 
         let rawURL = rootDir.appendingPathComponent("snapshots/raw/\(locale)/01-menu-bar-popover.png")
-        if let data = try? Data(contentsOf: rawURL), let rep = NSBitmapImageRep(data: data) {
-            return rep
-        }
-
-        let langSuffix = (locale == "zh-Hans") ? "zh" : "en"
-        let fallbackURL = rootDir.appendingPathComponent("snapshots/status_popview-\(langSuffix).png")
-        if let data = try? Data(contentsOf: fallbackURL), let rep = NSBitmapImageRep(data: data) {
-            return rep
-        }
-
-        return nil
+        guard let data = try? Data(contentsOf: rawURL) else { return nil }
+        return NSBitmapImageRep(data: data)
     }
+
+    /// `candidate` 存在且修改时间晚于 `reference`（或 `reference` 不存在）时返回 true。
+    private func isFile(_ candidate: URL, newerThan reference: URL) -> Bool {
+        let fileManager = FileManager.default
+        guard let candidateDate = (try? fileManager.attributesOfItem(atPath: candidate.path))?[.modificationDate] as? Date else {
+            return false
+        }
+        guard let referenceDate = (try? fileManager.attributesOfItem(atPath: reference.path))?[.modificationDate] as? Date else {
+            return true
+        }
+        return candidateDate > referenceDate
+    }
+
+    /// 状态栏项目原图与弹窗原图由同一次 App 导出生成，读取前先确保已尝试导出。
+    private func findStatusBarItemImage(locale: String) -> NSBitmapImageRep? {
+        if !didExportPopoverSnapshots {
+            _ = exportPopoverSnapshotsFromBinary()
+            didExportPopoverSnapshots = true
+        }
+
+        let rawURL = rootDir.appendingPathComponent("snapshots/raw/\(locale)/\(Self.statusBarItemFileName)")
+        guard let data = try? Data(contentsOf: rawURL) else { return nil }
+        return NSBitmapImageRep(data: data)
+    }
+
+    private static let statusBarItemFileName = "01-menu-bar-status-item.png"
+
+    /// App 导出时各类原图的标记前缀与写入 raw 目录的文件名。
+    private static let exportedSnapshotKinds: [(prefix: String, fileName: String)] = [
+        ("TOKENWATCH_SNAPSHOT", "01-menu-bar-popover.png"),
+        ("TOKENWATCH_STATUSBAR", statusBarItemFileName)
+    ]
 
     private func exportPopoverSnapshotsFromBinary() -> Bool {
         let candidatePaths = [
@@ -418,25 +416,25 @@ final class ScreenshotCompositor {
             }
 
             let lines = output.components(separatedBy: .newlines)
-            var currentLocale: String?
+            var current: (locale: String, fileName: String)?
             var base64Lines: [String] = []
 
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("TOKENWATCH_SNAPSHOT_START:") {
-                    currentLocale = String(trimmed.dropFirst("TOKENWATCH_SNAPSHOT_START:".count))
+                if let kind = Self.exportedSnapshotKinds.first(where: { trimmed.hasPrefix("\($0.prefix)_START:") }) {
+                    current = (String(trimmed.dropFirst("\(kind.prefix)_START:".count)), kind.fileName)
                     base64Lines.removeAll()
-                } else if trimmed.hasPrefix("TOKENWATCH_SNAPSHOT_END:") {
-                    if let locale = currentLocale,
+                } else if Self.exportedSnapshotKinds.contains(where: { trimmed.hasPrefix("\($0.prefix)_END:") }) {
+                    if let current,
                        let pngData = Data(base64Encoded: base64Lines.joined()) {
-                        let targetDir = rootDir.appendingPathComponent("snapshots/raw/\(locale)")
+                        let targetDir = rootDir.appendingPathComponent("snapshots/raw/\(current.locale)")
                         try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
-                        let fileURL = targetDir.appendingPathComponent("01-menu-bar-popover.png")
+                        let fileURL = targetDir.appendingPathComponent(current.fileName)
                         try? pngData.write(to: fileURL)
-                        print("  ✓ 自动从 App 二进制生成了 \(locale) 的 01-menu-bar-popover.png")
+                        print("  ✓ 自动从 App 二进制生成了 \(current.locale) 的 \(current.fileName)")
                     }
-                    currentLocale = nil
-                } else if currentLocale != nil {
+                    current = nil
+                } else if current != nil {
                     base64Lines.append(trimmed)
                 }
             }

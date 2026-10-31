@@ -54,7 +54,7 @@ final class StatusBarController {
     /// 上次渲染的图标 symbol 名,用于在档位未变时跳过 image 赋值,避免触发状态栏重布局
     private var lastRenderedSymbolName: String?
     /// SF Symbol 配置统一管理,保证替换图标后 pointSize/weight 不丢失
-    private let iconSymbolConfig = NSImage.SymbolConfiguration(
+    private static let iconSymbolConfig = NSImage.SymbolConfiguration(
         pointSize: StatusBarIconLayout.pointSize,
         weight: .regular
     )
@@ -311,7 +311,18 @@ final class StatusBarController {
     /// - Parameter includesBaselineOffset: 原生标题需要 baseline 偏移修正 cell 绘制偏上;
     ///   组合模式自行在图像中居中绘制,不需要该偏移。
     private func makeAttributedTitle(primary: String, includesBaselineOffset: Bool = true) -> NSAttributedString {
-        let language = languageSettings.resolvedLanguage
+        Self.makeAttributedTitle(
+            primary: primary,
+            language: languageSettings.resolvedLanguage,
+            includesBaselineOffset: includesBaselineOffset
+        )
+    }
+
+    private static func makeAttributedTitle(
+        primary: String,
+        language: AppLanguage,
+        includesBaselineOffset: Bool
+    ) -> NSAttributedString {
         let unit = AppStrings.text(.statusBarTokenUnit, language: language)
         let primaryParagraph = NSMutableParagraphStyle()
         primaryParagraph.alignment = .center
@@ -563,7 +574,7 @@ final class StatusBarController {
         )
     }
 
-    private func makeSymbolImage(symbolName: String) -> NSImage? {
+    private static func makeSymbolImage(symbolName: String) -> NSImage? {
         let image = NSImage(
             systemSymbolName: symbolName,
             accessibilityDescription: "AI Token Watch"
@@ -571,6 +582,52 @@ final class StatusBarController {
         // 状态栏图标做成 template 由系统按主题自动反色
         image?.isTemplate = true
         return image
+    }
+
+    /// 生成默认“额度 + 今日 Tokens”模式下的状态栏图像，供商店截图导出与真实状态栏共用同一套绘制。
+    ///
+    /// 各周期按默认配置展示（全部可见、详细样式），不读取用户的状态栏设置。
+    /// - Parameters:
+    ///   - states: 今日 token 的统计来源。
+    ///   - quotaStore: 已完成读取的额度存储。
+    ///   - language: 文案语言。
+    ///   - now: 计算今日 key 与额度展示状态的时间。
+    /// - Returns: 组合模式图像；颜色在绘制时按当前外观解析。档位图标不可用时返回 nil。
+    static func makeDefaultModeSnapshotImage(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        quotaStore: SubscriptionQuotaStore,
+        language: AppLanguage,
+        now: Date = Date()
+    ) -> NSImage? {
+        let todayKey = todayKey(now: now)
+        let total = StatusBarTitleBuilder.totalTokens(states: states, todayKey: todayKey)
+        guard let symbolImage = makeSymbolImage(
+            symbolName: StatusBarTitleBuilder.symbolName(forTotalTokens: total)
+        ) else {
+            return nil
+        }
+        let presentations = SubscriptionQuotaProvider.allCases.map { provider in
+            SubscriptionQuotaPresenter.make(
+                provider: provider,
+                state: quotaStore.state(for: provider),
+                now: now,
+                language: language
+            )
+        }
+        let quotaModel = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { _, _ in .defaultConfiguration },
+            ringDiameter: StatusBarQuotaLayout.ringDiameter(forStatusBarThickness: NSStatusBar.system.thickness)
+        )
+        return StatusBarQuotaImageRenderer.makeImage(
+            for: quotaModel,
+            leadingSymbol: symbolImage,
+            leadingTitle: makeAttributedTitle(
+                primary: StatusBarTitleBuilder.build(states: states, todayKey: todayKey),
+                language: language,
+                includesBaselineOffset: false
+            )
+        )
     }
 
     /// 按当前模式组装按钮图像。
@@ -599,7 +656,7 @@ final class StatusBarController {
             return
         }
 
-        let symbolImage = symbolName.flatMap(makeSymbolImage(symbolName:))
+        let symbolImage = symbolName.flatMap(Self.makeSymbolImage(symbolName:))
         let image: NSImage?
         if let quotaModel, let symbolImage, let tokenPrimary {
             image = StatusBarQuotaImageRenderer.makeImage(

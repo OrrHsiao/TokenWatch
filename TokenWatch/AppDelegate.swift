@@ -458,11 +458,70 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("TOKENWATCH_SNAPSHOT_END:\(localeDir)")
             fflush(stdout)
 
+            // 状态栏项与弹窗使用同一份 demo 数据，按深色菜单栏外观导出，供装裱脚本贴在弹窗上方。
+            if let statusBarImage = StatusBarController.makeDefaultModeSnapshotImage(
+                states: testViewModel.states,
+                quotaStore: testQuotaStore,
+                language: langSettings.resolvedLanguage
+            ), let statusBarPNG = Self.makeSnapshotPNG(of: statusBarImage, scale: scale, appearanceName: .darkAqua) {
+                print("TOKENWATCH_STATUSBAR_START:\(localeDir)")
+                print(statusBarPNG.base64EncodedString())
+                print("TOKENWATCH_STATUSBAR_END:\(localeDir)")
+                fflush(stdout)
+            }
+
             defaults.removePersistentDomain(forName: suiteName)
         }
 
         UserDefaults.standard.removeObject(forKey: DemoStatsFixture.userDefaultsKey)
         exit(0)
+    }
+
+    /// 按指定外观把图像绘制为透明背景的 PNG。
+    ///
+    /// 状态栏图像的颜色在绘制时才按当前外观解析，必须显式指定外观，
+    /// 否则导出结果会跟随运行时的系统深浅色。
+    /// - Parameters:
+    ///   - image: 待导出的图像。
+    ///   - scale: 像素与点的比例。
+    ///   - appearanceName: 绘制时使用的外观。
+    /// - Returns: PNG 数据；无法创建位图时返回 nil。
+    private static func makeSnapshotPNG(
+        of image: NSImage,
+        scale: CGFloat,
+        appearanceName: NSAppearance.Name
+    ) -> Data? {
+        let pixelWidth = Int(ceil(image.size.width * scale))
+        let pixelHeight = Int(ceil(image.size.height * scale))
+        guard pixelWidth > 0, pixelHeight > 0,
+              let appearance = NSAppearance(named: appearanceName),
+              let rep = NSBitmapImageRep(
+                  bitmapDataPlanes: nil,
+                  pixelsWide: pixelWidth,
+                  pixelsHigh: pixelHeight,
+                  bitsPerSample: 8,
+                  samplesPerPixel: 4,
+                  hasAlpha: true,
+                  isPlanar: false,
+                  colorSpaceName: .deviceRGB,
+                  bytesPerRow: pixelWidth * 4,
+                  bitsPerPixel: 32
+              ) else {
+            return nil
+        }
+        // 先设定点尺寸再创建上下文，绘制时才会按 scale 放大到像素尺寸。
+        rep.size = image.size
+        guard let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        appearance.performAsCurrentDrawingAppearance {
+            image.draw(in: NSRect(origin: .zero, size: image.size))
+        }
+        context.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+
+        return rep.representation(using: .png, properties: [:])
     }
 
 }
