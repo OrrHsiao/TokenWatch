@@ -277,7 +277,7 @@ struct StatusBarQuotaImageRendererTests {
         #expect(!image.isTemplate)
     }
 
-    @Test("组合模式仪表盘可见外圈与额度圆环直径一致")
+    @Test("组合模式仪表盘可见范围最长边与额度圆环直径一致，且不超出圆环")
     func combinedImageGaugeMatchesRingDiameter() throws {
         for diameter in [StatusBarQuotaLayout.minimumRingDiameter, StatusBarQuotaLayout.defaultRingDiameter] {
             let model = StatusBarQuotaModel.make(
@@ -296,9 +296,11 @@ struct StatusBarQuotaImageRendererTests {
             )
 
             let ink = try inkBounds(in: image, columns: 0..<Int(diameter + 2))
-            // 允许 1pt 抗锯齿与字形取整误差。
-            #expect(abs(ink.width - diameter) <= 1)
-            #expect(abs(ink.height - diameter) <= 1)
+            // 仪表盘字形宽高比随系统版本不同（macOS 27 为正圆，macOS 26 宽大于高约 10%），
+            // 只要求最长边与圆环等大、另一边不超出圆环；允许 1pt 抗锯齿与字形取整误差。
+            #expect(abs(max(ink.width, ink.height) - diameter) <= 1)
+            #expect(ink.width <= diameter + 1)
+            #expect(ink.height <= diameter + 1)
         }
     }
 
