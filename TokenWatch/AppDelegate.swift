@@ -46,6 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainMenuController: AppMainMenuController?
     private var mainWindowController: NSWindowController?
     private var popoverScreenshotWindow: NSWindow?
+    private var screenshotBackdropWindow: NSWindow?
 
     private let languageSettings: AppLanguageSettings
     private let externalURLOpener: (URL) -> Bool
@@ -129,6 +130,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if UserDefaults.standard.bool(forKey: Self.showPopoverForScreenshotsKey) {
+            presentScreenshotBackdrop()
             presentPopoverScreenshotWindow()
         }
 
@@ -343,6 +345,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// 截图自动化时把主窗口移到主显示器，并在其后铺一层纯色底板。
+    ///
+    /// 主窗口是毛玻璃材质，会透出背后的桌面图标和其他窗口；纯色底板让商店截图不受截图时的桌面内容影响。
+    /// 主显示器是带菜单栏的 Retina 屏，避免窗口跟随鼠标开在外接 1x 屏上导致截图失败或分辨率不足。
+    private func presentScreenshotBackdrop() {
+        guard let screen = NSScreen.screens.first else { return }
+        let mainWindow = mainWindowController?.window
+        if let mainWindow {
+            let visibleFrame = screen.visibleFrame
+            mainWindow.setFrameOrigin(NSPoint(
+                x: visibleFrame.midX - mainWindow.frame.width / 2,
+                y: visibleFrame.midY - mainWindow.frame.height / 2
+            ))
+        }
+
+        let backdrop = NSWindow(
+            contentRect: screen.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        backdrop.isReleasedWhenClosed = false
+        backdrop.backgroundColor = NSColor(srgbRed: 0.10, green: 0.12, blue: 0.15, alpha: 1)
+        backdrop.isOpaque = true
+        backdrop.hasShadow = false
+        backdrop.ignoresMouseEvents = true
+        if let mainWindow {
+            // 作为子窗口挂在主窗口下方：应用激活时 AppKit 会重排窗口层级，
+            // 只有父子关系能保证底板始终紧贴在主窗口之后。
+            mainWindow.addChildWindow(backdrop, ordered: .below)
+        } else {
+            backdrop.orderFrontRegardless()
+        }
+        screenshotBackdropWindow = backdrop
+    }
+
     /// 在 UI 测试或截图自动化时，展示承载状态栏 Popover 的测试窗口。
     private func presentPopoverScreenshotWindow() {
         let contentSize = StatusPopoverViewController.contentSize
@@ -368,6 +406,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentViewController = popoverVC
         window.setContentSize(contentSize)
         window.center()
+        // 主窗口在此之前已成为 key window；截图窗口必须接过 key，UI 测试发出的 Command-W
+        // 才会关闭它，而不是把随后要截图的主窗口关掉。
+        window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         self.popoverScreenshotWindow = window
     }
