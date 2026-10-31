@@ -17,7 +17,7 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch d
 ## Screenshots
 
 <p align="center">
-  <img src="./snapshots/appstore_snapshot/en-US/01-menu-bar-popover.png" alt="AI Token Watch menu bar popover showing month, week, today, and daily average token usage" width="820">
+  <img src="./snapshots/appstore_snapshot/en-US/01-menu-bar-popover.png" alt="AI Token Watch menu bar showing Claude and Codex subscription quota rings, with the popover showing remaining quota and month, week, today, and daily average token usage" width="820">
 </p>
 
 <p align="center">
@@ -35,6 +35,9 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch d
 - Token and cost breakdowns by provider and model
 - Calendar heatmap and chart views for trend scanning
 - Session-level review with model, project, token, cost, and record counts
+- Claude and Codex subscription quota in the menu bar and popover: 5-hour and weekly remaining quota with reset times, read only from local records
+- Seven desktop widgets for heatmaps, trends, and recent usage
+- Desktop widgets and subscription quota are paid features, unlocked together by a one-time in-app purchase in the App Store version
 - Local parsing for Claude Code JSONL, Codex rollout JSONL, opencode SQLite, Antigravity SQLite, and DeepSeek Harness session logs (multi-frame zstd JSONL, decoded in-app)
 - Security-scoped bookmark access for sandbox-friendly local file permissions
 - Embedded LiteLLM pricing snapshot with hand-tuned pricing overrides for common models
@@ -53,11 +56,14 @@ AI Token Watch never opens a file picker automatically at launch. In **Settings*
 
 Each provider stores an independent read-only security-scoped bookmark. Leaving one provider unselected does not block selected providers.
 
+Subscription quota uses its own sources. Claude quota is read from `~/.claude.json`, which you choose separately as the **Claude Usage File** in the **Data Folders** section; only the cached quota and the current account ID are decoded. Codex quota is read from `sessions/**/rollout-*.jsonl` in the selected Codex data folder.
+
 ## Privacy
 
 AI Token Watch is designed as a local-only utility.
 
 - It reads a provider folder only after you explicitly choose that folder in the standard macOS open panel.
+- It reads `~/.claude.json` only after you choose it for subscription quota, and decodes only the cached quota and the current account ID.
 - It stores one security-scoped bookmark per selected provider in `UserDefaults` so it can reopen that folder later.
 - It does not upload usage records, project paths, prompts, responses, or pricing data.
 - It does not include analytics or telemetry.

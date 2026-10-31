@@ -144,7 +144,8 @@ struct AppMainMenuBuilderTests {
         controller.loadViewIfNeeded()
 
         let popups = allDescendants(in: controller.view, ofType: NSPopUpButton.self)
-        #expect(popups.count == 2)
+        // 自动刷新、语言，以及 Claude / Codex 各两个额度周期的简洁 / 详细样式。
+        #expect(popups.count == 6)
         #expect(popups.allSatisfy { $0.userInterfaceLayoutDirection == .leftToRight })
         #expect(popups.allSatisfy { $0.menu?.userInterfaceLayoutDirection == .leftToRight })
     }

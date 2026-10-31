@@ -31,11 +31,23 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugHourlyLineChartXAxisLabels == ["0", "6", "12", "18"])
     }
 
-    @Test("本日 token 文案右侧展示 SF Symbols 刷新按钮")
-    func todayDescriptionShowsRefreshButtonOnRight() {
+    @Test("弹窗右上角展示 SF Symbols 刷新按钮，与订阅剩余标题同行且右缘对齐内容边缘")
+    func refreshButtonSitsAtPopoverTopTrailingCorner() throws {
         let controller = makeController()
 
         controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let buttonFrame = controller.debugRefreshButtonFrame
+        let heatmapCard = try #require(controller.debugHeatmapCard)
+        let cardFrame = heatmapCard.convert(heatmapCard.bounds, to: controller.view)
+        let titleLabel = controller.debugQuotaSectionView.debugTitleLabel
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: controller.view)
+        #expect(abs(buttonFrame.maxX - cardFrame.maxX) < 0.5)
+        // 标题文字行高非整数，Auto Layout 会把各自 frame 对齐到像素，中线允许 1pt 内的取整误差。
+        #expect(abs(buttonFrame.midY - titleFrame.midY) < 1)
+        #expect(controller.debugQuotaSectionFrame.contains(buttonFrame))
 
         #expect(controller.debugRefreshButtonTitle == "")
         #expect(controller.debugRefreshButtonSymbolName == "arrow.clockwise")
@@ -43,8 +55,6 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.debugRefreshButtonToolTip == "立即刷新")
         #expect(controller.debugRefreshButtonAccessibilityLabel == "刷新本日 token 消耗")
         #expect(controller.debugRefreshButtonImageAccessibilityDescription == "立即刷新")
-        #expect(controller.debugRefreshButtonSitsRightOfDescriptionLabel)
-        #expect(controller.debugRefreshButtonTrailingAlignsWithDescriptionRow)
         #expect(controller.debugRefreshButtonActionName == "refreshTodayStats:")
     }
 
@@ -181,7 +191,7 @@ struct StatusPopoverViewControllerTests {
         #expect(controller.view.userInterfaceLayoutDirection == .leftToRight)
     }
 
-    @Test("加载时以全尺寸液态玻璃遮罩展示状态栏同款动画")
+    @Test("加载时以覆盖原统计区的液态玻璃遮罩展示状态栏同款动画，不遮挡订阅区")
     func loadingOverlayCoversPopoverWithStatusBarAnimation() {
         let controller = makeController()
 
@@ -192,7 +202,7 @@ struct StatusPopoverViewControllerTests {
 
         #expect(controller.debugLoadingOverlayIsVisible)
         #expect(controller.debugLoadingOverlayUsesGlassMaterial)
-        #expect(controller.debugLoadingOverlayCoversRootView)
+        #expect(controller.debugLoadingOverlayCoversOriginalContent)
         #expect(controller.debugLoadingOverlayMessage == "正在加载用量数据...")
         #expect(controller.debugLoadingOverlaySymbolName == StatusBarLoadingAnimation.symbolNames.first)
 
@@ -397,6 +407,177 @@ struct StatusPopoverViewControllerTests {
         #expect(abs(heatmapTrailingInRoot - chartTrailingInRoot) < 0.001)
     }
 
+    @Test("订阅区位于顶部，原统计区保持 370 × 355pt 并整体下移")
+    func quotaSectionSitsAboveUnchangedOriginalContent() {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let original = controller.debugOriginalContentFrame
+        let quota = controller.debugQuotaSectionFrame
+        #expect(original.size == StatusPopoverViewController.originalContentSize)
+        #expect(original.minY == 0)
+        #expect(quota.minY == original.maxY)
+        #expect(quota.maxY == controller.view.bounds.maxY)
+        #expect(quota.height == SubscriptionQuotaSectionLayout.height)
+        #expect(controller.debugTodayDescriptionRowCenteredInRoot)
+        #expect(controller.debugCollectionViewBottomFitsInRootBounds)
+        #expect(controller.debugHourlyLineChartBottomFitsInRootBounds)
+    }
+
+    @Test("订阅区标题与两个工具分组按固定顺序展示；未授权时只显示简短授权入口")
+    func quotaSectionShowsProvidersAndAuthorizationEntries() throws {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        #expect(section.debugTitle == "订阅剩余")
+        let claude = try #require(section.debugProviderView(.claude))
+        let codex = try #require(section.debugProviderView(.codex))
+        // store 尚未刷新时显示 —，不覆盖原统计区。
+        #expect(claude.debugShowsWindows)
+        #expect(claude.debugWindowView(.fiveHour)?.debugValueText == "—")
+        #expect(codex.debugWindowView(.sevenDay)?.debugTitle == "一周")
+        #expect(!controller.debugLoadingOverlayIsVisible)
+    }
+
+    @Test("订阅区展示剩余百分比、横条与重置倒计时")
+    func quotaSectionRendersDemoSnapshots() async throws {
+        let quotaStore = SubscriptionQuotaStore(
+            bookmarkManager: SecurityScopedBookmarkManager.shared,
+            languageProvider: { .zhHans },
+            isDemoModeEnabled: { true },
+            nowProvider: { Date() }
+        )
+        await quotaStore.refresh()
+        let controller = makeController(quotaStore: quotaStore)
+        controller.loadViewIfNeeded()
+
+        let claude = try #require(controller.debugQuotaSectionView.debugProviderView(.claude))
+        let fiveHour = try #require(claude.debugWindowView(.fiveHour))
+        #expect(claude.debugStatusText == "记录于 2 分钟前")
+        #expect(fiveHour.debugValueText == "68%")
+        #expect(fiveHour.debugMeterFraction == 0.68)
+        #expect(fiveHour.debugMeterStyle == .normal)
+        #expect(fiveHour.debugDetailText == "2小时14分钟后重置")
+        #expect(claude.debugMessageText == nil)
+    }
+
+    @Test("Claude 未授权时点击授权入口打开额度文件面板，Codex 入口独立")
+    func unauthorizedClaudeActionOpensFilePanel() async throws {
+        let panel = RecordingQuotaFilePanel()
+        let quotaStore = SubscriptionQuotaStore(
+            bookmarkManager: EmptyQuotaBookmarks(),
+            filePanelPresenter: panel,
+            languageProvider: { .zhHans },
+            isDemoModeEnabled: { false }
+        )
+        await quotaStore.refresh()
+        let controller = makeController(quotaStore: quotaStore)
+        controller.loadViewIfNeeded()
+
+        let claude = try #require(controller.debugQuotaSectionView.debugProviderView(.claude))
+        let codex = try #require(controller.debugQuotaSectionView.debugProviderView(.codex))
+        #expect(claude.debugMessageText == "尚未读取额度")
+        #expect(claude.debugActionTitle == "选择额度文件")
+        #expect(codex.debugActionTitle == "去授权")
+        #expect(!claude.debugShowsWindows)
+
+        claude.debugPerformAction()
+        for _ in 0..<20 where panel.requestCount == 0 {
+            await Task.yield()
+        }
+        #expect(panel.requestCount == 1)
+    }
+
+    @Test("未购买时订阅区隐藏两个工具分组，只显示付费说明与解锁入口，弹窗高度不变")
+    func lockedQuotaSectionShowsUnlockEntry() async throws {
+        let quotaStore = SubscriptionQuotaStore(
+            bookmarkManager: SecurityScopedBookmarkManager.shared,
+            languageProvider: { .zhHans },
+            isDemoModeEnabled: { true },
+            nowProvider: { Date() }
+        )
+        await quotaStore.refresh()
+        let controller = makeController(quotaStore: quotaStore, isQuotaUnlocked: false)
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        #expect(section.debugTitle == "订阅剩余")
+        #expect(section.debugIsLocked)
+        #expect(section.debugLockedMessage == "订阅额度为付费功能，与桌面小组件共用一次永久买断。")
+        #expect(section.debugUnlockTitle == "解锁")
+        #expect(section.debugProviderView(.claude)?.isHidden == true)
+        #expect(section.debugProviderView(.codex)?.isHidden == true)
+        #expect(controller.debugQuotaSectionFrame.height == SubscriptionQuotaSectionLayout.height)
+
+        var unlockRequests = 0
+        controller.onRequestQuotaUnlock = { unlockRequests += 1 }
+        section.debugPerformUnlock()
+        #expect(unlockRequests == 1)
+    }
+
+    @Test("购买后订阅区立即恢复两个工具分组")
+    func unlockingQuotaRevealsProviders() async throws {
+        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
+        defer { purchaseController.stop() }
+        await purchaseController.refresh()
+        let quotaAccess = SubscriptionQuotaAccess(purchaseController: purchaseController)
+        let controller = StatusPopoverViewController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: SubscriptionQuotaStore(languageProvider: { .zhHans }),
+            languageSettings: AppLanguageSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            quotaAccess: quotaAccess
+        )
+        controller.loadViewIfNeeded()
+        #expect(controller.debugQuotaSectionView.debugIsLocked)
+
+        await purchaseController.purchase(in: NSWindow())
+
+        #expect(!controller.debugQuotaSectionView.debugIsLocked)
+        #expect(controller.debugQuotaSectionView.debugProviderView(.claude)?.isHidden == false)
+    }
+
+    @Test("订阅剩余标题右侧的感叹号说明数据来自本地记录且不调用网络 API")
+    func quotaInfoButtonExplainsLocalDataSource() {
+        let controller = makeController(isQuotaUnlocked: false)
+        controller.loadViewIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        let infoButton = section.debugInfoButton
+        #expect(infoButton.identifier?.rawValue == "SubscriptionQuotaInfoButton")
+        #expect(infoButton.image != nil)
+        #expect(infoButton.toolTip == section.debugInfoText)
+        #expect(infoButton.accessibilityLabel() == "订阅剩余")
+        #expect(section.debugInfoText.contains("~/.claude.json"))
+        #expect(section.debugInfoText.contains("不调用任何网络 API"))
+        #expect(section.debugInfoText.contains("略有延迟"))
+        #expect(section.debugInfoText.hasSuffix(SubscriptionQuotaPresenter.resetInferredNote(language: .zhHans)))
+        #expect(section.debugInfoText.contains("显示剩余 100%"))
+        #expect(!section.debugIsInfoPopoverShown)
+        #expect(!controller.ownsAuxiliaryWindow(withNumber: -1))
+    }
+
+    @Test("订阅剩余标题按文字自身行高布局，感叹号与标题文字垂直居中")
+    func quotaInfoButtonCentersOnTitleText() {
+        let controller = makeController()
+        controller.loadViewIfNeeded()
+        controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
+        controller.view.layoutSubtreeIfNeeded()
+
+        let section = controller.debugQuotaSectionView
+        let titleLabel = section.debugTitleLabel
+        let infoButton = section.debugInfoButton
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: controller.view)
+        let infoFrame = infoButton.convert(infoButton.bounds, to: controller.view)
+        // 标签被拉高时文字仍贴顶绘制，几何中线会偏离文字中线；高度须等于文字自身行高。
+        #expect(abs(titleFrame.height - titleLabel.intrinsicContentSize.height) < 0.5)
+        #expect(abs(infoFrame.midY - titleFrame.midY) < 0.5)
+    }
+
     @Test("cell 访问对越界索引做保护")
     func cellAccessChecksItemBounds() {
         let controller = makeController()
@@ -407,7 +588,11 @@ struct StatusPopoverViewControllerTests {
         #expect(!controller.debugHasCell(at: 999))
     }
 
-    private func makeController(language: AppLanguage = .zhHans) -> StatusPopoverViewController {
+    private func makeController(
+        language: AppLanguage = .zhHans,
+        quotaStore: SubscriptionQuotaStore? = nil,
+        isQuotaUnlocked: Bool = true
+    ) -> StatusPopoverViewController {
         let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
@@ -417,9 +602,11 @@ struct StatusPopoverViewControllerTests {
         languageSettings.selectedPreference = .language(language)
         let controller = StatusPopoverViewController(
             viewModel: TokenStatsViewModel(languageSettings: languageSettings),
-            nowProvider: { fixedDate() },
+            quotaStore: quotaStore ?? SubscriptionQuotaStore(languageProvider: { language }),
+            nowProvider: quotaStore == nil ? { fixedDate() } : Date.init,
             calendar: fixedCalendar(),
-            languageSettings: languageSettings
+            languageSettings: languageSettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: isQuotaUnlocked)
         )
         defaults.removePersistentDomain(forName: suiteName)
         return controller
@@ -476,4 +663,22 @@ struct StatusPopoverViewControllerTests {
             | Int((components[1] * 255).rounded()) << 8
             | Int((components[2] * 255).rounded())
     }
+}
+
+@MainActor
+private final class RecordingQuotaFilePanel: ClaudeQuotaFilePanelPresenting {
+    private(set) var requestCount = 0
+
+    func chooseClaudeConfigFile(language: AppLanguage) async -> URL? {
+        requestCount += 1
+        return nil
+    }
+}
+
+@MainActor
+private struct EmptyQuotaBookmarks: SubscriptionQuotaBookmarkAccessing {
+    func hasBookmark(forKey key: String) -> Bool { false }
+    func restoreBookmarkAndAccess(forKey key: String) -> URL? { nil }
+    func stopAccessing(forKey key: String) {}
+    func persistSelectedDirectory(_ url: URL, forKey key: String) -> Bool { false }
 }

@@ -149,10 +149,32 @@ struct CodexEventMsg: Decodable, Sendable {
     let model: String?
     let modelName: String?
     let metadata: CodexModelMetadata?
+    let rateLimitID: String?
 
     enum CodingKeys: String, CodingKey {
         case type, info, model, metadata
         case modelName = "model_name"
+        case rateLimits = "rate_limits"
+    }
+
+    private enum RateLimitCodingKeys: String, CodingKey {
+        case limitID = "limit_id"
+    }
+
+    /// 解码事件与限额来源；非关键限额字段损坏时仍保留核心用量。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(String.self, forKey: .type)
+        info = try container.decodeIfPresent(CodexTokenCountInfo.self, forKey: .info)
+        model = try container.decodeIfPresent(String.self, forKey: .model)
+        modelName = try container.decodeIfPresent(String.self, forKey: .modelName)
+        metadata = try container.decodeIfPresent(CodexModelMetadata.self, forKey: .metadata)
+        // 限额元数据损坏时仍保留核心用量，未提供来源时归入默认桶。
+        let rateLimits = try? container.nestedContainer(
+            keyedBy: RateLimitCodingKeys.self,
+            forKey: .rateLimits
+        )
+        rateLimitID = try? rateLimits?.decode(String.self, forKey: .limitID)
     }
 
     var preferredModel: String? {
@@ -167,6 +189,7 @@ struct CodexTokenCountInfo: Decodable, Sendable {
     let model: String?
     let modelName: String?
     let metadata: CodexModelMetadata?
+    let hasTotalSnapshot: Bool
 
     enum CodingKeys: String, CodingKey {
         case lastTokenUsage = "last_token_usage"
@@ -179,6 +202,12 @@ struct CodexTokenCountInfo: Decodable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         lastTokenUsage = try? container.decode(CodexTokenCounts.self, forKey: .lastTokenUsage)
         totalTokenUsage = try? container.decode(CodexTokenCounts.self, forKey: .totalTokenUsage)
+        // 空对象虽然可宽容解码为零，但不能作为去重依据，否则 last-only 用量会被误丢弃。
+        let totalContainer = try? container.nestedContainer(
+            keyedBy: CodexTokenCounts.CodingKeys.self,
+            forKey: .totalTokenUsage
+        )
+        hasTotalSnapshot = totalContainer?.allKeys.isEmpty == false
         model = try? container.decode(String.self, forKey: .model)
         modelName = try? container.decode(String.self, forKey: .modelName)
         metadata = try? container.decode(CodexModelMetadata.self, forKey: .metadata)

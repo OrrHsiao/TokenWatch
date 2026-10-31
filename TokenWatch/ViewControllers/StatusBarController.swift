@@ -4,24 +4,43 @@ import os.log
 
 /// macOS 状态栏控制器
 ///
-/// 长驻一个图标 + 文本(今日所有 provider 累加 token 数),
-/// 按设置间隔拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 退出)。
+/// 默认常驻原有的图标 + 今日 token 文本,其后是 Claude / Codex 订阅剩余额度圆环;
+/// 可在右键菜单切换为只显示其中一种。订阅额度为付费功能:未解锁时只显示今日 token,
+/// 各周期是否展示及简洁 / 详细样式在主界面设置页配置。
+/// 按设置间隔拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 显示设置 / 退出)。
 ///
 /// 设计原则:
-/// - 不直接读 JSONL / 不做聚合,完全复用 TokenStatsViewModel.states.byDay
-/// - title 计算交给 StatusBarTitleBuilder,本类只负责 AppKit 层装配
+/// - 不直接读 JSONL / 不做聚合,完全复用 TokenStatsViewModel.states.byDay 与 SubscriptionQuotaStore
+/// - title 计算交给 StatusBarTitleBuilder / SubscriptionQuotaPresenter,本类只负责 AppKit 层装配
 @MainActor
 final class StatusBarController {
 
     private let viewModel: TokenStatsViewModel
+    private let quotaStore: SubscriptionQuotaStore
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
+    private let displaySettings: StatusBarDisplaySettings
+    private let quotaAccess: SubscriptionQuotaAccess
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private let statusMenu = NSMenu()
+    private let menuItems = StatusMenuItems()
     private var observerToken: TokenStatsViewModel.ObservationToken?
+    private var quotaObserverToken: SubscriptionQuotaStore.ObservationToken?
     private var autoRefreshSettingsObserverToken: AutoRefreshSettings.ObservationToken?
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
+    private var displaySettingsObserverToken: StatusBarDisplaySettings.ObservationToken?
+    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
+    private var buttonAppearanceObserver: NSKeyValueObservation?
+    /// 含额度的模式下刷新倒计时、旧记录与重置点状态;模型未变化时不重新赋值图像。
+    private var quotaPresentationTimer: Timer?
+    private var lastRenderedQuotaModel: StatusBarQuotaModel?
+    /// 按钮当前承载的展示模式;NSStatusBarButton 会改写 imagePosition,不能回读它判断模式。
+    private var renderedDisplayMode: StatusBarDisplayMode?
+    /// 组合模式下绘制进图像的今日 token 文本;单独今日 token 模式使用原生标题,此值为 nil。
+    private var lastRenderedTokenPrimary: String?
+    /// 记录 Codex 目录授权状态,授权变化后立即重读额度。
+    private var lastCodexDirectoryState: ProviderDirectoryState?
     private var popoverCloseObserver: NSObjectProtocol?
     private var applicationResignActiveObserver: NSObjectProtocol?
     private var appAppearanceObserver: NSKeyValueObservation?
@@ -35,12 +54,13 @@ final class StatusBarController {
     /// 上次渲染的图标 symbol 名,用于在档位未变时跳过 image 赋值,避免触发状态栏重布局
     private var lastRenderedSymbolName: String?
     /// SF Symbol 配置统一管理,保证替换图标后 pointSize/weight 不丢失
-    private let iconSymbolConfig = NSImage.SymbolConfiguration(
+    private static let iconSymbolConfig = NSImage.SymbolConfiguration(
         pointSize: StatusBarIconLayout.pointSize,
         weight: .regular
     )
     private var loadingAnimationTimer: Timer?
     private var loadingAnimationFrameIndex = 0
+    private static let quotaPresentationTickInterval: TimeInterval = 60
 
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarController")
 
@@ -48,7 +68,7 @@ final class StatusBarController {
         refreshTimer?.timeInterval
     }
     var debugStatusMenuItemTitles: [String] {
-        statusMenu.items.filter { !$0.isSeparatorItem }.map(\.title)
+        statusMenu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
     }
     var debugTitlePlainString: String {
         statusItem.button?.attributedTitle.string ?? ""
@@ -80,15 +100,36 @@ final class StatusBarController {
         return offsets
     }
     var debugPopoverAppearance: NSAppearance? { popover.appearance }
+    var debugStatusButtonImagePosition: NSControl.ImagePosition? { statusItem.button?.imagePosition }
+    var debugRenderedDisplayMode: StatusBarDisplayMode? { renderedDisplayMode }
+    var debugRenderedTokenPrimary: String? { lastRenderedTokenPrimary }
+    var debugStatusButtonImageSize: NSSize? { statusItem.button?.image?.size }
+    var debugLastRenderedQuotaModel: StatusBarQuotaModel? { lastRenderedQuotaModel }
+    var debugQuotaPresentationTimerInterval: TimeInterval? { quotaPresentationTimer?.timeInterval }
+    var debugDisplayModeMenuTitles: [String] {
+        menuItems.displayModeMenuItem.submenu?.items.map(\.title) ?? []
+    }
+    var debugCheckedDisplayModeTitle: String? {
+        menuItems.displayModeMenuItem.submenu?.items.first { $0.state == .on }?.title
+    }
+    func debugRenderTitle() {
+        renderTitle()
+    }
 
     init(
         viewModel: TokenStatsViewModel,
+        quotaStore: SubscriptionQuotaStore = SubscriptionQuotaStore(),
         autoRefreshSettings: AutoRefreshSettings = .shared,
-        languageSettings: AppLanguageSettings = .shared
+        languageSettings: AppLanguageSettings = .shared,
+        displaySettings: StatusBarDisplaySettings = .shared,
+        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
     ) {
         self.viewModel = viewModel
+        self.quotaStore = quotaStore
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
+        self.displaySettings = displaySettings
+        self.quotaAccess = quotaAccess
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.statusMenu.userInterfaceLayoutDirection = .leftToRight
 
@@ -96,8 +137,11 @@ final class StatusBarController {
         configurePopover()
         installMenu()
         subscribeToViewModel()
+        subscribeToQuotaStore()
         subscribeToAutoRefreshSettings()
         subscribeToLanguageSettings()
+        subscribeToDisplaySettings()
+        subscribeToQuotaAccess()
         startRefreshTimer()
         // 立即按当前 ViewModel 状态画一次,避免空标题闪现
         renderTitle()
@@ -112,6 +156,16 @@ final class StatusBarController {
         MainActor.assumeIsolated {
             refreshTimer?.invalidate()
             loadingAnimationTimer?.invalidate()
+            quotaPresentationTimer?.invalidate()
+            if let token = displaySettingsObserverToken {
+                displaySettings.removeObserver(token)
+            }
+            if let token = quotaAccessObserverToken {
+                quotaAccess.removeObserver(token)
+            }
+            if let token = quotaObserverToken {
+                quotaStore.removeObserver(token)
+            }
             if let token = popoverCloseObserver {
                 NotificationCenter.default.removeObserver(token)
             }
@@ -134,10 +188,26 @@ final class StatusBarController {
         refreshTimer = nil
         loadingAnimationTimer?.invalidate()
         loadingAnimationTimer = nil
+        quotaPresentationTimer?.invalidate()
+        quotaPresentationTimer = nil
         if let token = observerToken {
             viewModel.removeObserver(token)
             observerToken = nil
         }
+        if let token = quotaObserverToken {
+            quotaStore.removeObserver(token)
+            quotaObserverToken = nil
+        }
+        if let token = displaySettingsObserverToken {
+            displaySettings.removeObserver(token)
+            displaySettingsObserverToken = nil
+        }
+        if let token = quotaAccessObserverToken {
+            quotaAccess.removeObserver(token)
+            quotaAccessObserverToken = nil
+        }
+        buttonAppearanceObserver?.invalidate()
+        buttonAppearanceObserver = nil
         if let token = autoRefreshSettingsObserverToken {
             autoRefreshSettings.removeObserver(token)
             autoRefreshSettingsObserverToken = nil
@@ -184,14 +254,26 @@ final class StatusBarController {
             cell.wraps = true
             cell.truncatesLastVisibleLine = false
         }
+        // 额度图像在绘制时按按钮外观解析颜色;状态栏深浅变化时重建一次,避免沿用旧外观缓存。
+        buttonAppearanceObserver = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                guard let self, self.effectiveDisplayMode.showsQuota else { return }
+                self.renderTitle(forceImage: true)
+            }
+        }
     }
 
     private func configurePopover() {
         let contentViewController = StatusPopoverViewController(
             viewModel: viewModel,
-            languageSettings: languageSettings
+            quotaStore: quotaStore,
+            languageSettings: languageSettings,
+            quotaAccess: quotaAccess
         )
         contentViewController.preferredContentSize = StatusBarPopoverLayout.contentSize
+        contentViewController.onRequestQuotaUnlock = { [weak self] in
+            self?.openQuotaPurchaseSettings()
+        }
 
         // 外部点击由带 presentation generation 的 monitor 统一处理。
         // 若同时使用 transient，AppKit 可能在 mouseDown 先关闭，随后 mouseUp action 又重新打开。
@@ -226,8 +308,21 @@ final class StatusBarController {
 
     /// 拼装两行富文本:数字加粗,单位字号小一号
     /// 两行 paragraphStyle 设置 maximumLineHeight 把行高压紧,使两行总高接近图标高度(18pt)
-    private func makeAttributedTitle(primary: String) -> NSAttributedString {
-        let language = languageSettings.resolvedLanguage
+    /// - Parameter includesBaselineOffset: 原生标题需要 baseline 偏移修正 cell 绘制偏上;
+    ///   组合模式自行在图像中居中绘制,不需要该偏移。
+    private func makeAttributedTitle(primary: String, includesBaselineOffset: Bool = true) -> NSAttributedString {
+        Self.makeAttributedTitle(
+            primary: primary,
+            language: languageSettings.resolvedLanguage,
+            includesBaselineOffset: includesBaselineOffset
+        )
+    }
+
+    private static func makeAttributedTitle(
+        primary: String,
+        language: AppLanguage,
+        includesBaselineOffset: Bool
+    ) -> NSAttributedString {
         let unit = AppStrings.text(.statusBarTokenUnit, language: language)
         let primaryParagraph = NSMutableParagraphStyle()
         primaryParagraph.alignment = .center
@@ -245,7 +340,7 @@ final class StatusBarController {
                 .font: NSFont.boldSystemFont(ofSize: 9),
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: primaryParagraph,
-                .baselineOffset: StatusBarTitleTextLayout.baselineOffset,
+                .baselineOffset: includesBaselineOffset ? StatusBarTitleTextLayout.baselineOffset : 0,
             ]
         )
         result.append(NSAttributedString(
@@ -254,44 +349,52 @@ final class StatusBarController {
                 .font: NSFont.systemFont(ofSize: 7),
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: secondaryParagraph,
-                .baselineOffset: StatusBarTitleTextLayout.baselineOffset,
+                .baselineOffset: includesBaselineOffset ? StatusBarTitleTextLayout.baselineOffset : 0,
             ]
         ))
         return result
     }
 
     private func installMenu() {
-        let language = languageSettings.resolvedLanguage
-        let openItem = NSMenuItem(
-            title: AppStrings.text(.statusMenuOpen, language: language),
-            action: #selector(openMainWindow),
-            keyEquivalent: "0"
-        )
-        openItem.target = self
-        statusMenu.addItem(openItem)
+        menuItems.openItem.action = #selector(openMainWindow)
+        menuItems.openItem.keyEquivalent = "0"
+        menuItems.openItem.target = self
+        statusMenu.addItem(menuItems.openItem)
 
-        let refreshItem = NSMenuItem(
-            title: AppStrings.text(.refreshNow, language: language),
-            action: #selector(refreshNow),
-            keyEquivalent: "r"
-        )
-        refreshItem.target = self
-        statusMenu.addItem(refreshItem)
+        menuItems.refreshItem.action = #selector(refreshNow)
+        menuItems.refreshItem.keyEquivalent = "r"
+        menuItems.refreshItem.target = self
+        statusMenu.addItem(menuItems.refreshItem)
 
         statusMenu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(
-            title: AppStrings.text(.statusMenuQuit, language: language),
-            action: #selector(quitApp),
-            keyEquivalent: "q"
-        )
-        quitItem.target = self
-        statusMenu.addItem(quitItem)
+        // 右键菜单只承载状态栏显示模式;各额度周期的展示与样式、Claude 额度文件授权在主界面设置页配置。
+        let displayModeMenu = NSMenu()
+        for mode in StatusBarDisplayMode.allCases {
+            let item = NSMenuItem(title: "", action: #selector(selectDisplayMode(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = mode.rawValue
+            displayModeMenu.addItem(item)
+        }
+        menuItems.displayModeMenuItem.submenu = displayModeMenu
+        statusMenu.addItem(menuItems.displayModeMenuItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        menuItems.quitItem.action = #selector(quitApp)
+        menuItems.quitItem.keyEquivalent = "q"
+        menuItems.quitItem.target = self
+        statusMenu.addItem(menuItems.quitItem)
+
+        updateMenuTitles()
     }
 
     private func subscribeToViewModel() {
-        observerToken = viewModel.observe { [weak self] _ in
+        observerToken = viewModel.observe { [weak self] providerID in
             guard let self else { return }
+            if providerID == .codex {
+                self.refreshQuotaIfCodexDirectoryChanged()
+            }
             // 等所有 provider 都不再 loading 才重绘,避免 loadAllStats 并发跑时
             // 状态栏数字在中间态多次跳变(800k → 1.2M → 1.25M)。
             // 单 provider 完成时其它仍 isLoading,这里挡掉;最后一个完成时 allSatisfy 才通过。
@@ -299,6 +402,61 @@ final class StatusBarController {
             guard self.viewModel.states.values.allSatisfy({ !$0.isLoading }) else { return }
             self.renderTitle()
         }
+    }
+
+    private func subscribeToQuotaStore() {
+        quotaObserverToken = quotaStore.observe { [weak self] in
+            guard let self, self.effectiveDisplayMode.showsQuota else { return }
+            self.renderTitle()
+        }
+    }
+
+    private func subscribeToDisplaySettings() {
+        displaySettingsObserverToken = displaySettings.observe { [weak self] in
+            guard let self else { return }
+            self.updateMenuTitles()
+            self.syncLoadingAnimationState()
+            self.renderTitle()
+        }
+    }
+
+    /// 购买或恢复后立即读取额度并重绘;退款撤销后同步隐藏额度与相关菜单项。
+    private func subscribeToQuotaAccess() {
+        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
+            guard let self else { return }
+            self.updateMenuTitles()
+            self.syncLoadingAnimationState()
+            self.renderTitle()
+            self.refreshQuotaIfUnlocked()
+        }
+    }
+
+    /// Codex 额度复用 Codex 数据目录授权;授权状态变化(例如在设置页重新授权)后立即重读。
+    private func refreshQuotaIfCodexDirectoryChanged() {
+        let directoryState = viewModel.states[.codex]?.directoryState
+        guard directoryState != lastCodexDirectoryState else { return }
+        lastCodexDirectoryState = directoryState
+        refreshQuotaIfUnlocked()
+    }
+
+    /// 额度为付费功能,未解锁时不读取本地额度记录。
+    private func refreshQuotaIfUnlocked() {
+        guard quotaAccess.isUnlocked else { return }
+        let quotaStore = self.quotaStore
+        Task { @MainActor in
+            await quotaStore.refresh()
+        }
+    }
+
+    /// 实际生效的展示模式。
+    ///
+    /// 额度未解锁,或设置页把两个 Agent 的所有周期都关闭时,含额度的模式退回只显示今日 token,
+    /// 保证状态栏始终有可点击的内容;用户选择的模式本身保持不变,解锁或重新开启后自动恢复。
+    private var effectiveDisplayMode: StatusBarDisplayMode {
+        let mode = displaySettings.mode
+        guard mode.showsQuota else { return mode }
+        guard quotaAccess.isUnlocked, displaySettings.hasVisibleQuotaWindow else { return .todayTokens }
+        return mode
     }
 
     private func subscribeToAutoRefreshSettings() {
@@ -320,12 +478,21 @@ final class StatusBarController {
 
     private func updateMenuTitles() {
         let language = languageSettings.resolvedLanguage
-        let nonSeparatorItems = statusMenu.items.filter { !$0.isSeparatorItem }
-        guard nonSeparatorItems.count >= 3 else { return }
+        menuItems.openItem.title = AppStrings.text(.statusMenuOpen, language: language)
+        menuItems.refreshItem.title = AppStrings.text(.refreshNow, language: language)
+        menuItems.displayModeMenuItem.title = AppStrings.text(.statusMenuDisplayMode, language: language)
+        menuItems.quitItem.title = AppStrings.text(.statusMenuQuit, language: language)
+        // 未解锁时额度不可见,显示模式入口没有意义,隐藏。
+        menuItems.displayModeMenuItem.isHidden = !quotaAccess.isUnlocked
 
-        nonSeparatorItems[0].title = AppStrings.text(.statusMenuOpen, language: language)
-        nonSeparatorItems[1].title = AppStrings.text(.refreshNow, language: language)
-        nonSeparatorItems[2].title = AppStrings.text(.statusMenuQuit, language: language)
+        let selectedMode = displaySettings.mode
+        for item in menuItems.displayModeMenuItem.submenu?.items ?? [] {
+            guard let mode = (item.representedObject as? String).flatMap(StatusBarDisplayMode.init(rawValue:)) else {
+                continue
+            }
+            item.title = mode.title(language: language)
+            item.state = mode == selectedMode ? .on : .off
+        }
     }
 
     private func startRefreshTimer() {
@@ -356,13 +523,16 @@ final class StatusBarController {
         if lastRenderedDayKey != todayKey {
             renderTitle()
         }
+        refreshQuotaIfUnlocked()
         Task { await viewModel.loadAllStats(mode: .silentIfUnchanged) }
     }
 
     // MARK: - Render
 
     private func syncLoadingAnimationState() {
-        if viewModel.states.values.contains(where: { $0.isLoading }) {
+        // 只有包含今日 token 的模式承载原有仪表盘加载动画;纯额度模式不跑动画。
+        if effectiveDisplayMode.showsTodayTokens,
+           viewModel.states.values.contains(where: { $0.isLoading }) {
             startLoadingAnimation()
         } else {
             stopLoadingAnimation()
@@ -396,49 +566,228 @@ final class StatusBarController {
 
     private func renderLoadingAnimationFrame() {
         let symbolName = StatusBarLoadingAnimation.symbolNames[loadingAnimationFrameIndex]
-        setIcon(symbolName: symbolName)
+        applyButtonImage(
+            symbolName: symbolName,
+            tokenPrimary: lastRenderedTokenPrimary,
+            quotaModel: lastRenderedQuotaModel,
+            force: false
+        )
     }
 
-    private func setIcon(symbolName: String) {
+    private static func makeSymbolImage(symbolName: String) -> NSImage? {
         let image = NSImage(
             systemSymbolName: symbolName,
             accessibilityDescription: "AI Token Watch"
         )?.withSymbolConfiguration(iconSymbolConfig)
         // 状态栏图标做成 template 由系统按主题自动反色
         image?.isTemplate = true
-        statusItem.button?.image = image.map(StatusBarIconLayout.imageWithTrailingSpacing)
-        lastRenderedSymbolName = symbolName
+        return image
     }
 
-    private func renderTitle() {
-        let todayKey = Self.todayKey()
-        let primary = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
-        statusItem.button?.attributedTitle = makeAttributedTitle(primary: primary)
+    /// 生成默认“额度 + 今日 Tokens”模式下的状态栏图像，供商店截图导出与真实状态栏共用同一套绘制。
+    ///
+    /// 各周期按默认配置展示（全部可见、详细样式），不读取用户的状态栏设置。
+    /// - Parameters:
+    ///   - states: 今日 token 的统计来源。
+    ///   - quotaStore: 已完成读取的额度存储。
+    ///   - language: 文案语言。
+    ///   - now: 计算今日 key 与额度展示状态的时间。
+    /// - Returns: 组合模式图像；颜色在绘制时按当前外观解析。档位图标不可用时返回 nil。
+    static func makeDefaultModeSnapshotImage(
+        states: [ProviderID: TokenStatsViewModel.ProviderState],
+        quotaStore: SubscriptionQuotaStore,
+        language: AppLanguage,
+        now: Date = Date()
+    ) -> NSImage? {
+        let todayKey = todayKey(now: now)
+        let total = StatusBarTitleBuilder.totalTokens(states: states, todayKey: todayKey)
+        guard let symbolImage = makeSymbolImage(
+            symbolName: StatusBarTitleBuilder.symbolName(forTotalTokens: total)
+        ) else {
+            return nil
+        }
+        let presentations = SubscriptionQuotaProvider.allCases.map { provider in
+            SubscriptionQuotaPresenter.make(
+                provider: provider,
+                state: quotaStore.state(for: provider),
+                now: now,
+                language: language
+            )
+        }
+        let quotaModel = StatusBarQuotaModel.make(
+            presentations: presentations,
+            configuration: { _, _ in .defaultConfiguration },
+            ringDiameter: StatusBarQuotaLayout.ringDiameter(forStatusBarThickness: NSStatusBar.system.thickness)
+        )
+        return StatusBarQuotaImageRenderer.makeImage(
+            for: quotaModel,
+            leadingSymbol: symbolImage,
+            leadingTitle: makeAttributedTitle(
+                primary: StatusBarTitleBuilder.build(states: states, todayKey: todayKey),
+                language: language,
+                includesBaselineOffset: false
+            )
+        )
+    }
 
-        // 图标分档:用与文本相同的累加口径,避免文字和图标显示出处不一致
-        let total = StatusBarTitleBuilder.totalTokens(states: viewModel.states, todayKey: todayKey)
-        let symbolName = StatusBarTitleBuilder.symbolName(forTotalTokens: total)
-        // 仅在档位变化时换图,减少 image 赋值引发的状态栏重新布局
-        if symbolName != lastRenderedSymbolName {
-            setIcon(symbolName: symbolName)
+    /// 按当前模式组装按钮图像。
+    ///
+    /// 单独今日 token 模式沿用原生 image + attributedTitle；含额度的模式使用 image-only，
+    /// 组合模式把档位图标、今日 token 文本与额度圆环按顺序绘制进同一张图。
+    /// 输入都未变化时不重新赋值，避免状态栏重新布局。
+    /// - Parameters:
+    ///   - symbolName: 今日 token 档位图标；纯额度模式传 nil。
+    ///   - tokenPrimary: 组合模式绘制进图像的今日 token 数字；其他模式传 nil。
+    ///   - quotaModel: 额度圆环模型；纯今日 token 模式传 nil。
+    ///   - force: 外观变化时即使输入相同也重建图像。
+    private func applyButtonImage(
+        symbolName: String?,
+        tokenPrimary: String?,
+        quotaModel: StatusBarQuotaModel?,
+        force: Bool
+    ) {
+        guard let button = statusItem.button else { return }
+        let mode = effectiveDisplayMode
+        guard force
+            || mode != renderedDisplayMode
+            || symbolName != lastRenderedSymbolName
+            || tokenPrimary != lastRenderedTokenPrimary
+            || quotaModel != lastRenderedQuotaModel else {
+            return
         }
 
+        let symbolImage = symbolName.flatMap(Self.makeSymbolImage(symbolName:))
+        let image: NSImage?
+        if let quotaModel, let symbolImage, let tokenPrimary {
+            image = StatusBarQuotaImageRenderer.makeImage(
+                for: quotaModel,
+                leadingSymbol: symbolImage,
+                leadingTitle: makeAttributedTitle(primary: tokenPrimary, includesBaselineOffset: false)
+            )
+        } else if let quotaModel {
+            image = StatusBarQuotaImageRenderer.makeImage(for: quotaModel)
+        } else {
+            image = symbolImage.map(StatusBarIconLayout.imageWithTrailingSpacing)
+        }
+
+        if mode != renderedDisplayMode {
+            // 只有单独今日 token 模式使用原生标题；组合模式的文本已在图像中。
+            button.imagePosition = mode == .todayTokens ? .imageLeft : .imageOnly
+            if mode != .todayTokens {
+                button.attributedTitle = NSAttributedString(string: "")
+            }
+            renderedDisplayMode = mode
+            logger.info("状态栏显示模式已应用: \(mode.rawValue, privacy: .public)")
+        }
+        button.image = image
+        lastRenderedSymbolName = symbolName
+        lastRenderedTokenPrimary = tokenPrimary
+        lastRenderedQuotaModel = quotaModel
+    }
+
+    /// 按显示模式重绘状态栏：原有图标 + 今日 token 文本在前，额度圆环在后。
+    /// - Parameter forceImage: 外观变化时即使内容相同也重建图像。
+    private func renderTitle(forceImage: Bool = false) {
+        guard let button = statusItem.button else { return }
+        let mode = effectiveDisplayMode
+        let language = languageSettings.resolvedLanguage
+        var toolTipSections: [String] = []
+
+        var symbolName: String?
+        var tokenPrimary: String?
+        if mode.showsTodayTokens {
+            let todayKey = Self.todayKey()
+            let primary = StatusBarTitleBuilder.build(states: viewModel.states, todayKey: todayKey)
+            if mode == .todayTokens {
+                let attributedTitle = makeAttributedTitle(primary: primary)
+                if button.attributedTitle != attributedTitle {
+                    button.attributedTitle = attributedTitle
+                }
+            } else {
+                tokenPrimary = primary
+            }
+            // 图标分档:用与文本相同的累加口径,避免文字和图标显示出处不一致
+            let total = StatusBarTitleBuilder.totalTokens(states: viewModel.states, todayKey: todayKey)
+            symbolName = StatusBarTitleBuilder.symbolName(forTotalTokens: total)
+            toolTipSections.append(todayTokensToolTip(primary: primary))
+            lastRenderedDayKey = todayKey
+        }
+
+        var quotaModel: StatusBarQuotaModel?
+        if mode.showsQuota {
+            startQuotaPresentationTimer()
+            let now = Date()
+            let presentations = SubscriptionQuotaProvider.allCases.map { provider in
+                SubscriptionQuotaPresenter.make(
+                    provider: provider,
+                    state: quotaStore.state(for: provider),
+                    now: now,
+                    language: language
+                )
+            }
+            let displaySettings = self.displaySettings
+            quotaModel = StatusBarQuotaModel.make(
+                presentations: presentations,
+                configuration: { displaySettings.quotaWindowConfiguration(provider: $0, kind: $1) },
+                ringDiameter: StatusBarQuotaLayout.ringDiameter(
+                    forStatusBarThickness: NSStatusBar.system.thickness
+                )
+            )
+            // 悬停说明只列出状态栏中实际展示的 Agent,简洁模式下仍可在此查看百分比。
+            let visibleProviders = Set(quotaModel?.groups.map(\.provider) ?? [])
+            toolTipSections.append(SubscriptionQuotaPresenter.toolTip(
+                for: presentations.filter { visibleProviders.contains($0.provider) },
+                language: language
+            ))
+        } else {
+            stopQuotaPresentationTimer()
+        }
+
+        applyButtonImage(
+            symbolName: symbolName,
+            tokenPrimary: tokenPrimary,
+            quotaModel: quotaModel,
+            force: forceImage
+        )
+
+        let toolTip = toolTipSections.joined(separator: "\n\n")
+        if button.toolTip != toolTip {
+            button.toolTip = toolTip
+        }
+        // 含额度的图像没有原生文字可供读屏，使用与悬停说明一致的辅助功能文案。
+        button.setAccessibilityLabel(mode.showsQuota ? toolTip.replacingOccurrences(of: "\n", with: ", ") : nil)
+    }
+
+    private func todayTokensToolTip(primary: String) -> String {
         let rate = TokenBurnRateCalculator.calculateRate(states: viewModel.states, now: Date())
         let isChinese = languageSettings.resolvedLanguage.baseLanguageCode == "zh"
-        if rate.activeTokensPerSecond > 0 {
-            let rateLabel = isChinese ? "燃烧速率" : "Burn Rate"
-            let rateText = TokenBurnRateCalculator.formatRate(rate.activeTokensPerSecond)
-            if rate.costPerHour >= 0.01 {
-                let costText = TokenBurnRateCalculator.formatCostPerHour(rate.costPerHour)
-                statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens\n\(rateLabel): \(rateText) (\(costText))"
-            } else {
-                statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens\n\(rateLabel): \(rateText)"
-            }
-        } else {
-            statusItem.button?.toolTip = "TokenWatch · \(primary) Tokens"
+        guard rate.activeTokensPerSecond > 0 else {
+            return "TokenWatch · \(primary) Tokens"
         }
+        let rateLabel = isChinese ? "燃烧速率" : "Burn Rate"
+        let rateText = TokenBurnRateCalculator.formatRate(rate.activeTokensPerSecond)
+        if rate.costPerHour >= 0.01 {
+            let costText = TokenBurnRateCalculator.formatCostPerHour(rate.costPerHour)
+            return "TokenWatch · \(primary) Tokens\n\(rateLabel): \(rateText) (\(costText))"
+        }
+        return "TokenWatch · \(primary) Tokens\n\(rateLabel): \(rateText)"
+    }
 
-        lastRenderedDayKey = todayKey
+    private func startQuotaPresentationTimer() {
+        guard quotaPresentationTimer == nil else { return }
+        let timer = Timer(timeInterval: Self.quotaPresentationTickInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.effectiveDisplayMode.showsQuota else { return }
+                self.renderTitle()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        quotaPresentationTimer = timer
+    }
+
+    private func stopQuotaPresentationTimer() {
+        quotaPresentationTimer?.invalidate()
+        quotaPresentationTimer = nil
     }
 
     /// 与 UsageAggregator.dayKey 保持一致:本地 Calendar + "yyyy-MM-dd"
@@ -707,6 +1056,11 @@ final class StatusBarController {
         if let contentView = popover.contentViewController?.view, eventHitsView(event, view: contentView) {
             return .popover
         }
+        // 订阅区说明气泡是独立窗口,其中的点击属于弹窗内部交互,不应关闭弹窗。
+        if let contentController = popover.contentViewController as? StatusPopoverViewController,
+           contentController.ownsAuxiliaryWindow(withNumber: event.windowNumber) {
+            return .popover
+        }
         return .background
     }
 
@@ -743,7 +1097,25 @@ final class StatusBarController {
     }
 
     @objc private func refreshNow() {
+        refreshQuotaIfUnlocked()
         Task { await viewModel.loadAllStats() }
+    }
+
+    @objc private func selectDisplayMode(_ sender: NSMenuItem) {
+        guard let mode = (sender.representedObject as? String).flatMap(StatusBarDisplayMode.init(rawValue:)) else {
+            return
+        }
+        logger.info("状态栏显示切换为 \(mode.rawValue, privacy: .public)")
+        displaySettings.mode = mode
+    }
+
+    /// 弹窗订阅区的解锁入口:关闭弹窗后打开主界面设置页的订阅额度区块,由其承载购买与恢复。
+    private func openQuotaPurchaseSettings() {
+        logger.info("从状态栏弹窗打开订阅额度解锁入口")
+        dismissCurrentPopover()
+        Task { @MainActor in
+            (NSApp.delegate as? AppDelegate)?.showStatusBarQuotaSettings()
+        }
     }
 
     @objc private func quitApp() {
@@ -848,6 +1220,15 @@ final class AutoRefreshSettings {
             handler()
         }
     }
+}
+
+/// 状态栏右键菜单项;按引用更新文案,避免依赖菜单项的位置索引。
+@MainActor
+private final class StatusMenuItems {
+    let openItem = NSMenuItem()
+    let refreshItem = NSMenuItem()
+    let displayModeMenuItem = NSMenuItem()
+    let quitItem = NSMenuItem()
 }
 
 /// 状态栏 popover 固定布局参数。
@@ -986,6 +1367,7 @@ enum StatusPopoverActivation {
 /// 状态栏菜单打开主窗口的置前策略。
 ///
 /// NSMenu action 执行时菜单仍在 tracking;延后一轮主线程再处理,避免菜单关闭流程覆盖窗口激活。
+/// 关闭后保留的窗口必须先恢复可见,再激活应用,让系统能够切换到窗口所属的 Space。
 /// 已在屏幕上的主窗口若被其它 app 盖住,仅 makeKeyAndOrderFront 不够,需要 orderFrontRegardless。
 enum StatusMainWindowPresentation {
     enum Timing: Equatable {
@@ -993,6 +1375,7 @@ enum StatusMainWindowPresentation {
     }
 
     enum Action: Equatable {
+        case restoreWindow
         case activateApplication
         case makeWindowKeyAndOrderFront
         case orderWindowFrontRegardless
@@ -1005,10 +1388,35 @@ enum StatusMainWindowPresentation {
     static func actions(targetWindowExists: Bool) -> [Action] {
         guard targetWindowExists else { return [] }
         return [
+            .restoreWindow,
             .activateApplication,
             .makeWindowKeyAndOrderFront,
             .orderWindowFrontRegardless,
         ]
+    }
+
+    /// 恢复并置前同一个主窗口,在应用激活前确保它已重新进入窗口列表。
+    /// - Parameters:
+    ///   - window: 已有或新建的主窗口。
+    ///   - activateApplication: 窗口恢复后执行的应用激活操作。
+    @MainActor
+    static func present(_ window: NSWindow, activateApplication: () -> Void) {
+        for action in actions(targetWindowExists: true) {
+            switch action {
+            case .restoreWindow:
+                if window.isMiniaturized {
+                    window.deminiaturize(nil)
+                }
+                // 先仅恢复可见性,激活后再设置 key window,保留正常的焦点通知顺序。
+                window.orderFront(nil)
+            case .activateApplication:
+                activateApplication()
+            case .makeWindowKeyAndOrderFront:
+                window.makeKeyAndOrderFront(nil)
+            case .orderWindowFrontRegardless:
+                window.orderFrontRegardless()
+            }
+        }
     }
 }
 
@@ -1085,7 +1493,7 @@ enum StatusBarTitleTextLayout {
 /// 继续交给原生 NSStatusBarButton cell 绘制 image + attributedTitle,避免标题字符串塞空格。
 enum StatusBarIconLayout {
     static let pointSize: CGFloat = 18
-    static let imageTitleSpacing: CGFloat = 4
+    static let imageTitleSpacing: CGFloat = 2
 
     static func canvasSize(for imageSize: NSSize) -> NSSize {
         NSSize(width: imageSize.width + imageTitleSpacing, height: imageSize.height)

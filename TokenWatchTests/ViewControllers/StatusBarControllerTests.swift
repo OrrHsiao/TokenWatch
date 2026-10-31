@@ -128,13 +128,13 @@ struct StatusBarControllerTests {
     @Test func statusBarIconAddsTrailingSpacingBeforeTitle() {
         #expect(StatusBarIconLayout.pointSize == 18)
         #expect(StatusBarIconLayout.pointSize < 20)
-        #expect(StatusBarIconLayout.imageTitleSpacing == 4)
-        #expect(StatusBarIconLayout.canvasSize(for: NSSize(width: 20, height: 18)) == NSSize(width: 24, height: 18))
+        #expect(StatusBarIconLayout.imageTitleSpacing == 2)
+        #expect(StatusBarIconLayout.canvasSize(for: NSSize(width: 20, height: 18)) == NSSize(width: 22, height: 18))
 
         let image = NSImage(size: NSSize(width: 20, height: 18))
         image.isTemplate = true
         let paddedImage = StatusBarIconLayout.imageWithTrailingSpacing(image)
-        #expect(paddedImage.size == NSSize(width: 24, height: 18))
+        #expect(paddedImage.size == NSSize(width: 22, height: 18))
         #expect(paddedImage.isTemplate)
     }
 
@@ -148,7 +148,9 @@ struct StatusBarControllerTests {
 
         let controller = StatusBarController(
             viewModel: TokenStatsViewModel(),
-            autoRefreshSettings: AutoRefreshSettings(defaults: defaults)
+            quotaStore: inertQuotaStore(),
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            displaySettings: StatusBarDisplaySettings(defaults: defaults)
         )
         defer { controller.stop() }
 
@@ -203,9 +205,14 @@ struct StatusBarControllerTests {
         #expect(StatusBarButtonHighlight.applicationTiming(popoverIsShown: false) == .immediate)
     }
 
-    /// 热力图 popover 尺寸要能容纳摘要方块、22 列网格和本日小时折线图。
+    /// 原统计区保持 370 × 355pt；弹窗总高度只在其上累加订阅区高度，不压缩原区域。
     @Test func heatmapPopoverContentSizeFitsCalendarGrid() {
-        #expect(StatusBarPopoverLayout.contentSize == NSSize(width: 370, height: 355))
+        #expect(StatusPopoverViewController.originalContentSize == NSSize(width: 370, height: 355))
+        #expect(StatusBarPopoverLayout.contentSize == NSSize(
+            width: 370,
+            height: 355 + SubscriptionQuotaSectionLayout.height
+        ))
+        #expect((550...590).contains(StatusBarPopoverLayout.contentSize.height))
     }
 
     /// 状态栏布局尺寸应复用 popover 内容控制器尺寸,避免两处常量漂移。
@@ -259,10 +266,39 @@ struct StatusBarControllerTests {
     @Test func mainWindowOpenFromStatusMenuDefersAndOrdersWindowFrontRegardless() {
         #expect(StatusMainWindowPresentation.timing() == .afterCurrentEvent)
         #expect(StatusMainWindowPresentation.actions(targetWindowExists: true) == [
+            .restoreWindow,
             .activateApplication,
             .makeWindowKeyAndOrderFront,
             .orderWindowFrontRegardless,
         ])
+    }
+
+    /// 关闭后重复打开时,应用激活回调必须能看到已恢复的窗口,否则跨 Space 激活没有目标。
+    @MainActor
+    @Test func closedMainWindowIsRestoredBeforeApplicationActivation() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.orderFront(nil)
+        var activationCount = 0
+
+        for _ in 0..<2 {
+            window.close()
+            #expect(!window.isVisible)
+
+            StatusMainWindowPresentation.present(window) {
+                #expect(window.isVisible)
+                activationCount += 1
+            }
+
+            #expect(window.isVisible)
+        }
+        #expect(activationCount == 2)
     }
 
     /// 空 popover 根视图也需要能成为 first responder,否则 makeFirstResponder 会失败。
@@ -309,27 +345,34 @@ struct StatusBarControllerTests {
         )
         languageSettings.selectedPreference = .language(.zhHans)
 
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .todayTokens
         let controller = StatusBarController(
             viewModel: TokenStatsViewModel(),
+            quotaStore: inertQuotaStore(),
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
-            languageSettings: languageSettings
+            languageSettings: languageSettings,
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
         )
         defer { controller.stop() }
 
+        // 额度周期与 Claude 额度文件授权改在主界面设置页配置，右键菜单不再提供对应入口。
         #expect(controller.debugStatusMenuItemTitles == [
             "打开 AI Token Watch",
             "立即刷新",
+            "状态栏显示",
             "退出 AI Token Watch",
         ])
+        #expect(controller.debugDisplayModeMenuTitles == ["订阅额度 + 今日 Tokens", "订阅额度", "今日 Tokens"])
+        #expect(controller.debugCheckedDisplayModeTitle == "今日 Tokens")
         #expect(controller.debugTitlePlainString == "—\nTokens")
 
         languageSettings.selectedPreference = .language(.viVN)
 
-        #expect(controller.debugStatusMenuItemTitles == [
-            "Mở AI Token Watch",
-            "Làm mới ngay",
-            "Thoát AI Token Watch",
-        ])
+        #expect(controller.debugStatusMenuItemTitles.first == "Mở AI Token Watch")
+        #expect(controller.debugStatusMenuItemTitles[1] == "Làm mới ngay")
+        #expect(controller.debugStatusMenuItemTitles.last == "Thoát AI Token Watch")
         #expect(controller.debugTitlePlainString == "—\nTokens")
     }
 
@@ -346,13 +389,292 @@ struct StatusBarControllerTests {
         )
         languageSettings.selectedPreference = .language(.zhHans)
 
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .todayTokens
         let controller = StatusBarController(
             viewModel: TokenStatsViewModel(),
+            quotaStore: inertQuotaStore(),
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
-            languageSettings: languageSettings
+            languageSettings: languageSettings,
+            displaySettings: displaySettings
         )
         defer { controller.stop() }
 
         #expect(controller.debugStatusButtonToolTip == "TokenWatch · — Tokens")
     }
+
+    /// 纯额度模式:单张原生图像承载圆环与百分比,不使用 attributedTitle,也不跑 token 加载动画。
+    @MainActor
+    @Test func quotaModeRendersSingleNativeImageWithoutTitle() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["zh-Hans"] }
+        )
+        languageSettings.selectedPreference = .language(.zhHans)
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .subscriptionQuota
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings,
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+        )
+        defer { controller.stop() }
+
+        #expect(displaySettings.mode == .subscriptionQuota)
+        #expect(controller.debugRenderedDisplayMode == .subscriptionQuota)
+        #expect(controller.debugStatusButtonImagePosition != .imageLeft)
+        #expect(controller.debugTitlePlainString == "")
+        #expect(controller.debugStatusButtonCustomSubviewCount == 0)
+        #expect(!controller.debugStatusButtonUsesCustomCell)
+        #expect(controller.debugQuotaPresentationTimerInterval == 60)
+        let model = try #require(controller.debugLastRenderedQuotaModel)
+        #expect(model.groups.map { $0.rings.map(\.valueText) } == [["68%", "86%"], ["88%", "98%"]])
+        let toolTip = try #require(controller.debugStatusButtonToolTip)
+        #expect(toolTip.hasPrefix("Claude · 记录于 2 分钟前\n5 小时 · 剩余 68% · "))
+        #expect(toolTip.contains("\n\nCodex · 记录于 刚刚\n"))
+
+        let imageSize = try #require(controller.debugStatusButtonImageSize)
+        for provider in SubscriptionQuotaProvider.allCases {
+            displaySettings.setQuotaWindowConfiguration(
+                .init(isVisible: false, style: .detailed),
+                provider: provider,
+                kind: .sevenDay
+            )
+        }
+        #expect(try #require(controller.debugLastRenderedQuotaModel).groups.map { $0.rings.count } == [1, 1])
+        #expect(try #require(controller.debugStatusButtonImageSize).width < imageSize.width)
+
+        displaySettings.mode = .todayTokens
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+        #expect(controller.debugStatusButtonImagePosition == .imageLeft)
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+        #expect(controller.debugQuotaPresentationTimerInterval == nil)
+        #expect(controller.debugCheckedDisplayModeTitle == "今日 Tokens")
+    }
+
+    /// 默认同时展示:原有图标 + 今日 token 双行文本在前,额度圆环在后,悬停说明按同一顺序包含两部分。
+    @MainActor
+    @Test func defaultModeShowsQuotaAndTodayTokens() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["zh-Hans"] }
+        )
+        languageSettings.selectedPreference = .language(.zhHans)
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings,
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+        )
+        defer { controller.stop() }
+
+        #expect(displaySettings.mode == .quotaAndTodayTokens)
+        #expect(controller.debugRenderedDisplayMode == .quotaAndTodayTokens)
+        // 原生标题只能位于图像一侧,组合模式把今日 token 文本绘制进图像以排在圆环之前。
+        #expect(controller.debugStatusButtonImagePosition != .imageLeft)
+        #expect(controller.debugTitlePlainString == "")
+        #expect(controller.debugRenderedTokenPrimary == "—")
+        #expect(controller.debugStatusButtonCustomSubviewCount == 0)
+        #expect(controller.debugQuotaPresentationTimerInterval == 60)
+        #expect(controller.debugCheckedDisplayModeTitle == "订阅额度 + 今日 Tokens")
+        let model = try #require(controller.debugLastRenderedQuotaModel)
+        #expect(model.groups.map { $0.rings.map(\.valueText) } == [["68%", "86%"], ["88%", "98%"]])
+        let toolTip = try #require(controller.debugStatusButtonToolTip)
+        #expect(toolTip.hasPrefix("TokenWatch · — Tokens\n\nClaude · 记录于 2 分钟前\n"))
+        let combinedWidth = try #require(controller.debugStatusButtonImageSize).width
+        #expect(combinedWidth > StatusBarQuotaLayout.imageSize(for: model).width)
+
+        displaySettings.mode = .subscriptionQuota
+        #expect(controller.debugTitlePlainString == "")
+        #expect(try #require(controller.debugStatusButtonImageSize).width < combinedWidth)
+
+        displaySettings.mode = .todayTokens
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+        #expect(controller.debugRenderedTokenPrimary == nil)
+
+        displaySettings.mode = .quotaAndTodayTokens
+        #expect(controller.debugTitlePlainString == "")
+        #expect(try #require(controller.debugStatusButtonImageSize).width == combinedWidth)
+    }
+
+    /// 额度来源状态未变化时不重新赋值状态栏图像,避免触发重复布局。
+    @MainActor
+    @Test func unchangedQuotaDoesNotReplaceStatusImage() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: AppLanguageSettings(defaults: defaults),
+            displaySettings: StatusBarDisplaySettings(defaults: defaults),
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+        )
+        defer { controller.stop() }
+        let statusItem = try #require(
+            Mirror(reflecting: controller).children.first { $0.label == "statusItem" }?.value as? NSStatusItem
+        )
+        let firstImage = try #require(statusItem.button?.image)
+
+        controller.debugRenderTitle()
+
+        #expect(statusItem.button?.image === firstImage)
+    }
+
+    /// 额度为付费功能:未购买时即使选择含额度的模式也只显示今日 token,并隐藏额度相关菜单项。
+    @MainActor
+    @Test func lockedQuotaFallsBackToTodayTokensAndHidesQuotaMenuItems() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let languageSettings = AppLanguageSettings(
+            defaults: defaults,
+            preferredLanguagesProvider: { ["zh-Hans"] }
+        )
+        languageSettings.selectedPreference = .language(.zhHans)
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .subscriptionQuota
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: languageSettings,
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: false)
+        )
+        defer { controller.stop() }
+
+        #expect(displaySettings.mode == .subscriptionQuota)
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+        #expect(controller.debugStatusButtonImagePosition == .imageLeft)
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+        #expect(controller.debugLastRenderedQuotaModel == nil)
+        #expect(controller.debugQuotaPresentationTimerInterval == nil)
+        #expect(controller.debugStatusButtonToolTip == "TokenWatch · — Tokens")
+        #expect(controller.debugStatusMenuItemTitles == [
+            "打开 AI Token Watch",
+            "立即刷新",
+            "退出 AI Token Watch",
+        ])
+    }
+
+    /// 购买或恢复后立即恢复用户选择的含额度模式;撤销后再次退回今日 token。
+    @MainActor
+    @Test func unlockingQuotaRestoresSelectedModeImmediately() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
+        defer { purchaseController.stop() }
+        await purchaseController.refresh()
+        let quotaAccess = SubscriptionQuotaAccess(purchaseController: purchaseController)
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: AppLanguageSettings(defaults: defaults),
+            displaySettings: displaySettings,
+            quotaAccess: quotaAccess
+        )
+        defer { controller.stop() }
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+
+        await purchaseController.purchase(in: NSWindow())
+
+        #expect(quotaAccess.isUnlocked)
+        #expect(controller.debugRenderedDisplayMode == .quotaAndTodayTokens)
+        #expect(controller.debugLastRenderedQuotaModel?.groups.count == 2)
+        #expect(controller.debugStatusMenuItemTitles.count == 4)
+    }
+
+    /// 设置页把两个 Agent 的所有周期都关闭时,含额度模式退回今日 token,保证状态栏仍有可点击内容。
+    @MainActor
+    @Test func allQuotaWindowsHiddenFallsBackToTodayTokens() async throws {
+        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
+        displaySettings.mode = .subscriptionQuota
+        let quotaStore = inertQuotaStore(isDemoMode: true)
+        await quotaStore.refresh()
+
+        let controller = StatusBarController(
+            viewModel: TokenStatsViewModel(),
+            quotaStore: quotaStore,
+            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
+            languageSettings: AppLanguageSettings(defaults: defaults),
+            displaySettings: displaySettings,
+            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+        )
+        defer { controller.stop() }
+
+        for provider in SubscriptionQuotaProvider.allCases {
+            for kind in SubscriptionQuotaWindowKind.allCases {
+                displaySettings.setQuotaWindowConfiguration(
+                    .init(isVisible: kind == .fiveHour && provider == .codex, style: .compact),
+                    provider: provider,
+                    kind: kind
+                )
+            }
+        }
+        let model = try #require(controller.debugLastRenderedQuotaModel)
+        #expect(model.groups.map(\.provider) == [.codex])
+        #expect(model.groups[0].rings.map(\.showsValue) == [false])
+        #expect(controller.debugRenderedDisplayMode == .subscriptionQuota)
+
+        displaySettings.setQuotaWindowConfiguration(
+            .init(isVisible: false, style: .compact),
+            provider: .codex,
+            kind: .fiveHour
+        )
+        #expect(controller.debugRenderedDisplayMode == .todayTokens)
+        #expect(controller.debugTitlePlainString == "—\nTokens")
+        #expect(displaySettings.mode == .subscriptionQuota)
+    }
+}
+
+/// 不访问真实 bookmark 与文件系统的额度 store；Demo 模式下返回确定性快照。
+@MainActor
+private func inertQuotaStore(isDemoMode: Bool = false) -> SubscriptionQuotaStore {
+    SubscriptionQuotaStore(
+        bookmarkManager: NoQuotaBookmarks(),
+        languageProvider: { .zhHans },
+        isDemoModeEnabled: { isDemoMode }
+    )
+}
+
+@MainActor
+private struct NoQuotaBookmarks: SubscriptionQuotaBookmarkAccessing {
+    func hasBookmark(forKey key: String) -> Bool { false }
+    func restoreBookmarkAndAccess(forKey key: String) -> URL? { nil }
+    func stopAccessing(forKey key: String) {}
+    func persistSelectedDirectory(_ url: URL, forKey key: String) -> Bool { false }
 }

@@ -386,7 +386,7 @@ struct WidgetPurchaseControllerTests {
     func reviewFixturesAreDeterministic() async {
         let locked = WidgetPurchaseReviewFixtures.makeLockedController()
         await locked.refresh()
-        #expect(locked.state.product?.displayName == "Unlock All Widgets")
+        #expect(locked.state.product?.displayName == "Unlock Widgets & Quota")
         #expect(locked.state.product?.displayPrice == "$2.99")
         #expect(!locked.state.isUnlocked)
 
@@ -513,6 +513,8 @@ struct WidgetPurchaseControllerTests {
         let controller = makeController(client: client, store: store)
 
         controller.start()
+        // 缓存同步生效，状态栏首帧即可按已购买状态展示订阅额度。
+        #expect(controller.state.isUnlocked)
         let didRefresh = await eventually {
             client.entitlementProductIDs.count >= 1
         }

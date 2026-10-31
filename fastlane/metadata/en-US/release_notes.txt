@@ -1,4 +1,6 @@
-- Adds support for the OpenCode 2.0 database schema, so sessions, tokens, and costs are read correctly after upgrading OpenCode.
-- Deduplicates forked OpenCode sessions: copied history is no longer counted as the child session's own usage.
-- Improves error logs with the local directory path when a provider directory holds no expected data structure.
+- Adds Claude and Codex subscription quota: the menu bar shows 5-hour and weekly remaining quota as concentric rings, and the popover shows remaining percentages with reset countdowns.
+- Quota is read only from records Claude Code and Codex save on your Mac, with no network APIs and no uploads. Claude quota needs a one-time selection of ~/.claude.json in Settings. When a reset time passes with no new local record, the quota is shown as "Reset (estimated)".
+- Subscription quota shares the same one-time lifetime purchase as desktop widgets. Choose which periods each agent shows in the menu bar, in compact or detailed style, from Settings.
+- Fixes inflated Codex token counts caused by duplicated usage snapshots when rate limits refresh.
+- Fixes the main window not coming to the front when reopened from the menu bar after being closed.
 - Updates the latest App Store showcase screenshots.

@@ -19,7 +19,7 @@ GitHub Issues 只是可选的公开渠道。如果你没有 GitHub 账号，可�
 
 - AI Token Watch 版本和构建号，可在 **AI Token Watch > 关于 AI Token Watch** 中查看；
 - macOS 版本；
-- 涉及的数据源：Claude Code、Codex、opencode 或多个数据源；
+- 涉及的数据源：Claude Code、Codex、opencode、Antigravity、DeepSeek Harness 或多个数据源，以及问题是否与订阅额度有关；
 - 清晰的复现步骤；
 - 预期行为和实际行为。
 

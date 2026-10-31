@@ -168,6 +168,7 @@ private struct CodexReplayDecision: Sendable {
 /// - `last_token_usage` 优先；缺失则 `delta = saturatingSub(total, previousTotals)`。
 /// - `previousTotals` 始终更新，确保 replay 跳过与后续 delta 的 baseline 正确。
 /// - cached input 夹到 raw input 后拆为 pure/cache-read，跨文件按 raw key first-wins。
+/// - 同来源最近快照及跨来源相邻快照去重，限额刷新重发不重复计费。
 final class CodexRolloutParser: @unchecked Sendable {
 
     typealias CodexFileState = IncrementalJSONLFileState<
@@ -320,12 +321,16 @@ final class CodexRolloutParser: @unchecked Sendable {
         )
     }
 
+    /// 解析语义变化时递增，使源文件未变化时也会失效旧聚合快照。
+    static let parserSemanticsVersion: UInt64 = 1
+
     private static func sourceRevisionComponent(
         for state: CodexIncrementalState
     ) -> Data {
         let fileState = state.fileState
         var component = Data()
         for value in [
+            Self.parserSemanticsVersion,
             fileState.committedOffset,
             fileState.continuityAnchor.offset,
         ] {

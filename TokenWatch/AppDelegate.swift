@@ -18,6 +18,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         subsystem: "com.xiaoao.TokenWatch",
         category: "WidgetPurchaseBootstrap"
     )
+    private static let windowLogger = Logger(
+        subsystem: "com.xiaoao.TokenWatch",
+        category: "MainWindow"
+    )
 
     static let supportURL = URL(
         string: "https://orrhsiao.github.io/TokenWatch/support/"
@@ -27,8 +31,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// `internal`: 让 ViewController 通过 `NSApp.delegate` 拿到同一实例,避免引入 DI 容器
     let viewModel: TokenStatsViewModel
 
+    /// Claude / Codex 本地订阅额度;状态栏、弹窗与设置页共享同一份状态。
+    let quotaStore: SubscriptionQuotaStore
+
     /// StoreKit 控制器由应用生命周期持有，以便窗口关闭后仍能接收交易更新。
     let widgetPurchaseController: WidgetPurchaseController?
+
+    /// 订阅额度与小组件共用同一买断；状态栏、弹窗与设置页共享同一份解锁状态。
+    let quotaAccess: SubscriptionQuotaAccess
 
     /// 状态栏控制器,长驻 menu bar 显示当日 token 数
     /// 在 didFinishLaunching 时创建,terminate 时 stop() 释放 Timer + 摘掉 status item
@@ -36,6 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainMenuController: AppMainMenuController?
     private var mainWindowController: NSWindowController?
     private var popoverScreenshotWindow: NSWindow?
+    private var screenshotBackdropWindow: NSWindow?
 
     private let languageSettings: AppLanguageSettings
     private let externalURLOpener: (URL) -> Bool
@@ -50,7 +61,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: settings,
             widgetSnapshotPublisher: WidgetSnapshotPublisherFactory.makeLive()
         )
-        self.widgetPurchaseController = Self.makeWidgetPurchaseController()
+        self.quotaStore = SubscriptionQuotaStore(languageProvider: { settings.resolvedLanguage })
+        let widgetPurchaseController = Self.makeWidgetPurchaseController()
+        self.widgetPurchaseController = widgetPurchaseController
+        self.quotaAccess = SubscriptionQuotaAccess(purchaseController: widgetPurchaseController)
         self.externalURLOpener = { NSWorkspace.shared.open($0) }
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
@@ -67,7 +81,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             languageSettings: languageSettings,
             widgetSnapshotPublisher: widgetSnapshotPublisher
         )
+        self.quotaStore = SubscriptionQuotaStore(languageProvider: { languageSettings.resolvedLanguage })
         self.widgetPurchaseController = widgetPurchaseController
+        self.quotaAccess = SubscriptionQuotaAccess(purchaseController: widgetPurchaseController)
         self.externalURLOpener = externalURLOpener
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
@@ -87,19 +103,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // StoreKit 建议在应用启动时建立长期 Transaction.updates 监听，避免遗漏延迟交易。
+        // start() 会同步应用 entitlement 缓存，因此状态栏首帧即可判断订阅额度是否已解锁。
         widgetPurchaseController?.start()
 
         mainMenuController = AppMainMenuController(actionTarget: self, languageSettings: languageSettings)
         mainMenuController?.start()
 
         // 先建状态栏(订阅 ViewModel),再异步加载,确保首次 onStateChange 能被状态栏接到
-        statusBarController = StatusBarController(viewModel: viewModel)
+        statusBarController = StatusBarController(
+            viewModel: viewModel,
+            quotaStore: quotaStore,
+            quotaAccess: quotaAccess
+        )
+
+        // 额度只读取已授权的本地记录,不依赖统计扫描完成,也不会触发授权面板。
+        // 额度为付费功能:未解锁时不读取,购买或恢复后由状态栏控制器触发读取。
+        if quotaAccess.isUnlocked {
+            let quotaStore = self.quotaStore
+            Task { @MainActor in
+                await quotaStore.refresh()
+            }
+        }
 
         if Self.shouldOpenMainWindowOnLaunch() {
             _ = presentMainWindow()
         }
 
         if UserDefaults.standard.bool(forKey: Self.showPopoverForScreenshotsKey) {
+            presentScreenshotBackdrop()
             presentPopoverScreenshotWindow()
         }
 
@@ -160,6 +191,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         presentMainWindow()?.showSettingsFromMainMenu(sender)
     }
 
+    /// 打开主窗口设置页并定位到“状态栏订阅额度”区块，承载额度的购买与展示配置。
+    func showStatusBarQuotaSettings() {
+        presentMainWindow()?.showStatusBarQuotaSettings()
+    }
+
     /// 请求首次无目录授权引导；确认后仅进入设置页，不请求任何文件夹权限。
     private func requestInitialDirectoryAuthorizationGuide() {
         guard !isInitialDirectoryAuthorizationGuidePending else { return }
@@ -218,6 +254,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 立即重新加载所有 provider 的统计数据。
     @objc func refreshNow(_ sender: Any?) {
+        let quotaStore = self.quotaStore
+        Task { await quotaStore.refresh() }
         Task { await viewModel.loadAllStats() }
     }
 
@@ -233,16 +271,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let target = existingMainWindow() ?? instantiateMainWindow()
         guard let target else { return nil }
 
-        for action in StatusMainWindowPresentation.actions(targetWindowExists: true) {
-            switch action {
-            case .activateApplication:
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-            case .makeWindowKeyAndOrderFront:
-                target.makeKeyAndOrderFront(nil)
-            case .orderWindowFrontRegardless:
-                target.orderFrontRegardless()
-            }
+        Self.windowLogger.info(
+            "显示主窗口: visible=\(target.isVisible), miniaturized=\(target.isMiniaturized), onActiveSpace=\(target.isOnActiveSpace)"
+        )
+        NSApp.setActivationPolicy(.regular)
+        StatusMainWindowPresentation.present(target) {
+            NSApp.activate(ignoringOtherApps: true)
         }
         return target.contentViewController as? ViewController
     }
@@ -266,10 +300,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func instantiateMainWindow() -> NSWindow? {
         let windowController = MainWindowFactory.makeWindowController(
             languageSettings: languageSettings,
-            widgetPurchaseController: widgetPurchaseController
+            widgetPurchaseController: widgetPurchaseController,
+            quotaAccess: quotaAccess,
+            quotaStore: quotaStore
         )
         mainWindowController = windowController
-        windowController.showWindow(nil)
         return windowController.window
     }
 
@@ -310,12 +345,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// 截图自动化时把主窗口移到主显示器，并在其后铺一层纯色底板。
+    ///
+    /// 主窗口是毛玻璃材质，会透出背后的桌面图标和其他窗口；纯色底板让商店截图不受截图时的桌面内容影响。
+    /// 主显示器是带菜单栏的 Retina 屏，避免窗口跟随鼠标开在外接 1x 屏上导致截图失败或分辨率不足。
+    private func presentScreenshotBackdrop() {
+        guard let screen = NSScreen.screens.first else { return }
+        let mainWindow = mainWindowController?.window
+        if let mainWindow {
+            let visibleFrame = screen.visibleFrame
+            mainWindow.setFrameOrigin(NSPoint(
+                x: visibleFrame.midX - mainWindow.frame.width / 2,
+                y: visibleFrame.midY - mainWindow.frame.height / 2
+            ))
+        }
+
+        let backdrop = NSWindow(
+            contentRect: screen.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        backdrop.isReleasedWhenClosed = false
+        backdrop.backgroundColor = NSColor(srgbRed: 0.10, green: 0.12, blue: 0.15, alpha: 1)
+        backdrop.isOpaque = true
+        backdrop.hasShadow = false
+        backdrop.ignoresMouseEvents = true
+        if let mainWindow {
+            // 作为子窗口挂在主窗口下方：应用激活时 AppKit 会重排窗口层级，
+            // 只有父子关系能保证底板始终紧贴在主窗口之后。
+            mainWindow.addChildWindow(backdrop, ordered: .below)
+        } else {
+            backdrop.orderFrontRegardless()
+        }
+        screenshotBackdropWindow = backdrop
+    }
+
     /// 在 UI 测试或截图自动化时，展示承载状态栏 Popover 的测试窗口。
     private func presentPopoverScreenshotWindow() {
         let contentSize = StatusPopoverViewController.contentSize
         let popoverVC = StatusPopoverViewController(
             viewModel: viewModel,
-            languageSettings: languageSettings
+            quotaStore: quotaStore,
+            languageSettings: languageSettings,
+            quotaAccess: quotaAccess
         )
         let window = StatusPopoverScreenshotWindow(
             contentRect: NSRect(origin: .zero, size: contentSize),
@@ -333,6 +406,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentViewController = popoverVC
         window.setContentSize(contentSize)
         window.center()
+        // 主窗口在此之前已成为 key window；截图窗口必须接过 key，UI 测试发出的 Command-W
+        // 才会关闭它，而不是把随后要截图的主窗口关掉。
+        window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         self.popoverScreenshotWindow = window
     }
@@ -357,14 +433,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             langSettings.selectedPreference = .language(language)
 
             let testViewModel = TokenStatsViewModel(languageSettings: langSettings)
+            let testQuotaStore = SubscriptionQuotaStore(languageProvider: { langSettings.resolvedLanguage })
             Task { @MainActor in
                 await testViewModel.loadAllStats()
+                await testQuotaStore.refresh()
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
 
+            // 截图使用 demo 数据，按已解锁展示订阅额度。
             let controller = StatusPopoverViewController(
                 viewModel: testViewModel,
-                languageSettings: langSettings
+                quotaStore: testQuotaStore,
+                languageSettings: langSettings,
+                quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
             )
 
             let contentSize = StatusPopoverViewController.contentSize
@@ -387,8 +468,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             controller.view.layoutSubtreeIfNeeded()
 
             let scale: CGFloat = 2.0
-            let pixelWidth = Int(contentSize.width * scale)   // 740
-            let pixelHeight = Int(contentSize.height * scale) // 710
+            let pixelWidth = Int(contentSize.width * scale)
+            let pixelHeight = Int(contentSize.height * scale)
 
             guard let rep = NSBitmapImageRep(
                 bitmapDataPlanes: nil,
@@ -418,11 +499,70 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("TOKENWATCH_SNAPSHOT_END:\(localeDir)")
             fflush(stdout)
 
+            // 状态栏项与弹窗使用同一份 demo 数据，按深色菜单栏外观导出，供装裱脚本贴在弹窗上方。
+            if let statusBarImage = StatusBarController.makeDefaultModeSnapshotImage(
+                states: testViewModel.states,
+                quotaStore: testQuotaStore,
+                language: langSettings.resolvedLanguage
+            ), let statusBarPNG = Self.makeSnapshotPNG(of: statusBarImage, scale: scale, appearanceName: .darkAqua) {
+                print("TOKENWATCH_STATUSBAR_START:\(localeDir)")
+                print(statusBarPNG.base64EncodedString())
+                print("TOKENWATCH_STATUSBAR_END:\(localeDir)")
+                fflush(stdout)
+            }
+
             defaults.removePersistentDomain(forName: suiteName)
         }
 
         UserDefaults.standard.removeObject(forKey: DemoStatsFixture.userDefaultsKey)
         exit(0)
+    }
+
+    /// 按指定外观把图像绘制为透明背景的 PNG。
+    ///
+    /// 状态栏图像的颜色在绘制时才按当前外观解析，必须显式指定外观，
+    /// 否则导出结果会跟随运行时的系统深浅色。
+    /// - Parameters:
+    ///   - image: 待导出的图像。
+    ///   - scale: 像素与点的比例。
+    ///   - appearanceName: 绘制时使用的外观。
+    /// - Returns: PNG 数据；无法创建位图时返回 nil。
+    private static func makeSnapshotPNG(
+        of image: NSImage,
+        scale: CGFloat,
+        appearanceName: NSAppearance.Name
+    ) -> Data? {
+        let pixelWidth = Int(ceil(image.size.width * scale))
+        let pixelHeight = Int(ceil(image.size.height * scale))
+        guard pixelWidth > 0, pixelHeight > 0,
+              let appearance = NSAppearance(named: appearanceName),
+              let rep = NSBitmapImageRep(
+                  bitmapDataPlanes: nil,
+                  pixelsWide: pixelWidth,
+                  pixelsHigh: pixelHeight,
+                  bitsPerSample: 8,
+                  samplesPerPixel: 4,
+                  hasAlpha: true,
+                  isPlanar: false,
+                  colorSpaceName: .deviceRGB,
+                  bytesPerRow: pixelWidth * 4,
+                  bitsPerPixel: 32
+              ) else {
+            return nil
+        }
+        // 先设定点尺寸再创建上下文，绘制时才会按 scale 放大到像素尺寸。
+        rep.size = image.size
+        guard let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        appearance.performAsCurrentDrawingAppearance {
+            image.draw(in: NSRect(origin: .zero, size: image.size))
+        }
+        context.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+
+        return rep.representation(using: .png, properties: [:])
     }
 
 }
@@ -455,7 +595,9 @@ enum MainWindowFactory {
 
     static func makeWindowController(
         languageSettings: AppLanguageSettings = .shared,
-        widgetPurchaseController: WidgetPurchaseController? = nil
+        widgetPurchaseController: WidgetPurchaseController? = nil,
+        quotaAccess: SubscriptionQuotaAccess? = nil,
+        quotaStore: SubscriptionQuotaStore? = nil
     ) -> NSWindowController {
         // 使用 .fullSizeContentView 与透明无分割线标题栏实现 macOS 原生沉浸式毛玻璃窗口
         let window = NSWindow(
@@ -466,7 +608,9 @@ enum MainWindowFactory {
         )
         let contentController = ViewController(
             languageSettings: languageSettings,
-            widgetPurchaseController: widgetPurchaseController
+            widgetPurchaseController: widgetPurchaseController,
+            quotaAccess: quotaAccess,
+            quotaStore: quotaStore
         )
         window.title = "TokenWatch"
         window.identifier = NSUserInterfaceItemIdentifier("TokenWatchMainWindow")

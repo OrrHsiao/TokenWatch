@@ -482,32 +482,7 @@ final class WidgetGalleryViewController: NSViewController {
         guard let purchaseController, isViewLoaded else { return }
         let state = purchaseController.state
         let copy = WidgetPurchaseCopy.make(language: renderedLanguage)
-        let isBusy: Bool
-        let message: String
-
-        switch state.operation {
-        case .loading:
-            isBusy = true
-            message = copy.loadingMessage
-        case .purchasing:
-            isBusy = true
-            message = copy.purchasingMessage
-        case .restoring:
-            isBusy = true
-            message = copy.restoringMessage
-        case .purchasePending:
-            isBusy = false
-            message = copy.pendingMessage
-        case .noPurchasesToRestore:
-            isBusy = false
-            message = copy.noPurchaseMessage
-        case .failed(let failure):
-            isBusy = false
-            message = purchaseFailureMessage(failure, copy: copy)
-        case .idle, .purchaseCompleted, .restoreCompleted:
-            isBusy = false
-            message = ""
-        }
+        let (isBusy, message) = copy.operationPresentation(state.operation)
 
         purchaseTitleLabel.stringValue = state.isUnlocked
             ? copy.unlockedTitle
@@ -549,22 +524,6 @@ final class WidgetGalleryViewController: NSViewController {
         purchaseCard.setAccessibilityLabel(
             "\(purchaseTitleLabel.stringValue). \(purchaseDescriptionLabel.stringValue)"
         )
-    }
-
-    private func purchaseFailureMessage(
-        _ failure: WidgetPurchaseFailure,
-        copy: WidgetPurchaseCopy
-    ) -> String {
-        switch failure {
-        case .productUnavailable, .productLoadFailed:
-            return copy.unavailableMessage
-        case .purchaseVerificationFailed:
-            return copy.verificationFailedMessage
-        case .purchaseFailed, .restoreFailed:
-            return copy.failedMessage
-        case .entitlementPersistenceFailed:
-            return copy.entitlementPersistenceFailedMessage
-        }
     }
 
     private func applyPurchaseButtonStyles() {

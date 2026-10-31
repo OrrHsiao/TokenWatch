@@ -2568,6 +2568,101 @@ struct TokenWatchTests {
     }
 
     @MainActor
+    @Test("数据源区块在订阅额度解锁后展示 Claude 额度文件授权行")
+    func settingsShowsClaudeQuotaFileRowOnlyWhenQuotaUnlocked() throws {
+        func makeController(
+            isUnlocked: Bool,
+            quotaStore: SubscriptionQuotaStore?
+        ) -> SettingsViewController {
+            let controller = SettingsViewController(
+                providers: ProviderRegistry.allProviders,
+                providerState: { _ in .init(stats: nil, entries: nil) },
+                authorizationAction: { _ in false },
+                languageSettings: zhHansLanguageSettings(),
+                quotaAccess: SubscriptionQuotaAccess(isUnlocked: isUnlocked),
+                quotaStore: quotaStore
+            )
+            controller.loadViewIfNeeded()
+            return controller
+        }
+        func makeQuotaStore() -> SubscriptionQuotaStore {
+            SubscriptionQuotaStore(
+                bookmarkManager: SettingsNoQuotaBookmarks(),
+                languageProvider: { .zhHans },
+                isDemoModeEnabled: { false }
+            )
+        }
+        let rowIdentifier = "ProviderDirectoryRow.claudeQuotaFile"
+
+        let withoutStore = makeController(isUnlocked: true, quotaStore: nil)
+        #expect(withoutStore.view.firstDescendant(identifier: rowIdentifier) == nil)
+
+        let locked = makeController(isUnlocked: false, quotaStore: makeQuotaStore())
+        #expect(try #require(locked.view.firstDescendant(identifier: rowIdentifier)).isHidden)
+
+        let unlocked = makeController(isUnlocked: true, quotaStore: makeQuotaStore())
+        #expect(!(try #require(unlocked.view.firstDescendant(identifier: rowIdentifier)).isHidden))
+        let name = try #require(
+            unlocked.view.firstDescendant(identifier: "ProviderDirectoryName.claudeQuotaFile") as? NSTextField
+        )
+        #expect(name.stringValue == "Claude 额度文件")
+        #expect(name.toolTip?.contains("~/.claude.json") == true)
+        let status = try #require(
+            unlocked.view.firstDescendant(identifier: "ProviderDirectoryStatus.claudeQuotaFile") as? NSTextField
+        )
+        #expect(status.stringValue == "未选择")
+        let action = try #require(unlocked.view.button(identifier: "ProviderDirectoryAction.claudeQuotaFile"))
+        #expect(action.title == "去授权")
+        #expect(action.isEnabled)
+    }
+
+    @Test("Claude 额度文件行按 bookmark 与读取结果映射状态和操作")
+    func claudeQuotaFileRowModelMapsAuthorizationState() {
+        func make(
+            hasBookmark: Bool,
+            result: SubscriptionQuotaReadResult?,
+            lastReadFailed: Bool = false,
+            isAuthorizing: Bool = false
+        ) -> ClaudeQuotaFileRowModel {
+            ClaudeQuotaFileRowModel.make(
+                hasBookmark: hasBookmark,
+                state: SubscriptionQuotaProviderState(result: result, lastReadFailed: lastReadFailed),
+                isAuthorizing: isAuthorizing,
+                language: .zhHans
+            )
+        }
+
+        let notSelected = make(hasBookmark: false, result: .notAuthorized)
+        #expect(notSelected.statusText == "未选择")
+        #expect(notSelected.statusStyle == .warning)
+        #expect(notSelected.actionTitle == "去授权")
+        #expect(notSelected.actionStyle == .primary)
+        #expect(notSelected.isActionEnabled)
+
+        // 有 bookmark 但读取为未授权：bookmark 恢复失败，需要重新选择。
+        let stale = make(hasBookmark: true, result: .notAuthorized)
+        #expect(stale.statusText == "需要重新选择")
+        #expect(stale.statusStyle == .warning)
+        #expect(stale.actionTitle == "再次选择")
+        #expect(stale.actionStyle == .neutral)
+
+        let failed = make(hasBookmark: true, result: .noRecord, lastReadFailed: true)
+        #expect(failed.statusText == "读取失败")
+        #expect(failed.statusStyle == .error)
+        #expect(failed.actionTitle == "重新选择")
+
+        for result in [nil, SubscriptionQuotaReadResult.noRecord] {
+            let selected = make(hasBookmark: true, result: result)
+            #expect(selected.statusText == "已选择")
+            #expect(selected.statusStyle == .success)
+            #expect(selected.actionTitle == "重新选择")
+            #expect(selected.actionStyle == .neutral)
+        }
+
+        #expect(!make(hasBookmark: false, result: nil, isAuthorizing: true).isActionEnabled)
+    }
+
+    @MainActor
     @Test("五个目录按钮均把正确 provider 传给授权动作并可等待完成")
     func settingsDirectoryButtonsRouteProviderID() async throws {
         let providers = ProviderRegistry.allProviders
@@ -2727,7 +2822,7 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test("设置五行目录控件和既有设置项在最小高度内不裁切")
+    @Test("设置五行目录控件和既有设置项在最小高度的首屏内不裁切")
     func settingsProviderRowsFitMinimumHeight() throws {
         #expect(SettingsViewController.minimumContentHeight == 810)
 
@@ -2750,7 +2845,10 @@ struct TokenWatchTests {
                     identifier: "SettingsDataFoldersSection"
                 ) as? DashboardGlassCardView
             )
-            #expect(controller.view.bounds.contains(dataFoldersCard.frame))
+            // 设置页可纵向滚动（末尾为状态栏订阅额度区块），既有设置项仍须在首屏内完整可见。
+            #expect(controller.view.bounds.contains(
+                dataFoldersCard.convert(dataFoldersCard.bounds, to: controller.view)
+            ))
             for identifier in [
                 "ProviderDirectoryStatus.claude",
                 "ProviderDirectoryStatus.codex",
@@ -3741,6 +3839,15 @@ private func frozenLanguageMenuTitles(systemTitle: String) -> [String] {
 private func zhHansLanguageSettings(defaults: UserDefaults? = nil) -> AppLanguageSettings {
     let defaults = defaults ?? UserDefaults(suiteName: "TokenWatchTests.Language.\(UUID().uuidString)")!
     return AppLanguageSettings(defaults: defaults, preferredLanguagesProvider: { ["zh-Hans-US"] })
+}
+
+/// 设置页测试用的空 bookmark 管理器：不读取真实 bookmark，也不保存选择。
+@MainActor
+private struct SettingsNoQuotaBookmarks: SubscriptionQuotaBookmarkAccessing {
+    func hasBookmark(forKey key: String) -> Bool { false }
+    func restoreBookmarkAndAccess(forKey key: String) -> URL? { nil }
+    func stopAccessing(forKey key: String) {}
+    func persistSelectedDirectory(_ url: URL, forKey key: String) -> Bool { false }
 }
 
 private func utcCalendar() -> Calendar {

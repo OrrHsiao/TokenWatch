@@ -200,6 +200,34 @@ enum AppStringKey: String, CaseIterable, Sendable {
     case errorDirectoryNotDirectoryFormat
     case errorCannotEnumerateDirectoryFormat
     case errorProviderDidNotReturnEntries
+    case quotaSectionTitle
+    case quotaWindowFiveHour
+    case quotaWindowWeek
+    case quotaResetsInFormat
+    case quotaResetUnknown
+    case quotaRecordedFormat
+    case quotaStaleRecord
+    case quotaResetInferred
+    case quotaResetInferredNoteFormat
+    case quotaNoRecord
+    case quotaNotRead
+    case quotaChooseFile
+    case quotaReadFailed
+    case quotaRemainingFormat
+    case quotaExhausted
+    case statusMenuDisplayMode
+    case statusBarDisplayQuota
+    case statusBarDisplayTodayTokens
+    case settingsClaudeQuotaFile
+    case claudeQuotaFileOpenPanelMessage
+    case statusBarDisplayQuotaAndTodayTokens
+    case settingsStatusBarQuotaTitle
+    case settingsStatusBarQuotaDescription
+    case settingsQuotaStyleCompact
+    case settingsQuotaStyleDetailed
+    case quotaPremiumLockedMessage
+    case quotaUnlockAction
+    case quotaDataSourceInfo
 }
 
 enum AppStrings {

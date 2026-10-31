@@ -4,6 +4,99 @@ import Testing
 
 @Suite("CodexRolloutParsingState")
 struct CodexRolloutParsingStateTests {
+    /// 用明确的累计值、单次值与限额来源构造独立用量事件。
+    private func snapshotRecord(
+        total: Int,
+        last: Int = 10,
+        source: String,
+        timestamp: Int
+    ) throws -> CodexRecord {
+        let json = #"{"timestamp":\#(timestamp),"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":\#(total)},"last_token_usage":{"input_tokens":\#(last)}},"rate_limits":{"limit_id":"\#(source)"}}}"#
+        return try JSONDecoder().decode(CodexRecord.self, from: Data(json.utf8))
+    }
+
+    @Test("同来源非相邻重发与跨来源相邻重发均跳过")
+    func skipsSameSourceStaleAndAdjacentCrossSourceSnapshots() throws {
+        var checkpoint = CodexParserCheckpoint.initial(sessionID: "session", replaySecond: nil)
+        let events = [
+            try snapshotRecord(total: 100, source: "codex", timestamp: 1),
+            try snapshotRecord(total: 100, source: "spark", timestamp: 2),
+            try snapshotRecord(total: 200, source: "spark", timestamp: 3),
+            try snapshotRecord(total: 100, source: "codex", timestamp: 4),
+            try snapshotRecord(total: 300, source: "codex", timestamp: 5),
+        ]
+        let entries = events.enumerated().compactMap { offset, record in
+            checkpoint.consume(record, sourceOffset: UInt64(offset), pricingSpeed: .standard)?.entry
+        }
+
+        #expect(entries.count == 3)
+        #expect(entries.compactMap(\.timestamp) == [1, 3, 5].map { Date(timeIntervalSince1970: Double($0)) })
+    }
+
+    @Test("跨来源的旧快照在计数重置后可成为合法新增请求")
+    func doesNotGloballyDeduplicateSnapshotsAfterCounterReset() throws {
+        var checkpoint = CodexParserCheckpoint.initial(sessionID: "session", replaySecond: nil)
+        let events = [
+            try snapshotRecord(total: 100, source: "codex", timestamp: 1),
+            try snapshotRecord(total: 200, source: "spark", timestamp: 2),
+            try snapshotRecord(total: 0, last: 0, source: "spark", timestamp: 3),
+            try snapshotRecord(total: 200, source: "codex", timestamp: 4),
+        ]
+        let entries = events.enumerated().compactMap { offset, record in
+            checkpoint.consume(record, sourceOffset: UInt64(offset), pricingSpeed: .standard)?.entry
+        }
+
+        #expect(entries.count == 3)
+        #expect(entries.last?.timestamp == Date(timeIntervalSince1970: 4))
+        #expect(entries.reduce(0) { $0 + $1.usage.aggregateTotalTokens } == 30)
+    }
+
+    @Test("total 或 last 任一变化时仍计入新增用量")
+    func preservesRequestsWhenOnlyOneSnapshotComponentChanges() throws {
+        var checkpoint = CodexParserCheckpoint.initial(sessionID: "session", replaySecond: nil)
+        let events = [
+            try snapshotRecord(total: 100, last: 10, source: "codex", timestamp: 1),
+            try snapshotRecord(total: 100, last: 20, source: "codex", timestamp: 2),
+            try snapshotRecord(total: 200, last: 20, source: "codex", timestamp: 3),
+        ]
+        let entries = events.enumerated().compactMap { offset, record in
+            checkpoint.consume(record, sourceOffset: UInt64(offset), pricingSpeed: .standard)?.entry
+        }
+
+        #expect(entries.map { $0.usage.inputTokens } == [10, 20, 20])
+    }
+
+    @Test("缺少或空 total 时不能仅凭相同 last 丢弃请求", arguments: ["", #","total_token_usage":{}"#])
+    func identicalLastOnlyRequestsArePreserved(totalField: String) throws {
+        var checkpoint = CodexParserCheckpoint.initial(sessionID: "session", replaySecond: nil)
+        let entries = try [1, 2].compactMap { timestamp in
+            let json = #"{"timestamp":\#(timestamp),"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":10}\#(totalField)}}}"#
+            let record = try JSONDecoder().decode(CodexRecord.self, from: Data(json.utf8))
+            return checkpoint.consume(record, sourceOffset: UInt64(timestamp), pricingSpeed: .standard)?.entry
+        }
+
+        #expect(entries.count == 2)
+        #expect(entries.reduce(0) { $0 + $1.usage.aggregateTotalTokens } == 20)
+    }
+
+    @Test("checkpoint 跨进程恢复后仍记住各来源和相邻快照")
+    func snapshotDeduplicationSurvivesCheckpointRoundTrip() throws {
+        var checkpoint = CodexParserCheckpoint.initial(sessionID: "session", replaySecond: nil)
+        for (offset, source) in ["codex", "spark"].enumerated() {
+            let record = try snapshotRecord(total: (offset + 1) * 100, source: source, timestamp: offset + 1)
+            #expect(checkpoint.consume(record, sourceOffset: UInt64(offset), pricingSpeed: .standard) != nil)
+        }
+        var restored = try JSONDecoder().decode(
+            CodexParserCheckpoint.self,
+            from: JSONEncoder().encode(checkpoint)
+        )
+        let adjacent = try snapshotRecord(total: 200, source: "other", timestamp: 3)
+        let stale = try snapshotRecord(total: 100, source: "codex", timestamp: 4)
+
+        #expect(restored.consume(adjacent, sourceOffset: 3, pricingSpeed: .standard) == nil)
+        #expect(restored.consume(stale, sourceOffset: 4, pricingSpeed: .standard) == nil)
+    }
+
     @Test func checkpointRestoresModelSessionAndPreviousTotals() throws {
         let decoder = JSONDecoder()
         var checkpoint = CodexParserCheckpoint.initial(
@@ -142,7 +235,7 @@ struct CodexRolloutParsingStateTests {
     }
 
     @Test("checkpoint 保留 last-first、cached clamp 与 zero-model 顺序")
-    func reducerMatchesPinnedOrdering() throws {
+    func reducerPreservesLastUsageClampingAndZeroModelOrdering() throws {
         let decoder = JSONDecoder()
         var checkpoint = CodexParserCheckpoint.initial(
             sessionID: "session",
@@ -171,7 +264,7 @@ struct CodexRolloutParsingStateTests {
             checkpoint.consume(repeatedRecord, sourceOffset: 3, pricingSpeed: .standard),
         ].compactMap { $0?.entry }
 
-        #expect(emitted.count == 2)
+        #expect(emitted.count == 1)
         #expect(emitted.allSatisfy { $0.model == "gpt-5" })
         #expect(emitted.allSatisfy { $0.usage.inputTokens == 0 })
         #expect(emitted.allSatisfy { $0.usage.cacheReadInputTokens == 100 })

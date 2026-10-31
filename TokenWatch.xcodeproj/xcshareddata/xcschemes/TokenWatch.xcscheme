@@ -79,6 +79,10 @@
             argument = "--force-initial-directory-authorization-guide"
             isEnabled = "NO">
          </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-TokenWatch.widgetPurchaseReviewMode unlocked"
+            isEnabled = "NO">
+         </CommandLineArgument>
       </CommandLineArguments>
       <StoreKitConfigurationFileReference
          identifier = "../TokenWatch.storekit">
