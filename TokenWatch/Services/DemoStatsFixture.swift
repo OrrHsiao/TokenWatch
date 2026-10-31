@@ -561,11 +561,16 @@ enum DemoStatsFixture {
         modelBreakdown: [String: UsageSummary] = [:],
         projectBreakdown: [String: UsageSummary] = [:]
     ) -> UsageSummary {
-        UsageSummary(
-            inputTokens: total * 3 / 4,
-            outputTokens: total / 4,
-            cacheReadTokens: total * 2 / 5,
-            cacheCreationTokens: total / 10,
+        // 四个分项之和必须等于 total：状态栏按分项累加今日 token，弹窗与总览直接展示 totalTokens，
+        // 两者口径一致截图数字才能对上。比例为 3 : 1 : 1.6 : 0.4，缓存命中率保持 33.3%。
+        let inputTokens = total / 2
+        let outputTokens = total / 6
+        let cacheReadTokens = total * 4 / 15
+        return UsageSummary(
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            cacheReadTokens: cacheReadTokens,
+            cacheCreationTokens: total - inputTokens - outputTokens - cacheReadTokens,
             reasoningTokens: 0,
             totalTokens: total,
             cost: cost,

@@ -36,6 +36,19 @@ struct DemoStatsFixtureTests {
         #expect(!opencodeEntries.isEmpty)
     }
 
+    @Test("Demo today tokens match between status bar breakdown sum and totalTokens")
+    @MainActor
+    func demoTodayTokensMatchStatusBarTotal() {
+        let calendar = Calendar.current
+        let now = Date()
+        let states = DemoStatsFixture.makeDemoStates(now: now, calendar: calendar)
+        let todayKey = StatusBarController.todayKey(now: now, calendar: calendar)
+
+        let todayTotal = states.values.compactMap { $0.stats?.byDay[todayKey]?.totalTokens }.reduce(0, +)
+        #expect(todayTotal > 0)
+        #expect(StatusBarTitleBuilder.totalTokens(states: states, todayKey: todayKey) == todayTotal)
+    }
+
     @Test("Demo states build valid calendar heatmap and hourly chart")
     func demoStatesBuildValidCharts() throws {
         let calendar = Calendar(identifier: .gregorian)
