@@ -14,11 +14,11 @@
       "titles": {
         "zh-Hans": {
           "title": "在菜单栏查看实时用量",
-          "subtitle": "今日、本周和本月消耗打开即看"
+          "subtitle": "Claude、Codex 订阅剩余与今日消耗一眼可见"
         },
         "en-US": {
           "title": "Check Usage from the Menu Bar",
-          "subtitle": "See today, this week, and this month at a glance"
+          "subtitle": "See Claude & Codex quota and today's usage at a glance"
         }
       }
     },
