@@ -26,6 +26,15 @@ final class RefreshIconButton: NSButton {
         didSet { updateChrome() }
     }
 
+    /// 不使用系统为无边框按钮附加的对齐内边距。
+    ///
+    /// 系统按文字基线给无边框图片按钮加上下不对称的内边距（各 macOS 版本数值不同），
+    /// 尺寸与居中约束只作用在内边距内侧，frame 会被撑成竖长条：自绘的 hover 背景不再是方形，
+    /// 图标也与同行标题错开。本按钮的背景与图标都按 bounds 自绘，对齐矩形应与 frame 一致。
+    override var alignmentRectInsets: NSEdgeInsets {
+        NSEdgeInsetsZero
+    }
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
 
