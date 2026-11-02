@@ -1,6 +1,6 @@
 - Adds Claude and Codex subscription quota: the menu bar shows 5-hour and weekly remaining quota as concentric rings, and the popover shows remaining percentages with reset countdowns.
 - Quota is read only from records Claude Code and Codex save on your Mac, with no network APIs and no uploads. Claude quota needs a one-time selection of ~/.claude.json in Settings. When a reset time passes with no new local record, the quota is shown as "Reset (estimated)".
-- Subscription quota shares the same one-time lifetime purchase as desktop widgets. Choose which periods each agent shows in the menu bar, in compact or detailed style, from Settings.
+- All features are now free, including all 7 desktop widgets and subscription quota. Purchase and restore steps are no longer needed. Thank you to everyone who supported the app with a purchase. Choose which periods each agent shows in the menu bar, in compact or detailed style, from Settings.
 - Fixes inflated Codex token counts caused by duplicated usage snapshots when rate limits refresh.
 - Fixes the main window not coming to the front when reopened from the menu bar after being closed.
-- Updates the latest App Store showcase screenshots.
+- Improves compatibility with usage records from newer Claude Code versions.
