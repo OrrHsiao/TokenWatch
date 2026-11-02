@@ -344,7 +344,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.appearance = NSAppearance(named: .darkAqua)
         window.contentViewController = popoverVC
         window.setContentSize(contentSize)
-        window.center()
+        // 与截图底板、主窗口使用同一块主显示器。center() 会跟随当前活动屏幕，
+        // 在混合缩放的多屏环境下可能把弹窗放到外接 1x 屏，导致 XCTest 窗口截图失败。
+        if let screen = NSScreen.screens.first {
+            let visibleFrame = screen.visibleFrame
+            window.setFrameOrigin(NSPoint(
+                x: visibleFrame.midX - window.frame.width / 2,
+                y: visibleFrame.midY - window.frame.height / 2
+            ))
+        } else {
+            window.center()
+        }
         // 主窗口在此之前已成为 key window；截图窗口必须接过 key，UI 测试发出的 Command-W
         // 才会关闭它，而不是把随后要截图的主窗口关掉。
         window.makeKeyAndOrderFront(nil)
