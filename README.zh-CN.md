@@ -37,7 +37,7 @@ AI Token Watch 是一个原生 macOS 应用，用于从本地 coding agent 数�
 - 按 session 查看模型、项目、token、费用和记录数
 - 菜单栏和弹窗展示 Claude 与 Codex 订阅额度：5 小时与一周剩余比例及重置时间，只读取本地记录
 - 7 款桌面小组件，展示热力图、趋势和近期用量
-- 桌面小组件与订阅额度为付费功能，在 App Store 版本中通过一次性 App 内购买一起解锁
+- 全部功能免费开放，包括全部 7 款桌面小组件与订阅额度，无需 App 内购买
 - 本地解析 Claude Code JSONL、Codex rollout JSONL 和 opencode SQLite 数据
 - 使用 security-scoped bookmark 适配沙盒环境下的本地文件授权
 - 内置 LiteLLM 价格快照，并对常用模型做了手动价格修正

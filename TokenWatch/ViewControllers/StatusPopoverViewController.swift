@@ -40,13 +40,11 @@ final class StatusPopoverViewController: NSViewController {
 
     private let viewModel: TokenStatsViewModel
     private let quotaStore: SubscriptionQuotaStore
-    private let quotaAccess: SubscriptionQuotaAccess
     private let nowProvider: () -> Date
     private let calendar: Calendar
     private let languageSettings: AppLanguageSettings
     private var observerToken: TokenStatsViewModel.ObservationToken?
     private var quotaObserverToken: SubscriptionQuotaStore.ObservationToken?
-    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var quotaPresentationTimer: Timer?
     private var snapshot: CalendarHeatmapSnapshot?
@@ -333,20 +331,15 @@ final class StatusPopoverViewController: NSViewController {
         }
     }
 
-    /// 未购买时用户点击订阅区解锁入口；由状态栏控制器负责关闭弹窗并打开设置页。
-    var onRequestQuotaUnlock: (() -> Void)?
-
     init(
         viewModel: TokenStatsViewModel,
         quotaStore: SubscriptionQuotaStore = SubscriptionQuotaStore(),
         nowProvider: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
-        languageSettings: AppLanguageSettings = .shared,
-        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
+        languageSettings: AppLanguageSettings = .shared
     ) {
         self.viewModel = viewModel
         self.quotaStore = quotaStore
-        self.quotaAccess = quotaAccess
         self.nowProvider = nowProvider
         self.calendar = calendar
         self.languageSettings = languageSettings
@@ -377,9 +370,6 @@ final class StatusPopoverViewController: NSViewController {
             self?.render()
         }
         quotaObserverToken = quotaStore.observe { [weak self] in
-            self?.renderQuota()
-        }
-        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
             self?.renderQuota()
         }
         languageSettingsObserverToken = languageSettings.observe { [weak self] in
@@ -416,9 +406,6 @@ final class StatusPopoverViewController: NSViewController {
             }
             if let quotaObserverToken {
                 quotaStore.removeObserver(quotaObserverToken)
-            }
-            if let quotaAccessObserverToken {
-                quotaAccess.removeObserver(quotaAccessObserverToken)
             }
             if let languageSettingsObserverToken {
                 languageSettings.removeObserver(languageSettingsObserverToken)
@@ -474,9 +461,6 @@ final class StatusPopoverViewController: NSViewController {
 
         quotaSectionView.onAction = { [weak self] action in
             self?.performQuotaAction(action)
-        }
-        quotaSectionView.onUnlock = { [weak self] in
-            self?.onRequestQuotaUnlock?()
         }
         originalContentView.translatesAutoresizingMaskIntoConstraints = false
         addToRootGlass(quotaSectionView)
@@ -606,12 +590,9 @@ final class StatusPopoverViewController: NSViewController {
 
     @objc private func refreshTodayStats(_ sender: Any?) {
         setRefreshButtonLoading(true)
-        // 原刷新入口追加本地额度读取；额度未解锁时不读取。按钮样式与统计刷新行为保持不变。
-        if quotaAccess.isUnlocked {
-            let quotaStore = self.quotaStore
-            Task { @MainActor in
-                await quotaStore.refresh()
-            }
+        let quotaStore = self.quotaStore
+        Task { @MainActor in
+            await quotaStore.refresh()
         }
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -648,14 +629,6 @@ final class StatusPopoverViewController: NSViewController {
             ].joined(separator: "\n\n"),
             accessibilityLabel: AppStrings.text(.quotaSectionTitle, language: language)
         )
-        guard quotaAccess.isUnlocked else {
-            quotaSectionView.applyLocked(
-                title: AppStrings.text(.quotaSectionTitle, language: language),
-                message: AppStrings.text(.quotaPremiumLockedMessage, language: language),
-                unlockTitle: AppStrings.text(.quotaUnlockAction, language: language)
-            )
-            return
-        }
         let presentations = SubscriptionQuotaProvider.allCases.map { provider in
             SubscriptionQuotaPresenter.make(
                 provider: provider,

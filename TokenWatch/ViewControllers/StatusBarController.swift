@@ -5,8 +5,7 @@ import os.log
 /// macOS 状态栏控制器
 ///
 /// 默认常驻原有的图标 + 今日 token 文本,其后是 Claude / Codex 订阅剩余额度圆环;
-/// 可在右键菜单切换为只显示其中一种。订阅额度为付费功能:未解锁时只显示今日 token,
-/// 各周期是否展示及简洁 / 详细样式在主界面设置页配置。
+/// 可在右键菜单切换为只显示额度或今日 token。
 /// 按设置间隔拉刷新,左键弹出 popover,右键弹下拉菜单(打开主窗口 / 立即刷新 / 显示设置 / 退出)。
 ///
 /// 设计原则:
@@ -20,7 +19,6 @@ final class StatusBarController {
     private let autoRefreshSettings: AutoRefreshSettings
     private let languageSettings: AppLanguageSettings
     private let displaySettings: StatusBarDisplaySettings
-    private let quotaAccess: SubscriptionQuotaAccess
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private let statusMenu = NSMenu()
@@ -30,7 +28,6 @@ final class StatusBarController {
     private var autoRefreshSettingsObserverToken: AutoRefreshSettings.ObservationToken?
     private var languageSettingsObserverToken: AppLanguageSettings.ObservationToken?
     private var displaySettingsObserverToken: StatusBarDisplaySettings.ObservationToken?
-    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
     private var buttonAppearanceObserver: NSKeyValueObservation?
     /// 含额度的模式下刷新倒计时、旧记录与重置点状态;模型未变化时不重新赋值图像。
     private var quotaPresentationTimer: Timer?
@@ -121,15 +118,13 @@ final class StatusBarController {
         quotaStore: SubscriptionQuotaStore = SubscriptionQuotaStore(),
         autoRefreshSettings: AutoRefreshSettings = .shared,
         languageSettings: AppLanguageSettings = .shared,
-        displaySettings: StatusBarDisplaySettings = .shared,
-        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
+        displaySettings: StatusBarDisplaySettings = .shared
     ) {
         self.viewModel = viewModel
         self.quotaStore = quotaStore
         self.autoRefreshSettings = autoRefreshSettings
         self.languageSettings = languageSettings
         self.displaySettings = displaySettings
-        self.quotaAccess = quotaAccess
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.statusMenu.userInterfaceLayoutDirection = .leftToRight
 
@@ -141,7 +136,6 @@ final class StatusBarController {
         subscribeToAutoRefreshSettings()
         subscribeToLanguageSettings()
         subscribeToDisplaySettings()
-        subscribeToQuotaAccess()
         startRefreshTimer()
         // 立即按当前 ViewModel 状态画一次,避免空标题闪现
         renderTitle()
@@ -159,9 +153,6 @@ final class StatusBarController {
             quotaPresentationTimer?.invalidate()
             if let token = displaySettingsObserverToken {
                 displaySettings.removeObserver(token)
-            }
-            if let token = quotaAccessObserverToken {
-                quotaAccess.removeObserver(token)
             }
             if let token = quotaObserverToken {
                 quotaStore.removeObserver(token)
@@ -201,10 +192,6 @@ final class StatusBarController {
         if let token = displaySettingsObserverToken {
             displaySettings.removeObserver(token)
             displaySettingsObserverToken = nil
-        }
-        if let token = quotaAccessObserverToken {
-            quotaAccess.removeObserver(token)
-            quotaAccessObserverToken = nil
         }
         buttonAppearanceObserver?.invalidate()
         buttonAppearanceObserver = nil
@@ -267,13 +254,9 @@ final class StatusBarController {
         let contentViewController = StatusPopoverViewController(
             viewModel: viewModel,
             quotaStore: quotaStore,
-            languageSettings: languageSettings,
-            quotaAccess: quotaAccess
+            languageSettings: languageSettings
         )
         contentViewController.preferredContentSize = StatusBarPopoverLayout.contentSize
-        contentViewController.onRequestQuotaUnlock = { [weak self] in
-            self?.openQuotaPurchaseSettings()
-        }
 
         // 外部点击由带 presentation generation 的 monitor 统一处理。
         // 若同时使用 transient，AppKit 可能在 mouseDown 先关闭，随后 mouseUp action 又重新打开。
@@ -420,28 +403,16 @@ final class StatusBarController {
         }
     }
 
-    /// 购买或恢复后立即读取额度并重绘;退款撤销后同步隐藏额度与相关菜单项。
-    private func subscribeToQuotaAccess() {
-        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
-            guard let self else { return }
-            self.updateMenuTitles()
-            self.syncLoadingAnimationState()
-            self.renderTitle()
-            self.refreshQuotaIfUnlocked()
-        }
-    }
-
     /// Codex 额度复用 Codex 数据目录授权;授权状态变化(例如在设置页重新授权)后立即重读。
     private func refreshQuotaIfCodexDirectoryChanged() {
         let directoryState = viewModel.states[.codex]?.directoryState
         guard directoryState != lastCodexDirectoryState else { return }
         lastCodexDirectoryState = directoryState
-        refreshQuotaIfUnlocked()
+        refreshQuota()
     }
 
-    /// 额度为付费功能,未解锁时不读取本地额度记录。
-    private func refreshQuotaIfUnlocked() {
-        guard quotaAccess.isUnlocked else { return }
+    /// 刷新已授权的本地额度记录，不主动弹出授权面板。
+    private func refreshQuota() {
         let quotaStore = self.quotaStore
         Task { @MainActor in
             await quotaStore.refresh()
@@ -450,12 +421,11 @@ final class StatusBarController {
 
     /// 实际生效的展示模式。
     ///
-    /// 额度未解锁,或设置页把两个 Agent 的所有周期都关闭时,含额度的模式退回只显示今日 token,
-    /// 保证状态栏始终有可点击的内容;用户选择的模式本身保持不变,解锁或重新开启后自动恢复。
+    /// 设置页关闭全部额度周期时退回今日 token，保证状态栏仍有可点击内容；重新开启后恢复用户选择。
     private var effectiveDisplayMode: StatusBarDisplayMode {
         let mode = displaySettings.mode
         guard mode.showsQuota else { return mode }
-        guard quotaAccess.isUnlocked, displaySettings.hasVisibleQuotaWindow else { return .todayTokens }
+        guard displaySettings.hasVisibleQuotaWindow else { return .todayTokens }
         return mode
     }
 
@@ -482,8 +452,6 @@ final class StatusBarController {
         menuItems.refreshItem.title = AppStrings.text(.refreshNow, language: language)
         menuItems.displayModeMenuItem.title = AppStrings.text(.statusMenuDisplayMode, language: language)
         menuItems.quitItem.title = AppStrings.text(.statusMenuQuit, language: language)
-        // 未解锁时额度不可见,显示模式入口没有意义,隐藏。
-        menuItems.displayModeMenuItem.isHidden = !quotaAccess.isUnlocked
 
         let selectedMode = displaySettings.mode
         for item in menuItems.displayModeMenuItem.submenu?.items ?? [] {
@@ -523,7 +491,7 @@ final class StatusBarController {
         if lastRenderedDayKey != todayKey {
             renderTitle()
         }
-        refreshQuotaIfUnlocked()
+        refreshQuota()
         Task { await viewModel.loadAllStats(mode: .silentIfUnchanged) }
     }
 
@@ -1097,7 +1065,7 @@ final class StatusBarController {
     }
 
     @objc private func refreshNow() {
-        refreshQuotaIfUnlocked()
+        refreshQuota()
         Task { await viewModel.loadAllStats() }
     }
 
@@ -1107,15 +1075,6 @@ final class StatusBarController {
         }
         logger.info("状态栏显示切换为 \(mode.rawValue, privacy: .public)")
         displaySettings.mode = mode
-    }
-
-    /// 弹窗订阅区的解锁入口:关闭弹窗后打开主界面设置页的订阅额度区块,由其承载购买与恢复。
-    private func openQuotaPurchaseSettings() {
-        logger.info("从状态栏弹窗打开订阅额度解锁入口")
-        dismissCurrentPopover()
-        Task { @MainActor in
-            (NSApp.delegate as? AppDelegate)?.showStatusBarQuotaSettings()
-        }
     }
 
     @objc private func quitApp() {

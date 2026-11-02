@@ -53,14 +53,14 @@ struct BundleLocalizationTests {
         }
     }
 
-    @Test("Widget 成品 Bundle 可直接读取全部语言的锁定提示")
-    func widgetBundleContainsLocalizedLockedGuidance() throws {
+    @Test("Widget 成品 Bundle 可直接读取全部语言的未就绪提示")
+    func widgetBundleContainsLocalizedFallbackText() throws {
         let appBundle = Bundle(for: AppDelegate.self)
         let plugInsURL = try #require(appBundle.builtInPlugInsURL)
         let widgetBundle = try #require(Bundle(
             url: plugInsURL.appendingPathComponent("TokenWatchWidgets.appex", isDirectory: true)
         ))
-        var lockedGuidanceByLanguage: [String: String] = [:]
+        var fallbackTextByLanguage: [String: String] = [:]
 
         for language in AppLanguage.allCases {
             let resourceLocalization = Self.widgetResourceAliases[language.rawValue]
@@ -77,20 +77,20 @@ struct BundleLocalizationTests {
             let localizedBundle = try #require(Bundle(
                 url: URL(fileURLWithPath: resourcePath).deletingLastPathComponent()
             ))
-            let lockedGuidance = localizedBundle.localizedString(
-                forKey: "widget.locked",
+            let fallbackText = localizedBundle.localizedString(
+                forKey: "widget.notReady",
                 value: "__TOKENWATCH_MISSING_WIDGET_LOCALIZATION__",
                 table: "Localizable"
             )
 
-            #expect(values.count == 16)
-            #expect(lockedGuidance == values["widget.locked"])
-            #expect(!lockedGuidance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            #expect(lockedGuidance != "__TOKENWATCH_MISSING_WIDGET_LOCALIZATION__")
-            lockedGuidanceByLanguage[language.rawValue] = lockedGuidance
+            #expect(values.count == 15)
+            #expect(fallbackText == values["widget.notReady"])
+            #expect(!fallbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            #expect(fallbackText != "__TOKENWATCH_MISSING_WIDGET_LOCALIZATION__")
+            fallbackTextByLanguage[language.rawValue] = fallbackText
         }
 
-        #expect(lockedGuidanceByLanguage["zh-CN"] != lockedGuidanceByLanguage["zh-TW"])
-        #expect(lockedGuidanceByLanguage["zh-HK"] == lockedGuidanceByLanguage["zh-TW"])
+        #expect(fallbackTextByLanguage["zh-CN"] != fallbackTextByLanguage["zh-TW"])
+        #expect(fallbackTextByLanguage["zh-HK"] == fallbackTextByLanguage["zh-TW"])
     }
 }

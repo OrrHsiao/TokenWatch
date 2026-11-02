@@ -3,8 +3,7 @@ import Foundation
 enum WidgetFallbackLocalization {
     static func make(
         date: Date,
-        calendar: Calendar,
-        showsLockedGuidance: Bool = false
+        calendar: Calendar
     ) -> WidgetLocalizedText {
         let formatter = DateFormatter()
         formatter.calendar = calendar
@@ -25,9 +24,7 @@ enum WidgetFallbackLocalization {
                 format: String(localized: "widget.updated.format"),
                 dateText
             ),
-            notReadyMessage: showsLockedGuidance
-                ? "🔒 \(String(localized: "widget.locked"))"
-                : notReadyMessage,
+            notReadyMessage: notReadyMessage,
             monthlyBudgetTitle: String(localized: "widget.monthlyBudget.name"),
             monthlyBudgetUnconfiguredMessage: String(localized: "widget.notReady"),
             weeklySummaryTitle: String(localized: "widget.weekly.name"),

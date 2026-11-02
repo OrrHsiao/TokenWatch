@@ -352,8 +352,7 @@ struct StatusBarControllerTests {
             quotaStore: inertQuotaStore(),
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings,
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+            displaySettings: displaySettings
         )
         defer { controller.stop() }
 
@@ -424,8 +423,7 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings,
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+            displaySettings: displaySettings
         )
         defer { controller.stop() }
 
@@ -481,8 +479,7 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings,
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+            displaySettings: displaySettings
         )
         defer { controller.stop() }
 
@@ -528,8 +525,7 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: AppLanguageSettings(defaults: defaults),
-            displaySettings: StatusBarDisplaySettings(defaults: defaults),
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+            displaySettings: StatusBarDisplaySettings(defaults: defaults)
         )
         defer { controller.stop() }
         let statusItem = try #require(
@@ -542,9 +538,9 @@ struct StatusBarControllerTests {
         #expect(statusItem.button?.image === firstImage)
     }
 
-    /// 额度为付费功能:未购买时即使选择含额度的模式也只显示今日 token,并隐藏额度相关菜单项。
+    /// 无需购买即可使用额度模式；默认入口正常展示额度与菜单。
     @MainActor
-    @Test func lockedQuotaFallsBackToTodayTokensAndHidesQuotaMenuItems() async throws {
+    @Test func quotaIsAvailableWithoutPurchase() async throws {
         let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -563,56 +559,15 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
-            displaySettings: displaySettings,
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: false)
+            displaySettings: displaySettings
         )
         defer { controller.stop() }
 
         #expect(displaySettings.mode == .subscriptionQuota)
-        #expect(controller.debugRenderedDisplayMode == .todayTokens)
-        #expect(controller.debugStatusButtonImagePosition == .imageLeft)
-        #expect(controller.debugTitlePlainString == "—\nTokens")
-        #expect(controller.debugLastRenderedQuotaModel == nil)
-        #expect(controller.debugQuotaPresentationTimerInterval == nil)
-        #expect(controller.debugStatusButtonToolTip == "TokenWatch · — Tokens")
-        #expect(controller.debugStatusMenuItemTitles == [
-            "打开 AI Token Watch",
-            "立即刷新",
-            "退出 AI Token Watch",
-        ])
-    }
-
-    /// 购买或恢复后立即恢复用户选择的含额度模式;撤销后再次退回今日 token。
-    @MainActor
-    @Test func unlockingQuotaRestoresSelectedModeImmediately() async throws {
-        let suiteName = "StatusBarControllerTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let displaySettings = StatusBarDisplaySettings(defaults: defaults)
-        let quotaStore = inertQuotaStore(isDemoMode: true)
-        await quotaStore.refresh()
-        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
-        defer { purchaseController.stop() }
-        await purchaseController.refresh()
-        let quotaAccess = SubscriptionQuotaAccess(purchaseController: purchaseController)
-
-        let controller = StatusBarController(
-            viewModel: TokenStatsViewModel(),
-            quotaStore: quotaStore,
-            autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
-            languageSettings: AppLanguageSettings(defaults: defaults),
-            displaySettings: displaySettings,
-            quotaAccess: quotaAccess
-        )
-        defer { controller.stop() }
-        #expect(controller.debugRenderedDisplayMode == .todayTokens)
-
-        await purchaseController.purchase(in: NSWindow())
-
-        #expect(quotaAccess.isUnlocked)
-        #expect(controller.debugRenderedDisplayMode == .quotaAndTodayTokens)
+        #expect(controller.debugRenderedDisplayMode == .subscriptionQuota)
         #expect(controller.debugLastRenderedQuotaModel?.groups.count == 2)
-        #expect(controller.debugStatusMenuItemTitles.count == 4)
+        #expect(controller.debugQuotaPresentationTimerInterval != nil)
+        #expect(controller.debugStatusMenuItemTitles.contains("状态栏显示"))
     }
 
     /// 设置页把两个 Agent 的所有周期都关闭时,含额度模式退回今日 token,保证状态栏仍有可点击内容。
@@ -631,8 +586,7 @@ struct StatusBarControllerTests {
             quotaStore: quotaStore,
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: AppLanguageSettings(defaults: defaults),
-            displaySettings: displaySettings,
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+            displaySettings: displaySettings
         )
         defer { controller.stop() }
 

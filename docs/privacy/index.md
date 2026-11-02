@@ -31,11 +31,11 @@ The app may display local information derived from those files, such as token co
 
 AI Token Watch stores app preferences in local UserDefaults, along with an independent security-scoped bookmark for each provider folder you select and for the Claude Code configuration file if you choose it. This lets the app remember settings and restore only the access you granted.
 
-To power desktop widgets, the app also writes an aggregated usage summary (such as token totals, model names, and project names) and your purchase status to a shared App Group container on your Mac, which only AI Token Watch's widgets read. This data is stored only on your device and is not transmitted anywhere.
+To power desktop widgets, the app also writes an aggregated usage summary (such as token totals, model names, and project names) to a shared App Group container on your Mac, which only AI Token Watch's widgets read. This data is stored only on your device and is not transmitted anywhere.
 
 ## Network Access
 
-AI Token Watch itself does not access the network. The Privacy Policy and Support entries open public webpages in your default browser. In-app purchases are processed by Apple through the App Store; AI Token Watch does not receive your payment information.
+AI Token Watch itself does not access the network. The Privacy Policy and Support entries open public webpages in your default browser. All app features are free and require no in-app purchases.
 
 ## Contact
 

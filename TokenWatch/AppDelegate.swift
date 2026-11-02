@@ -13,11 +13,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let openMainWindowOnLaunchKey = "TokenWatch.openMainWindowOnLaunch"
     private static let showPopoverForScreenshotsKey = "TokenWatch.showPopoverForScreenshots"
-    private static let widgetPurchaseReviewModeKey = "TokenWatch.widgetPurchaseReviewMode"
-    private static let purchaseLogger = Logger(
-        subsystem: "com.xiaoao.TokenWatch",
-        category: "WidgetPurchaseBootstrap"
-    )
     private static let windowLogger = Logger(
         subsystem: "com.xiaoao.TokenWatch",
         category: "MainWindow"
@@ -33,12 +28,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Claude / Codex 本地订阅额度;状态栏、弹窗与设置页共享同一份状态。
     let quotaStore: SubscriptionQuotaStore
-
-    /// StoreKit 控制器由应用生命周期持有，以便窗口关闭后仍能接收交易更新。
-    let widgetPurchaseController: WidgetPurchaseController?
-
-    /// 订阅额度与小组件共用同一买断；状态栏、弹窗与设置页共享同一份解锁状态。
-    let quotaAccess: SubscriptionQuotaAccess
 
     /// 状态栏控制器,长驻 menu bar 显示当日 token 数
     /// 在 didFinishLaunching 时创建,terminate 时 stop() 释放 Timer + 摘掉 status item
@@ -62,9 +51,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             widgetSnapshotPublisher: WidgetSnapshotPublisherFactory.makeLive()
         )
         self.quotaStore = SubscriptionQuotaStore(languageProvider: { settings.resolvedLanguage })
-        let widgetPurchaseController = Self.makeWidgetPurchaseController()
-        self.widgetPurchaseController = widgetPurchaseController
-        self.quotaAccess = SubscriptionQuotaAccess(purchaseController: widgetPurchaseController)
         self.externalURLOpener = { NSWorkspace.shared.open($0) }
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
@@ -73,8 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     init(
         languageSettings: AppLanguageSettings,
         externalURLOpener: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
-        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil,
-        widgetPurchaseController: WidgetPurchaseController? = nil
+        widgetSnapshotPublisher: (any WidgetSnapshotPublishing)? = nil
     ) {
         self.languageSettings = languageSettings
         self.viewModel = TokenStatsViewModel(
@@ -82,8 +67,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             widgetSnapshotPublisher: widgetSnapshotPublisher
         )
         self.quotaStore = SubscriptionQuotaStore(languageProvider: { languageSettings.resolvedLanguage })
-        self.widgetPurchaseController = widgetPurchaseController
-        self.quotaAccess = SubscriptionQuotaAccess(purchaseController: widgetPurchaseController)
         self.externalURLOpener = externalURLOpener
         self.initialDirectoryAuthorizationGuide = InitialDirectoryAuthorizationGuide()
         super.init()
@@ -102,28 +85,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.removeObject(forKey: DemoStatsFixture.userDefaultsKey)
         }
 
-        // StoreKit 建议在应用启动时建立长期 Transaction.updates 监听，避免遗漏延迟交易。
-        // start() 会同步应用 entitlement 缓存，因此状态栏首帧即可判断订阅额度是否已解锁。
-        widgetPurchaseController?.start()
-
         mainMenuController = AppMainMenuController(actionTarget: self, languageSettings: languageSettings)
         mainMenuController?.start()
 
         // 先建状态栏(订阅 ViewModel),再异步加载,确保首次 onStateChange 能被状态栏接到
         statusBarController = StatusBarController(
             viewModel: viewModel,
-            quotaStore: quotaStore,
-            quotaAccess: quotaAccess
+            quotaStore: quotaStore
         )
 
         // 额度只读取已授权的本地记录,不依赖统计扫描完成,也不会触发授权面板。
-        // 额度为付费功能:未解锁时不读取,购买或恢复后由状态栏控制器触发读取。
-        if quotaAccess.isUnlocked {
-            let quotaStore = self.quotaStore
-            Task { @MainActor in
-                await quotaStore.refresh()
-            }
+        let quotaStore = self.quotaStore
+        Task { @MainActor in
+            await quotaStore.refresh()
         }
+        // 每次启动请求重载，清除升级前缓存的锁定画面，即使用量快照没有变化也能生效。
+        WidgetKitTimelineReloader().reloadUsageTimelines()
 
         if Self.shouldOpenMainWindowOnLaunch() {
             _ = presentMainWindow()
@@ -172,7 +149,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController = nil
         mainMenuController?.stop()
         mainMenuController = nil
-        widgetPurchaseController?.stop()
         // 停止所有 provider 的 Security-Scoped 访问，释放资源
         SecurityScopedBookmarkManager.shared.stopAccessingAll()
     }
@@ -189,11 +165,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 打开主窗口并切换到设置页。
     @objc func showSettings(_ sender: Any?) {
         presentMainWindow()?.showSettingsFromMainMenu(sender)
-    }
-
-    /// 打开主窗口设置页并定位到“状态栏订阅额度”区块，承载额度的购买与展示配置。
-    func showStatusBarQuotaSettings() {
-        presentMainWindow()?.showStatusBarQuotaSettings()
     }
 
     /// 请求首次无目录授权引导；确认后仅进入设置页，不请求任何文件夹权限。
@@ -300,8 +271,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func instantiateMainWindow() -> NSWindow? {
         let windowController = MainWindowFactory.makeWindowController(
             languageSettings: languageSettings,
-            widgetPurchaseController: widgetPurchaseController,
-            quotaAccess: quotaAccess,
             quotaStore: quotaStore
         )
         mainWindowController = windowController
@@ -314,35 +283,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hasStoredPreference: defaults.object(forKey: openMainWindowOnLaunchKey) != nil,
             storedPreference: defaults.bool(forKey: openMainWindowOnLaunchKey)
         )
-    }
-
-    /// 构建生产 StoreKit 控制器；DEBUG 审核模式只能通过显式依赖替换进入。
-    private static func makeWidgetPurchaseController() -> WidgetPurchaseController? {
-#if DEBUG
-        if DemoStatsFixture.isDemoModeEnabled && UserDefaults.standard.string(forKey: widgetPurchaseReviewModeKey) == nil {
-            purchaseLogger.info("Using unlocked widget purchase controller for demo mode")
-            return WidgetPurchaseReviewFixtures.makeUnlockedController()
-        }
-
-        switch UserDefaults.standard.string(forKey: widgetPurchaseReviewModeKey) {
-        case "locked":
-            purchaseLogger.info("Using locked widget purchase review fixture")
-            return WidgetPurchaseReviewFixtures.makeLockedController()
-        case "unlocked":
-            purchaseLogger.info("Using unlocked widget purchase review fixture")
-            return WidgetPurchaseReviewFixtures.makeUnlockedController()
-        default:
-            break
-        }
-#endif
-
-        do {
-            return try WidgetPurchaseController.makeLive()
-        } catch {
-            // App Group 无法建立时不展示购买入口，避免收费后无法向扩展交付权限。
-            purchaseLogger.error("Widget purchase unavailable because App Group storage failed")
-            return nil
-        }
     }
 
     /// 截图自动化时把主窗口移到主显示器，并在其后铺一层纯色底板。
@@ -387,8 +327,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let popoverVC = StatusPopoverViewController(
             viewModel: viewModel,
             quotaStore: quotaStore,
-            languageSettings: languageSettings,
-            quotaAccess: quotaAccess
+            languageSettings: languageSettings
         )
         let window = StatusPopoverScreenshotWindow(
             contentRect: NSRect(origin: .zero, size: contentSize),
@@ -440,12 +379,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
 
-            // 截图使用 demo 数据，按已解锁展示订阅额度。
+            // 截图使用本地 demo 额度数据。
             let controller = StatusPopoverViewController(
                 viewModel: testViewModel,
                 quotaStore: testQuotaStore,
-                languageSettings: langSettings,
-                quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+                languageSettings: langSettings
             )
 
             let contentSize = StatusPopoverViewController.contentSize
@@ -564,7 +502,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         return rep.representation(using: .png, properties: [:])
     }
-
 }
 
 @MainActor
@@ -595,8 +532,6 @@ enum MainWindowFactory {
 
     static func makeWindowController(
         languageSettings: AppLanguageSettings = .shared,
-        widgetPurchaseController: WidgetPurchaseController? = nil,
-        quotaAccess: SubscriptionQuotaAccess? = nil,
         quotaStore: SubscriptionQuotaStore? = nil
     ) -> NSWindowController {
         // 使用 .fullSizeContentView 与透明无分割线标题栏实现 macOS 原生沉浸式毛玻璃窗口
@@ -608,8 +543,6 @@ enum MainWindowFactory {
         )
         let contentController = ViewController(
             languageSettings: languageSettings,
-            widgetPurchaseController: widgetPurchaseController,
-            quotaAccess: quotaAccess,
             quotaStore: quotaStore
         )
         window.title = "TokenWatch"

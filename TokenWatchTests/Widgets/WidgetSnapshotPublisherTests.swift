@@ -4,6 +4,36 @@ import Testing
 
 @Suite("Widget snapshot publisher")
 struct WidgetSnapshotPublisherTests {
+    @Test("启动重载在快照未变化时仍刷新全部小组件，清除旧版锁定画面")
+    func startupReloadRefreshesUnchangedSnapshot() async throws {
+        let existing = try #require(WidgetSnapshotBuilder.build(
+            states: validStates,
+            now: fixedNow,
+            calendar: fixedCalendar,
+            language: .zhHans
+        ))
+        let events = LockedEventRecorder()
+        let store = LockedSnapshotStore(loadResult: .available(existing), events: events)
+        let reloader = RecordingTimelineReloader(events: events)
+        let publisher = makePublisher(store: store, reloader: reloader)
+
+        // 与启动流程一致：先请求重载旧画面，再发布扫描结果；无新数据不应阻止重载。
+        reloader.reloadUsageTimelines()
+        let result = await publisher.publish(states: validStates, language: .zhHans)
+
+        #expect(result == .unchanged)
+        #expect(store.saveCount == 0)
+        #expect(reloader.kinds == [
+            WidgetSharedConfiguration.heatmapKind,
+            WidgetSharedConfiguration.hourlyLineKind,
+            WidgetSharedConfiguration.weeklySummaryKind,
+            WidgetSharedConfiguration.monthlyBudgetKind,
+            WidgetSharedConfiguration.todayAnomalyKind,
+            WidgetSharedConfiguration.projectFocusKind,
+            WidgetSharedConfiguration.modelFocusKind,
+        ])
+    }
+
     @Test("changed content saves before reloading every exact kind")
     func newContentSavesBeforeReloadingEveryKind() async {
         let events = LockedEventRecorder()

@@ -169,73 +169,14 @@ final class TokenWatchUITests: XCTestCase {
     }
 
     @MainActor
-    func testWidgetPurchaseReviewCardShowsStorePriceAndRestoreAction() throws {
+    func testWidgetsAreFreeWithoutPurchaseOverride() throws {
         let app = XCUIApplication()
-        app.launchForUITesting(
-            languagePreference: "en",
-            widgetPurchaseReviewMode: "locked"
-        )
-
+        app.launchForUITesting(languagePreference: "en")
         let widgetsButton = app.buttons["DashboardNav.widgets"]
         XCTAssertTrue(widgetsButton.waitForExistence(timeout: 5))
         widgetsButton.click()
-
-        XCTAssertTrue(app.groups["WidgetPurchaseCard"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            app.staticTexts["Unlock all 7 desktop widgets"]
-                .waitForExistence(timeout: 5)
-        )
-        let purchaseButton = app.buttons["WidgetPurchaseButton"]
-        let pricedButton = XCTNSPredicateExpectation(
-            predicate: NSPredicate(
-                format: "exists == true AND enabled == true AND label == %@",
-                "Unlock forever for $2.99"
-            ),
-            object: purchaseButton
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [pricedButton], timeout: 5), .completed)
-        XCTAssertEqual(
-            app.buttons["WidgetRestorePurchaseButton"].label,
-            "Restore Purchases"
-        )
-
-        // Element screenshots are cropped to the app window on macOS; app-level screenshots
-        // otherwise include the whole desktop and can leak unrelated windows into review evidence.
-        let reviewWindow = app.windows.firstMatch
-        XCTAssertTrue(reviewWindow.exists)
-        let screenshot = reviewWindow.screenshot()
-        let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = "Widget lifetime purchase review"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-
-        if let outputPath = ProcessInfo.processInfo.environment[
-            "TOKENWATCH_IAP_REVIEW_SCREENSHOT_PATH"
-        ] {
-            try screenshot.pngRepresentation.write(
-                to: URL(fileURLWithPath: outputPath),
-                options: .atomic
-            )
-        }
-    }
-
-    @MainActor
-    func testWidgetPurchaseUnlockedStateHidesPurchaseActions() throws {
-        let app = XCUIApplication()
-        app.launchForUITesting(
-            languagePreference: "en",
-            widgetPurchaseReviewMode: "unlocked"
-        )
-
-        let widgetsButton = app.buttons["DashboardNav.widgets"]
-        XCTAssertTrue(widgetsButton.waitForExistence(timeout: 5))
-        widgetsButton.click()
-
-        XCTAssertTrue(app.groups["WidgetPurchaseCard"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            app.staticTexts["All widgets are unlocked"]
-                .waitForExistence(timeout: 5)
-        )
+        XCTAssertTrue(app.staticTexts["Widgets"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.groups["WidgetPurchaseCard"].exists)
         XCTAssertFalse(app.buttons["WidgetPurchaseButton"].exists)
         XCTAssertFalse(app.buttons["WidgetRestorePurchaseButton"].exists)
     }
@@ -246,7 +187,6 @@ extension XCUIApplication {
         languagePreference: String = "zh-CN",
         skipInitialDirectoryAuthorizationGuide: Bool = true,
         systemLanguage: String? = nil,
-        widgetPurchaseReviewMode: String? = nil,
         useDemoData: Bool = false,
         showPopoverForScreenshots: Bool = false
     ) {
@@ -289,11 +229,6 @@ extension XCUIApplication {
             launchArguments += [
                 "-AppleLanguages", "(\(systemLanguage))",
                 "-AppleLocale", systemLanguage,
-            ]
-        }
-        if let widgetPurchaseReviewMode {
-            launchArguments += [
-                "-TokenWatch.widgetPurchaseReviewMode", widgetPurchaseReviewMode,
             ]
         }
         launch()

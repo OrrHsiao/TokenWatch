@@ -2568,10 +2568,9 @@ struct TokenWatchTests {
     }
 
     @MainActor
-    @Test("数据源区块在订阅额度解锁后展示 Claude 额度文件授权行")
-    func settingsShowsClaudeQuotaFileRowOnlyWhenQuotaUnlocked() throws {
+    @Test("数据源区块无需购买即可展示 Claude 额度文件授权行")
+    func settingsShowsClaudeQuotaFileRowWithoutPurchase() throws {
         func makeController(
-            isUnlocked: Bool,
             quotaStore: SubscriptionQuotaStore?
         ) -> SettingsViewController {
             let controller = SettingsViewController(
@@ -2579,7 +2578,6 @@ struct TokenWatchTests {
                 providerState: { _ in .init(stats: nil, entries: nil) },
                 authorizationAction: { _ in false },
                 languageSettings: zhHansLanguageSettings(),
-                quotaAccess: SubscriptionQuotaAccess(isUnlocked: isUnlocked),
                 quotaStore: quotaStore
             )
             controller.loadViewIfNeeded()
@@ -2594,24 +2592,21 @@ struct TokenWatchTests {
         }
         let rowIdentifier = "ProviderDirectoryRow.claudeQuotaFile"
 
-        let withoutStore = makeController(isUnlocked: true, quotaStore: nil)
+        let withoutStore = makeController(quotaStore: nil)
         #expect(withoutStore.view.firstDescendant(identifier: rowIdentifier) == nil)
 
-        let locked = makeController(isUnlocked: false, quotaStore: makeQuotaStore())
-        #expect(try #require(locked.view.firstDescendant(identifier: rowIdentifier)).isHidden)
-
-        let unlocked = makeController(isUnlocked: true, quotaStore: makeQuotaStore())
-        #expect(!(try #require(unlocked.view.firstDescendant(identifier: rowIdentifier)).isHidden))
+        let controller = makeController(quotaStore: makeQuotaStore())
+        #expect(!(try #require(controller.view.firstDescendant(identifier: rowIdentifier)).isHidden))
         let name = try #require(
-            unlocked.view.firstDescendant(identifier: "ProviderDirectoryName.claudeQuotaFile") as? NSTextField
+            controller.view.firstDescendant(identifier: "ProviderDirectoryName.claudeQuotaFile") as? NSTextField
         )
         #expect(name.stringValue == "Claude 额度文件")
         #expect(name.toolTip?.contains("~/.claude.json") == true)
         let status = try #require(
-            unlocked.view.firstDescendant(identifier: "ProviderDirectoryStatus.claudeQuotaFile") as? NSTextField
+            controller.view.firstDescendant(identifier: "ProviderDirectoryStatus.claudeQuotaFile") as? NSTextField
         )
         #expect(status.stringValue == "未选择")
-        let action = try #require(unlocked.view.button(identifier: "ProviderDirectoryAction.claudeQuotaFile"))
+        let action = try #require(controller.view.button(identifier: "ProviderDirectoryAction.claudeQuotaFile"))
         #expect(action.title == "去授权")
         #expect(action.isEnabled)
     }

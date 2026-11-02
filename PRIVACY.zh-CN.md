@@ -26,11 +26,11 @@ AI Token Watch 启动时不会自动显示文件选择器。你可以在设置�
 
 AI Token Watch 会在本地 UserDefaults 中保存应用偏好设置，并为你选择的每个 provider 文件夹以及 Claude Code 配置文件（如已选择）分别保存 security-scoped bookmark。这样应用可以记住设置，并且只恢复你已授予的访问权限。
 
-为了给桌面小组件提供数据，应用还会把汇总后的用量摘要（例如 token 总量、模型名称和项目名称）以及购买状态写入本机的共享 App Group 容器，仅供 AI Token Watch 的小组件读取。这些数据只存储在你的设备上，不会被传输到任何地方。
+为了给桌面小组件提供数据，应用还会把汇总后的用量摘要（例如 token 总量、模型名称和项目名称）写入本机的共享 App Group 容器，仅供 AI Token Watch 的小组件读取。这些数据只存储在你的设备上，不会被传输到任何地方。
 
 ## 网络访问
 
-AI Token Watch 应用本身不访问网络。“隐私政策”和“支持”入口会使用你的默认浏览器打开公开网页。App 内购买由 Apple 通过 App Store 处理，AI Token Watch 不会获取你的付款信息。
+AI Token Watch 应用本身不访问网络。“隐私政策”和“支持”入口会使用你的默认浏览器打开公开网页。应用全部功能免费开放，无需 App 内购买。
 
 ## 联系方式
 
