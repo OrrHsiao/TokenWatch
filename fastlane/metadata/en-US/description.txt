@@ -1,10 +1,10 @@
-AI Token Watch is a native macOS menu bar app for tracking token usage and estimated cost from local coding-agent records. It reads local usage data from Claude Code, Codex, OpenCode and Antigravity, then turns scattered session records into clear daily, monthly, model, project, and provider summaries.
+AI Token Watch is a native macOS menu bar app for tracking token usage and estimated cost from local coding-agent records. It reads local usage data from Claude Code, Codex, OpenCode, Antigravity, and DeepSeek Harness, then turns scattered session records into clear daily, monthly, model, project, and provider summaries.
 
 Use the menu bar to quickly check today, this week, and this month. Open the main window to explore recent 30-day and 12-month trends, model rankings, provider share, project usage, and recent session details. Calendar heatmaps and charts make it easier to spot high-usage days, changing habits, and cost patterns.
 
-Subscription quota shows the remaining 5-hour and weekly quota for Claude and Codex right in the menu bar, with remaining percentages and reset times in the popover. Quota is read only from records Claude Code and Codex save on your Mac (Claude requires selecting ~/.claude.json once in Settings), with no network APIs.
+Subscription quota shows the remaining 5-hour and weekly quota for Claude and Codex right in the menu bar, with remaining percentages and reset times in the popover. Choose which periods each agent shows, in compact or detailed style. Quota is read only from records Claude Code and Codex save on your Mac (Claude requires selecting ~/.claude.json once in Settings), without calling quota APIs. Values depend on the latest local records; when a reset time passes with no new record, the app labels the result "Reset (estimated)".
 
-Desktop widgets and menu bar subscription quota are paid features, unlocked permanently with a one-time in-app purchase that you can restore anytime. All other usage statistics are free.
+All features are free, including all 7 desktop widgets and menu bar subscription quota. No in-app purchase is required.
 
 TokenWatch works locally on your Mac. After you grant file access, parsing, aggregation, and cost estimation all happen on your device. The app does not require an account, and it includes no ads, analytics, telemetry, tracking, or third-party SDKs. It does not upload your usage records, project paths, prompts, responses, or pricing data.
 

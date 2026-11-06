@@ -3,10 +3,9 @@ import os.log
 
 /// 设置页“状态栏订阅额度”区块内容。
 ///
-/// 上方在未购买时展示付费说明与购买 / 恢复入口；下方依次为 Claude、Codex 两组，
+/// 依次展示 Claude、Codex 两组，
 /// 分别配置 5 小时与一周额度是否在状态栏展示，以及简洁（只显示圆环）/ 详细（附剩余百分比）样式。
 /// 两组纵向排列，设置页在窄窗口下也不会被撑宽。
-/// 未购买时配置项保留可见但禁用，让用户在购买前即可了解可配置内容。
 @MainActor
 final class StatusBarQuotaSettingsView: NSView {
     private struct WindowKey: Hashable {
@@ -25,38 +24,21 @@ final class StatusBarQuotaSettingsView: NSView {
     private static let providerGroupSpacing: CGFloat = 18
 
     private let displaySettings: StatusBarDisplaySettings
-    private let quotaAccess: SubscriptionQuotaAccess
-    private var language: AppLanguage
 
     private let descriptionLabel = NSTextField(wrappingLabelWithString: "")
-    private let purchasePanel = NSStackView()
-    private let lockedMessageLabel = NSTextField(wrappingLabelWithString: "")
-    private let purchaseProgressIndicator = NSProgressIndicator()
-    private let purchaseButton = DashboardRangeButton(title: "", target: nil, action: nil)
-    private let restoreButton = DashboardRangeButton(title: "", target: nil, action: nil)
-    private let purchaseMessageLabel = NSTextField(wrappingLabelWithString: "")
     private var windowRows: [WindowKey: WindowRowViews] = [:]
 
     private var displaySettingsObserverToken: StatusBarDisplaySettings.ObservationToken?
-    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
-    private var purchaseObserverToken: WidgetPurchaseController.ObservationToken?
     private let logger = Logger(subsystem: "com.xiaoao.TokenWatch", category: "StatusBarQuotaSettings")
-
-    var debugShowsPurchasePanel: Bool { !purchasePanel.isHidden }
-    var debugLockedMessage: String { lockedMessageLabel.stringValue }
 
     /// - Parameters:
     ///   - displaySettings: 状态栏展示设置，修改后状态栏立即重绘。
-    ///   - quotaAccess: 订阅额度付费状态与购买入口。
     ///   - language: 初始界面语言。
     init(
         displaySettings: StatusBarDisplaySettings,
-        quotaAccess: SubscriptionQuotaAccess,
         language: AppLanguage
     ) {
         self.displaySettings = displaySettings
-        self.quotaAccess = quotaAccess
-        self.language = language
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         identifier = NSUserInterfaceItemIdentifier("StatusBarQuotaSettings")
@@ -75,21 +57,13 @@ final class StatusBarQuotaSettingsView: NSView {
             if let displaySettingsObserverToken {
                 displaySettings.removeObserver(displaySettingsObserverToken)
             }
-            if let quotaAccessObserverToken {
-                quotaAccess.removeObserver(quotaAccessObserverToken)
-            }
-            if let purchaseObserverToken {
-                quotaAccess.purchaseController?.removeObserver(purchaseObserverToken)
-            }
         }
     }
 
     /// 按界面语言刷新全部文案并重绘状态。
     /// - Parameter language: 当前界面语言。
     func reloadLocalizedText(language: AppLanguage) {
-        self.language = language
         descriptionLabel.stringValue = AppStrings.text(.settingsStatusBarQuotaDescription, language: language)
-        lockedMessageLabel.stringValue = AppStrings.text(.quotaPremiumLockedMessage, language: language)
         let styleTitles = StatusBarQuotaWindowStyle.allCases.map { $0.title(language: language) }
         for (key, row) in windowRows {
             let windowTitle = SubscriptionQuotaPresenter.windowTitle(key.kind, language: language)
@@ -111,8 +85,6 @@ final class StatusBarQuotaSettingsView: NSView {
         descriptionLabel.textColor = DashboardPalette.secondaryText
         descriptionLabel.maximumNumberOfLines = 0
 
-        setupPurchasePanel()
-
         let divider = DashboardBackgroundView(backgroundColor: DashboardPalette.glassDivider)
         divider.translatesAutoresizingMaskIntoConstraints = false
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
@@ -127,7 +99,7 @@ final class StatusBarQuotaSettingsView: NSView {
             group.widthAnchor.constraint(equalTo: providerGroups.widthAnchor).isActive = true
         }
 
-        let stack = NSStackView(views: [descriptionLabel, purchasePanel, divider, providerGroups])
+        let stack = NSStackView(views: [descriptionLabel, divider, providerGroups])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 14
@@ -140,69 +112,8 @@ final class StatusBarQuotaSettingsView: NSView {
             stack.topAnchor.constraint(equalTo: topAnchor),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor),
             descriptionLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            purchasePanel.widthAnchor.constraint(equalTo: stack.widthAnchor),
             divider.widthAnchor.constraint(equalTo: stack.widthAnchor),
             providerGroups.widthAnchor.constraint(equalTo: stack.widthAnchor),
-        ])
-    }
-
-    private func setupPurchasePanel() {
-        let lockIconView = NSImageView()
-        lockIconView.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: 13, weight: .semibold))
-        lockIconView.contentTintColor = DashboardPalette.yellow
-        lockIconView.setAccessibilityElement(false)
-        lockIconView.setContentHuggingPriority(.required, for: .horizontal)
-
-        lockedMessageLabel.font = .systemFont(ofSize: 13)
-        lockedMessageLabel.textColor = DashboardPalette.primaryText
-        lockedMessageLabel.maximumNumberOfLines = 2
-        lockedMessageLabel.identifier = NSUserInterfaceItemIdentifier("StatusBarQuotaLockedMessage")
-        lockedMessageLabel.setAccessibilityIdentifier("StatusBarQuotaLockedMessage")
-        lockedMessageLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        lockedMessageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        purchaseProgressIndicator.style = .spinning
-        purchaseProgressIndicator.controlSize = .small
-        purchaseProgressIndicator.isDisplayedWhenStopped = false
-
-        configureButton(purchaseButton, identifier: "StatusBarQuotaPurchaseButton")
-        purchaseButton.target = self
-        purchaseButton.action = #selector(purchaseButtonClicked)
-        purchaseButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 140).isActive = true
-        configureButton(restoreButton, identifier: "StatusBarQuotaRestoreButton")
-        restoreButton.target = self
-        restoreButton.action = #selector(restoreButtonClicked)
-        restoreButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 104).isActive = true
-
-        let messageRow = NSStackView(views: [lockIconView, lockedMessageLabel])
-        messageRow.orientation = .horizontal
-        messageRow.alignment = .top
-        messageRow.spacing = 8
-
-        // 按钮单独成行，避免窄窗口或长译文时挤压付费说明。
-        let actionsRow = NSStackView(views: [purchaseButton, restoreButton, purchaseProgressIndicator])
-        actionsRow.orientation = .horizontal
-        actionsRow.alignment = .centerY
-        actionsRow.spacing = 10
-
-        purchaseMessageLabel.font = .systemFont(ofSize: 11)
-        purchaseMessageLabel.textColor = DashboardPalette.secondaryText
-        purchaseMessageLabel.maximumNumberOfLines = 2
-        purchaseMessageLabel.identifier = NSUserInterfaceItemIdentifier("StatusBarQuotaPurchaseMessage")
-        purchaseMessageLabel.setAccessibilityIdentifier("StatusBarQuotaPurchaseMessage")
-
-        purchasePanel.orientation = .vertical
-        purchasePanel.alignment = .leading
-        purchasePanel.spacing = 10
-        purchasePanel.identifier = NSUserInterfaceItemIdentifier("StatusBarQuotaPurchasePanel")
-        purchasePanel.setAccessibilityIdentifier("StatusBarQuotaPurchasePanel")
-        purchasePanel.addArrangedSubview(messageRow)
-        purchasePanel.addArrangedSubview(actionsRow)
-        purchasePanel.addArrangedSubview(purchaseMessageLabel)
-        NSLayoutConstraint.activate([
-            messageRow.widthAnchor.constraint(equalTo: purchasePanel.widthAnchor),
-            purchaseMessageLabel.widthAnchor.constraint(equalTo: purchasePanel.widthAnchor),
         ])
     }
 
@@ -284,29 +195,8 @@ final class StatusBarQuotaSettingsView: NSView {
         return row
     }
 
-    private func configureButton(_ button: DashboardRangeButton, identifier: String) {
-        button.bezelStyle = .regularSquare
-        button.isBordered = false
-        button.alignment = .center
-        button.wantsLayer = true
-        button.layer?.cornerRadius = 7
-        button.layer?.borderWidth = 1
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.identifier = NSUserInterfaceItemIdentifier(identifier)
-        button.setAccessibilityIdentifier(identifier)
-        button.heightAnchor.constraint(equalToConstant: Self.controlHeight).isActive = true
-        button.setContentHuggingPriority(.required, for: .horizontal)
-        button.setContentCompressionResistancePriority(.required, for: .horizontal)
-    }
-
     private func subscribe() {
         displaySettingsObserverToken = displaySettings.observe { [weak self] in
-            self?.render()
-        }
-        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
-            self?.render()
-        }
-        purchaseObserverToken = quotaAccess.purchaseController?.observe { [weak self] _ in
             self?.render()
         }
     }
@@ -314,85 +204,17 @@ final class StatusBarQuotaSettingsView: NSView {
     // MARK: - Render
 
     private func render() {
-        let isUnlocked = quotaAccess.isUnlocked
-        purchasePanel.isHidden = isUnlocked
-        if !isUnlocked {
-            renderPurchaseState()
-        }
         for (key, row) in windowRows {
             let configuration = displaySettings.quotaWindowConfiguration(provider: key.provider, kind: key.kind)
             row.visibilitySwitch.state = configuration.isVisible ? .on : .off
-            row.visibilitySwitch.isEnabled = isUnlocked
+            row.visibilitySwitch.isEnabled = true
             if let styleIndex = StatusBarQuotaWindowStyle.allCases.firstIndex(of: configuration.style) {
                 row.stylePopUpButton.selectItem(at: styleIndex)
             }
             // 周期隐藏时样式不生效，禁用以免误以为可调整。
-            row.stylePopUpButton.isEnabled = isUnlocked && configuration.isVisible
-            row.titleLabel.textColor = isUnlocked ? DashboardPalette.primaryText : DashboardPalette.secondaryText
+            row.stylePopUpButton.isEnabled = configuration.isVisible
+            row.titleLabel.textColor = DashboardPalette.primaryText
         }
-    }
-
-    /// 只在未购买时绘制购买入口；购买控制器不可用时只保留付费说明。
-    private func renderPurchaseState() {
-        let copy = WidgetPurchaseCopy.make(language: language)
-        guard let purchaseController = quotaAccess.purchaseController else {
-            purchaseButton.isHidden = true
-            restoreButton.isHidden = true
-            purchaseMessageLabel.isHidden = true
-            purchaseProgressIndicator.stopAnimation(nil)
-            return
-        }
-        let state = purchaseController.state
-        let (isBusy, message) = copy.operationPresentation(state.operation)
-        if isBusy {
-            purchaseProgressIndicator.startAnimation(nil)
-        } else {
-            purchaseProgressIndicator.stopAnimation(nil)
-        }
-        purchaseMessageLabel.stringValue = message
-        purchaseMessageLabel.isHidden = message.isEmpty
-
-        purchaseButton.isHidden = false
-        restoreButton.isHidden = false
-        purchaseButton.title = state.product.map { copy.purchaseTitle(displayPrice: $0.displayPrice) }
-            ?? copy.purchaseUnavailableTitle
-        restoreButton.title = copy.restoreTitle
-        purchaseButton.isEnabled = !isBusy && state.product != nil
-        restoreButton.isEnabled = !isBusy
-        applyButtonStyle(
-            purchaseButton,
-            backgroundColor: DashboardPalette.rangeSelectedBackground,
-            borderColor: DashboardPalette.rangeSelectedBorder,
-            textColor: DashboardPalette.rangeSelectedText
-        )
-        applyButtonStyle(
-            restoreButton,
-            backgroundColor: .clear,
-            borderColor: DashboardPalette.glassControlBorder,
-            textColor: DashboardPalette.primaryText
-        )
-    }
-
-    private func applyButtonStyle(
-        _ button: DashboardRangeButton,
-        backgroundColor: NSColor,
-        borderColor: NSColor,
-        textColor: NSColor
-    ) {
-        let isEnabled = button.isEnabled
-        button.setDashboardLayerColors(backgroundColor: backgroundColor, borderColor: borderColor)
-        button.alphaValue = isEnabled ? 1 : 0.55
-        button.setAccessibilityLabel(button.title)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        button.attributedTitle = NSAttributedString(
-            string: button.title,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
-                .foregroundColor: isEnabled ? textColor : DashboardPalette.secondaryText,
-                .paragraphStyle: paragraph,
-            ]
-        )
     }
 
     // MARK: - Actions
@@ -402,7 +224,7 @@ final class StatusBarQuotaSettingsView: NSView {
     }
 
     @objc private func visibilitySwitchChanged(_ sender: NSSwitch) {
-        guard quotaAccess.isUnlocked, let key = windowKey(for: sender) else {
+        guard let key = windowKey(for: sender) else {
             render()
             return
         }
@@ -417,8 +239,7 @@ final class StatusBarQuotaSettingsView: NSView {
 
     @objc private func stylePopUpChanged(_ sender: SettingsPopUpButton) {
         let selectedIndex = sender.indexOfSelectedItem
-        guard quotaAccess.isUnlocked,
-              let key = windowKey(for: sender),
+        guard let key = windowKey(for: sender),
               StatusBarQuotaWindowStyle.allCases.indices.contains(selectedIndex) else {
             render()
             return
@@ -429,19 +250,5 @@ final class StatusBarQuotaSettingsView: NSView {
             "状态栏额度周期样式变更: \(key.provider.rawValue, privacy: .public).\(key.kind.rawValue, privacy: .public) style=\(configuration.style.rawValue, privacy: .public)"
         )
         displaySettings.setQuotaWindowConfiguration(configuration, provider: key.provider, kind: key.kind)
-    }
-
-    @objc private func purchaseButtonClicked() {
-        guard let purchaseController = quotaAccess.purchaseController, let window else { return }
-        Task { @MainActor in
-            await purchaseController.purchase(in: window)
-        }
-    }
-
-    @objc private func restoreButtonClicked() {
-        guard let purchaseController = quotaAccess.purchaseController else { return }
-        Task { @MainActor in
-            await purchaseController.restorePurchases()
-        }
     }
 }

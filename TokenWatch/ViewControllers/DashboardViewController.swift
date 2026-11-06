@@ -184,15 +184,12 @@ final class DashboardViewController: NSViewController {
                 await viewModel.loadAllStats()
             }
         },
-        widgetPurchaseController: WidgetPurchaseController? = nil,
         nowProvider: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         languageSettings: AppLanguageSettings = .shared
     ) {
         self.settingsViewController = settingsViewController
-        self.widgetGalleryViewController = WidgetGalleryViewController(
-            purchaseController: widgetPurchaseController
-        )
+        self.widgetGalleryViewController = WidgetGalleryViewController()
         self.stateProvider = stateProvider
         self.initialLoadCompletionProvider = initialLoadCompletionProvider
         self.refreshAction = refreshAction
@@ -2502,7 +2499,7 @@ final class DashboardViewController: NSViewController {
     private func enforceLeftAlignedContent(in root: NSView) {
         root.userInterfaceLayoutDirection = .leftToRight
         if let textField = root as? NSTextField {
-            textField.alignment = usesCenteredTextAlignment(textField) ? .center : .left
+            textField.alignment = .left
         }
         if let button = root as? NSButton {
             button.alignment = usesCenteredButtonTitle(button) ? .center : .left
@@ -2510,11 +2507,6 @@ final class DashboardViewController: NSViewController {
         for subview in root.subviews {
             enforceLeftAlignedContent(in: subview)
         }
-    }
-
-    private func usesCenteredTextAlignment(_ textField: NSTextField) -> Bool {
-        let identifier = textField.identifier?.rawValue ?? textField.accessibilityIdentifier()
-        return identifier == "WidgetPurchaseStatus"
     }
 
     private func usesCenteredButtonTitle(_ button: NSButton) -> Bool {

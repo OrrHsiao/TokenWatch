@@ -4,39 +4,6 @@ import Testing
 
 @Suite("Widget timeline planning")
 struct WidgetTimelinePlanningTests {
-    @Test("locked entitlement blocks even an available old snapshot")
-    func lockedEntitlementOverridesAvailableSnapshot() {
-        let oldSnapshot = snapshot(dayKey: "2026-07-15")
-        let lockedText = fallback(
-            notReadyMessage: "🔒 Open TokenWatch to unlock widgets"
-        )
-
-        #expect(!WidgetAccessGate.allowsSnapshotRead(for: .locked))
-        #expect(WidgetAccessGate.state(
-            entitlement: .locked,
-            result: .available(oldSnapshot),
-            at: isoDate("2026-07-15T13:00:00+08:00"),
-            calendar: shanghaiCalendar,
-            fallbackText: fallback,
-            lockedText: lockedText
-        ) == .notReady(lockedText))
-    }
-
-    @Test("unlocked entitlement preserves existing timeline classification")
-    func unlockedEntitlementUsesSnapshot() {
-        let currentSnapshot = snapshot(dayKey: "2026-07-15")
-
-        #expect(WidgetAccessGate.allowsSnapshotRead(for: .unlocked))
-        #expect(WidgetAccessGate.state(
-            entitlement: .unlocked,
-            result: .available(currentSnapshot),
-            at: isoDate("2026-07-15T13:00:00+08:00"),
-            calendar: shanghaiCalendar,
-            fallbackText: fallback,
-            lockedText: fallback(notReadyMessage: "locked")
-        ) == .current(currentSnapshot))
-    }
-
     @Test("same local day is current and prior local day is stale")
     func classifiesCurrentAndStale() {
         let currentSnapshot = snapshot(dayKey: "2026-07-15")

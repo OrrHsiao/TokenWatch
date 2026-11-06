@@ -37,7 +37,7 @@ The app is built with Swift, AppKit, and the macOS App Sandbox. AI Token Watch d
 - Session-level review with model, project, token, cost, and record counts
 - Claude and Codex subscription quota in the menu bar and popover: 5-hour and weekly remaining quota with reset times, read only from local records
 - Seven desktop widgets for heatmaps, trends, and recent usage
-- Desktop widgets and subscription quota are paid features, unlocked together by a one-time in-app purchase in the App Store version
+- All features are free, including all seven desktop widgets and subscription quota; no in-app purchase is required
 - Local parsing for Claude Code JSONL, Codex rollout JSONL, opencode SQLite, Antigravity SQLite, and DeepSeek Harness session logs (multi-frame zstd JSONL, decoded in-app)
 - Security-scoped bookmark access for sandbox-friendly local file permissions
 - Embedded LiteLLM pricing snapshot with hand-tuned pricing overrides for common models

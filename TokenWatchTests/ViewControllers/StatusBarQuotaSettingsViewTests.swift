@@ -18,8 +18,7 @@ struct StatusBarQuotaSettingsViewTests {
             autoRefreshSettings: AutoRefreshSettings(defaults: defaults),
             languageSettings: languageSettings,
             monthlyBudgetSettings: MonthlyBudgetSettings(defaults: defaults),
-            displaySettings: StatusBarDisplaySettings(defaults: defaults),
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: true)
+            displaySettings: StatusBarDisplaySettings(defaults: defaults)
         )
         controller.loadViewIfNeeded()
 
@@ -38,63 +37,20 @@ struct StatusBarQuotaSettingsViewTests {
         #expect(sectionIndex == contentStack.arrangedSubviews.count - 1)
     }
 
-    @Test("未购买时显示付费说明，周期开关与样式全部禁用，购买控制器不可用时不显示购买按钮")
-    func lockedStateDisablesControls() throws {
-        let (view, settings, cleanup) = try makeView(quotaAccess: SubscriptionQuotaAccess(isUnlocked: false))
-        defer { cleanup() }
-
-        #expect(view.debugShowsPurchasePanel)
-        #expect(view.debugLockedMessage == "订阅额度为付费功能，与桌面小组件共用一次永久买断。")
-        for provider in SubscriptionQuotaProvider.allCases {
-            for kind in SubscriptionQuotaWindowKind.allCases {
-                let visibilitySwitch = try #require(windowSwitch(provider, kind, in: view))
-                let stylePopUp = try #require(stylePopUpButton(provider, kind, in: view))
-                #expect(!visibilitySwitch.isEnabled)
-                #expect(!stylePopUp.isEnabled)
-                #expect(visibilitySwitch.state == .on)
-            }
-        }
-        #expect(try #require(button(identifier: "StatusBarQuotaPurchaseButton", in: view)).isHidden)
-        #expect(try #require(button(identifier: "StatusBarQuotaRestoreButton", in: view)).isHidden)
-
-        // 未解锁时即使收到操作也不写入设置。
-        let claudeFiveHour = try #require(windowSwitch(.claude, .fiveHour, in: view))
-        claudeFiveHour.state = .off
-        _ = claudeFiveHour.sendAction(claudeFiveHour.action, to: claudeFiveHour.target)
-        #expect(settings.quotaWindowConfiguration(provider: .claude, kind: .fiveHour).isVisible)
-        #expect(claudeFiveHour.state == .on)
-    }
-
-    @Test("未购买时购买按钮使用 StoreKit 本地化价格，与小组件共用同一商品")
-    func lockedStateShowsPurchaseActions() async throws {
-        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
-        defer { purchaseController.stop() }
-        await purchaseController.refresh()
-        let quotaAccess = SubscriptionQuotaAccess(purchaseController: purchaseController)
-        let (view, _, cleanup) = try makeView(quotaAccess: quotaAccess)
-        defer { cleanup() }
-
-        let purchaseButton = try #require(button(identifier: "StatusBarQuotaPurchaseButton", in: view))
-        let restoreButton = try #require(button(identifier: "StatusBarQuotaRestoreButton", in: view))
-        #expect(!purchaseButton.isHidden)
-        #expect(purchaseButton.isEnabled)
-        #expect(purchaseButton.title == "以 $2.99 永久解锁")
-        #expect(restoreButton.title == "恢复购买")
-
-        await purchaseController.purchase(in: NSWindow())
-
-        #expect(!view.debugShowsPurchasePanel)
-        #expect(try #require(windowSwitch(.codex, .sevenDay, in: view)).isEnabled)
-    }
-
-    @Test("解锁后可分别配置 Claude 与 Codex 各周期的展示与简洁 / 详细样式")
-    func unlockedControlsUpdateSettings() throws {
-        let (view, settings, cleanup) = try makeView(quotaAccess: SubscriptionQuotaAccess(isUnlocked: true))
+    @Test("无需购买即可分别配置 Claude 与 Codex 各周期的展示与简洁 / 详细样式")
+    func freeControlsUpdateSettings() throws {
+        let (view, settings, cleanup) = try makeView()
         defer { cleanup() }
         var notifications = 0
         settings.observe { notifications += 1 }
 
-        #expect(!view.debugShowsPurchasePanel)
+        #expect(descendant(identifier: "StatusBarQuotaPurchasePanel", in: view) == nil)
+        for provider in SubscriptionQuotaProvider.allCases {
+            for kind in SubscriptionQuotaWindowKind.allCases {
+                #expect(try #require(windowSwitch(provider, kind, in: view)).isEnabled)
+                #expect(try #require(stylePopUpButton(provider, kind, in: view)).isEnabled)
+            }
+        }
         let stylePopUp = try #require(stylePopUpButton(.codex, .sevenDay, in: view))
         #expect(stylePopUp.itemTitles == ["简洁", "详细"])
         #expect(stylePopUp.titleOfSelectedItem == "详细")
@@ -119,7 +75,7 @@ struct StatusBarQuotaSettingsViewTests {
 
     @Test("切换语言后周期名称与样式选项跟随更新")
     func reloadsLocalizedText() throws {
-        let (view, _, cleanup) = try makeView(quotaAccess: SubscriptionQuotaAccess(isUnlocked: true))
+        let (view, _, cleanup) = try makeView()
         defer { cleanup() }
 
         view.reloadLocalizedText(language: .en)
@@ -132,15 +88,12 @@ struct StatusBarQuotaSettingsViewTests {
 
     // MARK: - Helpers
 
-    private func makeView(
-        quotaAccess: SubscriptionQuotaAccess
-    ) throws -> (StatusBarQuotaSettingsView, StatusBarDisplaySettings, () -> Void) {
+    private func makeView() throws -> (StatusBarQuotaSettingsView, StatusBarDisplaySettings, () -> Void) {
         let suiteName = "StatusBarQuotaSettingsViewTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         let settings = StatusBarDisplaySettings(defaults: defaults)
         let view = StatusBarQuotaSettingsView(
             displaySettings: settings,
-            quotaAccess: quotaAccess,
             language: .zhHans
         )
         return (view, settings, { defaults.removePersistentDomain(forName: suiteName) })
@@ -163,10 +116,6 @@ struct StatusBarQuotaSettingsViewTests {
             identifier: "StatusBarQuotaWindowStylePopUpButton.\(provider.rawValue).\(kind.rawValue)",
             in: root
         ) as? NSPopUpButton
-    }
-
-    private func button(identifier: String, in root: NSView) -> NSButton? {
-        descendant(identifier: identifier, in: root) as? NSButton
     }
 
     private func descendant(identifier: String, in root: NSView) -> NSView? {

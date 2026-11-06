@@ -28,24 +28,18 @@ class ViewController: NSViewController {
 
     /// - Parameters:
     ///   - languageSettings: 界面语言设置。
-    ///   - widgetPurchaseController: 小组件与订阅额度共用的购买控制器。
-    ///   - quotaAccess: 订阅额度解锁状态；nil 时按购买控制器派生。
     ///   - quotaStore: 与状态栏共享的订阅额度 store；设置页数据源区块用它授权 Claude 额度文件。
     init(
         languageSettings: AppLanguageSettings = .shared,
-        widgetPurchaseController: WidgetPurchaseController? = nil,
-        quotaAccess: SubscriptionQuotaAccess? = nil,
         quotaStore: SubscriptionQuotaStore? = nil
     ) {
         self.languageSettings = languageSettings
         self.settingsViewController = SettingsViewController(
             languageSettings: languageSettings,
-            quotaAccess: quotaAccess ?? SubscriptionQuotaAccess(purchaseController: widgetPurchaseController),
             quotaStore: quotaStore
         )
         self.dashboardViewController = DashboardViewController(
             settingsViewController: settingsViewController,
-            widgetPurchaseController: widgetPurchaseController,
             languageSettings: languageSettings
         )
         super.init(nibName: nil, bundle: nil)
@@ -57,7 +51,6 @@ class ViewController: NSViewController {
         self.settingsViewController = SettingsViewController(languageSettings: languageSettings)
         self.dashboardViewController = DashboardViewController(
             settingsViewController: settingsViewController,
-            widgetPurchaseController: nil,
             languageSettings: languageSettings
         )
         super.init(coder: coder)
@@ -98,12 +91,6 @@ class ViewController: NSViewController {
     /// 响应主菜单设置入口,同步选中侧边栏设置项并展示设置页。
     @objc func showSettingsFromMainMenu(_ sender: Any?) {
         dashboardViewController.showSettings()
-    }
-
-    /// 展示设置页并滚动到“状态栏订阅额度”区块,用于状态栏弹窗的解锁入口。
-    func showStatusBarQuotaSettings() {
-        dashboardViewController.showSettings()
-        settingsViewController.revealStatusBarQuotaSection()
     }
 
     /// 把 ViewModel 的状态变更回调多路复用到 Notification,
@@ -415,7 +402,6 @@ final class SettingsViewController: NSViewController {
     private let monthlyBudgetTextField = VerticallyCenteredTextField(string: "")
     private let statusBarQuotaTitleLabel = NSTextField(labelWithString: "")
     private let scrollView = NSScrollView()
-    private var statusBarQuotaSection: NSView?
     private var statusBarQuotaSettingsView: StatusBarQuotaSettingsView?
 
     private let providers: [any UsageProvider]
@@ -428,20 +414,18 @@ final class SettingsViewController: NSViewController {
     private let languageSettings: AppLanguageSettings
     private let monthlyBudgetSettings: MonthlyBudgetSettings
     private let displaySettings: StatusBarDisplaySettings
-    private let quotaAccess: SubscriptionQuotaAccess
     /// 订阅额度 store；nil 时（测试、预览）不展示 Claude 额度文件行。
     private let quotaStore: SubscriptionQuotaStore?
 
     private var providerDirectoryRows:
         [ProviderID: ProviderDirectoryRowViews] = [:]
     private var claudeQuotaFileRow: ProviderDirectoryRowViews?
-    /// Claude 额度文件行及其上方分隔线，未解锁订阅额度时整体隐藏。
+    /// Claude 额度文件行及其上方分隔线，跟随额度数据服务的可用性展示。
     private var claudeQuotaFileRowContainers: [NSView] = []
     private var isAuthorizingClaudeQuotaFile = false
     private var languageSettingsObserverToken:
         AppLanguageSettings.ObservationToken?
     private var quotaStoreObserverToken: SubscriptionQuotaStore.ObservationToken?
-    private var quotaAccessObserverToken: SubscriptionQuotaAccess.ObservationToken?
 
     private var viewModel: TokenStatsViewModel? {
         (NSApp.delegate as? AppDelegate)?.viewModel
@@ -463,7 +447,6 @@ final class SettingsViewController: NSViewController {
         languageSettings: AppLanguageSettings = .shared,
         monthlyBudgetSettings: MonthlyBudgetSettings = .shared,
         displaySettings: StatusBarDisplaySettings = .shared,
-        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false),
         quotaStore: SubscriptionQuotaStore? = nil
     ) {
         self.providers = providers
@@ -474,7 +457,6 @@ final class SettingsViewController: NSViewController {
         self.languageSettings = languageSettings
         self.monthlyBudgetSettings = monthlyBudgetSettings
         self.displaySettings = displaySettings
-        self.quotaAccess = quotaAccess
         self.quotaStore = quotaStore
         super.init(nibName: nil, bundle: nil)
     }
@@ -485,8 +467,7 @@ final class SettingsViewController: NSViewController {
         autoRefreshSettings: AutoRefreshSettings = .shared,
         languageSettings: AppLanguageSettings = .shared,
         monthlyBudgetSettings: MonthlyBudgetSettings = .shared,
-        displaySettings: StatusBarDisplaySettings = .shared,
-        quotaAccess: SubscriptionQuotaAccess = SubscriptionQuotaAccess(isUnlocked: false)
+        displaySettings: StatusBarDisplaySettings = .shared
     ) {
         self.init(
             providers: ProviderRegistry.allProviders,
@@ -504,8 +485,7 @@ final class SettingsViewController: NSViewController {
             autoRefreshSettings: autoRefreshSettings,
             languageSettings: languageSettings,
             monthlyBudgetSettings: monthlyBudgetSettings,
-            displaySettings: displaySettings,
-            quotaAccess: quotaAccess
+            displaySettings: displaySettings
         )
     }
 
@@ -804,7 +784,6 @@ final class SettingsViewController: NSViewController {
         )
         let statusBarQuotaSettingsView = StatusBarQuotaSettingsView(
             displaySettings: displaySettings,
-            quotaAccess: quotaAccess,
             language: languageSettings.resolvedLanguage
         )
         self.statusBarQuotaSettingsView = statusBarQuotaSettingsView
@@ -813,7 +792,6 @@ final class SettingsViewController: NSViewController {
             title: statusBarQuotaTitleLabel,
             content: [statusBarQuotaSettingsView]
         )
-        self.statusBarQuotaSection = statusBarQuotaSection
 
         let contentStack = NSStackView(views: [
             titleRow,
@@ -917,14 +895,6 @@ final class SettingsViewController: NSViewController {
         ])
 
         reloadLocalizedText()
-    }
-
-    /// 滚动到“状态栏订阅额度”区块，使其完整可见。
-    func revealStatusBarQuotaSection() {
-        loadViewIfNeeded()
-        view.layoutSubtreeIfNeeded()
-        guard let statusBarQuotaSection else { return }
-        statusBarQuotaSection.scrollToVisible(statusBarQuotaSection.bounds)
     }
 
     private func configureSectionTitle(
@@ -1222,9 +1192,9 @@ final class SettingsViewController: NSViewController {
         renderClaudeQuotaFileRow()
     }
 
-    /// 额度为付费功能：未解锁时不读取额度，授权入口与原状态栏菜单一致地隐藏。
+    /// 额度文件行只在提供了额度数据服务时展示；文件读取仍需用户授权。
     private var isClaudeQuotaFileRowVisible: Bool {
-        quotaStore != nil && quotaAccess.isUnlocked
+        quotaStore != nil
     }
 
     private func renderClaudeQuotaFileRow() {
@@ -1569,13 +1539,10 @@ final class SettingsViewController: NSViewController {
         }
     }
 
-    /// 额度读取结果或解锁状态变化时重绘 Claude 额度文件行（授权状态与显隐）。
+    /// 额度读取结果变化时重绘 Claude 额度文件行。
     private func subscribeToQuotaUpdates() {
         guard let quotaStore else { return }
         quotaStoreObserverToken = quotaStore.observe { [weak self] in
-            self?.renderClaudeQuotaFileRow()
-        }
-        quotaAccessObserverToken = quotaAccess.observe { [weak self] in
             self?.renderClaudeQuotaFileRow()
         }
     }
@@ -1627,9 +1594,6 @@ final class SettingsViewController: NSViewController {
             }
             if let token = quotaStoreObserverToken {
                 quotaStore?.removeObserver(token)
-            }
-            if let token = quotaAccessObserverToken {
-                quotaAccess.removeObserver(token)
             }
         }
     }

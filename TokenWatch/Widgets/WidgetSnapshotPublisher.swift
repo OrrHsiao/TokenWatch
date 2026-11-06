@@ -32,6 +32,20 @@ protocol WidgetTimelineReloading: Sendable {
     func reloadTimelines(ofKind kind: String)
 }
 
+extension WidgetTimelineReloading {
+    /// 请求全部用量小组件重载，包括升级前仍缓存锁定画面的实例。
+    /// 调用方无需写入新快照；没有共享数据时由扩展展示正常的未就绪提示。
+    func reloadUsageTimelines() {
+        reloadTimelines(ofKind: WidgetSharedConfiguration.heatmapKind)
+        reloadTimelines(ofKind: WidgetSharedConfiguration.hourlyLineKind)
+        reloadTimelines(ofKind: WidgetSharedConfiguration.weeklySummaryKind)
+        reloadTimelines(ofKind: WidgetSharedConfiguration.monthlyBudgetKind)
+        reloadTimelines(ofKind: WidgetSharedConfiguration.todayAnomalyKind)
+        reloadTimelines(ofKind: WidgetSharedConfiguration.projectFocusKind)
+        reloadTimelines(ofKind: WidgetSharedConfiguration.modelFocusKind)
+    }
+}
+
 struct WidgetKitTimelineReloader: WidgetTimelineReloading, Sendable {
     func reloadTimelines(ofKind kind: String) {
         WidgetCenter.shared.reloadTimelines(ofKind: kind)
@@ -103,13 +117,7 @@ actor WidgetSnapshotPublisher: WidgetSnapshotPublishing {
             return .failed
         }
 
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.heatmapKind)
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.hourlyLineKind)
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.weeklySummaryKind)
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.monthlyBudgetKind)
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.todayAnomalyKind)
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.projectFocusKind)
-        timelineReloader.reloadTimelines(ofKind: WidgetSharedConfiguration.modelFocusKind)
+        timelineReloader.reloadUsageTimelines()
         return .published
     }
 }

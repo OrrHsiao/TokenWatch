@@ -42,7 +42,6 @@ final class AppStoreScreenshotUITests: XCTestCase {
             languagePreference: languagePreference,
             skipInitialDirectoryAuthorizationGuide: true,
             systemLanguage: systemLanguage,
-            widgetPurchaseReviewMode: "unlocked",
             useDemoData: true,
             showPopoverForScreenshots: true
         )

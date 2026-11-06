@@ -491,8 +491,8 @@ struct StatusPopoverViewControllerTests {
         #expect(panel.requestCount == 1)
     }
 
-    @Test("未购买时订阅区隐藏两个工具分组，只显示付费说明与解锁入口，弹窗高度不变")
-    func lockedQuotaSectionShowsUnlockEntry() async throws {
+    @Test("无需购买即可展示两个工具的订阅额度，弹窗高度不变")
+    func quotaSectionIsFree() async throws {
         let quotaStore = SubscriptionQuotaStore(
             bookmarkManager: SecurityScopedBookmarkManager.shared,
             languageProvider: { .zhHans },
@@ -500,50 +500,21 @@ struct StatusPopoverViewControllerTests {
             nowProvider: { Date() }
         )
         await quotaStore.refresh()
-        let controller = makeController(quotaStore: quotaStore, isQuotaUnlocked: false)
+        let controller = makeController(quotaStore: quotaStore)
         controller.loadViewIfNeeded()
         controller.view.frame = NSRect(origin: .zero, size: StatusPopoverViewController.contentSize)
         controller.view.layoutSubtreeIfNeeded()
 
         let section = controller.debugQuotaSectionView
         #expect(section.debugTitle == "订阅剩余")
-        #expect(section.debugIsLocked)
-        #expect(section.debugLockedMessage == "订阅额度为付费功能，与桌面小组件共用一次永久买断。")
-        #expect(section.debugUnlockTitle == "解锁")
-        #expect(section.debugProviderView(.claude)?.isHidden == true)
-        #expect(section.debugProviderView(.codex)?.isHidden == true)
+        #expect(section.debugProviderView(.claude)?.isHidden == false)
+        #expect(section.debugProviderView(.codex)?.isHidden == false)
         #expect(controller.debugQuotaSectionFrame.height == SubscriptionQuotaSectionLayout.height)
-
-        var unlockRequests = 0
-        controller.onRequestQuotaUnlock = { unlockRequests += 1 }
-        section.debugPerformUnlock()
-        #expect(unlockRequests == 1)
-    }
-
-    @Test("购买后订阅区立即恢复两个工具分组")
-    func unlockingQuotaRevealsProviders() async throws {
-        let purchaseController = WidgetPurchaseReviewFixtures.makeLockedController()
-        defer { purchaseController.stop() }
-        await purchaseController.refresh()
-        let quotaAccess = SubscriptionQuotaAccess(purchaseController: purchaseController)
-        let controller = StatusPopoverViewController(
-            viewModel: TokenStatsViewModel(),
-            quotaStore: SubscriptionQuotaStore(languageProvider: { .zhHans }),
-            languageSettings: AppLanguageSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!),
-            quotaAccess: quotaAccess
-        )
-        controller.loadViewIfNeeded()
-        #expect(controller.debugQuotaSectionView.debugIsLocked)
-
-        await purchaseController.purchase(in: NSWindow())
-
-        #expect(!controller.debugQuotaSectionView.debugIsLocked)
-        #expect(controller.debugQuotaSectionView.debugProviderView(.claude)?.isHidden == false)
     }
 
     @Test("订阅剩余标题右侧的感叹号说明数据来自本地记录且不调用网络 API")
     func quotaInfoButtonExplainsLocalDataSource() {
-        let controller = makeController(isQuotaUnlocked: false)
+        let controller = makeController()
         controller.loadViewIfNeeded()
 
         let section = controller.debugQuotaSectionView
@@ -590,8 +561,7 @@ struct StatusPopoverViewControllerTests {
 
     private func makeController(
         language: AppLanguage = .zhHans,
-        quotaStore: SubscriptionQuotaStore? = nil,
-        isQuotaUnlocked: Bool = true
+        quotaStore: SubscriptionQuotaStore? = nil
     ) -> StatusPopoverViewController {
         let suiteName = "StatusPopoverViewControllerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -605,8 +575,7 @@ struct StatusPopoverViewControllerTests {
             quotaStore: quotaStore ?? SubscriptionQuotaStore(languageProvider: { language }),
             nowProvider: quotaStore == nil ? { fixedDate() } : Date.init,
             calendar: fixedCalendar(),
-            languageSettings: languageSettings,
-            quotaAccess: SubscriptionQuotaAccess(isUnlocked: isQuotaUnlocked)
+            languageSettings: languageSettings
         )
         defaults.removePersistentDomain(forName: suiteName)
         return controller

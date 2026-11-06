@@ -1,5 +1,7 @@
 # TokenWatch 数据可信度中心详细设计
 
+> 2026-11-06 免费版校正：TokenWatch 2.0 全部功能免费，旧 StoreKit 付费、购买恢复及 Widget 权益方案已废弃。后续实施不得重建购买流程或付费限制；本文相关约束已按免费版更新，其余历史设计基线保持不变。
+
 **日期**：2026-08-11
 
 **状态**：已确认，待实施
@@ -91,7 +93,7 @@ TokenWatch 已能从 Claude Code、Codex CLI 和 opencode 的本地数据中计�
 
 - 在侧边栏“会话”和“设置”之间新增短标题 **数据质量**，图标使用 `checkmark.shield`。
 - 页面标题使用 **数据可信度中心**，避免侧边栏长文案挤压 65 种语言布局。
-- 数据可信度属于基础数据解释能力，始终免费可用，不受 Widget 永久解锁 entitlement 限制。
+- 数据可信度与其他全部功能一样免费可用，无需购买或权益校验。
 - 现有侧边栏“数据源”状态行和“上次本地扫描”区域继续保留；点击后进入可信度中心并定位对应 Provider。
 - 入口状态同时使用图标、文字和颜色，不能只有红/黄/绿点。
 - 进入页面不得自动弹出目录选择器。授权动作统一跳转设置或显式点击“管理文件夹”，延续现有隐私边界。
@@ -791,7 +793,6 @@ enum DataTrustIssueCode: String, Codable, Sendable {
 | JSONL 增量缓存 | 解析 entry、路径 key、provisional tail、continuity bytes | 保留可重建 entry；阻止原始 tail/anchor bytes 继续直接落盘 |
 | Provider 聚合快照 | session/project breakdown、数据根兼容信息 | 升级 v2，修订披露；诊断部分不再增加原始标识 |
 | Widget 用量快照 | Token、费用、模型/项目显示信息 | 本轮只披露；P0-5 负责清除与 reload timeline |
-| StoreKit entitlement | Widget 购买权益 | 与用量数据分离，任何后续清理都保留 |
 
 ### 原始增量字节最小化
 
@@ -812,7 +813,7 @@ P0-1 发布前必须消除“缓存直接复制原始内容”与隐私文案的
 
 - TokenWatch 不上传用量数据，也没有自建分析或遥测服务。
 - App 在本机保存可重建增量缓存、聚合快照，并与自带 Widget 共享裁剪后的本地快照。
-- 购买与恢复由 Apple StoreKit 处理；隐私/支持链接由默认浏览器打开，不能笼统声称“应用本身完全不访问网络”。
+- 全部功能免费，无购买或恢复购买流程；应用本身不访问网络，隐私/支持链接由默认浏览器打开。
 - 用户选择的数据目录以只读权限访问，原始日志不会被 TokenWatch 修改或删除。
 - P0-5 上线前，清除能力的实际边界必须如实描述，不能提前承诺尚不存在的按钮。
 
@@ -1009,7 +1010,7 @@ Format signature 必须按表中参数数量、顺序和类型完全一致；百
 - JSONL 磁盘 cache 不包含 fixture 的 prompt/response tail 或 anchor 原始 bytes。
 - 有 provisional tail 的冷启动恢复会绕过 exact-hit 与 parser reuse，重放后与热启动得到相同 entries、诊断和 source revision。
 - 所有扫描、缓存迁移和未来删除测试都校验外部源文件字节不变。
-- Widget snapshot 与 entitlement store 在测试中保持可区分，为 P0-5 清理契约预留。
+- Widget 快照与 Bookmark、偏好在测试中保持可区分，为 P0-5 清理契约预留。
 
 ## 十七、验收清单
 
@@ -1026,7 +1027,7 @@ Format signature 必须按表中参数数量、顺序和类型完全一致；百
 - [ ] 诊断页面和持久化诊断不包含路径或原始内容。
 - [ ] 原始 provisional tail/anchor bytes 不再直接落盘。
 - [ ] 同路径目录替换不会复用旧快照；v1/旧 JSONL 派生缓存会在未授权场景也被清除。
-- [ ] 隐私政策准确覆盖本地缓存、Widget 快照和 StoreKit 边界。
+- [ ] 隐私政策准确覆盖本地缓存、Widget 快照及默认浏览器打开链接的边界。
 - [ ] 所有语言资源、无障碍、单元/UI 测试与 macOS 构建通过。
 - [ ] 实现严格使用冻结的 91 个新增 key，未出现设计外的可见硬编码文案。
 

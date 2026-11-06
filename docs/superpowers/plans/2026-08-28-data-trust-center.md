@@ -1,5 +1,7 @@
 # TokenWatch 数据可信度中心实施计划
 
+> 2026-11-06 免费版校正：TokenWatch 2.0 全部功能免费，旧 StoreKit 付费、购买恢复及 Widget 权益方案已废弃。实施本计划时不得恢复购买流程、权益存储或付费限制；相关数据清理与隐私约束已同步更新。
+
 > 本计划按五个交付批次执行。每个 Task 对应一个可独立验证、可独立回滚的提交；使用复选框记录进度，不允许跨批次提前暴露后续产品界面。
 
 **日期**：2026-08-28
@@ -232,7 +234,7 @@
 - JSONL store 先解码只含 version 的 envelope，再决定是否解码 State；协议增加可抛错的显式 remove，不能把“解码失败”静默等同“已删除”。
 - LegacyDataCacheMigrator 在 App 启动且判断目录授权之前检查已知 Claude/Codex namespace，删除含原始 bytes 的旧 schema；它不依赖 Provider 是否仍接入，也不扫描 TokenWatch 缓存目录之外的位置。
 - 清理失败返回稳定结果并写入 legacyCacheCleanupFailed；失败允许 App 保守启动但属于发布阻断，不能只记日志后宣称迁移完成。
-- 新 schema 重建不迁移原始 bytes，不触碰 Bookmark、偏好、Widget、购买权益或外部日志。
+- 新 schema 重建不迁移原始 bytes，不触碰 Bookmark、偏好、Widget 或外部日志。
 
 - [ ] 写 RED：编码结果不含 fixture 中的 prompt/response/tail/anchor 明文。
 - [ ] 写 RED：provisional tail 冷启动恢复会 replay，且与热启动得到相同 entries 与 source revision。
@@ -432,7 +434,7 @@
 - v1 是可重建缓存：LegacyDataCacheMigrator 在授权判断前主动删除所有已知 Provider v1 文件，不猜测迁移字段；无法解码完整 State 时仍先读 schema envelope 决定删除。
 - 复用同时要求 Provider、非 nil 数据根 identity、时区、source 和 pipeline 兼容；Bookmark/目录校验失败不展示旧快照。
 - ProviderStatsSnapshotStoring 增加 remove(for:) throws。切换新数据根时，在新根校验成功后、扫描开始前清空旧根 entries/stats/trust/fingerprint/source revision 并删除旧快照；删除失败设置 providerSnapshotDeleteFailed 且禁止继续复用旧文件。
-- 删除只影响 TokenWatch 可重建派生数据，不清除 Bookmark、偏好、购买权益、Widget 或外部日志。
+- 删除只影响 TokenWatch 可重建派生数据，不清除 Bookmark、偏好、Widget 或外部日志。
 
 - [ ] 写 RED：未授权 Provider 的 v1 仍在启动时删除重算；清理失败产生 legacyCacheCleanupFailed 并成为发布阻断。
 - [ ] 写 RED：pipeline mismatch 重算、source/pipeline match 复用、时区变化不复用；同一路径目录被替换不复用；volume/file identity 缺失不允许冷启动回退。
@@ -578,9 +580,9 @@
 **披露内容**
 
 - 本地保存可重建增量缓存、Provider 聚合/诊断快照和 App Group Widget 裁剪快照。
-- StoreKit 购买/恢复由 Apple 处理，隐私/支持链接由默认浏览器打开。
+- 全部功能免费，无购买或恢复购买流程；应用本身不访问网络，隐私/支持链接由默认浏览器打开。
 - 无自建遥测或用量上传；用户选择目录只读，原始日志永不修改或删除。
-- 不承诺 P0-5 尚未实现的清除按钮，也不再笼统声称 App 本身完全不发生任何网络相关系统流程。
+- 不承诺 P0-5 尚未实现的清除按钮；明确默认浏览器打开公开网页与 App 本身处理本地数据的边界。
 
 - [ ] 同步英文、中文及两份站点镜像正文；只保留站点 front matter 差异。
 - [ ] 静态比较仓库正文与站点正文，确认无语义漂移。
@@ -678,7 +680,7 @@
 - snapshot 回滚必须先停止新 writer，再回滚 reader/schema；旧 v2 文件视为可重建缓存，不尝试降级写成 v1。
 - pricing、Provider、diagnostics 按 C2/C1、B4/B3/B2、A2 逆序回滚；Dashboard 正确性修复无需随功能 UI 回滚。
 - 原始缓存字节最小化和隐私披露是独立安全修复，即使可信度 UI 回滚也应保留。
-- 任何回滚最多导致 TokenWatch 可重建缓存失效，不能删除 Bookmark、StoreKit 权益或外部原始日志。
+- 任何回滚最多导致 TokenWatch 可重建缓存失效，不能删除 Bookmark、偏好或外部原始日志。
 
 ## 计划自检
 
