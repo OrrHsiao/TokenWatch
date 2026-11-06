@@ -1,6 +1,4 @@
-- Adds Claude and Codex subscription quota: the menu bar shows 5-hour and weekly remaining quota as concentric rings, and the popover shows remaining percentages with reset countdowns.
-- Quota is read only from records Claude Code and Codex save on your Mac, with no network APIs and no uploads. Claude quota needs a one-time selection of ~/.claude.json in Settings. When a reset time passes with no new local record, the quota is shown as "Reset (estimated)".
-- All features are now free, including all 7 desktop widgets and subscription quota. Purchase and restore steps are no longer needed. Thank you to everyone who supported the app with a purchase. Choose which periods each agent shows in the menu bar, in compact or detailed style, from Settings.
-- Fixes inflated Codex token counts caused by duplicated usage snapshots when rate limits refresh.
-- Fixes the main window not coming to the front when reopened from the menu bar after being closed.
-- Improves compatibility with usage records from newer Claude Code versions.
+- AI Token Watch 2.0 makes every feature free, including all 7 desktop widgets and Claude and Codex subscription quota. Thank you to everyone who supported the app with a purchase.
+- Removes purchase and restore flows. All features work without purchase verification.
+- The move to free keeps your existing usage data and saved file permissions.
+- Opening the app after updating requests a refresh of all 7 widgets to replace cached lock screens from older versions.

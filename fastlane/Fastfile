@@ -29,10 +29,10 @@ def required_option!(options, key)
   value
 end
 
-# 校验 App Store 版本号；提供构建号时再校验 Xcode Cloud 整数构建号。
+# 校验两段或三段数字的 App Store 版本号；提供构建号时再校验 Xcode Cloud 整数构建号。
 def validate_release_identifiers!(version, build_number = nil)
-  unless version.match?(/\A\d+\.\d+\.\d+\z/)
-    UI.user_error!("app_version 必须是三段数字版本号，例如 1.0.5")
+  unless version.match?(/\A\d+\.\d+(?:\.\d+)?\z/)
+    UI.user_error!("app_version 必须是两段或三段数字版本号，例如 2.0 或 2.0.1")
   end
   return if build_number.nil?
 

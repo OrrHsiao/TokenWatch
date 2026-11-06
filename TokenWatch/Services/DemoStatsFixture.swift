@@ -266,7 +266,7 @@ enum DemoStatsFixture {
                 provider: .codex
             ),
             makeEntry(
-                title: "Hardening StoreKit IAP verification and restore",
+                title: "Improve desktop widget timeline refresh",
                 model: "gpt-4o",
                 project: "TokenWatch",
                 tokens: 112_800,
