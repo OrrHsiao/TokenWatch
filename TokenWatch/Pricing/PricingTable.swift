@@ -221,10 +221,15 @@ struct PricingTable: Sendable {
 
     private static func alias(for model: String) -> String {
         switch model {
+        case "gpt-reserve":
+            return "gpt-5.6-luna"
         case "gpt-5.3-spark":
             return "gpt-5.3-codex-spark"
         case "gpt-5.6":
             return "gpt-5.6-sol"
+        // 避免裸名在 fuzzy 阶段按最长 key 误命中 moonshot/kimi-k3.1-pro-highspeed
+        case "kimi-k3.1-pro":
+            return "moonshot/kimi-k3.1-pro"
         default:
             if model.hasSuffix("/gpt-5.6") || model.hasSuffix(":gpt-5.6") {
                 return "\(model)-sol"
@@ -243,6 +248,13 @@ private extension PricingTable {
     }
 
     static let fastExactOverrides: [String: Double] = [
+        "gpt-6.2-sol": 2.0,
+        "gpt-6.2-astra": 2.0,
+        "gpt-6.1-terra": 2.0,
+        "gpt-6.1-sol": 2.0,
+        "gpt-6-sol": 2.0,
+        "gpt-6-luna": 2.0,
+        "gpt-6-astra": 2.0,
         "gpt-5.6-luna": 2.0,
         "gpt-5.6-sol": 2.0,
         "gpt-5.6-terra": 2.0,
@@ -252,6 +264,7 @@ private extension PricingTable {
     ]
 
     static let fastPrefixOverrides: [(modelID: String, multiplier: Double)] = [
+        ("claude-fable-5-2", 2.0),
         ("claude-opus-4-8", 2.0),
         ("claude-opus-5", 2.0),
     ]
@@ -296,7 +309,19 @@ private extension PricingTable {
             "claude-opus-4-7": p("claude-opus-4-7", 5, 25, 0.5, 6.25),
             "claude-opus-4-8": p("claude-opus-4-8", 5, 25, 0.5, 6.25),
             "claude-opus-5": p("claude-opus-5", 5, 25, 0.5, 6.25),
+            "claude-opus-5-5": p("claude-opus-5-5", 4, 20, 0.2, 5),
             "claude-sonnet-5": p("claude-sonnet-5", 2, 10, 0.2, 2.5),
+            "claude-sonnet-5-5": p("claude-sonnet-5-5", 2, 10, 0.1, 2.5),
+            // Anthropic 对 Haiku 5.5 超过 100K prompt tokens 的整条请求按 5× 长上下文价计费。
+            "claude-haiku-5-5": p(
+                "claude-haiku-5-5", 0.1, 0.5, 0.01, 0.125,
+                inputAbove: 0.5, outputAbove: 2.5,
+                cacheReadAbove: 0.05, cacheWriteAbove: 0.625,
+                longContextThreshold: 100_000
+            ),
+            "claude-fable-5": p("claude-fable-5", 10, 50, 1, 12.5),
+            "claude-fable-5-1": p("claude-fable-5-1", 10, 50, 0.25, 12.5),
+            "claude-fable-5-2": p("claude-fable-5-2", 8, 40, 0.2, 10),
             "claude-haiku-4-5": p("claude-haiku-4-5", 1, 5, 0.1, 1.25),
             "claude-opus-4": p("claude-opus-4", 15, 75, 1.5, 18.75),
             "claude-sonnet-4-6": p("claude-sonnet-4-6", 3, 15, 0.3, 3.75),
@@ -352,6 +377,18 @@ private extension PricingTable {
                 inputAbove: 4, outputAbove: 12,
                 cacheReadAbove: 1, longContextThreshold: 199_999
             ),
+            "grok-4.7": p(
+                "grok-4.7", 2, 6, 0.5, 2.5,
+                inputAbove: 4, outputAbove: 12,
+                cacheReadAbove: 1, longContextThreshold: 199_999
+            ),
+            // xAI 对 Grok 4.7 Fast 不收取缓存写入加价（写按输入价计），超过 200K 整条请求按 1.5× 计费。
+            "grok-4.7-fast": p(
+                "grok-4.7-fast", 4, 12, 1, 4,
+                inputAbove: 6, outputAbove: 18,
+                cacheReadAbove: 1.5, cacheWriteAbove: 6,
+                longContextThreshold: 199_999
+            ),
             "grok-build-0.1": p(
                 "grok-build-0.1", 1, 2, 0.2, 1.25,
                 inputAbove: 2, outputAbove: 4,
@@ -364,6 +401,10 @@ private extension PricingTable {
                 "moonshot/kimi-k2.7-code", 0.95, 4, 0.19, 1.1875
             ),
             "moonshot/kimi-k3": p("moonshot/kimi-k3", 3, 15, 0.3, 3.75),
+            "moonshot/kimi-k3.1-pro": p("moonshot/kimi-k3.1-pro", 2, 10, 0.2, 2),
+            "moonshot/kimi-k3.1-pro-highspeed": p(
+                "moonshot/kimi-k3.1-pro-highspeed", 4, 20, 0.2, 4
+            ),
             "gpt-5.1": gpt51,
             "gpt-5.1-codex": ModelPricing(
                 modelID: "gpt-5.1-codex",
@@ -382,6 +423,13 @@ private extension PricingTable {
             "gpt-5.6-sol": p("gpt-5.6-sol", 4, 20, 0.4, 5),
             "gpt-5.6-terra": p("gpt-5.6-terra", 2, 12, 0.2, 2.5),
             "gpt-5.6-luna": p("gpt-5.6-luna", 0.2, 1.2, 0.02, 0.25),
+            "gpt-6-astra": p("gpt-6-astra", 10, 50, 1, 12.5),
+            "gpt-6-sol": p("gpt-6-sol", 2, 10, 0.2, 2.5),
+            "gpt-6-luna": p("gpt-6-luna", 0.1, 0.5, 0.01, 0.125),
+            "gpt-6.1-sol": p("gpt-6.1-sol", 2, 10, 0.1, 2.5),
+            "gpt-6.1-terra": p("gpt-6.1-terra", 1, 5, 0.05, 1.25),
+            "gpt-6.2-astra": p("gpt-6.2-astra", 8, 40, 0.4, 10),
+            "gpt-6.2-sol": p("gpt-6.2-sol", 2, 10, 0.1, 2.5),
             // Google 仅公布 cached-input 与 token-hour storage；当前 schema 无法表达 storage，
             // cacheWrite 仍沿用 catalog fallback。
             "gemini-3.5-flash": p("gemini-3.5-flash", 1.5, 9, 0.15, 1.875),
@@ -401,6 +449,19 @@ private extension PricingTable {
             "gemini-3.8-pro": p(
                 "gemini-3.8-pro", 2.5, 10.0, 0.25, 3.125
             ),
+            // Gemini 4 缓存命中率为 0.05×；Argon/Carbon 当前限时价有效至 2026-11-30，到期后将调整为 $4/$20/$0.2。
+            "gemini-4-hydrogen": p(
+                "gemini-4-hydrogen", 1.5, 7.5, 0.075, 1.875
+            ),
+            "gemini-4-neon": p(
+                "gemini-4-neon", 3.0, 15.0, 0.15, 3.75
+            ),
+            "gemini-4-argon": p(
+                "gemini-4-argon", 2.0, 10.0, 0.1, 2.5
+            ),
+            "gemini-4-carbon": p(
+                "gemini-4-carbon", 2.0, 10.0, 0.1, 2.5
+            ),
             "gemini-flash": p(
                 "gemini-flash", 0.75, 3.75, 0.075, 0.9375
             ),
@@ -418,10 +479,16 @@ private extension PricingTable {
             "glm-4.6": p("glm-4.6", 0.6, 2.2, 0.11, 0),
             "glm-4.7": p("glm-4.7", 0.6, 2.2, 0.11, 0),
             "glm-5": p("glm-5", 1, 3.2, 0.2, 0),
+            "glm-5-code": p("glm-5-code", 1.2, 5, 0.3, 0),
             "glm-5-turbo": p("glm-5-turbo", 1.2, 4, 0.24, 0),
             "glm-5.1": p("glm-5.1", 1.4, 4.4, 0.26, 0),
             "glm-5.2": p("glm-5.2", 1.4, 4.4, 0.26, 0),
             "glm-5.3": p("glm-5.3", 1.4, 4.4, 0.26, 0),
+            "glm-5.3-flash": p("glm-5.3-flash", 0.15, 0.5, 0.03, 0),
+            // DeepSeek V4 系列按最新标准价（峰值/列表价）兜底，缓存写入无额外收费。
+            "deepseek-flash": p("deepseek-flash", 0.3, 1.2, 0.006, 0),
+            "deepseek-v4-flash": p("deepseek-v4-flash", 0.3, 1.2, 0.006, 0),
+            "deepseek-v4-pro": p("deepseek-v4-pro", 1.32, 3.96, 0.044, 0),
         ]
     }()
 
@@ -521,6 +588,20 @@ private extension PricingTable {
 
     static func longContextRates(for modelID: String) -> LongContextRates? {
         switch modelID {
+        case "gpt-6.2-sol":
+            return LongContextRates(input: 4, output: 15, cacheWrite: 5, cacheRead: 0.2)
+        case "gpt-6.2-astra":
+            return LongContextRates(input: 16, output: 60, cacheWrite: 20, cacheRead: 0.8)
+        case "gpt-6.1-terra":
+            return LongContextRates(input: 2, output: 7.5, cacheWrite: 2.5, cacheRead: 0.1)
+        case "gpt-6.1-sol":
+            return LongContextRates(input: 4, output: 15, cacheWrite: 5, cacheRead: 0.2)
+        case "gpt-6-luna":
+            return LongContextRates(input: 0.2, output: 0.75, cacheWrite: 0.25, cacheRead: 0.02)
+        case "gpt-6-sol":
+            return LongContextRates(input: 4, output: 15, cacheWrite: 5, cacheRead: 0.4)
+        case "gpt-6-astra":
+            return LongContextRates(input: 20, output: 75, cacheWrite: 25, cacheRead: 2)
         case "gpt-5.6-sol":
             return LongContextRates(input: 8, output: 30, cacheWrite: 10, cacheRead: 0.8)
         case "gpt-5.6-terra":

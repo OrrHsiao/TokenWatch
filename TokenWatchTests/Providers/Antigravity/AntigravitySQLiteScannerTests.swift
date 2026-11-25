@@ -62,6 +62,62 @@ struct AntigravitySQLiteScannerTests {
         #expect(res.stepTimestamps[5]?.timeIntervalSince1970 == 1785300000)
     }
 
+    @Test("gen_metadata 的 size 列为 0 但 data 非空时仍能正常扫描，空 data 或 NULL 则跳过")
+    func scansGenerationsWhenSizeColumnIsZero() throws {
+        let root = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let convDir = root.appendingPathComponent("conversations", isDirectory: true)
+        try FileManager.default.createDirectory(at: convDir, withIntermediateDirectories: true)
+
+        let dbURL = convDir.appendingPathComponent("zero-size-conv.db")
+        let genData = Data([0x0A, 0x04, 0x08, 0x01, 0x10, 0x02])
+
+        try buildMiniAntigravityDB(
+            at: dbURL,
+            trajectoryId: "traj-zero-size",
+            generations: [],
+            steps: []
+        )
+
+        var db: OpaquePointer?
+        try #require(sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK)
+        let database = try #require(db)
+        defer { sqlite3_close(database) }
+
+        // idx=0: 新版 Antigravity 场景——size=0 但 data 有完整负载
+        var insertNonEmpty: OpaquePointer?
+        try #require(sqlite3_prepare_v2(
+            database,
+            "INSERT INTO gen_metadata (idx, data, size) VALUES (0, ?, 0);",
+            -1,
+            &insertNonEmpty,
+            nil
+        ) == SQLITE_OK)
+        let stmt = try #require(insertNonEmpty)
+        genData.withUnsafeBytes { ptr in
+            sqlite3_bind_blob(stmt, 1, ptr.baseAddress, Int32(genData.count), SQLITE_TRANSIENT_DESTRUCTOR)
+        }
+        try #require(sqlite3_step(stmt) == SQLITE_DONE)
+        sqlite3_finalize(stmt)
+
+        // idx=1/2: 空 blob 或 NULL 负载应被过滤
+        try #require(sqlite3_exec(
+            database,
+            "INSERT INTO gen_metadata (idx, data, size) VALUES (1, X'', 0), (2, NULL, 10);",
+            nil,
+            nil,
+            nil
+        ) == SQLITE_OK)
+
+        let results = try scanner.scanAll(in: root)
+        try #require(results.count == 1)
+        #expect(results[0].conversationID == "traj-zero-size")
+        #expect(results[0].generations.count == 1)
+        #expect(results[0].generations[0].genIdx == 0)
+        #expect(results[0].generations[0].dataBlob == genData)
+    }
+
     @Test("WAL 模式且已 checkpoint（无 -wal/-shm）的归档库仍能被完整扫描")
     func scansArchivedWALDatabaseWithoutShm() throws {
         let root = try makeTempDir()
