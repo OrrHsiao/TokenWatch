@@ -301,8 +301,12 @@ final class AntigravitySQLiteScanner: Sendable {
         return timestamps
     }
 
+    /// 读取会话中的全部有效生成记录。
+    ///
+    /// 设计原因：新版 Antigravity 写入 `gen_metadata` 时可能保留 `size` 列的默认值 `0`，
+    /// 但 `data` 列依然包含完整的 Protobuf 负载，因此按 `data` 实际字节长度过滤而非 `size > 0`。
     private func readGenerations(from database: OpaquePointer, trajectoryID: String) throws -> [AntigravityRawGenerationRow] {
-        let query = "SELECT idx, data FROM gen_metadata WHERE size > 0 ORDER BY idx;"
+        let query = "SELECT idx, data FROM gen_metadata WHERE data IS NOT NULL AND length(data) > 0 ORDER BY idx;"
         var stmt: OpaquePointer?
         let prepCode = sqlite3_prepare_v2(database, query, -1, &stmt, nil)
         guard prepCode == SQLITE_OK, let statement = stmt else {
