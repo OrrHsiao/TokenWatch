@@ -105,7 +105,7 @@ struct CCUsagePricingParityTests {
     @Test("当前生产 fast 映射的规范序列化哈希固定")
     func currentFastMappingArtifact() {
         #expect(sha256(PricingTable.canonicalFastMultiplierOverrides)
-            == "c3d475e0cb2ecdef6d97d4956f85078b058f8c42c18b91c5fd96ce6635cde3c6")
+            == "e72916e800122f7213bcf15078f02da4ee1330e82af876fa7435f4f06d6ba882")
     }
 
     private func loadFixture() throws -> Fixture {

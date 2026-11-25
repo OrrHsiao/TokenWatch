@@ -278,12 +278,23 @@ extension PricingTableTests {
             "claude-opus-4-7": 1.0,
             "claude-opus-4-8": 2.0,
             "claude-opus-5": 2.0,
+            "claude-opus-5-5": 2.0,
+            "claude-fable-5": 1.0,
+            "claude-fable-5-1": 1.0,
+            "claude-fable-5-2": 2.0,
             "gpt-5.3-codex": 2.0,
             "gpt-5.4": 2.0,
             "gpt-5.5": 2.5,
             "gpt-5.6-sol": 2.0,
             "gpt-5.6-terra": 2.0,
             "gpt-5.6-luna": 2.0,
+            "gpt-6-astra": 2.0,
+            "gpt-6-sol": 2.0,
+            "gpt-6-luna": 2.0,
+            "gpt-6.1-sol": 2.0,
+            "gpt-6.1-terra": 2.0,
+            "gpt-6.2-astra": 2.0,
+            "gpt-6.2-sol": 2.0,
         ]
 
         for modelID in expected.keys.sorted() {
@@ -423,6 +434,148 @@ extension PricingTableTests {
                 input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0,
                 fast: 1
             ),
+            .init(
+                requestedID: "glm-5-code", matchedID: "glm-5-code",
+                input: 1.2, output: 5, cacheRead: 0.3, cacheWrite: 0,
+                fast: 1
+            ),
+            .init(
+                requestedID: "glm-5.3-flash", matchedID: "glm-5.3-flash",
+                input: 0.15, output: 0.5, cacheRead: 0.03, cacheWrite: 0,
+                fast: 1
+            ),
+            .init(
+                requestedID: "gemini-4-hydrogen", matchedID: "gemini-4-hydrogen",
+                input: 1.5, output: 7.5, cacheRead: 0.075, cacheWrite: 1.875,
+                fast: 1
+            ),
+            .init(
+                requestedID: "gemini-4-neon", matchedID: "gemini-4-neon",
+                input: 3.0, output: 15.0, cacheRead: 0.15, cacheWrite: 3.75,
+                fast: 1
+            ),
+            .init(
+                requestedID: "gemini-4-argon", matchedID: "gemini-4-argon",
+                input: 2.0, output: 10.0, cacheRead: 0.1, cacheWrite: 2.5,
+                fast: 1
+            ),
+            .init(
+                requestedID: "gemini-4-carbon", matchedID: "gemini-4-carbon",
+                input: 2.0, output: 10.0, cacheRead: 0.1, cacheWrite: 2.5,
+                fast: 1
+            ),
+            .init(
+                requestedID: "claude-opus-5-5", matchedID: "claude-opus-5-5",
+                input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5,
+                fast: 2
+            ),
+            .init(
+                requestedID: "claude-sonnet-5-5", matchedID: "claude-sonnet-5-5",
+                input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5,
+                fast: 1
+            ),
+            .init(
+                requestedID: "claude-haiku-5-5", matchedID: "claude-haiku-5-5",
+                input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125,
+                inputAbove: 0.5, outputAbove: 2.5, cacheReadAbove: 0.05,
+                cacheWriteAbove: 0.625, threshold: 100_000, fast: 1
+            ),
+            .init(
+                requestedID: "claude-fable-5", matchedID: "claude-fable-5",
+                input: 10, output: 50, cacheRead: 1, cacheWrite: 12.5,
+                fast: 1
+            ),
+            .init(
+                requestedID: "claude-fable-5-1", matchedID: "claude-fable-5-1",
+                input: 10, output: 50, cacheRead: 0.25, cacheWrite: 12.5,
+                fast: 1
+            ),
+            .init(
+                requestedID: "claude-fable-5-2", matchedID: "claude-fable-5-2",
+                input: 8, output: 40, cacheRead: 0.2, cacheWrite: 10,
+                fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6-astra", matchedID: "gpt-6-astra",
+                input: 10, output: 50, cacheRead: 1, cacheWrite: 12.5,
+                inputAbove: 20, outputAbove: 75, cacheReadAbove: 2,
+                cacheWriteAbove: 25, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6-sol", matchedID: "gpt-6-sol",
+                input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 15, cacheReadAbove: 0.4,
+                cacheWriteAbove: 5, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6-luna", matchedID: "gpt-6-luna",
+                input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125,
+                inputAbove: 0.2, outputAbove: 0.75, cacheReadAbove: 0.02,
+                cacheWriteAbove: 0.25, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6.1-sol", matchedID: "gpt-6.1-sol",
+                input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 15, cacheReadAbove: 0.2,
+                cacheWriteAbove: 5, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6.1-terra", matchedID: "gpt-6.1-terra",
+                input: 1, output: 5, cacheRead: 0.05, cacheWrite: 1.25,
+                inputAbove: 2, outputAbove: 7.5, cacheReadAbove: 0.1,
+                cacheWriteAbove: 2.5, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6.2-astra", matchedID: "gpt-6.2-astra",
+                input: 8, output: 40, cacheRead: 0.4, cacheWrite: 10,
+                inputAbove: 16, outputAbove: 60, cacheReadAbove: 0.8,
+                cacheWriteAbove: 20, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "gpt-6.2-sol", matchedID: "gpt-6.2-sol",
+                input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 15, cacheReadAbove: 0.2,
+                cacheWriteAbove: 5, threshold: 272_000, fast: 2
+            ),
+            .init(
+                requestedID: "grok-4.7", matchedID: "grok-4.7",
+                input: 2, output: 6, cacheRead: 0.5, cacheWrite: 2.5,
+                inputAbove: 4, outputAbove: 12, cacheReadAbove: 1,
+                threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "grok-4.7-fast", matchedID: "grok-4.7-fast",
+                input: 4, output: 12, cacheRead: 1, cacheWrite: 4,
+                inputAbove: 6, outputAbove: 18, cacheReadAbove: 1.5,
+                cacheWriteAbove: 6, threshold: 199_999, fast: 1
+            ),
+            .init(
+                requestedID: "moonshot/kimi-k3.1-pro",
+                matchedID: "moonshot/kimi-k3.1-pro",
+                input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2,
+                fast: 1
+            ),
+            .init(
+                requestedID: "moonshot/kimi-k3.1-pro-highspeed",
+                matchedID: "moonshot/kimi-k3.1-pro-highspeed",
+                input: 4, output: 20, cacheRead: 0.2, cacheWrite: 4,
+                fast: 1
+            ),
+            .init(
+                requestedID: "deepseek-flash", matchedID: "deepseek-flash",
+                input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0,
+                fast: 1
+            ),
+            .init(
+                requestedID: "deepseek-v4-flash", matchedID: "deepseek-v4-flash",
+                input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0,
+                fast: 1
+            ),
+            .init(
+                requestedID: "deepseek-v4-pro", matchedID: "deepseek-v4-pro",
+                input: 1.32, output: 3.96, cacheRead: 0.044, cacheWrite: 0,
+                fast: 1
+            ),
         ]
 
         for item in expected {
@@ -451,10 +604,18 @@ extension PricingTableTests {
     func latestModelLookupBoundaries() {
         let expectedMatches = [
             (requested: "gpt-5.6", matched: "gpt-5.6-sol"),
+            (requested: "gpt-reserve", matched: "gpt-5.6-luna"),
             (requested: "openai/gpt-5.6", matched: "gpt-5.6-sol"),
             (requested: "azure:gpt-5.6", matched: "gpt-5.6-sol"),
             (requested: "kimi-k3", matched: "moonshot/kimi-k3"),
             (requested: "kimi-k2.7-code", matched: "moonshot/kimi-k2.7-code"),
+            (requested: "kimi-k3.1-pro", matched: "moonshot/kimi-k3.1-pro"),
+            (requested: "kimi-k3.1-pro-highspeed", matched: "moonshot/kimi-k3.1-pro-highspeed"),
+            (requested: "xai/grok-4.7", matched: "grok-4.7"),
+            (requested: "zai/glm-5.3", matched: "glm-5.3"),
+            (requested: "gemini/gemini-4-hydrogen", matched: "gemini-4-hydrogen"),
+            (requested: "gemini/gemini-4-neon", matched: "gemini-4-neon"),
+            (requested: "deepseek/deepseek-v4-pro", matched: "deepseek-v4-pro"),
         ]
 
         for item in expectedMatches {
